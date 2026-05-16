@@ -2,5 +2,5 @@ package es.schsebastian.foodrats.feature.meal.data.firebase
 
 import dev.gitlive.firebase.storage.Data
 
-// On Android, Data is a typealias for ByteArray, so no conversion needed.
-actual fun ByteArray.toStorageData(): Data = this
+// On Android, Data wraps a ByteArray in a dev.gitlive.firebase.storage.Data value class.
+actual fun ByteArray.toStorageData(): Data = Data(this)
