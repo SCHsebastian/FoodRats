@@ -3,6 +3,8 @@ package es.schsebastian.foodrats.core.designsystem.atoms
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
@@ -19,4 +21,6 @@ object FrIcons {
     val GalleryImport: ImageVector = Icons.Filled.List       // placeholder for Image
     val CameraOff: ImageVector     = Icons.Filled.Warning    // placeholder for NoPhotography
     val Settings: ImageVector      = Icons.Filled.Settings
+    val ChevronLeft: ImageVector   = Icons.Filled.ChevronLeft
+    val ChevronRight: ImageVector  = Icons.Filled.ChevronRight
 }
