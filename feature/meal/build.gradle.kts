@@ -39,6 +39,12 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.peekaboo.ui)
             implementation(libs.peekaboo.image.picker)
+            implementation(libs.firebase.common)
+            implementation(libs.firebase.auth)
+            implementation(libs.firebase.firestore)
+            implementation(libs.firebase.storage)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.okio)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -47,5 +53,8 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
         }
+        // StorageData.android.kt / StorageData.ios.kt expect/actual for Firebase Storage Data type
+        androidMain.dependencies { }
+        iosMain.dependencies { }
     }
 }

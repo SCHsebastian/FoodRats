@@ -19,6 +19,7 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 @Serializable
 private data class MealDraftJson(
@@ -41,7 +42,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
     }
 
     suspend fun save(draft: MealDraft) {
-        prefs.set(Keys.MealDraftJson, json.encodeToString(MealDraftJson.from(draft)))
+        prefs.set(Keys.MealDraftJson, json.encodeToString(serializer<MealDraftJson>(), MealDraftJson.from(draft)))
     }
 
     suspend fun clear() = prefs.clear(Keys.MealDraftJson)

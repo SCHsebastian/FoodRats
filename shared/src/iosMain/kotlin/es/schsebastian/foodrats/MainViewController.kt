@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats
 
 import androidx.compose.ui.window.ComposeUIViewController
+import es.schsebastian.foodrats.app.FoodRatsApp
 
-fun MainViewController() = ComposeUIViewController { /* TODO Phase 5 */ }
+fun MainViewController() = ComposeUIViewController { FoodRatsApp() }

@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.androidMultiplatformLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.kotlinxSerialization)
 }
 
 kotlin {
@@ -47,6 +48,36 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.lifecycle.viewmodelCompose)
             implementation(libs.androidx.lifecycle.runtimeCompose)
+
+            // Module graph
+            implementation(projects.core.domain)
+            implementation(projects.core.data)
+            implementation(projects.core.designsystem)
+            implementation(projects.core.presentation)
+            implementation(projects.core.i18n)
+            implementation(projects.feature.auth)
+            implementation(projects.feature.crew)
+            implementation(projects.feature.meal)
+            implementation(projects.feature.feed)
+            implementation(projects.feature.stats)
+            implementation(projects.feature.notifications)
+
+            // DI + navigation
+            implementation(libs.koin.core)
+            implementation(libs.koin.compose)
+            implementation(libs.koin.compose.viewmodel)
+            implementation(libs.nav.compose)
+            implementation(libs.kotlinx.serialization.json)
+
+            // Firebase (GitLive KMP bindings)
+            implementation(libs.firebase.common)
+            implementation(libs.firebase.auth)
+            implementation(libs.firebase.firestore)
+            implementation(libs.firebase.storage)
+
+            // Shared utilities transitively needed by Koin modules
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.androidx.datastore.preferences)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

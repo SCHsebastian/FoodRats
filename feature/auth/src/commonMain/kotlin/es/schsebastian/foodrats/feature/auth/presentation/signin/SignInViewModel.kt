@@ -12,7 +12,7 @@ class SignInViewModel(private val auth: AuthRepository) :
             update { it.copy(isLoading = true, error = null) }
             val r = auth.signInWithGoogle()
             update { it.copy(isLoading = false, error = if (r is Result.Err) r.error else null) }
-            if (r is Result.Ok) emit(SignInEffect.SignedIn)
+            if (r is Result.Ok) emit(SignInEffect.SignedIn) else Unit
         }
     }
 }

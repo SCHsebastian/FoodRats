@@ -25,7 +25,10 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.materialIconsExtended)
+            // material-icons-core is fully KMP-compatible (iOS included).
+            // material-icons-extended is excluded: no KMP iOS artifact.
+            // FrIcons.kt uses core-only icons (see that file for substitution notes).
+            implementation(libs.materialIconsCore)
         }
     }
 }

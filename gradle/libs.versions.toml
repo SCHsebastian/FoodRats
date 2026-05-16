@@ -50,6 +50,9 @@ compose-material3 = { module = "org.jetbrains.compose.material3:material3", vers
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+# material-icons-core: pinned to 1.6.2 — this is the last published KMP version.
+# CMP 1.7+ bundles icons differently; revisit when upgrading CMP.
+materialIconsCore     = { module = "org.jetbrains.compose.material:material-icons-core",     version = "1.6.2" }
 materialIconsExtended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeMultiplatform" }
 
 koin-core              = { module = "io.insert-koin:koin-core",                 version.ref = "koin" }

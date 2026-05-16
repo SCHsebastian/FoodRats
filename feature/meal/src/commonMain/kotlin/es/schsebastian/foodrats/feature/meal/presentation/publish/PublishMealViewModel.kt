@@ -20,13 +20,13 @@ class PublishMealViewModel(
 
     override suspend fun handle(intent: PublishMealIntent) {
         when (intent) {
-            PublishMealIntent.Load    -> update { it.copy(draft = observeDraft().first()) }
+            PublishMealIntent.Load    -> { val d = observeDraft().first(); update { it.copy(draft = d) } }
             PublishMealIntent.Publish -> {
                 val draft = currentState.draft ?: return
                 update { it.copy(isPublishing = true) }
                 val r = publishMeal(draft)
                 update { it.copy(isPublishing = false, error = if (r is Result.Err) r.error else null) }
-                if (r is Result.Ok) emit(PublishMealEffect.Published)
+                if (r is Result.Ok) emit(PublishMealEffect.Published) else Unit
             }
         }
     }
