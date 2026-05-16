@@ -22,7 +22,7 @@ fun FrLeaderboardRow(entry: MemberAverage, modifier: Modifier = Modifier) {
         // FrAvatar takes initials; derive from display name.
         FrAvatar(initials = entry.displayName.take(2))
         FrText(text = entry.displayName, modifier = Modifier.padding(end = Spacing.md))
-        FrText(text = "%.1f".format(entry.averageScore))
+        FrText(text = ((entry.averageScore * 10).toLong().toDouble() / 10).toString())
         FrText(text = "(${entry.postCount})", modifier = Modifier.padding(start = Spacing.sm))
     }
 }

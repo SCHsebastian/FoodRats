@@ -32,6 +32,7 @@ import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -76,6 +77,6 @@ class StatsViewModelTest {
         val vm = StatsViewModel(ObserveStatsUseCase(active, session, read, clock, zone))
         val s = vm.state.value
         assertNotNull(s.snapshot)
-        assert(s.snapshot!!.personalStreak.days == 1)
+        assertEquals(1, s.snapshot!!.personalStreak.days)
     }
 }
