@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.core.domain.meal
 
 import es.schsebastian.foodrats.core.domain.result.Result
+import kotlin.jvm.JvmInline
 
+@JvmInline
 value class Score private constructor(val value: Int) {
     companion object {
         const val MIN = 1

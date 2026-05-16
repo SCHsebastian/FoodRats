@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.core.domain.meal
 
 import es.schsebastian.foodrats.core.domain.result.Result
+import kotlin.jvm.JvmInline
 
 sealed interface FoodTag {
     val label: String
@@ -11,6 +12,7 @@ sealed interface FoodTag {
         Drink("drink"), Other("other"),
     }
 
+    @JvmInline
     value class Custom internal constructor(override val label: String) : FoodTag
 
     companion object {

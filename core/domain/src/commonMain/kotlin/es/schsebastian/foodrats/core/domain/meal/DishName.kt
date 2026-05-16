@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.core.domain.meal
 
 import es.schsebastian.foodrats.core.domain.result.Result
+import kotlin.jvm.JvmInline
 
+@JvmInline
 value class DishName private constructor(val value: String) {
     companion object {
         const val MAX_LEN = 60
