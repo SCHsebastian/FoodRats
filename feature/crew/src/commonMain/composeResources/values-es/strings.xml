@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="crew_picker_title">Tus grupos</string>
+    <string name="crew_picker_empty_headline">Aún no tienes un grupo</string>
+    <string name="crew_picker_empty_subtext">Crea un grupo o únete con un código de invitación.</string>
+    <string name="crew_picker_create_cta">Crear un grupo</string>
+    <string name="crew_picker_join_cta">Unirme con código</string>
+    <string name="crew_create_name_label">Nombre del grupo</string>
+    <string name="crew_create_submit">Crear</string>
+    <string name="crew_join_code_label">Código de invitación</string>
+    <string name="crew_join_submit">Unirme</string>
+    <string name="crew_settings_title">Grupo</string>
+    <string name="crew_settings_members_section">Miembros</string>
+    <string name="crew_settings_share_code">Comparte el código: %1$s</string>
+    <string name="crew_settings_leave_cta">Salir del grupo</string>
+    <string name="crew_error_name_blank">El nombre no puede estar vacío.</string>
+    <string name="crew_error_name_too_long">El nombre es demasiado largo (máx. 40 caracteres).</string>
+    <string name="crew_error_code_malformed">Ese código no parece válido.</string>
+    <string name="crew_error_code_unknown">Ningún grupo coincide con ese código.</string>
+    <string name="crew_error_full">Este grupo está lleno.</string>
+    <string name="crew_error_already_member">Ya estás en este grupo.</string>
+    <string name="crew_error_not_member">No eres miembro de este grupo.</string>
+    <string name="crew_error_not_found">Grupo no encontrado.</string>
+    <string name="crew_error_network">Comprueba tu conexión.</string>
+    <string name="crew_error_permission">No tienes permiso.</string>
+    <string name="crew_error_collision">No se ha podido generar un código único, inténtalo de nuevo.</string>
+    <string name="crew_error_unknown">Algo salió mal. Inténtalo de nuevo.</string>
+</resources>

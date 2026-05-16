@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="crew_picker_title">Your crews</string>
+    <string name="crew_picker_empty_headline">No crew yet</string>
+    <string name="crew_picker_empty_subtext">Create a crew or join one with an invite code.</string>
+    <string name="crew_picker_create_cta">Create a crew</string>
+    <string name="crew_picker_join_cta">Join with code</string>
+    <string name="crew_create_name_label">Crew name</string>
+    <string name="crew_create_submit">Create</string>
+    <string name="crew_join_code_label">Invite code</string>
+    <string name="crew_join_submit">Join</string>
+    <string name="crew_settings_title">Crew</string>
+    <string name="crew_settings_members_section">Members</string>
+    <string name="crew_settings_share_code">Share code: %1$s</string>
+    <string name="crew_settings_leave_cta">Leave crew</string>
+    <string name="crew_error_name_blank">Name can\'t be empty.</string>
+    <string name="crew_error_name_too_long">Name is too long (max 40 characters).</string>
+    <string name="crew_error_code_malformed">That code doesn\'t look right.</string>
+    <string name="crew_error_code_unknown">No crew matches that code.</string>
+    <string name="crew_error_full">This crew is full.</string>
+    <string name="crew_error_already_member">You\'re already in this crew.</string>
+    <string name="crew_error_not_member">You\'re not a member of this crew.</string>
+    <string name="crew_error_not_found">Crew not found.</string>
+    <string name="crew_error_network">Check your connection.</string>
+    <string name="crew_error_permission">You don\'t have permission.</string>
+    <string name="crew_error_collision">Couldn\'t pick a unique code, try again.</string>
+    <string name="crew_error_unknown">Something went wrong. Try again.</string>
+</resources>

@@ -1,0 +1,29 @@
+package es.schsebastian.foodrats.feature.crew.data.local
+
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.model.CrewId
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+
+class ActiveCrewLocalStore(
+    private val dataStore: DataStore<Preferences>,
+) : ActiveCrewProvider {
+
+    private val key = stringPreferencesKey("active_crew_id")
+
+    override val current: Flow<CrewId?> = dataStore.data.map { prefs ->
+        prefs[key]?.let { raw -> (CrewId.of(raw) as? es.schsebastian.foodrats.core.domain.result.Result.Ok)?.value }
+    }
+
+    override suspend fun set(crewId: CrewId) {
+        dataStore.edit { it[key] = crewId.value }
+    }
+
+    override suspend fun clear() {
+        dataStore.edit { it.remove(key) }
+    }
+}

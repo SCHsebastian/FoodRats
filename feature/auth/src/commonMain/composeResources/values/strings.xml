@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_signin_title">Welcome to FoodRats</string>
+    <string name="auth_signin_subtitle">Share what you eat with your crew.</string>
+    <string name="auth_signin_continue_google">Continue with Google</string>
+    <string name="auth_error_user_cancelled">Sign-in cancelled.</string>
+    <string name="auth_error_no_google_accounts">No Google accounts on this device.</string>
+    <string name="auth_error_play_services">Google Play Services unavailable.</string>
+    <string name="auth_error_network">Check your connection.</string>
+    <string name="auth_error_unknown">Couldn\'t sign in. Try again.</string>
+    <string name="auth_error_account_disabled">This account is disabled.</string>
+</resources>

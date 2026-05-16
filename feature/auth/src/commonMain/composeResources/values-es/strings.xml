@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="auth_signin_title">Bienvenido a FoodRats</string>
+    <string name="auth_signin_subtitle">Comparte lo que comes con tu grupo.</string>
+    <string name="auth_signin_continue_google">Continuar con Google</string>
+    <string name="auth_error_user_cancelled">Inicio de sesión cancelado.</string>
+    <string name="auth_error_no_google_accounts">No hay cuentas de Google en este dispositivo.</string>
+    <string name="auth_error_play_services">Google Play Services no disponible.</string>
+    <string name="auth_error_network">Comprueba tu conexión.</string>
+    <string name="auth_error_unknown">No se ha podido iniciar sesión. Inténtalo de nuevo.</string>
+    <string name="auth_error_account_disabled">Esta cuenta está deshabilitada.</string>
+</resources>

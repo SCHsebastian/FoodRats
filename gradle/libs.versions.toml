@@ -14,6 +14,26 @@ junit = "4.13.2"
 kotlin = "2.3.21"
 material3 = "1.11.0-alpha07"
 
+koin = "4.0.4"
+kotlinxCoroutines = "1.10.2"
+kotlinxDatetime = "0.6.2"
+kotlinxSerialization = "1.7.3"
+ktor = "3.0.3"
+datastore = "1.2.1"
+peekaboo = "0.5.2"
+gitliveFirebase = "2.1.0"
+googleId = "1.1.1"
+credentials = "1.3.0"
+turbine = "1.2.1"
+kotest = "5.9.1"
+navCompose = "2.8.0-alpha10"
+okio = "3.9.1"
+konsist = "0.17.3"
+googleServices = "4.4.2"
+roborazzi = "1.40.0"
+androidxWork = "2.10.0"
+androidxLifecycleProcess = "2.9.0"
+
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
@@ -32,10 +52,57 @@ compose-material3 = { module = "org.jetbrains.compose.material3:material3", vers
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
+# material-icons-core: pinned to 1.6.2 — this is the last published KMP version.
+# CMP 1.7+ bundles icons differently; revisit when upgrading CMP.
+materialIconsCore     = { module = "org.jetbrains.compose.material:material-icons-core",     version = "1.6.2" }
+materialIconsExtended = { module = "org.jetbrains.compose.material:material-icons-extended", version.ref = "composeMultiplatform" }
+
+koin-core              = { module = "io.insert-koin:koin-core",                 version.ref = "koin" }
+koin-android           = { module = "io.insert-koin:koin-android",              version.ref = "koin" }
+koin-compose           = { module = "io.insert-koin:koin-compose",              version.ref = "koin" }
+koin-compose-viewmodel = { module = "io.insert-koin:koin-compose-viewmodel",    version.ref = "koin" }
+koin-test              = { module = "io.insert-koin:koin-test",                 version.ref = "koin" }
+
+kotlinx-coroutines-core    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core",   version.ref = "kotlinxCoroutines" }
+kotlinx-coroutines-test    = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test",   version.ref = "kotlinxCoroutines" }
+kotlinx-datetime           = { module = "org.jetbrains.kotlinx:kotlinx-datetime",          version.ref = "kotlinxDatetime" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+
+ktor-client-core           = { module = "io.ktor:ktor-client-core",                version.ref = "ktor" }
+ktor-client-contentNegotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-json    = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+
+peekaboo-ui             = { module = "io.github.onseok:peekaboo-ui",             version.ref = "peekaboo" }
+peekaboo-image-picker   = { module = "io.github.onseok:peekaboo-image-picker",   version.ref = "peekaboo" }
+
+firebase-auth      = { module = "dev.gitlive:firebase-auth",      version.ref = "gitliveFirebase" }
+firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitliveFirebase" }
+firebase-storage   = { module = "dev.gitlive:firebase-storage",   version.ref = "gitliveFirebase" }
+firebase-messaging = { module = "dev.gitlive:firebase-messaging", version.ref = "gitliveFirebase" }
+firebase-common    = { module = "dev.gitlive:firebase-common",    version.ref = "gitliveFirebase" }
+
+androidx-credentials                    = { module = "androidx.credentials:credentials",                          version.ref = "credentials" }
+androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth",       version.ref = "credentials" }
+google-id                               = { module = "com.google.android.libraries.identity.googleid:googleid",  version.ref = "googleId" }
+
+nav-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navCompose" }
+
+turbine                = { module = "app.cash.turbine:turbine",          version.ref = "turbine" }
+kotest-assertions-core = { module = "io.kotest:kotest-assertions-core",  version.ref = "kotest" }
+konsist                = { module = "com.lemonappdev:konsist",           version.ref = "konsist" }
+okio                   = { module = "com.squareup.okio:okio",            version.ref = "okio" }
+roborazzi              = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
+roborazzi-compose      = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+androidx-work-runtime      = { module = "androidx.work:work-runtime-ktx",           version.ref = "androidxWork" }
+androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process",     version.ref = "androidxLifecycleProcess" }
 
 [plugins]
-androidApplication = { id = "com.android.application", version.ref = "agp" }
-androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }
-composeMultiplatform = { id = "org.jetbrains.compose", version.ref = "composeMultiplatform" }
-composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
-kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
+androidApplication             = { id = "com.android.application",                       version.ref = "agp" }
+androidMultiplatformLibrary    = { id = "com.android.kotlin.multiplatform.library",      version.ref = "agp" }
+composeMultiplatform           = { id = "org.jetbrains.compose",                         version.ref = "composeMultiplatform" }
+composeCompiler                = { id = "org.jetbrains.kotlin.plugin.compose",           version.ref = "kotlin" }
+kotlinMultiplatform            = { id = "org.jetbrains.kotlin.multiplatform",            version.ref = "kotlin" }
+kotlinxSerialization           = { id = "org.jetbrains.kotlin.plugin.serialization",     version.ref = "kotlin" }
+googleServices                 = { id = "com.google.gms.google-services",                version.ref = "googleServices" }

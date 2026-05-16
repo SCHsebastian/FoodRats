@@ -4,5 +4,9 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>FoodRats uses the camera to capture your daily meal.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>FoodRats can import meal photos from your library.</string>
 </dict>
 </plist>

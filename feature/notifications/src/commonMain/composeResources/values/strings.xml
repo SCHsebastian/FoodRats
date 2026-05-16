@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notifications_permission_title">Stay in the loop</string>
+    <string name="notifications_permission_body">We\'ll only nudge you when your streak is about to break.</string>
+    <string name="notifications_permission_allow">Allow notifications</string>
+    <string name="notifications_permission_skip">Not now</string>
+    <string name="notifications_permission_settings">Open settings</string>
+    <string name="notifications_streak_title">Don\'t break the streak</string>
+    <string name="notifications_streak_body">Post your meal before midnight!</string>
+    <string name="notifications_error_denied">Notifications are off.</string>
+    <string name="notifications_error_denied_forever">Notifications are off. Turn them on in Settings.</string>
+    <string name="notifications_error_unavailable">Couldn\'t access notification settings.</string>
+    <string name="notifications_error_token_unavailable">Couldn\'t register this device.</string>
+    <string name="notifications_error_token_persist">Couldn\'t save device info.</string>
+    <string name="notifications_error_schedule_failed">Couldn\'t schedule the reminder.</string>
+</resources>
