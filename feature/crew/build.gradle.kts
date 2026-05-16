@@ -15,8 +15,13 @@ kotlin {
         namespace = "es.schsebastian.foodrats.feature.crew"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
-        compilerOptions { jvmTarget = JvmTarget.JVM_11 }
+        // JVM_17: firebase-firestore (BOM 33.5.1) ships inline functions compiled at JVM 17;
+        // inlining into JVM 11 target is rejected by kotlinc.
+        compilerOptions { jvmTarget = JvmTarget.JVM_17 }
         androidResources { enable = true }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
     }
     sourceSets {
         commonMain.dependencies {
@@ -37,6 +42,9 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.firebase.common)
+            implementation(libs.firebase.firestore)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -44,6 +52,19 @@ kotlin {
             implementation(libs.turbine)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
+        }
+        androidMain.dependencies {
+            // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
+            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+        }
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.junit)
+                implementation(libs.koin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.turbine)
+            }
         }
     }
 }
