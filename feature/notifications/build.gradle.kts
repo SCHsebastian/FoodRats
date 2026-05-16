@@ -42,6 +42,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.firebase.firestore)
             implementation(libs.firebase.messaging)
         }
         commonTest.dependencies {
@@ -55,6 +56,7 @@ kotlin {
             implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
             implementation(libs.androidx.work.runtime)
             implementation(libs.androidx.lifecycle.process)
+            implementation(libs.androidx.activity.compose)   // provides ActivityResultLauncher + ActivityResultContracts
         }
         val androidHostTest by getting {
             dependencies {
