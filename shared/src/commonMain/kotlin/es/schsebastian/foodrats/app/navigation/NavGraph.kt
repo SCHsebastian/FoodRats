@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -78,7 +77,7 @@ fun NavGraph(navController: NavController = rememberNavController()) {
 /** "Navigate top-level" replaces the back-stack, used for stage transitions. */
 fun NavHostController.navigateTopLevel(route: Route) {
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) { inclusive = true; saveState = false }
+        popUpTo<Route.Splash> { inclusive = true; saveState = false }
         launchSingleTop = true
     }
 }
@@ -95,7 +94,7 @@ private fun MainScaffold(rootController: NavHostController) {
                     selected = current?.contains("Feed") == true,
                     onClick = {
                         inner.navigate(MainTab.Feed) {
-                            popUpTo(inner.graph.findStartDestination().id) { saveState = true }
+                            popUpTo<MainTab.Feed> { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
@@ -107,7 +106,7 @@ private fun MainScaffold(rootController: NavHostController) {
                     selected = current?.contains("Stats") == true,
                     onClick = {
                         inner.navigate(MainTab.Stats) {
-                            popUpTo(inner.graph.findStartDestination().id) { saveState = true }
+                            popUpTo<MainTab.Feed> { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }

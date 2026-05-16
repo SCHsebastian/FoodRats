@@ -19,6 +19,9 @@ kotlin {
         // functions compiled at JVM 17; inlining into JVM 11 target is rejected by kotlinc.
         compilerOptions { jvmTarget = JvmTarget.JVM_17 }
         androidResources { enable = true }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
     }
     sourceSets {
         commonMain.dependencies {
@@ -57,6 +60,14 @@ kotlin {
             implementation(libs.turbine)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
+        }
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.junit)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.turbine)
+            }
         }
         // StorageData.android.kt / StorageData.ios.kt expect/actual for Firebase Storage Data type
         androidMain.dependencies {

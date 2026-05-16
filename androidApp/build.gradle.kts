@@ -16,6 +16,7 @@ dependencies {
     implementation(projects.shared)
     implementation(projects.core.data)
     implementation(projects.feature.auth)
+    implementation(projects.feature.notifications)
     implementation(libs.androidx.activity.compose)
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
@@ -24,6 +25,8 @@ dependencies {
     implementation(libs.koin.compose)
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
     implementation("com.google.firebase:firebase-analytics-ktx")
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation(libs.kotlinx.datetime)
 }
 
 android {
