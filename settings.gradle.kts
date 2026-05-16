@@ -30,3 +30,16 @@ dependencyResolutionManagement {
 
 include(":androidApp")
 include(":shared")
+
+include(":core:domain")
+include(":core:data")
+include(":core:designsystem")
+include(":core:presentation")
+include(":core:i18n")
+
+include(":feature:auth")
+include(":feature:crew")
+include(":feature:meal")
+include(":feature:feed")
+include(":feature:stats")
+include(":feature:notifications")
