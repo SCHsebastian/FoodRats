@@ -38,6 +38,9 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
+            // Firebase BOM — pins versions for all com.google.firebase:* artifacts that
+            // dev.gitlive KMP wrappers pull in transitively on Android.
+            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)

@@ -24,3 +24,6 @@ docs/superpowers/
 
 # Git worktrees created by superpowers workflows.
 .worktrees/
+
+# Firebase config — place real file locally, never commit it.
+androidApp/google-services.json

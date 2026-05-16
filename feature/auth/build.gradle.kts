@@ -15,7 +15,9 @@ kotlin {
         namespace = "es.schsebastian.foodrats.feature.auth"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
-        compilerOptions { jvmTarget = JvmTarget.JVM_11 }
+        // JVM_17: firebase-auth-ktx and firebase-firestore (BOM 33.5.1) ship inline
+        // functions compiled at JVM 17; inlining into JVM 11 target is rejected by kotlinc.
+        compilerOptions { jvmTarget = JvmTarget.JVM_17 }
         androidResources { enable = true }
     }
     sourceSets {
@@ -49,6 +51,8 @@ kotlin {
             implementation(libs.koin.test)
         }
         androidMain.dependencies {
+            // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
+            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
             implementation(libs.androidx.credentials)
             implementation(libs.androidx.credentials.play.services.auth)
             implementation(libs.google.id)
