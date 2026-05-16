@@ -1,0 +1,18 @@
+package es.schsebastian.foodrats.feature.meal.domain.model
+
+import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.FoodTag
+import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.model.AccountId
+import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.meal.Score
+
+data class MealDraft(
+    val crewId: CrewId,
+    val authorId: AccountId,
+    val day: MealDay,
+    val plate: Plate?,
+    val score: Score?,
+    val dish: DishName?,
+    val tags: List<FoodTag>,
+)
