@@ -57,6 +57,7 @@ kotlin {
             implementation(libs.androidx.work.runtime)
             implementation(libs.androidx.lifecycle.process)
             implementation(libs.androidx.activity.compose)   // provides ActivityResultLauncher + ActivityResultContracts
+            implementation(libs.koin.android)                // androidContext() in Koin modules
         }
         val androidHostTest by getting {
             dependencies {
