@@ -45,6 +45,7 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.firebase.common)
             implementation(libs.firebase.firestore)
+            implementation(libs.androidx.datastore.preferences)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
