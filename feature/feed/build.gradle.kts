@@ -17,6 +17,9 @@ kotlin {
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions { jvmTarget = JvmTarget.JVM_11 }
         androidResources { enable = true }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
     }
     sourceSets {
         commonMain.dependencies {
@@ -37,6 +40,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -44,6 +48,15 @@ kotlin {
             implementation(libs.turbine)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
+        }
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.junit)
+                implementation(libs.koin.test)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.turbine)
+            }
         }
     }
 }
