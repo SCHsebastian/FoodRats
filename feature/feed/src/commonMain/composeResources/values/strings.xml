@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feed_title">Today</string>
+    <string name="feed_empty_headline">Nothing here yet</string>
+    <string name="feed_empty_subtext">No one has posted a meal today.</string>
+    <string name="feed_capture_cta">Add today\'s meal</string>
+    <string name="feed_prev_day">Previous day</string>
+    <string name="feed_next_day">Next day</string>
+    <string name="feed_no_active_crew_headline">No crew selected</string>
+    <string name="feed_no_active_crew_subtext">Pick a crew to see its meals.</string>
+    <string name="feed_error_not_signed_in">You need to sign in.</string>
+    <string name="feed_error_unauthorized">You aren\'t a member of this crew.</string>
+    <string name="feed_error_crew_not_found">Crew not found.</string>
+    <string name="feed_error_unavailable">Couldn\'t load the feed. Try again.</string>
+</resources>

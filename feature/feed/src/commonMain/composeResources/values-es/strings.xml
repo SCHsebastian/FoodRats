@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feed_title">Hoy</string>
+    <string name="feed_empty_headline">Aún no hay nada</string>
+    <string name="feed_empty_subtext">Nadie ha publicado una comida hoy.</string>
+    <string name="feed_capture_cta">Añadir comida de hoy</string>
+    <string name="feed_prev_day">Día anterior</string>
+    <string name="feed_next_day">Día siguiente</string>
+    <string name="feed_no_active_crew_headline">Sin grupo seleccionado</string>
+    <string name="feed_no_active_crew_subtext">Elige un grupo para ver sus comidas.</string>
+    <string name="feed_error_not_signed_in">Tienes que iniciar sesión.</string>
+    <string name="feed_error_unauthorized">No eres miembro de este grupo.</string>
+    <string name="feed_error_crew_not_found">Grupo no encontrado.</string>
+    <string name="feed_error_unavailable">No se ha podido cargar el feed. Inténtalo de nuevo.</string>
+</resources>
