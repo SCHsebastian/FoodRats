@@ -1,11 +1,16 @@
 package es.schsebastian.foodrats.feature.auth.presentation.signin
 
+import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
+import es.schsebastian.foodrats.feature.notifications.domain.usecase.RegisterDeviceTokenUseCase
+import kotlinx.coroutines.launch
 
-class SignInViewModel(private val auth: AuthRepository) :
-    MviViewModel<SignInState, SignInIntent, SignInEffect>(SignInState()) {
+class SignInViewModel(
+    private val auth: AuthRepository,
+    private val registerDeviceToken: RegisterDeviceTokenUseCase,
+) : MviViewModel<SignInState, SignInIntent, SignInEffect>(SignInState()) {
 
     override suspend fun handle(intent: SignInIntent) = when (intent) {
         SignInIntent.ContinueWithGoogle -> doSignIn()
@@ -17,6 +22,8 @@ class SignInViewModel(private val auth: AuthRepository) :
         when (val r = auth.signInWithGoogle()) {
             is Result.Ok  -> {
                 update { it.copy(isLoading = false, error = null) }
+                // Fire-and-forget token registration; failure is silent for MVP.
+                viewModelScope.launch { registerDeviceToken() }
                 emit(SignInEffect.SignedIn)
             }
             is Result.Err -> update { it.copy(isLoading = false, error = r.error) }

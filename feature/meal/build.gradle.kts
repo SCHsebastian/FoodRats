@@ -27,6 +27,9 @@ kotlin {
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
+            // ScheduleStreakNudgeUseCase is called after meal publish (see PublishMealViewModel).
+            // This cross-feature dependency is a plan-accepted pragmatic choice for MVP wiring.
+            implementation(projects.feature.notifications)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

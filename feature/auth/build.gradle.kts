@@ -30,6 +30,9 @@ kotlin {
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
+            // RegisterDeviceTokenUseCase is called after successful sign-in (see SignInViewModel).
+            // This cross-feature dependency is a plan-accepted pragmatic choice for MVP wiring.
+            implementation(projects.feature.notifications)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)

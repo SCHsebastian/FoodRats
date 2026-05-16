@@ -13,11 +13,24 @@ import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.domain.test.FakeMealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ObserveMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
+import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationError
+import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
+import es.schsebastian.foodrats.feature.notifications.domain.repository.LocalReminderScheduler
+import es.schsebastian.foodrats.feature.notifications.domain.usecase.ScheduleStreakNudgeUseCase
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+
+private class NoopLocalReminderScheduler : LocalReminderScheduler {
+    override suspend fun schedule(reminder: Reminder): Result<Unit, NotificationError.Schedule> =
+        Result.success(Unit)
+    override suspend fun cancel(reminderId: String) = Unit
+}
+
+private fun noopScheduleStreakNudge(clock: es.schsebastian.foodrats.core.domain.time.Clock, zone: TimeZone) =
+    ScheduleStreakNudgeUseCase(NoopLocalReminderScheduler(), clock, zone)
 
 class PublishMealViewModelTest {
     @Test fun publish_emits_Published_effect_on_success() = runTest {
@@ -29,7 +42,11 @@ class PublishMealViewModelTest {
         val draft = MealDraft(crew, acc, MealDay.today(clock, zone), Plate(byteArrayOf(1)),
             (Score.of(5) as Result.Ok).value, (DishName.of("Tacos") as Result.Ok).value, emptyList())
         repo.saveDraft(draft)
-        val vm = PublishMealViewModel(ObserveMealDraftUseCase(repo), PublishMealUseCase(repo, clock, zone))
+        val vm = PublishMealViewModel(
+            ObserveMealDraftUseCase(repo),
+            PublishMealUseCase(repo, clock, zone),
+            noopScheduleStreakNudge(clock, zone),
+        )
 
         vm.effects.test {
             vm.onIntent(PublishMealIntent.Load)
