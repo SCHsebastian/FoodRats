@@ -9,6 +9,10 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidLibrary {
         namespace = "es.schsebastian.foodrats.core.domain"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
