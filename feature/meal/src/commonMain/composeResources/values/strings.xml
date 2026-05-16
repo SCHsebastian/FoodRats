@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="meal_capture_title">Today\'s meal</string>
+    <string name="meal_capture_no_perm_headline">Camera permission needed</string>
+    <string name="meal_capture_no_perm_subtext">FoodRats needs the camera to capture your meal photo.</string>
+    <string name="meal_compose_title">Compose your plate</string>
+    <string name="meal_publish_title">Review and publish</string>
+
+    <string name="meal_error_already_posted">You already posted a meal today.</string>
+    <string name="meal_error_not_today">Drafts can only be published the day they were started.</string>
+    <string name="meal_error_publish_unavailable">Couldn\'t publish. Try again.</string>
+    <string name="meal_error_photo_upload_failed">Couldn\'t upload your photo. Try again.</string>
+    <string name="meal_error_validation_blank">Tell us what you ate.</string>
+    <string name="meal_error_validation_too_long">Keep the dish name short.</string>
+    <string name="meal_error_validation_out_of_range">Score must be between 1 and 10.</string>
+    <string name="meal_error_validation_no_photo">Snap a photo first.</string>
+    <string name="meal_error_read_unauthorized">You don\'t have access to this crew.</string>
+    <string name="meal_error_read_crew_not_found">Crew not found.</string>
+    <string name="meal_error_read_not_found">Meal not found.</string>
+</resources>
