@@ -8,11 +8,18 @@ class SignInViewModel(private val auth: AuthRepository) :
     MviViewModel<SignInState, SignInIntent, SignInEffect>(SignInState()) {
 
     override suspend fun handle(intent: SignInIntent) = when (intent) {
-        SignInIntent.ContinueWithGoogle -> {
-            update { it.copy(isLoading = true, error = null) }
-            val r = auth.signInWithGoogle()
-            update { it.copy(isLoading = false, error = if (r is Result.Err) r.error else null) }
-            if (r is Result.Ok) emit(SignInEffect.SignedIn) else Unit
+        SignInIntent.ContinueWithGoogle -> doSignIn()
+        SignInIntent.DismissError -> update { it.copy(error = null) }
+    }
+
+    private suspend fun doSignIn() {
+        update { it.copy(isLoading = true, error = null) }
+        when (val r = auth.signInWithGoogle()) {
+            is Result.Ok  -> {
+                update { it.copy(isLoading = false, error = null) }
+                emit(SignInEffect.SignedIn)
+            }
+            is Result.Err -> update { it.copy(isLoading = false, error = r.error) }
         }
     }
 }

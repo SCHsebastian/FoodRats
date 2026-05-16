@@ -6,5 +6,8 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviState
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 
 data class SignInState(val isLoading: Boolean = false, val error: AuthError? = null) : MviState
-sealed interface SignInIntent : MviIntent { data object ContinueWithGoogle : SignInIntent }
+sealed interface SignInIntent : MviIntent {
+    data object ContinueWithGoogle : SignInIntent
+    data object DismissError : SignInIntent
+}
 sealed interface SignInEffect : MviEffect { data object SignedIn : SignInEffect }
