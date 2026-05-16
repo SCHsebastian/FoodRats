@@ -34,5 +34,11 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
         }
+        androidMain.dependencies {
+            // PreferenceDataStoreFactory (JVM/Android) is provided by datastore-preferences artifact
+        }
+        iosMain.dependencies {
+            // PreferenceDataStoreFactory.createWithPath is provided by datastore-preferences (KMP)
+        }
     }
 }
