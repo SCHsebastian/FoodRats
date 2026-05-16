@@ -21,3 +21,6 @@ node_modules/
 # Claude scratch space — skill-generated specs/plans/artifacts.
 # Final committed docs go under docs/specs/ or docs/architecture/.
 docs/superpowers/
+
+# Git worktrees created by superpowers workflows.
+.worktrees/
