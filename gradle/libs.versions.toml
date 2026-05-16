@@ -31,6 +31,8 @@ okio = "3.9.1"
 konsist = "0.17.3"
 googleServices = "4.4.2"
 roborazzi = "1.40.0"
+androidxWork = "2.10.0"
+androidxLifecycleProcess = "2.9.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -93,6 +95,8 @@ konsist                = { module = "com.lemonappdev:konsist",           version
 okio                   = { module = "com.squareup.okio:okio",            version.ref = "okio" }
 roborazzi              = { module = "io.github.takahirom.roborazzi:roborazzi", version.ref = "roborazzi" }
 roborazzi-compose      = { module = "io.github.takahirom.roborazzi:roborazzi-compose", version.ref = "roborazzi" }
+androidx-work-runtime      = { module = "androidx.work:work-runtime-ktx",           version.ref = "androidxWork" }
+androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process",     version.ref = "androidxLifecycleProcess" }
 
 [plugins]
 androidApplication             = { id = "com.android.application",                       version.ref = "agp" }
