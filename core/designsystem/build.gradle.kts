@@ -15,6 +15,9 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions { jvmTarget = JvmTarget.JVM_11 }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
     }
     sourceSets {
         commonMain.dependencies {
@@ -29,6 +32,15 @@ kotlin {
             // material-icons-extended is excluded: no KMP iOS artifact.
             // FrIcons.kt uses core-only icons (see that file for substitution notes).
             implementation(libs.materialIconsCore)
+        }
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.junit)
+                implementation(libs.androidx.testExt.junit)
+                implementation(libs.compose.ui.test.junit4)
+                implementation(libs.robolectric)
+            }
         }
     }
 }
