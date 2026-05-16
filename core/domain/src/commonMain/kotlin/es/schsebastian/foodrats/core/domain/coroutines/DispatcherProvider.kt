@@ -1,7 +1,6 @@
 package es.schsebastian.foodrats.core.domain.coroutines
 
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
 
 interface DispatcherProvider {
     val main: CoroutineDispatcher
@@ -10,8 +9,8 @@ interface DispatcherProvider {
 }
 
 /**
- * Default runtime implementation. On Android uses [Dispatchers.IO]; on
- * iOS/Native [Dispatchers.IO] is an alias for [Dispatchers.Default] so
- * the actual is provided per-platform to keep the build clean.
+ * Default runtime implementation. On Android, `io` uses the dedicated IO pool;
+ * on iOS/Native it aliases to the default pool because `Dispatchers.IO` is
+ * `internal` to coroutines on Native — the actual is provided per platform.
  */
 expect class DefaultDispatcherProvider() : DispatcherProvider
