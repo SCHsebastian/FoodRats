@@ -13,13 +13,13 @@ kotlin {
         iosSimulatorArm64()
     ).forEach { iosTarget ->
         iosTarget.binaries.framework {
-            baseName = "Shared"
+            baseName = "FoodRatsShared"
             isStatic = true
         }
     }
     
     androidLibrary {
-       namespace = "es.schsebastian.biteclub.shared"
+       namespace = "es.schsebastian.foodrats.shared"
        compileSdk = libs.versions.android.compileSdk.get().toInt()
        minSdk = libs.versions.android.minSdk.get().toInt()
     
