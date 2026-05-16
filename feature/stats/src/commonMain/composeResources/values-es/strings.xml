@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stats_title">Estadísticas</string>
+    <string name="stats_crew_streak_label">Racha del grupo</string>
+    <string name="stats_personal_streak_label">Tu racha</string>
+    <string name="stats_streak_unit_singular">%1$d día</string>
+    <string name="stats_streak_unit_plural">%1$d días</string>
+    <string name="stats_top_dishes_section">Platos favoritos</string>
+    <string name="stats_leaderboard_section">Puntuación media</string>
+    <string name="stats_tag_variety_label">Variedad de etiquetas</string>
+    <string name="stats_tag_variety_value">%1$d etiquetas distintas</string>
+    <string name="stats_meals_considered">Basado en %1$d comidas (últimos 30 días)</string>
+    <string name="stats_dish_tally_row">%1$s · %2$d</string>
+    <string name="stats_leaderboard_row">%1$s · %2$.1f (%3$d publicaciones)</string>
+    <string name="stats_empty_headline">Aún no hay estadísticas</string>
+    <string name="stats_empty_subtext">Publica una comida para empezar.</string>
+    <string name="stats_error_no_active_crew">Elige un grupo para ver sus estadísticas.</string>
+    <string name="stats_error_not_signed_in">Tienes que iniciar sesión.</string>
+    <string name="stats_error_unauthorized">No eres miembro de este grupo.</string>
+    <string name="stats_error_crew_not_found">Grupo no encontrado.</string>
+    <string name="stats_error_unavailable">No se han podido cargar las estadísticas. Inténtalo de nuevo.</string>
+</resources>

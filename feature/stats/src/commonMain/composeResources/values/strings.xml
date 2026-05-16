@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="stats_title">Stats</string>
+    <string name="stats_crew_streak_label">Crew streak</string>
+    <string name="stats_personal_streak_label">Your streak</string>
+    <string name="stats_streak_unit_singular">%1$d day</string>
+    <string name="stats_streak_unit_plural">%1$d days</string>
+    <string name="stats_top_dishes_section">Top dishes</string>
+    <string name="stats_leaderboard_section">Average score</string>
+    <string name="stats_tag_variety_label">Tag variety</string>
+    <string name="stats_tag_variety_value">%1$d distinct tags</string>
+    <string name="stats_meals_considered">Based on %1$d meals (last 30 days)</string>
+    <string name="stats_dish_tally_row">%1$s · %2$d</string>
+    <string name="stats_leaderboard_row">%1$s · %2$.1f (%3$d posts)</string>
+    <string name="stats_empty_headline">No stats yet</string>
+    <string name="stats_empty_subtext">Post a meal to get the numbers rolling.</string>
+    <string name="stats_error_no_active_crew">Pick a crew to see its stats.</string>
+    <string name="stats_error_not_signed_in">You need to sign in.</string>
+    <string name="stats_error_unauthorized">You aren\'t a member of this crew.</string>
+    <string name="stats_error_crew_not_found">Crew not found.</string>
+    <string name="stats_error_unavailable">Couldn\'t load stats. Try again.</string>
+</resources>
