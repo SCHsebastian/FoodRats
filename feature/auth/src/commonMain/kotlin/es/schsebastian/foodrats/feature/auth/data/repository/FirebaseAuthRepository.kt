@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.auth.data.repository
 
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.Keys
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
@@ -36,10 +37,19 @@ internal class FirebaseAuthRepository(
             val uid = firebase.signInWithGoogle(token)
             val account = firebase.ensureAccountDoc(uid).toAccount()
                 ?: return Result.failure(AuthError.Firebase.Unavailable)
-            Result.success(account.toSession())
+            // TODO(scope = "feature:crew"): remove this dev-crew hardcode once the
+            // Crew feature lets users create/pick a crew. Until then, smoke-testing
+            // meal publishing needs a non-null Session.activeCrewId.
+            val devCrewId = (CrewId.of(DEV_CREW_ID) as Result.Ok).value
+            prefs.set(Keys.ActiveCrewId, DEV_CREW_ID)
+            Result.success(account.toSession().copy(activeCrewId = devCrewId))
         } catch (t: Throwable) {
             Result.failure(errorMapper.mapFirebase(t))
         }
+    }
+
+    private companion object {
+        const val DEV_CREW_ID = "test-crew-1"
     }
 
     override suspend fun signOut(): Result<Unit, AuthError> {
