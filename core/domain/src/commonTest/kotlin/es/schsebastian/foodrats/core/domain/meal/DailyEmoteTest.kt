@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.core.domain.meal
 
+import kotlinx.datetime.DateTimeUnit
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.plus
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -26,5 +28,16 @@ class DailyEmoteTest {
     fun is_a_nonempty_string() {
         val emote = DailyEmote.forDay(MealDay(LocalDate(2026, 5, 18), TimeZone.UTC))
         assertTrue(emote.isNotEmpty())
+    }
+
+    @Test
+    fun safe_modulo_handles_negative_hashes() {
+        // Indirect proof: across a wide sweep of dates, forDay must never throw
+        // (which would mean the safe-modulo pattern is broken).
+        repeat(1000) { i ->
+            val day = MealDay(LocalDate(2026, 1, 1).plus(i, DateTimeUnit.DAY), TimeZone.UTC)
+            val emote = DailyEmote.forDay(day)
+            assertTrue(emote.isNotEmpty())
+        }
     }
 }

@@ -1,7 +1,5 @@
 package es.schsebastian.foodrats.core.domain.meal
 
-import kotlin.math.absoluteValue
-
 object DailyEmote {
 
     private val POOL = listOf(
@@ -16,7 +14,8 @@ object DailyEmote {
      * seed; recompute on every read, never persist.
      */
     fun forDay(day: MealDay): String {
-        val hash = day.toKey().hashCode().absoluteValue
-        return POOL[hash % POOL.size]
+        val hash = day.toKey().hashCode()
+        val index = ((hash % POOL.size) + POOL.size) % POOL.size
+        return POOL[index]
     }
 }
