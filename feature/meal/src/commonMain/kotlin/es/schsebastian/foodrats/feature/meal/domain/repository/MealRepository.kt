@@ -1,8 +1,11 @@
 package es.schsebastian.foodrats.feature.meal.domain.repository
 
 import es.schsebastian.foodrats.core.domain.meal.Meal
+import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
@@ -14,4 +17,6 @@ interface MealRepository : MealReadPort {
     suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError>
     fun observeDraft(): Flow<MealDraft?>
     suspend fun clearDraft()
+    suspend fun hasMealForSlot(crewId: CrewId, day: MealDay, slot: MealSlot): Result<Boolean, MealError.Read>
+    suspend fun takenSlotsFor(crewId: CrewId, day: MealDay): Result<Set<MealSlot>, MealError.Read>
 }

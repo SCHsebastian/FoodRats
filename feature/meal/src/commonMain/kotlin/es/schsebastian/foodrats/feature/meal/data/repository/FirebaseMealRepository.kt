@@ -1,11 +1,13 @@
 package es.schsebastian.foodrats.feature.meal.data.repository
 
+import dev.gitlive.firebase.auth.FirebaseAuth
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -31,30 +33,39 @@ internal class FirebaseMealRepository(
     private val dispatchers: DispatcherProvider,
     private val errorMapper: MealErrorMapper,
     private val clock: Clock,
+    private val auth: FirebaseAuth,
 ) : MealRepository {
+
+    private fun currentAccountId(): AccountId? {
+        val uid = auth.currentUser?.uid ?: return null
+        val result = AccountId.of(uid)
+        return if (result is Result.Ok) result.value else null
+    }
 
     override suspend fun publish(draft: MealDraft): Result<Meal, MealError> =
         withContext(dispatchers.io) {
             runCatching {
                 val plate = draft.plate
                     ?: return@runCatching Result.failure(MealError.Validation.NoPhoto)
-                val mealId = firestore.newId(draft.crewId)
-                val photoUrl = storage.upload(draft.crewId, mealId, plate)
+                val slot = draft.slot
+                    ?: return@runCatching Result.failure(MealError.Publish.NoSlotSelected)
+                val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
+                val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
                 val dto = MealDto(
-                    id = mealId,
+                    id = mealId.value,
                     authorId = draft.authorId.value,
                     authorName = "",
                     authorAvatarUrl = null,
                     crewId = draft.crewId.value,
                     dayKey = draft.day.toKey(),
-                    slot = draft.slot?.key() ?: MealSlot.Lunch.key(),
+                    slot = slot.key(),
                     photoUrl = photoUrl,
                     score = draft.score?.value,
                     dishName = draft.dish?.value,
                     tags = draft.tags.map { it.label },
                     publishedAtEpochMs = clock.now().toEpochMilliseconds(),
                 )
-                firestore.write(dto)
+                firestore.write(dto, mealId.value)
                 @Suppress("UNCHECKED_CAST")
                 dto.toDomain() as Result<Meal, MealError>
             }.fold(
@@ -62,6 +73,35 @@ internal class FirebaseMealRepository(
                 onFailure = { Result.failure(errorMapper.mapPublish(it)) },
             )
         }
+
+    override suspend fun hasMealForSlot(
+        crewId: CrewId,
+        day: MealDay,
+        slot: MealSlot,
+    ): Result<Boolean, MealError.Read> = withContext(dispatchers.io) {
+        runCatching<Result<Boolean, MealError.Read>> {
+            val authorId = currentAccountId()
+                ?: return@runCatching Result.failure(MealError.Read.Unauthorized)
+            Result.success(firestore.mealExists(crewId, authorId, day.toKey(), slot))
+        }.fold(
+            onSuccess = { it },
+            onFailure = { Result.failure(MealError.Read.NotFound) },
+        )
+    }
+
+    override suspend fun takenSlotsFor(
+        crewId: CrewId,
+        day: MealDay,
+    ): Result<Set<MealSlot>, MealError.Read> = withContext(dispatchers.io) {
+        runCatching<Result<Set<MealSlot>, MealError.Read>> {
+            val authorId = currentAccountId()
+                ?: return@runCatching Result.failure(MealError.Read.Unauthorized)
+            Result.success(firestore.takenSlots(crewId, authorId, day.toKey()))
+        }.fold(
+            onSuccess = { it },
+            onFailure = { Result.failure(MealError.Read.NotFound) },
+        )
+    }
 
     override suspend fun delete(id: MealId): Result<Unit, MealError> =
         Result.success(Unit) // Firestore deletion deferred to a later phase.

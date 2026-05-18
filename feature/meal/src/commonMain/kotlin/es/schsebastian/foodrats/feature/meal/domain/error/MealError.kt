@@ -10,6 +10,7 @@ sealed interface MealError {
     sealed interface Publish : MealError {
         data object AlreadyPostedToday : Publish
         data object NotToday : Publish
+        data object NoSlotSelected : Publish
         data object PublishUnavailable : Publish
         data object PhotoUploadFailed : Publish
     }

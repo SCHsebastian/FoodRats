@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 fun MealError.toStringKey(): MealStringKey = when (this) {
     MealError.Publish.AlreadyPostedToday  -> MealStringKey.MealErrorAlreadyPosted
     MealError.Publish.NotToday            -> MealStringKey.MealErrorNotToday
+    MealError.Publish.NoSlotSelected      -> MealStringKey.MealErrorPublishUnavailable
     MealError.Publish.PublishUnavailable  -> MealStringKey.MealErrorPublishUnavailable
     MealError.Publish.PhotoUploadFailed   -> MealStringKey.MealErrorPhotoUploadFailed
     MealError.Validation.Blank            -> MealStringKey.MealErrorValidationBlank

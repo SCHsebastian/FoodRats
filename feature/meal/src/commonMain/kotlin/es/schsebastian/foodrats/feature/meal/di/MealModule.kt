@@ -26,7 +26,7 @@ val mealModule = module {
     singleOf(::MealDraftLocalStore)
     singleOf(::MealErrorMapper)
     single<MealRepository> {
-        FirebaseMealRepository(get(), get(), get(), get(), get(), get())
+        FirebaseMealRepository(get(), get(), get(), get(), get(), get(), get())
     }
     single<MealReadPort> { get<MealRepository>() }
 

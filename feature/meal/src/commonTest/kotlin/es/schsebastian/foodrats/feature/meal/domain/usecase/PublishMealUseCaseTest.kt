@@ -1,7 +1,11 @@
 package es.schsebastian.foodrats.feature.meal.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.Meal
+import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -30,6 +34,33 @@ class PublishMealUseCaseTest {
         crewId = crew, authorId = account, day = day,
         plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
         score = score, dish = dish, tags = emptyList(),
+        slot = MealSlot.Lunch,
+    )
+
+    private fun sampleDraft(
+        day: MealDay = MealDay(LocalDate(2026, 5, 18), zone),
+        slot: MealSlot? = MealSlot.Lunch,
+    ) = MealDraft(
+        crewId = crew, authorId = account, day = day,
+        plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
+        score = score, dish = dish, tags = emptyList(),
+        slot = slot,
+    )
+
+    private fun sampleMeal(
+        day: MealDay = MealDay(LocalDate(2026, 5, 18), zone),
+        slot: MealSlot = MealSlot.Lunch,
+    ) = Meal(
+        id = (MealId.of("fake-id") as Result.Ok).value,
+        author = MealAuthor(account, "Fake", null),
+        crewId = crew,
+        day = day,
+        slot = slot,
+        photoUrl = "fake://photo",
+        score = score,
+        dish = dish,
+        tags = emptyList(),
+        publishedAt = Instant.parse("2026-05-18T12:00:00Z"),
     )
 
     @Test fun publishes_when_draft_day_is_today() = runTest {
@@ -67,5 +98,48 @@ class PublishMealUseCaseTest {
 
         assertTrue(result is Result.Err)
         assertEquals(MealError.Publish.PublishUnavailable, (result as Result.Err).error)
+    }
+
+    @Test
+    fun publish_fails_with_AlreadyPostedToday_when_slot_already_taken() = runTest {
+        val instant = Instant.parse("2026-05-18T12:00:00Z")
+        val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
+        val draft = sampleDraft().copy(day = today, slot = MealSlot.Lunch)
+        val repo = FakeMealRepository().apply {
+            markSlotTaken(draft.crewId, today, MealSlot.Lunch)
+        }
+        val useCase = PublishMealUseCase(repo, FixedClock(instant), TimeZone.UTC)
+
+        val result = useCase(draft)
+
+        assertEquals(Result.failure(MealError.Publish.AlreadyPostedToday), result)
+    }
+
+    @Test
+    fun publish_succeeds_when_different_slot_is_taken() = runTest {
+        val instant = Instant.parse("2026-05-18T12:00:00Z")
+        val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
+        val draft = sampleDraft().copy(day = today, slot = MealSlot.Lunch)
+        val repo = FakeMealRepository().apply {
+            markSlotTaken(draft.crewId, today, MealSlot.Breakfast)
+            publishResultOverride = Result.success(sampleMeal().copy(day = today, slot = MealSlot.Lunch))
+        }
+        val useCase = PublishMealUseCase(repo, FixedClock(instant), TimeZone.UTC)
+
+        val result = useCase(draft)
+
+        assertTrue(result is Result.Ok)
+    }
+
+    @Test
+    fun publish_fails_with_NoSlotSelected_when_slot_is_null() = runTest {
+        val instant = Instant.parse("2026-05-18T12:00:00Z")
+        val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
+        val draft = sampleDraft().copy(day = today, slot = null)
+        val useCase = PublishMealUseCase(FakeMealRepository(), FixedClock(instant), TimeZone.UTC)
+
+        val result = useCase(draft)
+
+        assertEquals(Result.failure(MealError.Publish.NoSlotSelected), result)
     }
 }

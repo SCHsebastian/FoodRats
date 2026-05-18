@@ -17,9 +17,16 @@ class PublishMealUseCase(
     suspend operator fun invoke(draft: MealDraft): Result<Meal, MealError> {
         val today = MealDay.today(clock, zone)
         if (draft.day != today) return Result.failure(MealError.Publish.NotToday)
+        val slot = draft.slot ?: return Result.failure(MealError.Publish.NoSlotSelected)
         if (draft.plate == null) return Result.failure(MealError.Validation.NoPhoto)
         if (draft.score == null) return Result.failure(MealError.Validation.OutOfRange)
         if (draft.dish == null)  return Result.failure(MealError.Validation.Blank)
+
+        val takenResult = repository.hasMealForSlot(draft.crewId, today, slot)
+        if (takenResult is Result.Err) return Result.failure(takenResult.error)
+        val taken = (takenResult as Result.Ok).value
+        if (taken) return Result.failure(MealError.Publish.AlreadyPostedToday)
+
         return repository.publish(draft).also {
             if (it is Result.Ok) repository.clearDraft()
         }

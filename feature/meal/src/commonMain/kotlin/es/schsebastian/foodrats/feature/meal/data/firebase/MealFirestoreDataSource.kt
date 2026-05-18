@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.meal.data.firebase
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -12,13 +14,13 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
     fun newId(crewId: CrewId): String =
         firestore.collection("crews").document(crewId.value).collection("meals").document.id
 
-    /** Writes (or overwrites) a MealDto document to Firestore. */
-    suspend fun write(dto: MealDto) {
+    /** Writes (or overwrites) a MealDto document to Firestore using the given document ID. */
+    suspend fun write(dto: MealDto, docId: String = dto.id!!) {
         firestore
             .collection("crews")
             .document(dto.crewId!!)
             .collection("meals")
-            .document(dto.id!!)
+            .document(docId)
             .set(dto)
     }
 
@@ -28,4 +30,30 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .where { "dayKey" equalTo day.toKey() }
             .snapshots
             .map { snap -> snap.documents.map { it.data<MealDto>() } }
+
+    /** Returns true if a meal document exists for the given crew/author/day/slot combination. */
+    suspend fun mealExists(
+        crewId: CrewId,
+        authorId: AccountId,
+        dayKey: String,
+        slot: MealSlot,
+    ): Boolean {
+        val docId = "${crewId.value}_${authorId.value}_${dayKey}_${slot.key()}"
+        return firestore
+            .collection("crews")
+            .document(crewId.value)
+            .collection("meals")
+            .document(docId)
+            .get()
+            .exists
+    }
+
+    /** Returns the set of slots already taken for the given crew/author/day. */
+    suspend fun takenSlots(
+        crewId: CrewId,
+        authorId: AccountId,
+        dayKey: String,
+    ): Set<MealSlot> = MealSlot.entries
+        .filter { mealExists(crewId, authorId, dayKey, it) }
+        .toSet()
 }

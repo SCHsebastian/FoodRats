@@ -21,6 +21,29 @@ class FakeMealRepository : MealRepository {
     var publishResultOverride: Result<Meal, MealError>? = null
     val publishedDrafts = mutableListOf<MealDraft>()
 
+    private val takenSlots = mutableMapOf<Triple<CrewId, MealDay, MealSlot>, Boolean>()
+
+    fun markSlotTaken(crewId: CrewId, day: MealDay, slot: MealSlot) {
+        takenSlots[Triple(crewId, day, slot)] = true
+    }
+
+    override suspend fun hasMealForSlot(
+        crewId: CrewId,
+        day: MealDay,
+        slot: MealSlot,
+    ): Result<Boolean, MealError.Read> =
+        Result.success(takenSlots[Triple(crewId, day, slot)] == true)
+
+    override suspend fun takenSlotsFor(
+        crewId: CrewId,
+        day: MealDay,
+    ): Result<Set<MealSlot>, MealError.Read> = Result.success(
+        takenSlots.entries
+            .filter { (key, value) -> value && key.first == crewId && key.second == day }
+            .map { it.key.third }
+            .toSet()
+    )
+
     override suspend fun publish(draft: MealDraft): Result<Meal, MealError> {
         publishedDrafts += draft
         return publishResultOverride ?: Result.success(
