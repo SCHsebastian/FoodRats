@@ -6,6 +6,7 @@ sealed interface AuthError {
         data object NoGoogleAccountsOnDevice : GoogleSignIn
         data object PlayServicesUnavailable : GoogleSignIn
         data object NetworkUnavailable : GoogleSignIn
+        data object MissingServerClientId : GoogleSignIn
         data object UnknownClientFailure : GoogleSignIn
     }
     sealed interface Firebase : AuthError {

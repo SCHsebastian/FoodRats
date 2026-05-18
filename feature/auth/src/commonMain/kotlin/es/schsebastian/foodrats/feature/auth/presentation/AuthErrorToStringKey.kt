@@ -8,6 +8,7 @@ fun AuthError.toStringKey(): AuthStringKey = when (this) {
     AuthError.GoogleSignIn.NoGoogleAccountsOnDevice -> AuthStringKey.ErrorNoGoogleAccounts
     AuthError.GoogleSignIn.PlayServicesUnavailable  -> AuthStringKey.ErrorPlayServices
     AuthError.GoogleSignIn.NetworkUnavailable       -> AuthStringKey.ErrorNetwork
+    AuthError.GoogleSignIn.MissingServerClientId    -> AuthStringKey.ErrorMissingServerClientId
     AuthError.GoogleSignIn.UnknownClientFailure     -> AuthStringKey.ErrorUnknown
     AuthError.Firebase.NotSignedIn                  -> AuthStringKey.ErrorUnknown
     AuthError.Firebase.TokenExpired                 -> AuthStringKey.ErrorUnknown

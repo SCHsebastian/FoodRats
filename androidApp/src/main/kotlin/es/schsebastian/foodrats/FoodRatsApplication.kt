@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.data.datastore.installAndroidDataStoreConte
 import es.schsebastian.foodrats.core.data.firebase.FirebaseInitializer
 import es.schsebastian.foodrats.core.data.firebase.installAndroidFirebaseContext
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
+import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsAndroidModule
 import es.schsebastian.foodrats.feature.notifications.platform.NotificationChannels
 import org.koin.android.ext.koin.androidContext
@@ -21,6 +22,7 @@ class FoodRatsApplication : Application() {
         installAndroidFirebaseContext(this)
         FirebaseInitializer.init()
         NotificationChannels.ensure(this)
+        installFeedImageLoader()
 
         startKoin {
             androidLogger()

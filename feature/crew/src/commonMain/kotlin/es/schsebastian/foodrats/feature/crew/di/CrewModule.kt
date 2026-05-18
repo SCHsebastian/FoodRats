@@ -20,9 +20,10 @@ import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
+import kotlin.random.Random
 
 val crewModule = module {
-    singleOf(::CrewCodeGenerator)
+    single { CrewCodeGenerator(random = Random.Default) }
     singleOf(::CrewErrorMapper)
     singleOf(::CrewFirestoreDataSource)
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule

@@ -8,5 +8,6 @@
     <string name="auth_error_play_services">Google Play Services no disponible.</string>
     <string name="auth_error_network">Comprueba tu conexión.</string>
     <string name="auth_error_unknown">No se ha podido iniciar sesión. Inténtalo de nuevo.</string>
+    <string name="auth_error_missing_server_client_id">El inicio de sesión con Google no está configurado. Añade googleServerClientId en ~/.gradle/gradle.properties y vuelve a compilar.</string>
     <string name="auth_error_account_disabled">Esta cuenta está deshabilitada.</string>
 </resources>

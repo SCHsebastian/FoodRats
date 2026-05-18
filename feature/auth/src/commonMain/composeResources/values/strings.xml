@@ -8,5 +8,6 @@
     <string name="auth_error_play_services">Google Play Services unavailable.</string>
     <string name="auth_error_network">Check your connection.</string>
     <string name="auth_error_unknown">Couldn\'t sign in. Try again.</string>
+    <string name="auth_error_missing_server_client_id">Google sign-in is not configured. Set googleServerClientId in ~/.gradle/gradle.properties and rebuild.</string>
     <string name="auth_error_account_disabled">This account is disabled.</string>
 </resources>

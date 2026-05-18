@@ -3,12 +3,17 @@ package es.schsebastian.foodrats.feature.feed.presentation.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarWithName
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
@@ -35,10 +40,20 @@ fun FrFeedMealCard(
                 FrScoreBadge(score = ui.score)
             }
             FrText(text = ui.dishName, modifier = Modifier.padding(top = Spacing.sm))
-            // Photo rendering: a real implementation calls Coil-Compose-Multiplatform's AsyncImage.
-            // Until image-loading is wired (see App Wiring plan §"Image loading"), render the URL
-            // as text so the screen has something to show.
-            FrText(text = ui.photoUrl, modifier = Modifier.padding(top = Spacing.xs))
+            // Meal photo. Coil 3 + the Ktor 3 fetcher loads the image on Android and iOS
+            // from ui.photoUrl (Firebase Storage download URL).
+            if (ui.photoUrl.isNotBlank()) {
+                AsyncImage(
+                    model = ui.photoUrl,
+                    contentDescription = ui.dishName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .padding(top = Spacing.sm)
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(Spacing.sm)),
+                )
+            }
             if (ui.tags.isNotEmpty()) {
                 // FrTagChipRow requires selected + onToggle; feed cards are read-only so pass
                 // an empty selected set and a no-op toggle.

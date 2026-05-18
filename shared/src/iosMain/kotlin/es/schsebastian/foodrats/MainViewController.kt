@@ -3,16 +3,32 @@ package es.schsebastian.foodrats
 import androidx.compose.ui.window.ComposeUIViewController
 import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.app.root.FoodRatsApp
+import es.schsebastian.foodrats.feature.auth.di.authIosModule
+import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
 import org.koin.core.context.startKoin
+import platform.UIKit.UIViewController
 
-fun MainViewController() = ComposeUIViewController(
+/**
+ * Entry point invoked from iosApp/ContentView.swift. Swift supplies:
+ *   - [viewControllerProvider]: returns the current key-window root UIViewController,
+ *     used by GoogleSignIn to present its picker.
+ *   - [googleSignIn] / [googleSignOut]: delegate to GoogleSignInBridge static methods.
+ */
+fun MainViewController(
+    viewControllerProvider: () -> UIViewController,
+    googleSignIn: (UIViewController, (idToken: String?, errorCode: String?) -> Unit) -> Unit,
+    googleSignOut: () -> Unit,
+) = ComposeUIViewController(
     configure = {
+        installFeedImageLoader()
         startKoin {
-            modules(appModules + listOf(notificationsIosModule))
-            // Auth iOS-specific: GoogleAuthClient(UIViewController-provider) — wired by Swift via a
-            // small helper. iOS sign-in is non-functional until the Swift bridge is fully connected;
-            // Android works end-to-end. Iterate on iOS after Android smoke test passes.
+            modules(
+                appModules + listOf(
+                    notificationsIosModule,
+                    authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
+                ),
+            )
         }
     },
 ) {

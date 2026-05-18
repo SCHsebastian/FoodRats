@@ -14,6 +14,8 @@ class AuthErrorToStringKeyTest {
         assertEquals(AuthStringKey.ErrorPlayServices, AuthError.GoogleSignIn.PlayServicesUnavailable.toStringKey())
     @Test fun network_maps_to_network_string() =
         assertEquals(AuthStringKey.ErrorNetwork, AuthError.GoogleSignIn.NetworkUnavailable.toStringKey())
+    @Test fun missingServerClientId_maps_to_missingServerClientId_string() =
+        assertEquals(AuthStringKey.ErrorMissingServerClientId, AuthError.GoogleSignIn.MissingServerClientId.toStringKey())
     @Test fun unknownClient_maps_to_unknown_string() =
         assertEquals(AuthStringKey.ErrorUnknown, AuthError.GoogleSignIn.UnknownClientFailure.toStringKey())
     @Test fun firebaseAccountDisabled_maps_to_accountDisabled_string() =

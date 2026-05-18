@@ -6,7 +6,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.NoCredentialException
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
+import com.google.android.libraries.identity.googleid.GetSignInWithGoogleOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenParsingException
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -17,13 +17,17 @@ actual class GoogleAuthClient(
     private val serverClientId: String,
 ) {
     actual suspend fun signIn(): Result<GoogleIdToken, AuthError.GoogleSignIn> {
+        if (serverClientId.isBlank()) {
+            return Result.failure(AuthError.GoogleSignIn.MissingServerClientId)
+        }
         val ctx = contextProvider()
+        // Explicit "Sign in with Google" button flow. Unlike GetGoogleIdOption
+        // (one-tap / bottom-sheet) which can return NoCredentialException when
+        // no account is previously authorized for this app, GetSignInWithGoogleOption
+        // always opens the account picker and works for first-time sign-in.
         val request = GetCredentialRequest.Builder()
             .addCredentialOption(
-                GetGoogleIdOption.Builder()
-                    .setServerClientId(serverClientId)
-                    .setFilterByAuthorizedAccounts(false)
-                    .build()
+                GetSignInWithGoogleOption.Builder(serverClientId).build()
             )
             .build()
         return try {

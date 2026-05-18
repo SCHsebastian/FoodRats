@@ -99,7 +99,7 @@ private fun MainScaffold(rootController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(FrIcons.GalleryImport, contentDescription = "Feed") },
+                    icon = { Icon(FrIcons.Home, contentDescription = "Feed") },
                     label = { Text("Feed") },
                 )
                 NavigationBarItem(
@@ -111,7 +111,7 @@ private fun MainScaffold(rootController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(FrIcons.GalleryImport, contentDescription = "Stats") },
+                    icon = { Icon(FrIcons.Stats, contentDescription = "Stats") },
                     label = { Text("Stats") },
                 )
             }
