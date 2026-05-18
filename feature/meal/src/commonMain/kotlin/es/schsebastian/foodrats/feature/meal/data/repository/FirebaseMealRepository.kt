@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -46,6 +47,7 @@ internal class FirebaseMealRepository(
                     authorAvatarUrl = null,
                     crewId = draft.crewId.value,
                     dayKey = draft.day.toKey(),
+                    slot = draft.slot?.key() ?: MealSlot.Lunch.key(),
                     photoUrl = photoUrl,
                     score = draft.score?.value,
                     dishName = draft.dish?.value,

@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.data.datastore.Keys
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -32,6 +33,7 @@ private data class MealDraftJson(
     val score: Int?,
     val dish: String?,
     val tags: List<String>,
+    val slot: String? = null,
 )
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -68,6 +70,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             score = s,
             dish = d,
             tags = mappedTags,
+            slot = slot?.let(MealSlot::fromKey),
         )
     }
 
@@ -83,6 +86,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             score = d.score?.value,
             dish = d.dish?.value,
             tags = d.tags.map { it.label },
+            slot = d.slot?.key(),
         )
     }
 }

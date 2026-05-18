@@ -17,7 +17,7 @@ class MealMapperTest {
     }
 
     @Test fun toDomain_fails_on_invalid_score() {
-        val dto = MealDto("m", "a", "n", null, "c", "2026-05-16", "url", 99, "Pizza", emptyList(), 0L)
+        val dto = MealDto("m", "a", "n", null, "c", "2026-05-16", "lunch", "url", 99, "Pizza", emptyList(), 0L)
         assertTrue(dto.toDomain() is Result.Err)
     }
 }

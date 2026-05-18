@@ -10,6 +10,7 @@ data class MealDto(
     val authorAvatarUrl: String? = null,
     val crewId: String? = null,
     val dayKey: String? = null,
+    val slot: String = "lunch",
     val photoUrl: String? = null,
     val score: Int? = null,
     val dishName: String? = null,

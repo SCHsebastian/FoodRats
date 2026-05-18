@@ -32,14 +32,14 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
         FoodTag.Curated.entries.firstOrNull { it.label == raw }
             ?: FoodTag.custom(raw).getOrElse { return Result.failure(MealError.Read.NotFound) }
     }
+    val slot = MealSlot.fromKey(slot) ?: return Result.failure(MealError.Read.NotFound)
     return Result.success(
         Meal(
             id = mealId,
             author = MealAuthor(account, authorName ?: "", authorAvatarUrl),
             crewId = crew,
             day = MealDay(day, TimeZone.UTC),
-            // TODO(task-4): parse slot from MealDto.slot — currently hardcoded so every read defaults to Lunch.
-            slot = MealSlot.Lunch,
+            slot = slot,
             photoUrl = photoUrl ?: "",
             score = score,
             dish = dish,
