@@ -13,7 +13,7 @@ import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class FakeMealRepository : MealRepository {
     private val draftState = MutableStateFlow<MealDraft?>(null)

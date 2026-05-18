@@ -1,6 +1,6 @@
 package es.schsebastian.foodrats.core.domain.time
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
