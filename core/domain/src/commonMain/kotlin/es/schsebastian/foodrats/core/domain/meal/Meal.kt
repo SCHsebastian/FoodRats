@@ -1,13 +1,14 @@
 package es.schsebastian.foodrats.core.domain.meal
 
 import es.schsebastian.foodrats.core.domain.model.CrewId
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class Meal(
     val id: MealId,
     val author: MealAuthor,
     val crewId: CrewId,
     val day: MealDay,
+    val slot: MealSlot,
     val photoUrl: String,
     val score: Score,
     val dish: DishName,

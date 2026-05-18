@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -52,6 +53,7 @@ class FeedViewModelTest {
         author = MealAuthor((AccountId.of("u-1") as Result.Ok).value, "Sam", null),
         crewId = crew,
         day = MealDay(today, zone),
+        slot = MealSlot.Lunch,
         photoUrl = "https://x/p.jpg",
         score = (Score.of(8) as Result.Ok).value,
         dish = (DishName.of("Pasta") as Result.Ok).value,

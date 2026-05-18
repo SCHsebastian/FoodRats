@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -22,6 +23,7 @@ class TopDishesTest {
         MealAuthor((AccountId.of("u") as Result.Ok).value, "u", null),
         (CrewId.of("c") as Result.Ok).value,
         MealDay(LocalDate(2026, 5, 16), TimeZone.UTC),
+        MealSlot.Lunch,
         "u",
         (Score.of(5) as Result.Ok).value,
         (DishName.of(dish) as Result.Ok).value,

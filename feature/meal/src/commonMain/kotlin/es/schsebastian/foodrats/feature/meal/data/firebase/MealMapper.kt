@@ -6,15 +6,16 @@ import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
-import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlin.time.Instant
 
 fun MealDto.toDomain(): Result<Meal, MealError.Read> {
     val mealId = MealId.of(id ?: return Result.failure(MealError.Read.NotFound))
@@ -37,6 +38,7 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             author = MealAuthor(account, authorName ?: "", authorAvatarUrl),
             crewId = crew,
             day = MealDay(day, TimeZone.UTC),
+            slot = MealSlot.Lunch,
             photoUrl = photoUrl ?: "",
             score = score,
             dish = dish,

@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -61,6 +62,7 @@ class ObserveFeedUseCaseTest {
         author = MealAuthor((AccountId.of("u-1") as Result.Ok).value, "Sam", null),
         crewId = crew,
         day = MealDay(today, zone),
+        slot = MealSlot.Lunch,
         photoUrl = "https://example/p.jpg",
         score = (Score.of(8) as Result.Ok).value,
         dish = (DishName.of("Pasta") as Result.Ok).value,

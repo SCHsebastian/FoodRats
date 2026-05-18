@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -23,6 +24,7 @@ class FeedMealUiTest {
             author = MealAuthor((AccountId.of("u-1") as Result.Ok).value, "Sam", "https://x/avatar.png"),
             crewId = (CrewId.of("c-1") as Result.Ok).value,
             day = MealDay(LocalDate(2026, 5, 16), TimeZone.UTC),
+            slot = MealSlot.Lunch,
             photoUrl = "https://x/p.jpg",
             score = (Score.of(8) as Result.Ok).value,
             dish = (DishName.of("Pasta carbonara") as Result.Ok).value,

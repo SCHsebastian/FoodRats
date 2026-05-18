@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -54,6 +55,7 @@ class StatsViewModelTest {
             MealAuthor(me, "Me", null),
             crew,
             MealDay(today, zone),
+            MealSlot.Lunch,
             "u",
             (Score.of(7) as Result.Ok).value,
             (DishName.of("Pasta") as Result.Ok).value,

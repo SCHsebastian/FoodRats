@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -30,6 +31,7 @@ class CrewStreakTest {
         author = MealAuthor(author, author.value, null),
         crewId = (CrewId.of("c") as Result.Ok).value,
         day = MealDay(day, zone),
+        slot = MealSlot.Lunch,
         photoUrl = "u",
         score = (Score.of(5) as Result.Ok).value,
         dish = (DishName.of(dish) as Result.Ok).value,

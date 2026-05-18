@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.core.domain.meal
 
+import es.schsebastian.foodrats.core.domain.model.AccountId
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import kotlin.time.Instant
@@ -43,5 +45,28 @@ class MealValueObjectsTest {
     }
     @Test fun mealId_rejects_blank() {
         assertTrue(MealId.of(" ") is Result.Err)
+    }
+
+    @Test
+    fun MealId_forDaySlot_builds_deterministic_id() {
+        val crew = CrewId("crew-42")
+        val author = AccountId("u-7")
+        val day = MealDay(LocalDate(2026, 5, 18), TimeZone.UTC)
+
+        assertEquals(
+            MealId("crew-42_u-7_2026-05-18_breakfast"),
+            MealId.forDaySlot(crew, author, day, MealSlot.Breakfast),
+        )
+    }
+
+    @Test
+    fun MealId_forDaySlot_is_stable_across_calls() {
+        val crew = CrewId("crew-42")
+        val author = AccountId("u-7")
+        val day = MealDay(LocalDate(2026, 5, 18), TimeZone.UTC)
+        assertEquals(
+            MealId.forDaySlot(crew, author, day, MealSlot.Dinner),
+            MealId.forDaySlot(crew, author, day, MealSlot.Dinner),
+        )
     }
 }

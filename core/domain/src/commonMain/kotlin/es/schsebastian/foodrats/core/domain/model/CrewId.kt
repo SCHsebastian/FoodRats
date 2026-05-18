@@ -4,7 +4,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class CrewId private constructor(val value: String) {
+value class CrewId internal constructor(val value: String) {
     companion object {
         fun of(raw: String): Result<CrewId, IdError> {
             val trimmed = raw.trim()

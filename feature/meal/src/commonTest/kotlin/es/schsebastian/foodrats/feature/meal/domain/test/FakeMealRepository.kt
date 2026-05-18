@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
@@ -28,6 +29,7 @@ class FakeMealRepository : MealRepository {
                 author = MealAuthor(draft.authorId, "Fake", null),
                 crewId = draft.crewId,
                 day = draft.day,
+                slot = MealSlot.Lunch,
                 photoUrl = "fake://photo",
                 score = draft.score!!,
                 dish = draft.dish!!,
