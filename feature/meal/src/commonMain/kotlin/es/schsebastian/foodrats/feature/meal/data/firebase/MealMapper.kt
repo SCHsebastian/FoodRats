@@ -38,6 +38,7 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             author = MealAuthor(account, authorName ?: "", authorAvatarUrl),
             crewId = crew,
             day = MealDay(day, TimeZone.UTC),
+            // TODO(task-4): parse slot from MealDto.slot — currently hardcoded so every read defaults to Lunch.
             slot = MealSlot.Lunch,
             photoUrl = photoUrl ?: "",
             score = score,
