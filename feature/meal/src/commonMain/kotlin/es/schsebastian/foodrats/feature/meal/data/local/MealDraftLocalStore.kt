@@ -6,7 +6,6 @@ import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.getOrElse
@@ -30,7 +29,6 @@ private data class MealDraftJson(
     val zoneId: String,
     val photoBase64: String?,
     val overlayApplied: Boolean,
-    val score: Int?,
     val dish: String?,
     val tags: List<String>,
     val slot: String? = null,
@@ -56,7 +54,6 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
         val day  = runCatching { LocalDate.parse(dayIso) }.getOrNull() ?: return null
         val zone = runCatching { TimeZone.of(zoneId) }.getOrNull() ?: TimeZone.UTC
         val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied) }
-        val s = score?.let { Score.of(it).getOrElse { return null } }
         val d = dish?.let { DishName.of(it).getOrElse { return null } }
         val mappedTags: List<FoodTag> = tags.map { raw ->
             FoodTag.Curated.entries.firstOrNull { it.label == raw }
@@ -67,7 +64,6 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             authorId = acc,
             day = MealDay(day, zone),
             plate = plate,
-            score = s,
             dish = d,
             tags = mappedTags,
             slot = slot?.let(MealSlot::fromKey),
@@ -83,7 +79,6 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             zoneId = d.day.zone.id,
             photoBase64 = d.plate?.photoBytes?.let { Base64.encode(it) },
             overlayApplied = d.plate?.overlayApplied ?: false,
-            score = d.score?.value,
             dish = d.dish?.value,
             tags = d.tags.map { it.label },
             slot = d.slot?.key(),
