@@ -1,8 +1,10 @@
 package es.schsebastian.foodrats.feature.meal.di
 
+import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealRatingsFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseMealRepository
@@ -22,13 +24,15 @@ import org.koin.dsl.module
 
 val mealModule = module {
     singleOf(::MealFirestoreDataSource)
+    singleOf(::MealRatingsFirestoreDataSource)
     singleOf(::PlateStorageDataSource)
     singleOf(::MealDraftLocalStore)
     singleOf(::MealErrorMapper)
     single<MealRepository> {
-        FirebaseMealRepository(get(), get(), get(), get(), get(), get(), get())
+        FirebaseMealRepository(get(), get(), get(), get(), get(), get(), get(), get(), get())
     }
     single<MealReadPort> { get<MealRepository>() }
+    single<MealRatingPort> { get<MealRepository>() }
 
     factoryOf(::StartMealDraftUseCase)
     factoryOf(::UpdateMealDraftUseCase)

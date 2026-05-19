@@ -6,6 +6,9 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.core.domain.meal.RateError
+import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
@@ -20,6 +23,8 @@ class FakeMealRepository : MealRepository {
     private val draftState = MutableStateFlow<MealDraft?>(null)
     var publishResultOverride: Result<Meal, MealError>? = null
     val publishedDrafts = mutableListOf<MealDraft>()
+    val rateCalls = mutableListOf<Triple<CrewId, MealId, Score>>()
+    var rateResultOverride: Result<Unit, RateError>? = null
 
     private val takenSlots = mutableMapOf<Triple<CrewId, MealDay, MealSlot>, Boolean>()
 
@@ -28,18 +33,15 @@ class FakeMealRepository : MealRepository {
     }
 
     override suspend fun hasMealForSlot(
-        crewId: CrewId,
-        day: MealDay,
-        slot: MealSlot,
+        crewId: CrewId, day: MealDay, slot: MealSlot,
     ): Result<Boolean, MealError.Read> =
         Result.success(takenSlots[Triple(crewId, day, slot)] == true)
 
     override suspend fun takenSlotsFor(
-        crewId: CrewId,
-        day: MealDay,
+        crewId: CrewId, day: MealDay,
     ): Result<Set<MealSlot>, MealError.Read> = Result.success(
         takenSlots.entries
-            .filter { (key, value) -> value && key.first == crewId && key.second == day }
+            .filter { (k, v) -> v && k.first == crewId && k.second == day }
             .map { it.key.third }
             .toSet()
     )
@@ -54,21 +56,27 @@ class FakeMealRepository : MealRepository {
                 day = draft.day,
                 slot = MealSlot.Lunch,
                 photoUrl = "fake://photo",
-                score = draft.score!!,
                 dish = draft.dish!!,
                 tags = draft.tags,
                 publishedAt = Instant.parse("2026-05-16T00:00:00Z"),
             )
         )
     }
+
     override suspend fun delete(id: MealId) = Result.success(Unit)
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {
         draftState.value = draft; return Result.success(Unit)
     }
     override fun observeDraft(): Flow<MealDraft?> = draftState
     override suspend fun clearDraft() { draftState.value = null }
+
     override fun observeFeed(crewId: CrewId, day: MealDay) =
-        flowOf(Result.success<List<Meal>>(emptyList()) as Result<List<Meal>, MealReadError>)
+        flowOf(Result.success<List<MealWithRatings>>(emptyList()) as Result<List<MealWithRatings>, MealReadError>)
     override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) =
-        flowOf(Result.success<List<Meal>>(emptyList()) as Result<List<Meal>, MealReadError>)
+        flowOf(Result.success<List<MealWithRatings>>(emptyList()) as Result<List<MealWithRatings>, MealReadError>)
+
+    override suspend fun rate(crewId: CrewId, mealId: MealId, score: Score): Result<Unit, RateError> {
+        rateCalls += Triple(crewId, mealId, score)
+        return rateResultOverride ?: Result.success(Unit)
+    }
 }
