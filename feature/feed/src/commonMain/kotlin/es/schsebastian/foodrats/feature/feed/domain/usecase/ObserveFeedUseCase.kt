@@ -1,9 +1,9 @@
 package es.schsebastian.foodrats.feature.feed.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
-import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
@@ -19,7 +19,7 @@ class ObserveFeedUseCase(
     private val mealRead: MealReadPort,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
-    operator fun invoke(day: Flow<FeedDay>): Flow<Result<List<Meal>, FeedError>> =
+    operator fun invoke(day: Flow<FeedDay>): Flow<Result<List<MealWithRatings>, FeedError>> =
         combine(activeCrew.current, day) { crewId, d -> crewId to d }
             .flatMapLatest { (crewId, d) ->
                 if (crewId == null) {
@@ -36,7 +36,7 @@ class ObserveFeedUseCase(
 }
 
 private fun MealReadError.toFeedError(): FeedError.Read = when (this) {
-    MealReadError.Unauthorized  -> FeedError.Read.Unauthorized
-    MealReadError.CrewNotFound  -> FeedError.Read.CrewNotFound
-    MealReadError.Unavailable   -> FeedError.Read.Unavailable
+    MealReadError.Unauthorized -> FeedError.Read.Unauthorized
+    MealReadError.CrewNotFound -> FeedError.Read.CrewNotFound
+    MealReadError.Unavailable  -> FeedError.Read.Unavailable
 }

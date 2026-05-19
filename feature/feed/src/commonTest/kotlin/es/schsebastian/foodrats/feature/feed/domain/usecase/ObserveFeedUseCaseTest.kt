@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.domain.usecase
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -9,8 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
-import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -36,10 +36,10 @@ class FakeActiveCrewProvider(initial: CrewId? = null) : ActiveCrewProvider {
 }
 
 class FakeMealReadPort(
-    private val perDay: Map<Pair<CrewId, String>, List<Meal>> = emptyMap(),
+    private val perDay: Map<Pair<CrewId, String>, List<MealWithRatings>> = emptyMap(),
     private val readError: MealReadError? = null,
 ) : MealReadPort {
-    override fun observeFeed(crewId: CrewId, day: MealDay): Flow<Result<List<Meal>, MealReadError>> {
+    override fun observeFeed(crewId: CrewId, day: MealDay): Flow<Result<List<MealWithRatings>, MealReadError>> {
         val err = readError
         return MutableStateFlow(Unit).map {
             if (err != null) Result.failure(err)
@@ -64,11 +64,11 @@ class ObserveFeedUseCaseTest {
         day = MealDay(today, zone),
         slot = MealSlot.Lunch,
         photoUrl = "https://example/p.jpg",
-        score = (Score.of(8) as Result.Ok).value,
         dish = (DishName.of("Pasta") as Result.Ok).value,
         tags = emptyList(),
         publishedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
     )
+    private val sampleMealWithRatings = MealWithRatings(sampleMeal, emptyList())
 
     @Test fun no_active_crew_emits_NoActiveCrew() = runTest {
         val active = FakeActiveCrewProvider(initial = null)
@@ -82,12 +82,12 @@ class ObserveFeedUseCaseTest {
 
     @Test fun active_crew_emits_meals_for_day() = runTest {
         val active = FakeActiveCrewProvider(initial = crew)
-        val port = FakeMealReadPort(perDay = mapOf((crew to day.day.toKey()) to listOf(sampleMeal)))
+        val port = FakeMealReadPort(perDay = mapOf((crew to day.day.toKey()) to listOf(sampleMealWithRatings)))
         val daysFlow = MutableStateFlow(day)
         ObserveFeedUseCase(active, port).invoke(daysFlow).test {
             val r = awaitItem()
-            assertIs<Result.Ok<List<Meal>>>(r)
-            assertEquals(listOf(sampleMeal), r.value)
+            assertIs<Result.Ok<List<MealWithRatings>>>(r)
+            assertEquals(listOf(sampleMealWithRatings), r.value)
             cancelAndIgnoreRemainingEvents()
         }
     }
