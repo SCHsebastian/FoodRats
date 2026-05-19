@@ -19,6 +19,10 @@ class FakeCrewRepository(
     var nextJoin: Result<Crew, CrewError>? = null
     var nextLeave: Result<Unit, CrewError>? = null
 
+    var lastRename: Pair<CrewId, String>? = null
+    var lastMemberRename: Triple<CrewId, AccountId, String>? = null
+    var lastDelete: CrewId? = null
+
     override suspend fun create(
         name: String,
         founder: AccountId,
@@ -53,6 +57,47 @@ class FakeCrewRepository(
             list.firstOrNull { it.id == crewId }?.let { Result.success(it) }
                 ?: Result.failure(CrewError.Membership.NotFound)
         }
+
+    override suspend fun renameCrew(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        newName: String,
+    ): Result<Unit, CrewError> {
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        lastRename = Pair(crewId, newName)
+        crews.value = crews.value.map { if (it.id == crewId) it.copy(name = newName) else it }
+        return Result.success(Unit)
+    }
+
+    override suspend fun renameMember(
+        crewId: CrewId,
+        accountId: AccountId,
+        newDisplayName: String,
+    ): Result<Unit, CrewError> {
+        lastMemberRename = Triple(crewId, accountId, newDisplayName)
+        crews.value = crews.value.map { crew ->
+            if (crew.id == crewId) {
+                crew.copy(members = crew.members.map { m ->
+                    if (m.accountId == accountId) m.copy(displayName = newDisplayName) else m
+                })
+            } else crew
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun deleteCrew(
+        crewId: CrewId,
+        requestedBy: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        lastDelete = crewId
+        crews.value = crews.value.filterNot { it.id == crewId }
+        return Result.success(Unit)
+    }
 }
 
 /** Helper: create AccountId without going through validation (tests only). */

@@ -24,4 +24,13 @@ interface CrewRepository {
 
     /** Streams a single crew (for the settings screen). */
     fun observeCrew(crewId: CrewId): Flow<Result<Crew, CrewError>>
+
+    /** Renames a Crew. Only the owner may rename. */
+    suspend fun renameCrew(crewId: CrewId, requestedBy: AccountId, newName: String): Result<Unit, CrewError>
+
+    /** Renames a member's display name within a Crew. */
+    suspend fun renameMember(crewId: CrewId, accountId: AccountId, newDisplayName: String): Result<Unit, CrewError>
+
+    /** Deletes a Crew entirely. Only the owner may delete. */
+    suspend fun deleteCrew(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError>
 }
