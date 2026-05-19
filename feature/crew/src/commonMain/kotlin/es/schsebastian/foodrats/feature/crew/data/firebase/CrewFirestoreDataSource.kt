@@ -1,15 +1,23 @@
 package es.schsebastian.foodrats.feature.crew.data.firebase
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
+import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
+import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 class CrewFirestoreDataSource(
     private val firestore: FirebaseFirestore,
     private val codeGenerator: CrewCodeGenerator,
+    private val dispatchers: DispatcherProvider,
+    private val errorMapper: CrewErrorMapper,
 ) {
 
     private val crewsCol get() = firestore.collection("crews")
@@ -113,6 +121,44 @@ class CrewFirestoreDataSource(
     fun observeCrew(crewId: CrewId): Flow<CrewDto?> =
         crewsCol.document(crewId.value).snapshots
             .map { snap -> if (snap.exists) snap.data<CrewDto>() else null }
+
+    /** Single-shot read of a crew; returns null on not-found or error. */
+    suspend fun fetchOnce(crewId: CrewId): Crew? =
+        observeCrew(crewId)
+            .map { dto -> if (dto == null) null else (dto.toDomain() as? Result.Ok)?.value }
+            .first()
+
+    suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("name" to newName)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    suspend fun renameMember(
+        crewId: CrewId,
+        accountId: AccountId,
+        newDisplayName: String,
+    ): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value)
+                    .update("members.${accountId.value}.displayName" to newDisplayName)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                firestore.batch().apply {
+                    delete(crewsCol.document(crewId.value))
+                    delete(codesCol.document(code.value))
+                }.commit()
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
 
     companion object { const val MAX_CODE_ATTEMPTS = 5 }
 }

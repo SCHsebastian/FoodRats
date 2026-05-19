@@ -109,12 +109,18 @@ internal class FirebaseCrewRepository(
             .catch { t -> emit(Result.failure(errorMapper.map(t))) }
             .flowOn(dispatchers.io)
 
-    override suspend fun renameCrew(crewId: CrewId, requestedBy: AccountId, newName: String): Result<Unit, CrewError> =
-        TODO("see Task 5")
+    override suspend fun renameCrew(crewId: CrewId, requestedBy: AccountId, newName: String): Result<Unit, CrewError> {
+        val crew = firestore.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return firestore.renameCrew(crewId, newName)
+    }
 
     override suspend fun renameMember(crewId: CrewId, accountId: AccountId, newDisplayName: String): Result<Unit, CrewError> =
-        TODO("see Task 5")
+        firestore.renameMember(crewId, accountId, newDisplayName)
 
-    override suspend fun deleteCrew(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError> =
-        TODO("see Task 5")
+    override suspend fun deleteCrew(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError> {
+        val crew = firestore.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return firestore.deleteCrew(crewId, crew.code)
+    }
 }

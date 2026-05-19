@@ -7,7 +7,7 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 fun CrewDto.toDomain(): Result<Crew, CrewError> {
     val id = id ?: return Result.failure(CrewError.Backend.Unavailable)
