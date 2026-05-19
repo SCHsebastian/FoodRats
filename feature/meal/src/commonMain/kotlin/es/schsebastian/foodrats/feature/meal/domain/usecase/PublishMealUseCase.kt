@@ -19,7 +19,6 @@ class PublishMealUseCase(
         if (draft.day != today) return Result.failure(MealError.Publish.NotToday)
         val slot = draft.slot ?: return Result.failure(MealError.Publish.NoSlotSelected)
         if (draft.plate == null) return Result.failure(MealError.Validation.NoPhoto)
-        if (draft.score == null) return Result.failure(MealError.Validation.OutOfRange)
         if (draft.dish == null)  return Result.failure(MealError.Validation.Blank)
 
         val takenResult = repository.hasMealForSlot(draft.crewId, today, slot)

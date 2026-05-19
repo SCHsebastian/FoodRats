@@ -6,7 +6,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -27,13 +26,12 @@ class PublishMealUseCaseTest {
     private val zone = TimeZone.UTC
     private val crew = (CrewId.of("crew-1") as Result.Ok).value
     private val account = (AccountId.of("acc-1") as Result.Ok).value
-    private val score = (Score.of(7) as Result.Ok).value
     private val dish = (DishName.of("Pizza") as Result.Ok).value
 
     private fun draftForDay(day: MealDay) = MealDraft(
         crewId = crew, authorId = account, day = day,
         plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
-        score = score, dish = dish, tags = emptyList(),
+        dish = dish, tags = emptyList(),
         slot = MealSlot.Lunch,
     )
 
@@ -43,7 +41,7 @@ class PublishMealUseCaseTest {
     ) = MealDraft(
         crewId = crew, authorId = account, day = day,
         plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
-        score = score, dish = dish, tags = emptyList(),
+        dish = dish, tags = emptyList(),
         slot = slot,
     )
 
@@ -57,7 +55,6 @@ class PublishMealUseCaseTest {
         day = day,
         slot = slot,
         photoUrl = "fake://photo",
-        score = score,
         dish = dish,
         tags = emptyList(),
         publishedAt = Instant.parse("2026-05-18T12:00:00Z"),
