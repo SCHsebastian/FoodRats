@@ -1,19 +1,30 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
+import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.result.getOrElse
+import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import es.schsebastian.foodrats.core.domain.meal.MealDay as DomainMealDay
 
 class FeedViewModel(
     private val observeFeed: ObserveFeedUseCase,
+    private val ratingPort: MealRatingPort,
+    private val activeCrew: ActiveCrewProvider,
+    private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(FeedState()) {
@@ -26,12 +37,12 @@ class FeedViewModel(
         viewModelScope.launch {
             observeFeed(day).collect { r ->
                 when (r) {
-                    is Result.Ok -> update {
-                        it.copy(
-                            isLoading = false,
-                            meals = r.value.map { m -> m.toFeedUi() },
-                            error = null,
-                        )
+                    is Result.Ok -> {
+                        val viewerId = session.current.first()?.accountId
+                        val todayMealDay = DomainMealDay.today(clock, zone)
+                        val uis = if (viewerId == null) emptyList()
+                                  else r.value.map { it.toFeedUi(viewerId, todayMealDay) }
+                        update { it.copy(isLoading = false, meals = uis, error = null) }
                     }
                     is Result.Err -> update { it.copy(isLoading = false, error = r.error) }
                 }
@@ -43,7 +54,22 @@ class FeedViewModel(
         FeedIntent.PrevDay        -> { navigatePrev(); Unit }
         FeedIntent.NextDay        -> { navigateNext(); Unit }
         FeedIntent.CaptureClicked -> emit(FeedEffect.NavigateToCapture)
-        FeedIntent.DismissError   -> update { it.copy(error = null) }
+        FeedIntent.DismissError   -> update { it.copy(error = null, rateError = null) }
+        is FeedIntent.RateMeal    -> rateMeal(intent.mealId, intent.score)
+    }
+
+    private suspend fun rateMeal(mealIdRaw: String, scoreRaw: Int) {
+        val crewId = activeCrew.current.first() ?: return
+        val mealId = MealId.of(mealIdRaw).getOrElse { return }
+        val score = Score.of(scoreRaw).getOrElse { return }
+        update { it.copy(pendingRateMealId = mealIdRaw, rateError = null) }
+        val r = ratingPort.rate(crewId, mealId, score)
+        update {
+            when (r) {
+                is Result.Ok  -> it.copy(pendingRateMealId = null)
+                is Result.Err -> it.copy(pendingRateMealId = null, rateError = r.error)
+            }
+        }
     }
 
     private fun navigatePrev() {
@@ -54,8 +80,7 @@ class FeedViewModel(
         }
         day.value = candidate
         update { it.copy(
-            day = candidate,
-            isLoading = true,
+            day = candidate, isLoading = true,
             canGoNext = candidate.day.date < today,
             canGoPrev = FeedDay.isWithinWindow(candidate.previous().day.date, today),
         ) }
@@ -63,14 +88,10 @@ class FeedViewModel(
 
     private fun navigateNext() {
         val candidate = day.value.next()
-        if (candidate.day.date > today) {
-            update { it.copy(canGoNext = false) }
-            return
-        }
+        if (candidate.day.date > today) { update { it.copy(canGoNext = false) }; return }
         day.value = candidate
         update { it.copy(
-            day = candidate,
-            isLoading = true,
+            day = candidate, isLoading = true,
             canGoNext = candidate.day.date < today,
             canGoPrev = FeedDay.isWithinWindow(candidate.previous().day.date, today),
         ) }

@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
+import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
@@ -13,7 +14,9 @@ data class FeedState(
     val isLoading: Boolean = true,
     val error: FeedError? = null,
     val canGoPrev: Boolean = false,
-    val canGoNext: Boolean = false,   // never lets you navigate past today
+    val canGoNext: Boolean = false,
+    val pendingRateMealId: String? = null,
+    val rateError: RateError? = null,
 ) : MviState
 
 sealed interface FeedIntent : MviIntent {
@@ -21,6 +24,7 @@ sealed interface FeedIntent : MviIntent {
     data object NextDay : FeedIntent
     data object CaptureClicked : FeedIntent
     data object DismissError : FeedIntent
+    data class RateMeal(val mealId: String, val score: Int) : FeedIntent
 }
 
 sealed interface FeedEffect : MviEffect {

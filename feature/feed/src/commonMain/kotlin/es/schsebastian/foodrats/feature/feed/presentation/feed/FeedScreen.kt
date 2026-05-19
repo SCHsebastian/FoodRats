@@ -92,7 +92,12 @@ fun FeedScreen(
                         }
                         else -> {
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
-                                items(state.meals, key = { it.id }) { ui -> FrFeedMealCard(ui = ui) }
+                                items(state.meals, key = { it.mealId }) { ui ->
+                                    FrFeedMealCard(
+                                        ui = ui,
+                                        onRate = { mealId, score -> vm.onIntent(FeedIntent.RateMeal(mealId, score)) },
+                                    )
+                                }
                             }
                         }
                     }
@@ -100,6 +105,9 @@ fun FeedScreen(
                         if (err !is FeedError.Session.NoActiveCrew) {
                             FrErrorBanner(text = resolve(err.toStringKey()))
                         }
+                    }
+                    state.rateError?.let { err ->
+                        FrErrorBanner(text = resolve(err.toStringKey()))
                     }
                 }
             },

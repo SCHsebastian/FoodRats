@@ -2,25 +2,31 @@ package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.meal.DishName
-import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.session.Session
+import es.schsebastian.foodrats.core.domain.session.SessionError
+import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.time.Instant
@@ -36,6 +42,13 @@ class FixedClockTest(private val instant: Instant) : Clock {
     override fun now() = instant
 }
 
+class FakeSessionProvider(session: Session?) : SessionProvider {
+    private val flow = MutableStateFlow(session)
+    override val current: Flow<Session?> = flow
+    override suspend fun requireCurrent(): Result<Session, SessionError> =
+        flow.value?.let { Result.success(it) } ?: Result.failure(SessionError.NotSignedIn)
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedViewModelTest {
 
@@ -47,6 +60,8 @@ class FeedViewModelTest {
     private val nowInstant = Instant.parse("2026-05-16T12:00:00Z")
     private val clock = FixedClockTest(nowInstant)
     private val crew = (CrewId.of("c-1") as Result.Ok).value
+    private val viewerId = (AccountId.of("u-viewer") as Result.Ok).value
+    private val session = FakeSessionProvider(Session(viewerId, crew))
 
     private val sampleMeal = Meal(
         id = (MealId.of("m-1") as Result.Ok).value,
@@ -55,25 +70,38 @@ class FeedViewModelTest {
         day = MealDay(today, zone),
         slot = MealSlot.Lunch,
         photoUrl = "https://x/p.jpg",
-        score = (Score.of(8) as Result.Ok).value,
         dish = (DishName.of("Pasta") as Result.Ok).value,
-        tags = listOf((FoodTag.custom("italian") as Result.Ok).value),
+        tags = emptyList(),
         publishedAt = nowInstant,
+    )
+    private val sampleMealWithRatings = MealWithRatings(sampleMeal, emptyList())
+
+    private fun buildVm(
+        ratingPort: FakeMealRatingPort = FakeMealRatingPort(),
+        active: FakeActiveCrewProvider = FakeActiveCrewProvider(initial = crew),
+        port: FakeMealReadPort = FakeMealReadPort(
+            perDay = mapOf((crew to "2026-05-16") to listOf(sampleMealWithRatings))
+        ),
+    ) = FeedViewModel(
+        observeFeed = ObserveFeedUseCase(active, port),
+        ratingPort = ratingPort,
+        activeCrew = active,
+        session = session,
+        clock = clock,
+        zone = zone,
     )
 
     @Test fun initial_state_today_with_meals() = runTest {
         val active = FakeActiveCrewProvider(initial = crew)
-        val port = FakeMealReadPort(perDay = mapOf((crew to "2026-05-16") to listOf(sampleMeal)))
-        val vm = FeedViewModel(ObserveFeedUseCase(active, port), clock, zone)
+        val port = FakeMealReadPort(perDay = mapOf((crew to "2026-05-16") to listOf(sampleMealWithRatings)))
+        val vm = buildVm(active = active, port = port)
         vm.state.test {
-            // With UnconfinedTestDispatcher the init coroutine may run before test{} collects,
-            // so skip the loading pre-emission if it isn't present and assert the settled state.
             var s = awaitItem()
             if (s.isLoading) s = awaitItem()
             assertEquals(false, s.isLoading)
             assertEquals(1, s.meals.size)
-            assertEquals("m-1", s.meals[0].id)
-            assertEquals(false, s.canGoNext)  // today is the latest day
+            assertEquals("m-1", s.meals[0].mealId)
+            assertEquals(false, s.canGoNext)
             assertEquals(true, s.canGoPrev)
             cancelAndIgnoreRemainingEvents()
         }
@@ -84,19 +112,21 @@ class FeedViewModelTest {
         val yesterday = "2026-05-15"
         val port = FakeMealReadPort(perDay = mapOf(
             (crew to "2026-05-16") to emptyList(),
-            (crew to yesterday)  to listOf(sampleMeal.copy(day = MealDay(LocalDate(2026, 5, 15), zone))),
+            (crew to yesterday) to listOf(sampleMealWithRatings.copy(
+                meal = sampleMeal.copy(day = MealDay(LocalDate(2026, 5, 15), zone))
+            )),
         ))
-        val vm = FeedViewModel(ObserveFeedUseCase(active, port), clock, zone)
+        val vm = buildVm(active = active, port = port)
         vm.onIntent(FeedIntent.PrevDay)
         val s = vm.state.value
         assertEquals(LocalDate(2026, 5, 15), s.day?.day?.date)
-        assertEquals(true, s.canGoNext) // can return to today
+        assertEquals(true, s.canGoNext)
     }
 
     @Test fun next_day_blocked_at_today() = runTest {
         val active = FakeActiveCrewProvider(initial = crew)
         val port = FakeMealReadPort(perDay = emptyMap())
-        val vm = FeedViewModel(ObserveFeedUseCase(active, port), clock, zone)
+        val vm = buildVm(active = active, port = port)
         vm.onIntent(FeedIntent.NextDay)
         assertEquals(today, vm.state.value.day?.day?.date)
     }
@@ -104,8 +134,7 @@ class FeedViewModelTest {
     @Test fun prev_day_blocked_at_window_boundary() = runTest {
         val active = FakeActiveCrewProvider(initial = crew)
         val port = FakeMealReadPort(perDay = emptyMap())
-        val vm = FeedViewModel(ObserveFeedUseCase(active, port), clock, zone)
-        // 30 prev calls walks to the boundary (today minus 29 days). One more is blocked.
+        val vm = buildVm(active = active, port = port)
         repeat(30) { vm.onIntent(FeedIntent.PrevDay) }
         val boundary = vm.state.value.day?.day?.date
         vm.onIntent(FeedIntent.PrevDay)
@@ -114,9 +143,7 @@ class FeedViewModelTest {
     }
 
     @Test fun capture_clicked_emits_effect() = runTest {
-        val active = FakeActiveCrewProvider(initial = crew)
-        val port = FakeMealReadPort(perDay = emptyMap())
-        val vm = FeedViewModel(ObserveFeedUseCase(active, port), clock, zone)
+        val vm = buildVm()
         vm.effects.test {
             vm.onIntent(FeedIntent.CaptureClicked)
             assertEquals(FeedEffect.NavigateToCapture, awaitItem())
@@ -127,7 +154,31 @@ class FeedViewModelTest {
     @Test fun read_error_propagates_to_state() = runTest {
         val active = FakeActiveCrewProvider(initial = crew)
         val port = FakeMealReadPort(readError = MealReadError.Unauthorized)
-        val vm = FeedViewModel(ObserveFeedUseCase(active, port), clock, zone)
+        val vm = buildVm(active = active, port = port)
         assertTrue(vm.state.value.error != null || vm.state.value.isLoading)
+    }
+
+    @Test fun rate_meal_records_call_with_correct_score() = runTest {
+        val ratingPort = FakeMealRatingPort()
+        val vm = buildVm(ratingPort = ratingPort)
+        vm.onIntent(FeedIntent.RateMeal("meal-1", 4))
+        runCurrent()
+        assertEquals(1, ratingPort.calls.size)
+        assertEquals("meal-1", ratingPort.calls.first().mealId)
+        assertEquals(4, ratingPort.calls.first().score)
+    }
+
+    @Test fun rate_meal_failure_populates_rateError() = runTest {
+        val ratingPort = FakeMealRatingPort().apply {
+            nextResult = Result.failure(RateError.CannotRateOwnMeal)
+        }
+        val vm = buildVm(ratingPort = ratingPort)
+        vm.state.test {
+            skipItems(1)
+            vm.onIntent(FeedIntent.RateMeal("meal-1", 5))
+            val s = expectMostRecentItem()
+            assertEquals(RateError.CannotRateOwnMeal, s.rateError)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }
