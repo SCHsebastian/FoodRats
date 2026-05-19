@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
+import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -43,5 +44,6 @@ class FeedMealUiTest {
         assertEquals("Pasta carbonara", ui.dishName)
         assertEquals(listOf("italian", "dinner"), ui.tags)
         assertEquals(1_700_000_000_000L, ui.publishedAtEpochMs)
+        assertEquals(DailyEmote.forDay(MealDay(LocalDate(2026, 5, 16), TimeZone.UTC)), ui.dayEmote)
     }
 }

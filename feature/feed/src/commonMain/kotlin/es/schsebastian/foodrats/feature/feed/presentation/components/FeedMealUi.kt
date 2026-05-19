@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
+import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.Meal
 
 data class FeedMealUi(
@@ -11,6 +12,7 @@ data class FeedMealUi(
     val dishName: String,
     val tags: List<String>,
     val publishedAtEpochMs: Long,
+    val dayEmote: String,
 )
 
 fun Meal.toFeedUi(): FeedMealUi = FeedMealUi(
@@ -22,4 +24,5 @@ fun Meal.toFeedUi(): FeedMealUi = FeedMealUi(
     dishName = dish.value,
     tags = tags.map { it.label },
     publishedAtEpochMs = publishedAt.toEpochMilliseconds(),
+    dayEmote = DailyEmote.forDay(day),
 )

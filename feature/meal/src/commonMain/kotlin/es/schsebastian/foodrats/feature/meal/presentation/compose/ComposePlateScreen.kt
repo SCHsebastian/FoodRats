@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
@@ -16,12 +18,17 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrTagChipRow
 import es.schsebastian.foodrats.core.designsystem.templates.FrFormLayout
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.meal.DailyEmote
+import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.time.SystemClock
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
+import es.schsebastian.foodrats.feature.meal.presentation.components.DailyEmoteBadge
 import es.schsebastian.foodrats.feature.meal.presentation.components.SlotPicker
 import es.schsebastian.foodrats.feature.meal.presentation.toStringKey
+import kotlinx.datetime.TimeZone
 import org.koin.compose.viewmodel.koinViewModel
 
 private val CURATED_TAGS = listOf("breakfast", "lunch", "dinner", "snack", "brunch", "dessert", "drink", "other")
@@ -29,12 +36,15 @@ private val CURATED_TAGS = listOf("breakfast", "lunch", "dinner", "snack", "brun
 @Composable
 fun ComposePlateScreen(onComposed: () -> Unit, vm: ComposePlateViewModel = koinViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val today = remember { MealDay.today(SystemClock(), TimeZone.currentSystemDefault()) }
+    val emote = remember(today) { DailyEmote.forDay(today) }
     LaunchedEffect(Unit) {
         vm.effects.collect { if (it is ComposePlateEffect.NavigateToPublish) onComposed() }
     }
     FrScreenScaffold {
         FrFormLayout {
-            Column {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                DailyEmoteBadge(emote = emote, modifier = Modifier.padding(bottom = Spacing.sm))
                 SlotPicker(
                     selected = state.selectedSlot,
                     taken = state.takenSlots,

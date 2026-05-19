@@ -27,6 +27,7 @@ fun FrFeedMealCard(
 ) {
     Card(modifier = modifier.fillMaxWidth().padding(Spacing.md)) {
         Column(modifier = Modifier.padding(Spacing.md)) {
+            FrText(text = ui.dayEmote, modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = Spacing.xs))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
