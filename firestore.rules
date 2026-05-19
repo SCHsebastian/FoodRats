@@ -17,15 +17,29 @@ service cloud.firestore {
     // Crew root
     match /crews/{crewId} {
       allow read:   if request.auth != null && request.auth.uid in resource.data.memberIds;
+      // Update is partitioned into three explicit paths so non-owners can't rename the crew
+      // and rogue clients can't rewrite ownerId / createdAt / code:
+      //   (1) owner-only rename of `name`
+      //   (2) self-rename inside the `members` map (any current member; client enforces self-only)
+      //   (3) membership flux — join/leave touches `memberIds` + `members` together, size <= 8
       allow update: if request.auth != null
                     && request.auth.uid in resource.data.memberIds
-                    && request.resource.data.memberIds.size() <= 8;
+                    && (
+                      (resource.data.ownerId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
+                      || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+                      || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
+                          && request.resource.data.memberIds.size() <= 8)
+                    );
       allow create: if request.auth != null
                     && request.auth.uid in request.resource.data.memberIds
                     && request.resource.data.memberIds.size() == 1;
+      // Delete is allowed when either the last member leaves OR the owner explicitly deletes.
       allow delete: if request.auth != null
-                    && request.auth.uid in resource.data.memberIds
-                    && resource.data.memberIds.size() == 1;
+                    && (
+                      (request.auth.uid in resource.data.memberIds && resource.data.memberIds.size() == 1)
+                      || resource.data.ownerId == request.auth.uid
+                    );
 
       // Meals are scoped under crews. Up to 3 per author per day — one per slot.
       // Deterministic doc ID enforces same-day-per-slot uniqueness without composite indexes.
