@@ -22,6 +22,7 @@ import es.schsebastian.foodrats.core.domain.time.SystemClock
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.meal.presentation.components.CaptureFrame
 import es.schsebastian.foodrats.feature.meal.presentation.components.DailyEmoteBadge
+import es.schsebastian.foodrats.feature.meal.presentation.components.resizeForUpload
 import es.schsebastian.foodrats.feature.meal.presentation.toStringKey
 import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
 import io.github.ismoy.imagepickerkmp.domain.models.MimeType
@@ -61,7 +62,9 @@ fun CaptureMealScreen(
         when (val result = picker.result) {
             is ImagePickerResult.Success -> {
                 val photo = result.first ?: return@LaunchedEffect
-                val bytes = photo.asSource().readByteArray()
+                // Resize + re-encode at JPEG 75% / max 1280px BEFORE handing bytes
+                // off — keeps Storage costs sane and uploads fast on mobile data.
+                val bytes = photo.asSource().readByteArray().resizeForUpload()
                 vm.onIntent(CaptureMealIntent.PhotoTaken(bytes))
                 picker.reset()
             }

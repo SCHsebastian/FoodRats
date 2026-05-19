@@ -1,17 +1,17 @@
 package es.schsebastian.foodrats.core.domain.time
 
-import kotlinx.datetime.Clock as KotlinClock
 import kotlinx.datetime.DateTimeUnit
-import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.plus
+import kotlin.time.Clock as KotlinTimeClock
+import kotlin.time.Instant
 
 interface Clock {
     fun now(): Instant
 }
 
 class SystemClock : Clock {
-    override fun now(): Instant = KotlinClock.System.now()
+    override fun now(): Instant = KotlinTimeClock.System.now()
 }
 
 class FixedClock(private var current: Instant) : Clock {

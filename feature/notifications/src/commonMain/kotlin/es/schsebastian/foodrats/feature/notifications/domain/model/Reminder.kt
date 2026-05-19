@@ -1,6 +1,6 @@
 package es.schsebastian.foodrats.feature.notifications.domain.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class Reminder(
     val id: String,

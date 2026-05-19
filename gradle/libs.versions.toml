@@ -15,13 +15,13 @@ junit = "4.13.2"
 kotlin = "2.3.21"
 material3 = "1.11.0-alpha07"
 
-koin = "4.0.4"
+koin = "4.2.1"
 kotlinxCoroutines = "1.10.2"
-kotlinxDatetime = "0.6.2"
+kotlinxDatetime = "0.8.0-0.6.x-compat"
 kotlinxSerialization = "1.7.3"
 ktor = "3.0.3"
 datastore = "1.2.1"
-peekaboo = "0.5.2"
+imagepickerkmp = "1.0.41"
 gitliveFirebase = "2.1.0"
 googleId = "1.1.1"
 credentials = "1.3.0"
@@ -82,8 +82,7 @@ ktor-client-darwin         = { module = "io.ktor:ktor-client-darwin",           
 
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
 
-peekaboo-ui             = { module = "io.github.onseok:peekaboo-ui",             version.ref = "peekaboo" }
-peekaboo-image-picker   = { module = "io.github.onseok:peekaboo-image-picker",   version.ref = "peekaboo" }
+imagepickerkmp = { module = "io.github.ismoy:imagepickerkmp", version.ref = "imagepickerkmp" }
 
 firebase-auth      = { module = "dev.gitlive:firebase-auth",      version.ref = "gitliveFirebase" }
 firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitliveFirebase" }
