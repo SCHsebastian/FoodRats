@@ -56,4 +56,11 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
     ): Set<MealSlot> = MealSlot.entries
         .filter { mealExists(crewId, authorId, dayKey, it) }
         .toSet()
+
+    /** Returns the MealDto for the given mealId, or null if not found. */
+    suspend fun readById(crewId: CrewId, mealId: String): MealDto? {
+        val snap = firestore.collection("crews").document(crewId.value)
+            .collection("meals").document(mealId).get()
+        return if (snap.exists) snap.data<MealDto>() else null
+    }
 }
