@@ -17,27 +17,16 @@ class FirebaseAuthDataSource(
     private val dispatchers: DispatcherProvider,
 ) {
     suspend fun signInWithGoogle(token: GoogleIdToken): String = withContext(dispatchers.io) {
-        println("[FirebaseAuthDataSource] signInWithGoogle: building credential (accessToken=${token.accessToken?.let { "len=${it.length}" } ?: "null"})")
         val cred = GoogleAuthProvider.credential(idToken = token.raw, accessToken = token.accessToken)
-        println("[FirebaseAuthDataSource] signInWithGoogle: calling auth.signInWithCredential")
-        val result = auth.signInWithCredential(cred)
-        val uid = result.user?.uid ?: error("Firebase Auth returned null user")
-        println("[FirebaseAuthDataSource] signInWithGoogle: got uid=$uid")
-        uid
+        auth.signInWithCredential(cred).user?.uid ?: error("Firebase Auth returned null user")
     }
 
     suspend fun ensureAccountDoc(uid: String): AccountDto = withContext(dispatchers.io) {
-        println("[FirebaseAuthDataSource] ensureAccountDoc: get accounts/$uid")
         val ref = firestore.collection("accounts").document(uid)
         val snap = ref.get()
-        println("[FirebaseAuthDataSource] ensureAccountDoc: snap.exists=${snap.exists}")
         if (snap.exists) snap.data<AccountDto>()
         else AccountDto(id = uid, handle = uid.take(8), displayName = "Rat", createdAtEpochMs = 0L)
-            .also {
-                println("[FirebaseAuthDataSource] ensureAccountDoc: creating new doc")
-                ref.set(it)
-                println("[FirebaseAuthDataSource] ensureAccountDoc: doc created")
-            }
+            .also { ref.set(it) }
     }
 
     // Dev-only: bootstrap the hardcoded test crew so meal publishing can write under it.
