@@ -12,7 +12,6 @@ data class MealDto(
     val dayKey: String? = null,
     val slot: String = "lunch",
     val photoUrl: String? = null,
-    val score: Int? = null,
     val dishName: String? = null,
     val tags: List<String> = emptyList(),
     val publishedAtEpochMs: Long? = null,

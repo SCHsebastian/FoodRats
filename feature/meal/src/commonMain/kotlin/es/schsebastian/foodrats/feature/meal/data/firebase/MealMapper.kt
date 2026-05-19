@@ -7,7 +7,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -26,7 +25,6 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
         .getOrElse { return Result.failure(MealError.Read.CrewNotFound) }
     val day = runCatching { LocalDate.parse(dayKey ?: "") }.getOrNull()
         ?: return Result.failure(MealError.Read.NotFound)
-    val score = Score.of(score ?: -1).getOrElse { return Result.failure(MealError.Read.NotFound) }
     val dish = DishName.of(dishName ?: "").getOrElse { return Result.failure(MealError.Read.NotFound) }
     val resolvedTags: List<FoodTag> = tags.map { raw ->
         FoodTag.Curated.entries.firstOrNull { it.label == raw }
@@ -41,7 +39,6 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             day = MealDay(day, TimeZone.UTC),
             slot = slot,
             photoUrl = photoUrl ?: "",
-            score = score,
             dish = dish,
             tags = resolvedTags,
             publishedAt = Instant.fromEpochMilliseconds(publishedAtEpochMs ?: 0L),
