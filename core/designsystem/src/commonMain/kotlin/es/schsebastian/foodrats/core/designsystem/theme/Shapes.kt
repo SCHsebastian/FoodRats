@@ -9,5 +9,5 @@ internal val FoodRatsShapes = Shapes(
     small      = RoundedCornerShape(Radius.sm),
     medium     = RoundedCornerShape(Radius.md),
     large      = RoundedCornerShape(Radius.lg),
-    extraLarge = RoundedCornerShape(Radius.lg),
+    extraLarge = RoundedCornerShape(Radius.xl),
 )
