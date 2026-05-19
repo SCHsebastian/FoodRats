@@ -10,6 +10,7 @@ data class PublishMealState(
     val draft: MealDraft? = null,
     val isPublishing: Boolean = false,
     val error: MealError? = null,
+    val isToday: Boolean = true,
 ) : MviState
 
 sealed interface PublishMealIntent : MviIntent {

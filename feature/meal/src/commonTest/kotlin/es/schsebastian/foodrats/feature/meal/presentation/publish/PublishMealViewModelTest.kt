@@ -48,6 +48,8 @@ class PublishMealViewModelTest {
             ObserveMealDraftUseCase(repo),
             PublishMealUseCase(repo, clock, zone),
             noopScheduleStreakNudge(clock, zone),
+            clock,
+            zone,
         )
 
         vm.effects.test {

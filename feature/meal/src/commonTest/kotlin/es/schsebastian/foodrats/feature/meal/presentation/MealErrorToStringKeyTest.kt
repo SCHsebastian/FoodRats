@@ -6,6 +6,22 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class MealErrorToStringKeyTest {
+    @Test
+    fun maps_AlreadyPostedToday_to_MealErrorAlreadyPosted() {
+        assertEquals(MealStringKey.MealErrorAlreadyPosted, MealError.Publish.AlreadyPostedToday.toStringKey())
+    }
+
+    @Test
+    fun maps_NotToday_to_MealErrorNotToday() {
+        assertEquals(MealStringKey.MealErrorNotToday, MealError.Publish.NotToday.toStringKey())
+    }
+
+    @Test
+    fun maps_NoSlotSelected_currently_to_MealErrorPublishUnavailable_pending_Task10() {
+        // Task 10 will replace this with a dedicated MealErrorPublishNoSlotSelected key
+        assertEquals(MealStringKey.MealErrorPublishUnavailable, MealError.Publish.NoSlotSelected.toStringKey())
+    }
+
     @Test fun maps_all_publish_errors() {
         assertEquals(MealStringKey.MealErrorAlreadyPosted, (MealError.Publish.AlreadyPostedToday as MealError).toStringKey())
         assertEquals(MealStringKey.MealErrorNotToday, (MealError.Publish.NotToday as MealError).toStringKey())

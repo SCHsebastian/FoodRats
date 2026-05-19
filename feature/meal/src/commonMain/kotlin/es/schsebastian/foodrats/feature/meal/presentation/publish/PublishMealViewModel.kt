@@ -3,10 +3,13 @@
 package es.schsebastian.foodrats.feature.meal.presentation.publish
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ObserveMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
+import kotlinx.datetime.TimeZone
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.ScheduleStreakNudgeUseCase
 import es.schsebastian.foodrats.feature.notifications.i18n.NotificationStringKey
 import kotlinx.coroutines.flow.first
@@ -19,10 +22,15 @@ class PublishMealViewModel(
     private val observeDraft: ObserveMealDraftUseCase,
     private val publishMeal: PublishMealUseCase,
     private val scheduleStreakNudge: ScheduleStreakNudgeUseCase,
+    private val clock: Clock,
+    private val zone: TimeZone,
 ) : MviViewModel<PublishMealState, PublishMealIntent, PublishMealEffect>(PublishMealState()) {
 
     init {
-        observeDraft().onEach { d -> update { it.copy(draft = d) } }.launchIn(viewModelScope)
+        observeDraft().onEach { draft ->
+            val isToday = draft?.day?.let { it == MealDay.today(clock, zone) } ?: true
+            update { it.copy(draft = draft, isToday = isToday) }
+        }.launchIn(viewModelScope)
     }
 
     override suspend fun handle(intent: PublishMealIntent) {
