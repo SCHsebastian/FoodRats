@@ -25,5 +25,12 @@ docs/superpowers/
 # Git worktrees created by superpowers workflows.
 .worktrees/
 
-# Firebase config — place real file locally, never commit it.
+# Firebase config — place real files locally, never commit them.
 androidApp/google-services.json
+iosApp/iosApp/GoogleService-Info.plist
+
+# Xcode build output written outside the normal DerivedData path.
+iosApp/build-device/
+
+# Claude Code local state (settings, worktrees, transcripts).
+.claude/
