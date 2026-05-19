@@ -3,6 +3,8 @@ package es.schsebastian.foodrats.app.navigation
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -18,7 +20,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScreen
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsScreen
@@ -87,11 +91,23 @@ fun NavHostController.navigateTopLevel(route: Route) {
 private fun MainScaffold(rootController: NavHostController) {
     val inner = rememberNavController()
     Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { rootController.navigate(Route.CaptureMeal) },
+            ) {
+                Icon(
+                    imageVector = FrIcons.Camera,
+                    contentDescription = resolve(SharedStringKey.NavCaptureCta),
+                )
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Center,
         bottomBar = {
             val backStack by inner.currentBackStackEntryAsState()
             val current = backStack?.destination?.route
             NavigationBar {
                 NavigationBarItem(
+                    modifier = Modifier.weight(1f),
                     selected = current?.contains("Feed") == true,
                     onClick = {
                         inner.navigate(MainTab.Feed) {
@@ -104,6 +120,7 @@ private fun MainScaffold(rootController: NavHostController) {
                     label = { Text("Feed") },
                 )
                 NavigationBarItem(
+                    modifier = Modifier.weight(1f),
                     selected = current?.contains("Stats") == true,
                     onClick = {
                         inner.navigate(MainTab.Stats) {
