@@ -3,14 +3,18 @@ package es.schsebastian.foodrats.app.navigation
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
@@ -22,6 +26,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScreen
@@ -32,6 +37,7 @@ import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateSc
 import es.schsebastian.foodrats.feature.meal.presentation.publish.PublishMealScreen
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
+import org.koin.compose.koinInject
 
 @Composable
 fun NavGraph(navController: NavController = rememberNavController()) {
@@ -54,7 +60,12 @@ fun NavGraph(navController: NavController = rememberNavController()) {
 
         composable<Route.CrewSettings> { entry ->
             val args = entry.toRoute<Route.CrewSettings>()
-            CrewSettingsScreen(crewId = args.crewId, onLeft = { controller.popBackStack() })
+            CrewSettingsScreen(
+                crewId = args.crewId,
+                onLeft = { controller.navigateTopLevel(Route.CrewPicker) },
+                onSwitch = { controller.navigate(Route.CrewPicker) },
+                onDeleted = { controller.navigateTopLevel(Route.CrewPicker) },
+            )
         }
 
         composable<Route.Main> {
@@ -87,10 +98,29 @@ fun NavHostController.navigateTopLevel(route: Route) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScaffold(rootController: NavHostController) {
     val inner = rememberNavController()
+    val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text("") },
+                actions = {
+                    activeCrew?.let { crewId ->
+                        IconButton(
+                            onClick = { rootController.navigate(Route.CrewSettings(crewId.value)) },
+                        ) {
+                            Icon(
+                                imageVector = FrIcons.Settings,
+                                contentDescription = resolve(SharedStringKey.NavSettingsCta),
+                            )
+                        }
+                    }
+                },
+            )
+        },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { rootController.navigate(Route.CaptureMeal) },
