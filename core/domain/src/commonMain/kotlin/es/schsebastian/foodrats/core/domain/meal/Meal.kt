@@ -10,7 +10,6 @@ data class Meal(
     val day: MealDay,
     val slot: MealSlot,
     val photoUrl: String,
-    val score: Score,
     val dish: DishName,
     val tags: List<FoodTag>,
     val publishedAt: Instant,

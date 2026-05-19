@@ -23,7 +23,6 @@ class MealWithRatingsTest {
         day = MealDay(LocalDate.parse("2026-05-19"), TimeZone.UTC),
         slot = MealSlot.Lunch,
         photoUrl = "https://example.com/p.jpg",
-        score = (Score.of(3) as Result.Ok).value,   // placeholder until Meal.score is dropped in a later task
         dish = (DishName.of("Pasta") as Result.Ok).value,
         tags = emptyList(),
         publishedAt = Instant.parse("2026-05-19T12:00:00Z"),
