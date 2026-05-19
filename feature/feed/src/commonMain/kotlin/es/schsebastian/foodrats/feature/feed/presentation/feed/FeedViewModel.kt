@@ -51,11 +51,10 @@ class FeedViewModel(
     }
 
     override suspend fun handle(intent: FeedIntent) = when (intent) {
-        FeedIntent.PrevDay        -> { navigatePrev(); Unit }
-        FeedIntent.NextDay        -> { navigateNext(); Unit }
-        FeedIntent.CaptureClicked -> emit(FeedEffect.NavigateToCapture)
-        FeedIntent.DismissError   -> update { it.copy(error = null, rateError = null) }
-        is FeedIntent.RateMeal    -> rateMeal(intent.mealId, intent.score)
+        FeedIntent.PrevDay      -> { navigatePrev(); Unit }
+        FeedIntent.NextDay      -> { navigateNext(); Unit }
+        FeedIntent.DismissError -> update { it.copy(error = null, rateError = null) }
+        is FeedIntent.RateMeal  -> rateMeal(intent.mealId, intent.score)
     }
 
     private suspend fun rateMeal(mealIdRaw: String, scoreRaw: Int) {

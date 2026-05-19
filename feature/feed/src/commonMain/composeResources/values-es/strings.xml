@@ -3,7 +3,6 @@
     <string name="feed_title">Hoy</string>
     <string name="feed_empty_headline">Aún no hay nada</string>
     <string name="feed_empty_subtext">Nadie ha publicado una comida hoy.</string>
-    <string name="feed_capture_cta">Añadir comida de hoy</string>
     <string name="feed_prev_day">Día anterior</string>
     <string name="feed_next_day">Día siguiente</string>
     <string name="feed_no_active_crew_headline">Sin grupo seleccionado</string>

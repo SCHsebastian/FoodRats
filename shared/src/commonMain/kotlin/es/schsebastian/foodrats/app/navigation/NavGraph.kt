@@ -68,7 +68,8 @@ fun NavGraph(navController: NavController = rememberNavController()) {
         }
         composable<Route.PublishMeal> {
             PublishMealScreen(onPublished = {
-                controller.navigateTopLevel(Route.Main)
+                // Clear the capture → compose → publish chain and return to Main (Feed tab).
+                controller.popBackStack(route = Route.Main, inclusive = false)
             })
         }
     }
@@ -121,7 +122,6 @@ private fun MainScaffold(rootController: NavHostController) {
             NavHost(navController = inner, startDestination = MainTab.Feed) {
                 composable<MainTab.Feed> {
                     FeedScreen(
-                        onCaptureClick = { rootController.navigate(Route.CaptureMeal) },
                         onPickCrewClick = { rootController.navigate(Route.CrewPicker) },
                     )
                 }

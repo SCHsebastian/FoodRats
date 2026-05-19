@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,18 +28,10 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun FeedScreen(
-    onCaptureClick: () -> Unit,
     onPickCrewClick: () -> Unit,
     vm: FeedViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) {
-        vm.effects.collect { eff ->
-            when (eff) {
-                FeedEffect.NavigateToCapture -> onCaptureClick()
-            }
-        }
-    }
     FrScreenScaffold {
         // FrFeedLayout slots are `dayHeader` and `list` (not header/body per plan).
         FrFeedLayout(
@@ -81,13 +72,6 @@ fun FeedScreen(
                                 icon = FrIcons.GalleryImport,
                                 headline = resolve(FeedStringKey.EmptyHeadline),
                                 subtext = resolve(FeedStringKey.EmptySubtext),
-                                cta = {
-                                    FrButton(
-                                        label = resolve(FeedStringKey.CaptureCta),
-                                        onClick = { vm.onIntent(FeedIntent.CaptureClicked) },
-                                        variant = FrButtonVariant.Primary,
-                                    )
-                                },
                             )
                         }
                         else -> {

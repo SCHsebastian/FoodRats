@@ -3,7 +3,6 @@ package es.schsebastian.foodrats.feature.feed.i18n
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.feed.generated.resources.Res
 import foodrats.feature.feed.generated.resources.feed_average_heading
-import foodrats.feature.feed.generated.resources.feed_capture_cta
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
 import foodrats.feature.feed.generated.resources.feed_error_crew_not_found
@@ -30,7 +29,6 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     Title(Res.string.feed_title),
     EmptyHeadline(Res.string.feed_empty_headline),
     EmptySubtext(Res.string.feed_empty_subtext),
-    CaptureCta(Res.string.feed_capture_cta),
     PrevDay(Res.string.feed_prev_day),
     NextDay(Res.string.feed_next_day),
     NoActiveCrewHeadline(Res.string.feed_no_active_crew_headline),

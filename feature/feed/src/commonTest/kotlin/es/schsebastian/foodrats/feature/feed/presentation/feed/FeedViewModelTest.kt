@@ -142,15 +142,6 @@ class FeedViewModelTest {
         assertTrue(vm.state.value.canGoPrev.not())
     }
 
-    @Test fun capture_clicked_emits_effect() = runTest {
-        val vm = buildVm()
-        vm.effects.test {
-            vm.onIntent(FeedIntent.CaptureClicked)
-            assertEquals(FeedEffect.NavigateToCapture, awaitItem())
-            cancelAndIgnoreRemainingEvents()
-        }
-    }
-
     @Test fun read_error_propagates_to_state() = runTest {
         val active = FakeActiveCrewProvider(initial = crew)
         val port = FakeMealReadPort(readError = MealReadError.Unauthorized)

@@ -22,11 +22,8 @@ data class FeedState(
 sealed interface FeedIntent : MviIntent {
     data object PrevDay : FeedIntent
     data object NextDay : FeedIntent
-    data object CaptureClicked : FeedIntent
     data object DismissError : FeedIntent
     data class RateMeal(val mealId: String, val score: Int) : FeedIntent
 }
 
-sealed interface FeedEffect : MviEffect {
-    data object NavigateToCapture : FeedEffect
-}
+sealed interface FeedEffect : MviEffect
