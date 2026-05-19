@@ -13,6 +13,7 @@ import es.schsebastian.foodrats.core.domain.telemetry.NoopCrashReporter
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.domain.time.SystemClock
 import kotlinx.datetime.TimeZone
+import kotlinx.serialization.json.Json
 import org.koin.dsl.module
 
 val coreDataModule = module {
@@ -25,4 +26,6 @@ val coreDataModule = module {
     single { Firebase.auth }
     single { Firebase.firestore }
     single { Firebase.storage }
+    // JSON serializer shared across features (MealDraftLocalStore + others).
+    single { Json { ignoreUnknownKeys = true; isLenient = true } }
 }

@@ -8,5 +8,24 @@
 	<string>FoodRats uses the camera to capture your daily meal.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FoodRats can import meal photos from your library.</string>
+	<key>GIDClientID</key>
+	<string>475840003160-2grnq2fqeplj74b81rqrddk5p9f46dts.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>GoogleSignIn</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.475840003160-2grnq2fqeplj74b81rqrddk5p9f46dts</string>
+			</array>
+		</dict>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

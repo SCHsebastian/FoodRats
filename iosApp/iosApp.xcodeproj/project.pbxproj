@@ -6,6 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		6ADB0E062FBB800300BCF21E /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E052FBB800300BCF21E /* FirebaseAnalytics */; };
+		6ADB0E082FBB800300BCF21E /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E072FBB800300BCF21E /* FirebaseAnalyticsCore */; };
+		6ADB0E0A2FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E092FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport */; };
+		6ADB0E0C2FBB800300BCF21E /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E0B2FBB800300BCF21E /* FirebaseAuth */; };
+		6ADB0E0E2FBB800300BCF21E /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E0D2FBB800300BCF21E /* FirebaseCore */; };
+		6ADB0E102FBB800300BCF21E /* FirebaseCrashlytics in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E0F2FBB800300BCF21E /* FirebaseCrashlytics */; };
+		6ADB0E122FBB800300BCF21E /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E112FBB800300BCF21E /* FirebaseFirestore */; };
+		6ADB0E142FBB800300BCF21E /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E132FBB800300BCF21E /* FirebaseMessaging */; };
+		6ADB0E162FBB800300BCF21E /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E152FBB800300BCF21E /* FirebaseStorage */; };
+		6ADB0E192FBB805800BCF21E /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E182FBB805800BCF21E /* GoogleSignIn */; };
+		6ADB0E1B2FBB805800BCF21E /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E1A2FBB805800BCF21E /* GoogleSignInSwift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		2250B356FD973D8CF8F13981 /* FoodRats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FoodRats.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -41,6 +55,17 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6ADB0E142FBB800300BCF21E /* FirebaseMessaging in Frameworks */,
+				6ADB0E062FBB800300BCF21E /* FirebaseAnalytics in Frameworks */,
+				6ADB0E162FBB800300BCF21E /* FirebaseStorage in Frameworks */,
+				6ADB0E0E2FBB800300BCF21E /* FirebaseCore in Frameworks */,
+				6ADB0E082FBB800300BCF21E /* FirebaseAnalyticsCore in Frameworks */,
+				6ADB0E192FBB805800BCF21E /* GoogleSignIn in Frameworks */,
+				6ADB0E102FBB800300BCF21E /* FirebaseCrashlytics in Frameworks */,
+				6ADB0E0A2FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport in Frameworks */,
+				6ADB0E0C2FBB800300BCF21E /* FirebaseAuth in Frameworks */,
+				6ADB0E122FBB800300BCF21E /* FirebaseFirestore in Frameworks */,
+				6ADB0E1B2FBB805800BCF21E /* GoogleSignInSwift in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +110,17 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
+				6ADB0E052FBB800300BCF21E /* FirebaseAnalytics */,
+				6ADB0E072FBB800300BCF21E /* FirebaseAnalyticsCore */,
+				6ADB0E092FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport */,
+				6ADB0E0B2FBB800300BCF21E /* FirebaseAuth */,
+				6ADB0E0D2FBB800300BCF21E /* FirebaseCore */,
+				6ADB0E0F2FBB800300BCF21E /* FirebaseCrashlytics */,
+				6ADB0E112FBB800300BCF21E /* FirebaseFirestore */,
+				6ADB0E132FBB800300BCF21E /* FirebaseMessaging */,
+				6ADB0E152FBB800300BCF21E /* FirebaseStorage */,
+				6ADB0E182FBB805800BCF21E /* GoogleSignIn */,
+				6ADB0E1A2FBB805800BCF21E /* GoogleSignInSwift */,
 			);
 			productName = iosApp;
 			productReference = 2250B356FD973D8CF8F13981 /* FoodRats.app */;
@@ -114,6 +150,10 @@
 			);
 			mainGroup = 1B7209C9FC7A8474621D6A15;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				6ADB0E172FBB805800BCF21E /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 06DAED8608A94379F832D5E0 /* Products */;
 			projectDirPath = "";
@@ -152,7 +192,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\n\n# Resolve JAVA_HOME for Xcode's stripped PATH.\nfind_java() {\n  # 1. JAVA_HOME already set\n  if [ -n \"$JAVA_HOME\" ] && [ -x \"$JAVA_HOME/bin/java\" ]; then return; fi\n  # 2. java_home helper (any version)\n  for v in 21 17 11; do\n    if H=$(/usr/libexec/java_home -v $v 2>/dev/null) && [ -n \"$H\" ]; then\n      export JAVA_HOME=\"$H\"; return\n    fi\n  done\n  if H=$(/usr/libexec/java_home 2>/dev/null) && [ -n \"$H\" ]; then\n    export JAVA_HOME=\"$H\"; return\n  fi\n  # 3. Common app-bundle JDKs\n  for P in \\\n    \"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" \\\n    \"/Applications/Android Studio Preview.app/Contents/jbr/Contents/Home\" \\\n    \"$HOME/Applications/Android Studio.app/Contents/jbr/Contents/Home\" \\\n    \"/Applications/IntelliJ IDEA.app/Contents/jbr/Contents/Home\" \\\n    \"/Applications/IntelliJ IDEA CE.app/Contents/jbr/Contents/Home\" \\\n    \"$HOME/Applications/IntelliJ IDEA.app/Contents/jbr/Contents/Home\" \\\n    \"$HOME/Applications/IntelliJ IDEA CE.app/Contents/jbr/Contents/Home\"; do\n    if [ -x \"$P/bin/java\" ]; then export JAVA_HOME=\"$P\"; return; fi\n  done\n  # 4. JetBrains Toolbox installs\n  for D in \"$HOME/Library/Application Support/JetBrains/Toolbox/apps\"/*/*/*\"/Android Studio.app/Contents/jbr/Contents/Home\" \\\n           \"$HOME/Library/Application Support/JetBrains/Toolbox/apps\"/*/*/*\"/IntelliJ IDEA.app/Contents/jbr/Contents/Home\"; do\n    if [ -x \"$D/bin/java\" ]; then export JAVA_HOME=\"$D\"; return; fi\n  done\n  # 5. Gradle-provisioned (foojay) JDKs in ~/.gradle/jdks\n  for D in \"$HOME\"/.gradle/jdks/*/Contents/Home \"$HOME\"/.gradle/jdks/*; do\n    if [ -x \"$D/bin/java\" ]; then export JAVA_HOME=\"$D\"; return; fi\n  done\n  # 6. Homebrew openjdk\n  for P in /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \\\n           /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \\\n           /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home \\\n           /usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \\\n           /usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \\\n           /usr/local/opt/openjdk/libexec/openjdk.jdk/Contents/Home; do\n    if [ -x \"$P/bin/java\" ]; then export JAVA_HOME=\"$P\"; return; fi\n  done\n  # 7. Generic search under /Library/Java/JavaVirtualMachines\n  for D in /Library/Java/JavaVirtualMachines/*/Contents/Home; do\n    if [ -x \"$D/bin/java\" ]; then export JAVA_HOME=\"$D\"; return; fi\n  done\n}\nfind_java\nif [ -z \"$JAVA_HOME\" ] || [ ! -x \"$JAVA_HOME/bin/java\" ]; then\n  echo \"error: Could not locate a Java runtime. Install JDK (brew install openjdk@21) or Android Studio.\" >&2\n  echo \"Searched: java_home, /Applications, ~/Applications, JetBrains Toolbox, ~/.gradle/jdks, Homebrew openjdk, /Library/Java/JavaVirtualMachines.\" >&2\n  exit 1\nfi\nexport PATH=\"$JAVA_HOME/bin:$PATH\"\necho \"Using JAVA_HOME=$JAVA_HOME\"\n\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -370,6 +410,83 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.13.0;
+			};
+		};
+		6ADB0E172FBB805800BCF21E /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 9.1.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		6ADB0E052FBB800300BCF21E /* FirebaseAnalytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalytics;
+		};
+		6ADB0E072FBB800300BCF21E /* FirebaseAnalyticsCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsCore;
+		};
+		6ADB0E092FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAnalyticsIdentitySupport;
+		};
+		6ADB0E0B2FBB800300BCF21E /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		6ADB0E0D2FBB800300BCF21E /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		6ADB0E0F2FBB800300BCF21E /* FirebaseCrashlytics */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCrashlytics;
+		};
+		6ADB0E112FBB800300BCF21E /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		6ADB0E132FBB800300BCF21E /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
+		};
+		6ADB0E152FBB800300BCF21E /* FirebaseStorage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E042FBB800300BCF21E /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseStorage;
+		};
+		6ADB0E182FBB805800BCF21E /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E172FBB805800BCF21E /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		6ADB0E1A2FBB805800BCF21E /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 6ADB0E172FBB805800BCF21E /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 639BDF8EC17A836721998E94 /* Project object */;
 }

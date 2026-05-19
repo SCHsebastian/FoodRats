@@ -14,10 +14,16 @@ import platform.UIKit.UIViewController
  *   - [viewControllerProvider]: returns the current key-window root UIViewController,
  *     used by GoogleSignIn to present its picker.
  *   - [googleSignIn] / [googleSignOut]: delegate to GoogleSignInBridge static methods.
+ *
+ * The [googleSignIn] completion is invoked with `(idToken, accessToken, errorCode)` — on
+ * iOS Firebase requires both idToken and accessToken (see GoogleAuthClient.ios.kt).
  */
 fun MainViewController(
     viewControllerProvider: () -> UIViewController,
-    googleSignIn: (UIViewController, (idToken: String?, errorCode: String?) -> Unit) -> Unit,
+    googleSignIn: (
+        UIViewController,
+        (idToken: String?, accessToken: String?, errorCode: String?) -> Unit,
+    ) -> Unit,
     googleSignOut: () -> Unit,
 ) = ComposeUIViewController(
     configure = {

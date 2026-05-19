@@ -7,29 +7,26 @@ import platform.UIKit.UIViewController
 import kotlin.coroutines.resume
 
 /**
- * iOS GoogleAuthClient. Delegates the actual native sign-in to a Swift bridge supplied
- * at app startup via [signInNative] / [signOutNative] lambdas (see iosApp/ContentView.swift
- * + iosApp/GoogleSignInBridge.swift). Kotlin/Native exports lambdas as Swift closures, so
- * Swift implements them directly without needing to declare a Kotlin interface.
+ * iOS GoogleAuthClient. Delegates to the Swift GoogleSignInBridge via lambdas wired by
+ * `authIosModule(...)` from iosApp/ContentView.swift.
  *
- * Error contract: [signInNative] callback receives `(idToken, errorCode)`. On success,
- * `idToken` is non-null and `errorCode` is null. On failure, `idToken` is null and
- * `errorCode` is one of:
- *   - "cancelled"   -> AuthError.GoogleSignIn.UserCancelled
- *   - "no_accounts" -> AuthError.GoogleSignIn.NoGoogleAccountsOnDevice
- *   - "network"     -> AuthError.GoogleSignIn.NetworkUnavailable
- *   - anything else -> AuthError.GoogleSignIn.UnknownClientFailure
+ * The Swift callback signature is `(idToken, accessToken, errorCode) -> Unit`. iOS's GitLive
+ * Firebase Auth requires BOTH idToken and accessToken to build a Google credential — Android
+ * accepts a null accessToken, but iOS doesn't (see GoogleAuthProvider.credential signature).
  */
 actual class GoogleAuthClient(
     private val viewControllerProvider: () -> UIViewController,
-    private val signInNative: (UIViewController, (idToken: String?, errorCode: String?) -> Unit) -> Unit,
+    private val signInNative: (
+        UIViewController,
+        (idToken: String?, accessToken: String?, errorCode: String?) -> Unit,
+    ) -> Unit,
     private val signOutNative: () -> Unit,
 ) {
     actual suspend fun signIn(): Result<GoogleIdToken, AuthError.GoogleSignIn> =
         suspendCancellableCoroutine { cont ->
-            signInNative(viewControllerProvider()) { idToken, errorCode ->
+            signInNative(viewControllerProvider()) { idToken, accessToken, errorCode ->
                 if (idToken != null) {
-                    cont.resume(Result.success(GoogleIdToken(idToken)))
+                    cont.resume(Result.success(GoogleIdToken(idToken, accessToken)))
                 } else {
                     val err = when (errorCode) {
                         "cancelled"   -> AuthError.GoogleSignIn.UserCancelled
