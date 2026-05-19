@@ -12,12 +12,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MealValueObjectsTest {
-    @Test fun score_accepts_1_through_10() {
-        for (v in 1..10) assertTrue(Score.of(v) is Result.Ok)
+    @Test fun score_accepts_1_through_5() {
+        for (v in 1..5) assertTrue(Score.of(v) is Result.Ok)
     }
-    @Test fun score_rejects_0_and_11() {
+    @Test fun score_rejects_0_and_6() {
         assertTrue(Score.of(0) is Result.Err)
-        assertTrue(Score.of(11) is Result.Err)
+        assertTrue(Score.of(6) is Result.Err)
         assertTrue(Score.of(-3) is Result.Err)
     }
     @Test fun dishName_rejects_blank() {

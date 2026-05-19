@@ -7,7 +7,7 @@ import kotlin.jvm.JvmInline
 value class Score private constructor(val value: Int) {
     companion object {
         const val MIN = 1
-        const val MAX = 10
+        const val MAX = 5
         fun of(value: Int): Result<Score, MealValueObjectError> =
             if (value in MIN..MAX) Result.success(Score(value))
             else Result.failure(MealValueObjectError.ScoreOutOfRange)
