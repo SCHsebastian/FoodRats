@@ -5,14 +5,20 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameMemberUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class CrewSettingsViewModel(
     private val crewId: CrewId,
     private val observeCrew: ObserveCrewUseCase,
+    private val renameCrew: RenameCrewUseCase,
+    private val renameMember: RenameMemberUseCase,
+    private val deleteCrew: DeleteCrewUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val session: SessionProvider,
 ) : MviViewModel<CrewSettingsState, CrewSettingsIntent, CrewSettingsEffect>(CrewSettingsState()) {
@@ -21,7 +27,20 @@ class CrewSettingsViewModel(
         viewModelScope.launch {
             observeCrew(crewId).collect { r ->
                 when (r) {
-                    is Result.Ok  -> update { it.copy(crew = r.value, error = null) }
+                    is Result.Ok -> {
+                        val crew = r.value
+                        val myAccountId = session.current.first()?.accountId
+                        val myMember = crew.members.firstOrNull { it.accountId == myAccountId }
+                        update {
+                            it.copy(
+                                crew = crew,
+                                isOwner = crew.ownerId == myAccountId,
+                                editingCrewName = if (it.editingCrewName.isEmpty()) crew.name else it.editingCrewName,
+                                editingMyDisplayName = if (it.editingMyDisplayName.isEmpty()) myMember?.displayName.orEmpty() else it.editingMyDisplayName,
+                                error = null,
+                            )
+                        }
+                    }
                     is Result.Err -> update { it.copy(error = r.error) }
                 }
             }
@@ -29,16 +48,50 @@ class CrewSettingsViewModel(
     }
 
     override suspend fun handle(intent: CrewSettingsIntent) = when (intent) {
-        CrewSettingsIntent.Leave        -> doLeave()
+        is CrewSettingsIntent.CrewNameChanged -> update { it.copy(editingCrewName = intent.value) }
+        CrewSettingsIntent.SaveCrewName -> doSaveCrewName()
+        is CrewSettingsIntent.MyDisplayNameChanged -> update { it.copy(editingMyDisplayName = intent.value) }
+        CrewSettingsIntent.SaveMyDisplayName -> doSaveMyDisplayName()
+        CrewSettingsIntent.SwitchCrew -> emit(CrewSettingsEffect.NavigateToCrewPicker)
+        CrewSettingsIntent.Leave -> doLeave()
+        CrewSettingsIntent.RequestDelete -> update { it.copy(showDeleteConfirm = true) }
+        CrewSettingsIntent.CancelDelete -> update { it.copy(showDeleteConfirm = false) }
+        CrewSettingsIntent.ConfirmDelete -> doDelete()
         CrewSettingsIntent.DismissError -> update { it.copy(error = null) }
+    }
+
+    private suspend fun doSaveCrewName() {
+        val name = state.value.editingCrewName
+        update { it.copy(isSavingCrewName = true, error = null) }
+        when (val r = renameCrew(crewId, name)) {
+            is Result.Ok -> update { it.copy(isSavingCrewName = false) }
+            is Result.Err -> update { it.copy(isSavingCrewName = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doSaveMyDisplayName() {
+        val name = state.value.editingMyDisplayName
+        update { it.copy(isSavingMyDisplayName = true, error = null) }
+        when (val r = renameMember(name)) {
+            is Result.Ok -> update { it.copy(isSavingMyDisplayName = false) }
+            is Result.Err -> update { it.copy(isSavingMyDisplayName = false, error = r.error) }
+        }
     }
 
     private suspend fun doLeave() {
         val account = session.current.first()?.accountId ?: return
         update { it.copy(isLeaving = true, error = null) }
         when (val r = leaveCrew(crewId, account)) {
-            is Result.Ok  -> { update { it.copy(isLeaving = false) }; emit(CrewSettingsEffect.Left) }
+            is Result.Ok -> { update { it.copy(isLeaving = false) }; emit(CrewSettingsEffect.Left) }
             is Result.Err -> update { it.copy(isLeaving = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doDelete() {
+        update { it.copy(isDeleting = true, showDeleteConfirm = false, error = null) }
+        when (val r = deleteCrew(crewId)) {
+            is Result.Ok -> { update { it.copy(isDeleting = false) }; emit(CrewSettingsEffect.Deleted) }
+            is Result.Err -> update { it.copy(isDeleting = false, error = r.error) }
         }
     }
 }

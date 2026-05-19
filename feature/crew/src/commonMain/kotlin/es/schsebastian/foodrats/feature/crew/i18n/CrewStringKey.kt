@@ -26,9 +26,24 @@ import foodrats.feature.crew.generated.resources.crew_picker_empty_headline
 import foodrats.feature.crew.generated.resources.crew_picker_empty_subtext
 import foodrats.feature.crew.generated.resources.crew_picker_join_cta
 import foodrats.feature.crew.generated.resources.crew_picker_title
+import foodrats.feature.crew.generated.resources.crew_settings_actions_section
+import foodrats.feature.crew.generated.resources.crew_settings_cancel
+import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
+import foodrats.feature.crew.generated.resources.crew_settings_crew_section
+import foodrats.feature.crew.generated.resources.crew_settings_danger_section
+import foodrats.feature.crew.generated.resources.crew_settings_delete_body
+import foodrats.feature.crew.generated.resources.crew_settings_delete_confirm
+import foodrats.feature.crew.generated.resources.crew_settings_delete_cta
+import foodrats.feature.crew.generated.resources.crew_settings_delete_title
+import foodrats.feature.crew.generated.resources.crew_settings_invite_code
 import foodrats.feature.crew.generated.resources.crew_settings_leave_cta
 import foodrats.feature.crew.generated.resources.crew_settings_members_section
+import foodrats.feature.crew.generated.resources.crew_settings_my_display_name_label
+import foodrats.feature.crew.generated.resources.crew_settings_my_profile_section
+import foodrats.feature.crew.generated.resources.crew_settings_save
+import foodrats.feature.crew.generated.resources.crew_settings_share
 import foodrats.feature.crew.generated.resources.crew_settings_share_code
+import foodrats.feature.crew.generated.resources.crew_settings_switch_crew
 import foodrats.feature.crew.generated.resources.crew_settings_title
 import org.jetbrains.compose.resources.StringResource
 
@@ -46,6 +61,21 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsMembersSection(Res.string.crew_settings_members_section),
     SettingsShareCode(Res.string.crew_settings_share_code),
     SettingsLeaveCta(Res.string.crew_settings_leave_cta),
+    SettingsCrewSection(Res.string.crew_settings_crew_section),
+    SettingsMyProfileSection(Res.string.crew_settings_my_profile_section),
+    SettingsActionsSection(Res.string.crew_settings_actions_section),
+    SettingsDangerSection(Res.string.crew_settings_danger_section),
+    SettingsCrewNameLabel(Res.string.crew_settings_crew_name_label),
+    SettingsMyDisplayNameLabel(Res.string.crew_settings_my_display_name_label),
+    SettingsSave(Res.string.crew_settings_save),
+    SettingsSwitchCrew(Res.string.crew_settings_switch_crew),
+    SettingsInviteCode(Res.string.crew_settings_invite_code),
+    SettingsShare(Res.string.crew_settings_share),
+    SettingsDeleteCta(Res.string.crew_settings_delete_cta),
+    SettingsDeleteTitle(Res.string.crew_settings_delete_title),
+    SettingsDeleteBody(Res.string.crew_settings_delete_body),
+    SettingsDeleteConfirm(Res.string.crew_settings_delete_confirm),
+    SettingsCancel(Res.string.crew_settings_cancel),
     ErrorNameBlank(Res.string.crew_error_name_blank),
     ErrorNameTooLong(Res.string.crew_error_name_too_long),
     ErrorCodeMalformed(Res.string.crew_error_code_malformed),
