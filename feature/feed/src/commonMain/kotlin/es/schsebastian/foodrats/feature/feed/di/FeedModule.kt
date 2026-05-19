@@ -9,9 +9,6 @@ import org.koin.dsl.module
 
 val feedModule = module {
     factoryOf(::ObserveFeedUseCase)
-    // The time zone is platform-injected via Koin in the App Wiring plan
-    // (commonly TimeZone.currentSystemDefault() resolved from a `TimeZoneProvider`).
-    // For now we bind it inline so the module compiles standalone.
     single<TimeZone> { TimeZone.currentSystemDefault() }
-    viewModel { FeedViewModel(get(), get(), get()) }
+    viewModel { FeedViewModel(get(), get(), get(), get(), get(), get()) }
 }

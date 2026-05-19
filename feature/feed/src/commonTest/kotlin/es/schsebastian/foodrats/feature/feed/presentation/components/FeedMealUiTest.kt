@@ -1,49 +1,89 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
-import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.DishName
-import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealRating
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
-import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 class FeedMealUiTest {
-    @Test fun maps_meal_to_ui_dto() {
-        val meal = Meal(
-            id = (MealId.of("m-1") as Result.Ok).value,
-            author = MealAuthor((AccountId.of("u-1") as Result.Ok).value, "Sam", "https://x/avatar.png"),
-            crewId = (CrewId.of("c-1") as Result.Ok).value,
-            day = MealDay(LocalDate(2026, 5, 16), TimeZone.UTC),
-            slot = MealSlot.Lunch,
-            photoUrl = "https://x/p.jpg",
-            score = (Score.of(8) as Result.Ok).value,
-            dish = (DishName.of("Pasta carbonara") as Result.Ok).value,
-            tags = listOf(
-                (FoodTag.custom("italian") as Result.Ok).value,
-                (FoodTag.custom("dinner") as Result.Ok).value,
-            ),
-            publishedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
-        )
-        val ui = meal.toFeedUi()
-        assertEquals("m-1", ui.id)
-        assertEquals("Sam", ui.authorName)
-        assertEquals("https://x/avatar.png", ui.authorAvatarUrl)
-        assertEquals("https://x/p.jpg", ui.photoUrl)
-        assertEquals(8, ui.score)
-        assertEquals("Pasta carbonara", ui.dishName)
-        assertEquals(listOf("italian", "dinner"), ui.tags)
-        assertEquals(1_700_000_000_000L, ui.publishedAtEpochMs)
-        assertEquals(DailyEmote.forDay(MealDay(LocalDate(2026, 5, 16), TimeZone.UTC)), ui.dayEmote)
+    private val zone = TimeZone.UTC
+    private val today = MealDay(LocalDate.parse("2026-05-19"), zone)
+    private val mealDay = MealDay(LocalDate.parse("2026-05-19"), zone)
+
+    private val authorId = (AccountId.of("u-author") as Result.Ok).value
+    private val viewerId = (AccountId.of("u-viewer") as Result.Ok).value
+
+    private val sampleMeal = Meal(
+        id = (MealId.of("m1") as Result.Ok).value,
+        author = MealAuthor(authorId, "Author", null),
+        crewId = (CrewId.of("c1") as Result.Ok).value,
+        day = mealDay,
+        slot = MealSlot.Lunch,
+        photoUrl = "https://example.com/p.jpg",
+        dish = (DishName.of("Pasta") as Result.Ok).value,
+        tags = emptyList(),
+        publishedAt = Instant.parse("2026-05-19T12:00:00Z"),
+    )
+
+    private fun rating(rater: AccountId, score: Int) = MealRating(
+        raterId = rater,
+        raterDisplayName = "Rater",
+        raterAvatarUrl = null,
+        score = (Score.of(score) as Result.Ok).value,
+        ratedAt = Instant.parse("2026-05-19T13:00:00Z"),
+    )
+
+    @Test fun viewer_is_author_cannot_rate() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(authorId, today)
+        assertFalse(ui.canRate)
+        assertNull(ui.viewerRating)
+    }
+
+    @Test fun viewer_already_rated_cannot_rate_again() {
+        val ui = MealWithRatings(sampleMeal, listOf(rating(viewerId, 4))).toFeedUi(viewerId, today)
+        assertFalse(ui.canRate)
+        assertEquals(4, ui.viewerRating)
+    }
+
+    @Test fun viewer_can_rate_when_open() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertTrue(ui.canRate)
+    }
+
+    @Test fun window_closed_two_days_later() {
+        val twoLater = MealDay(LocalDate.parse("2026-05-21"), zone)
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, twoLater)
+        assertFalse(ui.canRate)
+    }
+
+    @Test fun average_null_when_no_votes() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertNull(ui.averageScore)
+        assertEquals(0, ui.ratingCount)
+    }
+
+    @Test fun average_computed_from_ratings() {
+        val ui = MealWithRatings(
+            sampleMeal,
+            listOf(rating(viewerId, 2), rating((AccountId.of("u-x") as Result.Ok).value, 4)),
+        ).toFeedUi((AccountId.of("u-y") as Result.Ok).value, today)
+        assertEquals(3.0, ui.averageScore!!, 1e-9)
+        assertEquals(2, ui.ratingCount)
     }
 }
