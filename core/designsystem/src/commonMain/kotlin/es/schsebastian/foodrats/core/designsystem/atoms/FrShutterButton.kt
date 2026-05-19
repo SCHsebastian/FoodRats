@@ -2,7 +2,9 @@ package es.schsebastian.foodrats.core.designsystem.atoms
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -13,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
-import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 
 @Composable
@@ -38,7 +40,10 @@ fun FrShutterButton(
 @FrPreview
 @Composable
 private fun FrShutterButtonPreview() {
-    FoodRatsTheme {
-        FrShutterButton(onClick = {})
+    FrPreviewLightDark {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            FrShutterButton(onClick = {})
+            FrShutterButton(onClick = {}, enabled = false)
+        }
     }
 }

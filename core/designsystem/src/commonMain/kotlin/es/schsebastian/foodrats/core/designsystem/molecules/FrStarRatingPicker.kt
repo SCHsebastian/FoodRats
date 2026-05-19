@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 @Composable
@@ -27,5 +29,13 @@ fun FrStarRatingPicker(
                 FrText(text = i.toString())
             }
         }
+    }
+}
+
+@FrPreview
+@Composable
+private fun FrStarRatingPickerPreview() {
+    FrPreviewLightDark {
+        FrStarRatingPicker(onSelect = {})
     }
 }

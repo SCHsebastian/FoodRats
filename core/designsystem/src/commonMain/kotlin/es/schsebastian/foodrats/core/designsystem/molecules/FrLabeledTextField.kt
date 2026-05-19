@@ -1,10 +1,14 @@
 package es.schsebastian.foodrats.core.designsystem.molecules
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 
 @Composable
 fun FrLabeledTextField(
@@ -19,5 +23,32 @@ fun FrLabeledTextField(
         FrText(text = label)
         FrTextField(value = value, onValueChange = onValueChange, isError = isError)
         helper?.let { FrText(text = it) }
+    }
+}
+
+@FrPreview
+@Composable
+private fun FrLabeledTextFieldPreview() {
+    FrPreviewLightDark {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            FrLabeledTextField(
+                label = "Dish name",
+                value = "",
+                onValueChange = {},
+                helper = "What did you eat?",
+            )
+            FrLabeledTextField(
+                label = "Crew code",
+                value = "RATS-42",
+                onValueChange = {},
+            )
+            FrLabeledTextField(
+                label = "Email",
+                value = "not-an-email",
+                onValueChange = {},
+                helper = "Enter a valid email address.",
+                isError = true,
+            )
+        }
     }
 }

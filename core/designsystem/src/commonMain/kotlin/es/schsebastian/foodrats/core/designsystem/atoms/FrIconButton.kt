@@ -1,12 +1,15 @@
 package es.schsebastian.foodrats.core.designsystem.atoms
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
-import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 
 @Composable
 fun FrIconButton(
@@ -24,7 +27,13 @@ fun FrIconButton(
 @FrPreview
 @Composable
 private fun FrIconButtonPreview() {
-    FoodRatsTheme {
-        FrIconButton(icon = FrIcons.Back, onClick = {}, contentDescription = "Back")
+    FrPreviewLightDark {
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FrIconButton(icon = FrIcons.Back, onClick = {}, contentDescription = "Back")
+            FrIconButton(icon = FrIcons.Settings, onClick = {}, contentDescription = "Settings")
+            FrIconButton(icon = FrIcons.ChevronLeft, onClick = {}, contentDescription = "Prev")
+            FrIconButton(icon = FrIcons.ChevronRight, onClick = {}, contentDescription = "Next")
+            FrIconButton(icon = FrIcons.Settings, onClick = {}, contentDescription = "Disabled", enabled = false)
+        }
     }
 }

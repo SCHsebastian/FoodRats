@@ -1,13 +1,18 @@
 package es.schsebastian.foodrats.core.designsystem.atoms
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
-import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 
 @Composable
 fun FrDivider(
@@ -25,7 +30,14 @@ fun FrDivider(
 @FrPreview
 @Composable
 private fun FrDividerPreview() {
-    FoodRatsTheme {
-        FrDivider()
+    FrPreviewLightDark {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Text("Default", style = MaterialTheme.typography.labelSmall)
+            FrDivider()
+            Text("Thick", style = MaterialTheme.typography.labelSmall)
+            FrDivider(thickness = 3.dp)
+            Text("Tinted", style = MaterialTheme.typography.labelSmall)
+            FrDivider(color = MaterialTheme.colorScheme.primary)
+        }
     }
 }
