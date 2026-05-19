@@ -7,7 +7,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -25,7 +24,6 @@ class TagVarietyTest {
         MealDay(LocalDate(2026, 5, 16), TimeZone.UTC),
         MealSlot.Lunch,
         "u",
-        (Score.of(5) as Result.Ok).value,
         (DishName.of("dish") as Result.Ok).value,
         tags.mapNotNull { (FoodTag.custom(it) as? Result.Ok)?.value },
         Instant.fromEpochMilliseconds(0L),

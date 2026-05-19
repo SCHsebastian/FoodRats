@@ -1,10 +1,10 @@
 package es.schsebastian.foodrats.feature.stats.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
-import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -59,16 +59,17 @@ class ObserveStatsUseCase(
     }
 
     private fun snapshot(
-        meals: List<Meal>,
+        aggregates: List<MealWithRatings>,
         accountId: AccountId,
         today: LocalDate,
     ): StatsSnapshot {
+        val meals = aggregates.map { it.meal }
         val memberIds = meals.map { it.author.accountId }.distinct()
         return StatsSnapshot(
             crewStreak = computeCrewStreak(meals, memberIds, today, zone),
             personalStreak = computePersonalStreak(meals, accountId, today, zone),
             topDishes = computeTopDishes(meals, limit = 5),
-            leaderboard = computeLeaderboard(meals),
+            leaderboard = computeLeaderboard(aggregates),
             tagVarietyCount = computeTagVariety(meals),
             mealsConsidered = meals.size,
         )

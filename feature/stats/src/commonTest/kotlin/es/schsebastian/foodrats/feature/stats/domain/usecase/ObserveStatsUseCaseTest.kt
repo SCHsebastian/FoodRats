@@ -10,7 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -43,11 +43,11 @@ class FakeActive(initial: CrewId?) : ActiveCrewProvider {
     override suspend fun clear() { s.value = null }
 }
 
-class FakeRead(val meals: List<Meal>, val err: MealReadError? = null) : MealReadPort {
+class FakeRead(val aggregates: List<MealWithRatings>, val err: MealReadError? = null) : MealReadPort {
     override fun observeFeed(crewId: CrewId, day: MealDay) = error("unused in this test")
     override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) =
-        MutableStateFlow(Unit).map<Unit, Result<List<Meal>, MealReadError>> {
-            if (err != null) Result.failure(err) else Result.success(meals)
+        MutableStateFlow(Unit).map<Unit, Result<List<MealWithRatings>, MealReadError>> {
+            if (err != null) Result.failure(err) else Result.success(aggregates)
         }
 }
 
@@ -79,18 +79,25 @@ class ObserveStatsUseCaseTest {
             MealDay(today, zone),
             MealSlot.Lunch,
             "u",
-            (Score.of(7) as Result.Ok).value,
             (DishName.of("Pasta") as Result.Ok).value,
             emptyList(),
             now,
         )
-        val uc = ObserveStatsUseCase(FakeActive(crew), FakeSession(Session(me, null)), FakeRead(listOf(mealMine)), clock, zone)
+        val uc = ObserveStatsUseCase(
+            FakeActive(crew),
+            FakeSession(Session(me, null)),
+            FakeRead(listOf(MealWithRatings(mealMine, emptyList()))),
+            clock,
+            zone,
+        )
         uc().test {
             val r = awaitItem()
             assertIs<Result.Ok<es.schsebastian.foodrats.feature.stats.domain.model.StatsSnapshot>>(r)
             assertEquals(1, r.value.personalStreak.days)
             assertEquals(1, r.value.crewStreak.days)
             assertEquals(1, r.value.topDishes.size)
+            // meal has no ratings → leaderboard entry is excluded
+            assertEquals(0, r.value.leaderboard.entries.size)
             cancelAndIgnoreRemainingEvents()
         }
     }

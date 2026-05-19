@@ -9,7 +9,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.Score
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -57,7 +57,6 @@ class StatsViewModelTest {
             MealDay(today, zone),
             MealSlot.Lunch,
             "u",
-            (Score.of(7) as Result.Ok).value,
             (DishName.of("Pasta") as Result.Ok).value,
             emptyList(),
             now,
@@ -73,7 +72,9 @@ class StatsViewModelTest {
         }
         val read = object : MealReadPort {
             override fun observeFeed(crewId: CrewId, day: MealDay) =
-                MutableStateFlow(Unit).map<Unit, Result<List<Meal>, MealReadError>> { Result.success(listOf(mealMine)) }
+                MutableStateFlow(Unit).map<Unit, Result<List<MealWithRatings>, MealReadError>> {
+                    Result.success(listOf(MealWithRatings(mealMine, emptyList())))
+                }
             override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) = observeFeed(crewId, from)
         }
         val vm = StatsViewModel(ObserveStatsUseCase(active, session, read, clock, zone))
