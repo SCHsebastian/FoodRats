@@ -20,4 +20,7 @@ class CrewErrorToStringKeyTest {
     @Test fun backendNetwork() = assertEquals(CrewStringKey.ErrorNetwork, CrewError.Backend.Network.toStringKey())
     @Test fun backendPermission() = assertEquals(CrewStringKey.ErrorPermission, CrewError.Backend.PermissionDenied.toStringKey())
     @Test fun backendUnavailable() = assertEquals(CrewStringKey.ErrorUnknown, CrewError.Backend.Unavailable.toStringKey())
+    @Test fun maps_authorization_not_owner() = assertEquals(CrewStringKey.ErrorAuthorizationNotOwner, CrewError.Authorization.NotOwner.toStringKey())
+    @Test fun maps_validation_display_name_blank() = assertEquals(CrewStringKey.ErrorValidationDisplayNameBlank, CrewError.Validation.DisplayNameBlank.toStringKey())
+    @Test fun maps_validation_display_name_too_long() = assertEquals(CrewStringKey.ErrorValidationDisplayNameTooLong, CrewError.Validation.DisplayNameTooLong.toStringKey())
 }

@@ -25,4 +25,7 @@
     <string name="crew_error_permission">You don\'t have permission.</string>
     <string name="crew_error_collision">Couldn\'t pick a unique code, try again.</string>
     <string name="crew_error_unknown">Something went wrong. Try again.</string>
+    <string name="crew_error_authorization_not_owner">Only the crew owner can do this.</string>
+    <string name="crew_error_validation_display_name_blank">Display name can\'t be empty.</string>
+    <string name="crew_error_validation_display_name_too_long">Display name is too long (max 40 characters).</string>
 </resources>

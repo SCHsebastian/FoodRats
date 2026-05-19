@@ -5,6 +5,9 @@ import foodrats.feature.crew.generated.resources.Res
 import foodrats.feature.crew.generated.resources.crew_create_name_label
 import foodrats.feature.crew.generated.resources.crew_create_submit
 import foodrats.feature.crew.generated.resources.crew_error_already_member
+import foodrats.feature.crew.generated.resources.crew_error_authorization_not_owner
+import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_blank
+import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_too_long
 import foodrats.feature.crew.generated.resources.crew_error_code_malformed
 import foodrats.feature.crew.generated.resources.crew_error_code_unknown
 import foodrats.feature.crew.generated.resources.crew_error_collision
@@ -55,4 +58,7 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     ErrorPermission(Res.string.crew_error_permission),
     ErrorCollision(Res.string.crew_error_collision),
     ErrorUnknown(Res.string.crew_error_unknown),
+    ErrorAuthorizationNotOwner(Res.string.crew_error_authorization_not_owner),
+    ErrorValidationDisplayNameBlank(Res.string.crew_error_validation_display_name_blank),
+    ErrorValidationDisplayNameTooLong(Res.string.crew_error_validation_display_name_too_long),
 }
