@@ -17,9 +17,8 @@ class MealErrorToStringKeyTest {
     }
 
     @Test
-    fun maps_NoSlotSelected_currently_to_MealErrorPublishUnavailable_pending_Task10() {
-        // Task 10 will replace this with a dedicated MealErrorPublishNoSlotSelected key
-        assertEquals(MealStringKey.MealErrorPublishUnavailable, MealError.Publish.NoSlotSelected.toStringKey())
+    fun maps_NoSlotSelected_to_MealErrorPublishNoSlotSelected() {
+        assertEquals(MealStringKey.MealErrorPublishNoSlotSelected, MealError.Publish.NoSlotSelected.toStringKey())
     }
 
     @Test fun maps_all_publish_errors() {

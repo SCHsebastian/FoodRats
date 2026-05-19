@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="meal_capture_title">Comida de hoy</string>
+    <string name="meal_capture_tap_to_take_photo">Toca para tomar foto</string>
     <string name="meal_capture_no_perm_headline">Necesitamos permiso de cámara</string>
     <string name="meal_capture_no_perm_subtext">FoodRats necesita la cámara para fotografiar tu comida.</string>
     <string name="meal_compose_title">Compón tu plato</string>
@@ -17,4 +18,8 @@
     <string name="meal_error_read_unauthorized">No tienes acceso a este grupo.</string>
     <string name="meal_error_read_crew_not_found">Grupo no encontrado.</string>
     <string name="meal_error_read_not_found">Comida no encontrada.</string>
+    <string name="meal_slot_breakfast">Desayuno</string>
+    <string name="meal_slot_lunch">Almuerzo</string>
+    <string name="meal_slot_dinner">Cena</string>
+    <string name="meal_publish_no_slot">Elige una franja (Desayuno, Almuerzo o Cena) antes de publicar.</string>
 </resources>

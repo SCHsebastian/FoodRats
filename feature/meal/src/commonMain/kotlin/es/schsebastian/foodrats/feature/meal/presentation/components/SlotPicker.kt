@@ -10,6 +10,8 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 
 @Composable
 fun SlotPicker(
@@ -25,8 +27,7 @@ fun SlotPicker(
         MealSlot.entries.forEach { slot ->
             val isTaken = slot in taken
             FrButton(
-                // TODO(Task 10): replace hardcoded labels with resolve(slot.toStringKey())
-                label = slot.name,
+                label = resolve(slot.toStringKey()),
                 onClick = { onSelect(slot) },
                 variant = if (slot == selected) FrButtonVariant.Primary else FrButtonVariant.Secondary,
                 enabled = !isTaken,
@@ -34,4 +35,10 @@ fun SlotPicker(
             )
         }
     }
+}
+
+private fun MealSlot.toStringKey(): MealStringKey = when (this) {
+    MealSlot.Breakfast -> MealStringKey.SlotBreakfast
+    MealSlot.Lunch     -> MealStringKey.SlotLunch
+    MealSlot.Dinner    -> MealStringKey.SlotDinner
 }
