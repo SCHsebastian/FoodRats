@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.feed.generated.resources.Res
+import foodrats.feature.feed.generated.resources.feed_average_heading
 import foodrats.feature.feed.generated.resources.feed_capture_cta
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
@@ -12,8 +13,17 @@ import foodrats.feature.feed.generated.resources.feed_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_next_day
 import foodrats.feature.feed.generated.resources.feed_no_active_crew_headline
 import foodrats.feature.feed.generated.resources.feed_no_active_crew_subtext
+import foodrats.feature.feed.generated.resources.feed_no_votes_yet
 import foodrats.feature.feed.generated.resources.feed_prev_day
+import foodrats.feature.feed.generated.resources.feed_rate_error_already_rated
+import foodrats.feature.feed.generated.resources.feed_rate_error_cannot_rate_own_meal
+import foodrats.feature.feed.generated.resources.feed_rate_error_unauthorized
+import foodrats.feature.feed.generated.resources.feed_rate_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_rate_error_window_closed
+import foodrats.feature.feed.generated.resources.feed_rate_this_meal
 import foodrats.feature.feed.generated.resources.feed_title
+import foodrats.feature.feed.generated.resources.feed_votes_heading
+import foodrats.feature.feed.generated.resources.feed_your_vote
 import org.jetbrains.compose.resources.StringResource
 
 enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
@@ -29,4 +39,14 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     ErrorUnauthorized(Res.string.feed_error_unauthorized),
     ErrorCrewNotFound(Res.string.feed_error_crew_not_found),
     ErrorUnavailable(Res.string.feed_error_unavailable),
+    NoVotesYet(Res.string.feed_no_votes_yet),
+    AverageHeading(Res.string.feed_average_heading),
+    RateThisMeal(Res.string.feed_rate_this_meal),
+    YourVote(Res.string.feed_your_vote),
+    VotesHeading(Res.string.feed_votes_heading),
+    RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),
+    RateErrorAlreadyRated(Res.string.feed_rate_error_already_rated),
+    RateErrorWindowClosed(Res.string.feed_rate_error_window_closed),
+    RateErrorUnauthorized(Res.string.feed_rate_error_unauthorized),
+    RateErrorUnavailable(Res.string.feed_rate_error_unavailable),
 }

@@ -12,4 +12,14 @@
     <string name="feed_error_unauthorized">You aren\'t a member of this crew.</string>
     <string name="feed_error_crew_not_found">Crew not found.</string>
     <string name="feed_error_unavailable">Couldn\'t load the feed. Try again.</string>
+    <string name="feed_no_votes_yet">No votes yet</string>
+    <string name="feed_average_heading">Average</string>
+    <string name="feed_rate_this_meal">Rate this meal</string>
+    <string name="feed_your_vote">Your vote: %1$d ★</string>
+    <string name="feed_votes_heading">Votes</string>
+    <string name="feed_rate_error_cannot_rate_own_meal">You can\'t rate your own meal</string>
+    <string name="feed_rate_error_already_rated">You\'ve already voted</string>
+    <string name="feed_rate_error_window_closed">Voting is closed</string>
+    <string name="feed_rate_error_unauthorized">Sign in to vote</string>
+    <string name="feed_rate_error_unavailable">Couldn\'t submit your vote</string>
 </resources>
