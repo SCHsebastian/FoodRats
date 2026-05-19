@@ -8,7 +8,7 @@ import es.schsebastian.foodrats.feature.notifications.domain.model.ReminderKind
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
+import kotlin.time.Clock
 import org.koin.android.ext.android.inject
 
 class FoodRatsFirebaseMessagingService : FirebaseMessagingService() {
