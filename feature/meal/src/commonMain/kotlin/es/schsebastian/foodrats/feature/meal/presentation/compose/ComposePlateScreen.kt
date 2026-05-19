@@ -20,6 +20,7 @@ import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
+import es.schsebastian.foodrats.feature.meal.presentation.components.SlotPicker
 import es.schsebastian.foodrats.feature.meal.presentation.toStringKey
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -34,6 +35,11 @@ fun ComposePlateScreen(onComposed: () -> Unit, vm: ComposePlateViewModel = koinV
     FrScreenScaffold {
         FrFormLayout {
             Column {
+                SlotPicker(
+                    selected = state.selectedSlot,
+                    taken = state.takenSlots,
+                    onSelect = { slot -> vm.onIntent(ComposePlateIntent.SelectSlot(slot)) },
+                )
                 FrLabeledTextField(
                     label = resolve(MealStringKey.ComposeTitle),
                     value = state.dish,
