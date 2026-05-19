@@ -27,16 +27,18 @@ service cloud.firestore {
                     && request.auth.uid in resource.data.memberIds
                     && resource.data.memberIds.size() == 1;
 
-      // Meals are scoped under crews
+      // Meals are scoped under crews. Up to 3 per author per day — one per slot.
+      // Deterministic doc ID enforces same-day-per-slot uniqueness without composite indexes.
       match /meals/{mealId} {
         allow read:   if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds;
         allow create: if request.auth != null
                       && request.auth.uid == request.resource.data.authorId
-                      && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds;
-        allow delete: if request.auth != null
-                      && request.auth.uid == resource.data.authorId;
-        // No update path for MVP — meals are immutable once published.
+                      && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
+                      && request.resource.data.slot in ["breakfast", "lunch", "dinner"]
+                      && mealId == crewId + "_" + request.auth.uid + "_" + request.resource.data.dayKey + "_" + request.resource.data.slot
+                      && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId));
+        // No update or delete path — meals are immutable once published.
       }
     }
 
