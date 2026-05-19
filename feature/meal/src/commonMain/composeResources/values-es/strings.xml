@@ -22,4 +22,5 @@
     <string name="meal_slot_lunch">Almuerzo</string>
     <string name="meal_slot_dinner">Cena</string>
     <string name="meal_publish_no_slot">Elige una franja (Desayuno, Almuerzo o Cena) antes de publicar.</string>
+    <string name="meal_tag_separator"> • </string>
 </resources>

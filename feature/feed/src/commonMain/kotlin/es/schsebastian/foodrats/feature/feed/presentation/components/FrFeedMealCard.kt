@@ -42,7 +42,7 @@ fun FrFeedMealCard(
                 )
                 if (ui.averageScore != null) {
                     val avg = (kotlin.math.round(ui.averageScore * 10) / 10.0).toString()
-                    FrText(text = "$avg ★ · ${ui.ratingCount}")
+                    FrText(text = resolve(FeedStringKey.RatingSummary, avg, ui.ratingCount))
                 } else {
                     FrText(text = resolve(FeedStringKey.NoVotesYet))
                 }
@@ -75,7 +75,7 @@ fun FrFeedMealCard(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(top = Spacing.xs),
                     ) {
-                        FrText(text = "${v.raterName}: ${v.score} ★")
+                        FrText(text = resolve(FeedStringKey.VoterScore, v.raterName, v.score))
                     }
                 }
             }

@@ -23,6 +23,7 @@ import foodrats.feature.meal.generated.resources.meal_publish_title
 import foodrats.feature.meal.generated.resources.meal_slot_breakfast
 import foodrats.feature.meal.generated.resources.meal_slot_dinner
 import foodrats.feature.meal.generated.resources.meal_slot_lunch
+import foodrats.feature.meal.generated.resources.meal_tag_separator
 import org.jetbrains.compose.resources.StringResource
 
 enum class MealStringKey(override val resourceId: StringResource) : StringKey {
@@ -35,6 +36,7 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     SlotBreakfast(Res.string.meal_slot_breakfast),
     SlotLunch(Res.string.meal_slot_lunch),
     SlotDinner(Res.string.meal_slot_dinner),
+    TagSeparator(Res.string.meal_tag_separator),
     MealErrorAlreadyPosted(Res.string.meal_error_already_posted),
     MealErrorNotToday(Res.string.meal_error_not_today),
     MealErrorPublishUnavailable(Res.string.meal_error_publish_unavailable),

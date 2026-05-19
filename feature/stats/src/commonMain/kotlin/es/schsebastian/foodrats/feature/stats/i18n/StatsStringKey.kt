@@ -15,6 +15,7 @@ import foodrats.feature.stats.generated.resources.stats_leaderboard_row
 import foodrats.feature.stats.generated.resources.stats_leaderboard_section
 import foodrats.feature.stats.generated.resources.stats_meals_considered
 import foodrats.feature.stats.generated.resources.stats_personal_streak_label
+import foodrats.feature.stats.generated.resources.stats_post_count
 import foodrats.feature.stats.generated.resources.stats_streak_unit_plural
 import foodrats.feature.stats.generated.resources.stats_streak_unit_singular
 import foodrats.feature.stats.generated.resources.stats_tag_variety_label
@@ -36,6 +37,7 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     MealsConsidered(Res.string.stats_meals_considered),
     DishTallyRow(Res.string.stats_dish_tally_row),
     LeaderboardRow(Res.string.stats_leaderboard_row),
+    PostCount(Res.string.stats_post_count),
     EmptyHeadline(Res.string.stats_empty_headline),
     EmptySubtext(Res.string.stats_empty_subtext),
     ErrorNoActiveCrew(Res.string.stats_error_no_active_crew),

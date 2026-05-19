@@ -8,4 +8,9 @@ interface SessionProvider {
     suspend fun requireCurrent(): Result<Session, SessionError>
 }
 
-enum class SessionError { NotSignedIn, TokenExpired, AccountDisabled, FirebaseUnavailable }
+sealed interface SessionError {
+    data object NotSignedIn         : SessionError
+    data object TokenExpired        : SessionError
+    data object AccountDisabled     : SessionError
+    data object FirebaseUnavailable : SessionError
+}

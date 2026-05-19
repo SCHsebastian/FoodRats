@@ -12,6 +12,7 @@
     <string name="stats_meals_considered">Basado en %1$d comidas (últimos 30 días)</string>
     <string name="stats_dish_tally_row">%1$s · %2$d</string>
     <string name="stats_leaderboard_row">%1$s · %2$.1f (%3$d publicaciones)</string>
+    <string name="stats_post_count">(%1$d)</string>
     <string name="stats_empty_headline">Aún no hay estadísticas</string>
     <string name="stats_empty_subtext">Publica una comida para empezar.</string>
     <string name="stats_error_no_active_crew">Elige un grupo para ver sus estadísticas.</string>

@@ -14,4 +14,6 @@ value class CrewId internal constructor(val value: String) {
     }
 }
 
-enum class IdError { Blank }
+sealed interface IdError {
+    data object Blank : IdError
+}

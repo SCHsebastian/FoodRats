@@ -13,29 +13,38 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import es.schsebastian.foodrats.core.domain.meal.MealDay as DomainMealDay
 
 class FeedViewModel(
-    private val observeFeed: ObserveFeedUseCase,
+    observeFeed: ObserveFeedUseCase,
     private val ratingPort: MealRatingPort,
     private val activeCrew: ActiveCrewProvider,
     private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
-) : MviViewModel<FeedState, FeedIntent, FeedEffect>(FeedState()) {
+) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
+    FeedState(
+        day = FeedDay.today(clock.now().toLocalDateTime(zone).date, zone),
+        canGoPrev = true,
+    ),
+) {
 
     private val today = clock.now().toLocalDateTime(zone).date
-    private val day = MutableStateFlow(FeedDay.today(today, zone))
 
     init {
-        update { it.copy(day = day.value, canGoNext = false, canGoPrev = true) }
         viewModelScope.launch {
-            observeFeed(day).collect { r ->
+            observeFeed(
+                state.map { it.day }
+                    .filterNotNull()
+                    .distinctUntilChanged(),
+            ).collect { r ->
                 when (r) {
                     is Result.Ok -> {
                         val viewerId = session.current.first()?.accountId
@@ -72,12 +81,12 @@ class FeedViewModel(
     }
 
     private fun navigatePrev() {
-        val candidate = day.value.previous()
+        val currentDay = currentState.day ?: return
+        val candidate = currentDay.previous()
         if (!FeedDay.isWithinWindow(candidate.day.date, today)) {
             update { it.copy(canGoPrev = false) }
             return
         }
-        day.value = candidate
         update { it.copy(
             day = candidate, isLoading = true,
             canGoNext = candidate.day.date < today,
@@ -86,9 +95,9 @@ class FeedViewModel(
     }
 
     private fun navigateNext() {
-        val candidate = day.value.next()
+        val currentDay = currentState.day ?: return
+        val candidate = currentDay.next()
         if (candidate.day.date > today) { update { it.copy(canGoNext = false) }; return }
-        day.value = candidate
         update { it.copy(
             day = candidate, isLoading = true,
             canGoNext = candidate.day.date < today,

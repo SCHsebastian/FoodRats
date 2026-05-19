@@ -9,4 +9,8 @@ interface MealReadPort {
     fun observeRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<Result<List<MealWithRatings>, MealReadError>>
 }
 
-enum class MealReadError { Unauthorized, CrewNotFound, Unavailable }
+sealed interface MealReadError {
+    data object Unauthorized : MealReadError
+    data object CrewNotFound : MealReadError
+    data object Unavailable  : MealReadError
+}

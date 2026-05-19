@@ -14,6 +14,8 @@ import foodrats.feature.feed.generated.resources.feed_no_active_crew_headline
 import foodrats.feature.feed.generated.resources.feed_no_active_crew_subtext
 import foodrats.feature.feed.generated.resources.feed_no_votes_yet
 import foodrats.feature.feed.generated.resources.feed_prev_day
+import foodrats.feature.feed.generated.resources.feed_rating_summary
+import foodrats.feature.feed.generated.resources.feed_voter_score
 import foodrats.feature.feed.generated.resources.feed_rate_error_already_rated
 import foodrats.feature.feed.generated.resources.feed_rate_error_cannot_rate_own_meal
 import foodrats.feature.feed.generated.resources.feed_rate_error_unauthorized
@@ -41,6 +43,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     AverageHeading(Res.string.feed_average_heading),
     RateThisMeal(Res.string.feed_rate_this_meal),
     YourVote(Res.string.feed_your_vote),
+    RatingSummary(Res.string.feed_rating_summary),
+    VoterScore(Res.string.feed_voter_score),
     VotesHeading(Res.string.feed_votes_heading),
     RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),
     RateErrorAlreadyRated(Res.string.feed_rate_error_already_rated),
