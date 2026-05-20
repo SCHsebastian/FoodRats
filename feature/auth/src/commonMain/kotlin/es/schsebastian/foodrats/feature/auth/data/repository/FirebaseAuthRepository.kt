@@ -15,6 +15,7 @@ import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
@@ -31,7 +32,13 @@ internal class FirebaseAuthRepository(
     private val errorMapper: AuthErrorMapper,
     private val prefs: AppPreferences,
     private val dispatchers: DispatcherProvider,
-    private val repoScope: CoroutineScope = CoroutineScope(SupervisorJob() + dispatchers.default),
+    private val repoScope: CoroutineScope = CoroutineScope(
+        SupervisorJob() +
+            dispatchers.default +
+            CoroutineExceptionHandler { _, t ->
+                FrLog.w("AuthRepo", t) { "repoScope uncaught: ${t.message}" }
+            },
+    ),
 ) : AuthRepository {
 
     // The base session from Firebase Auth carries the account id; the active crew
