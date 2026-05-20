@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -28,9 +29,21 @@ class RootNavViewModel(
                         RootStage.NeedsCrew    -> Route.CrewPicker
                         RootStage.Ready        -> Route.Main
                     }
+                    FrLog.d(FrLog.Channel.RootNav) {
+                        "tick sess=${sess?.accountId?.value ?: "null"} " +
+                            "crew=${crewId?.value ?: "null"} " +
+                            "stage=${currentState.stage::class.simpleName} → " +
+                            "${nextStage::class.simpleName} target=${target?.let { it::class.simpleName }}"
+                    }
                     if (currentState.stage != nextStage) {
+                        FrLog.d(FrLog.Channel.RootNav) {
+                            "transition ${currentState.stage::class.simpleName} → " +
+                                "${nextStage::class.simpleName}, emitting NavigateTo(${target?.let { it::class.simpleName }})"
+                        }
                         update { it.copy(stage = nextStage) }
                         target?.let { emit(RootNavEffect.NavigateTo(it)) }
+                    } else {
+                        FrLog.d(FrLog.Channel.RootNav) { "no-op (same stage)" }
                     }
                 }
         }

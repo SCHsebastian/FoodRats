@@ -26,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavGraph
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -75,11 +75,11 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 onLeft = { controller.navigateTopLevel(Route.CrewPicker) },
                 onSwitch = { controller.navigate(Route.CrewPicker) },
                 onDeleted = { controller.navigateTopLevel(Route.CrewPicker) },
-                // Sign-out flow: defensively pop CrewSettings so the user doesn't briefly see
-                // the stale frame. The real auth-boundary transition happens through
-                // RootNavViewModel observing SessionProvider.current going null — it emits
-                // NavigateTo(Route.SignIn) which navigateTopLevel turns into a stack wipe.
-                onSignedOut = { controller.popBackStack() },
+                // No screen-side navigation on sign-out: RootNavViewModel observes
+                // SessionProvider.current going null and routes the app to SignIn via
+                // navigateTopLevel (the real stack wipe). A defensive popBackStack here
+                // races against that stack wipe and lands the user on a stale frame.
+                onSignedOut = { /* handled by RootNavViewModel */ },
             )
         }
 
@@ -115,14 +115,25 @@ fun NavGraph(navController: NavController = rememberNavController()) {
 
 /**
  * Replace the back stack with [route] — used for stage transitions (Splash → SignIn → CrewPicker → Main,
- * sign-out, session expiry). Pops everything up to and including the graph's start destination so the
- * transition lands on a single-entry stack regardless of where it fires from. The previous version
- * used `popUpTo<Route.Splash>` which silently becomes a no-op the moment Splash leaves the stack
- * after the first transition — sign-out from deep inside the app would have leaked the previous stack.
+ * sign-out, session expiry). Pops everything up to and including the *current* bottom destination so
+ * the transition lands on a single-entry stack regardless of where it fires from.
+ *
+ * Earlier versions used `popUpTo(graph.findStartDestination().id, inclusive = true)` (or
+ * `popUpTo<Route.Splash>`) — both refer to the graph's *configured* start (Splash). That destination
+ * leaves the back stack inclusively the first time we transition away, and from then on `popUpTo`
+ * targets an ID that isn't in the stack — silently a no-op. The consequence: sign-out from a deep
+ * screen kept the previous (authenticated) stack alive, RootNavViewModel updated its `stage` once,
+ * and subsequent ticks saw "same stage" and stopped emitting.
+ *
+ * Reading the live back stack and popping inclusive of *its* bottom is robust regardless of how
+ * many top-level transitions have already happened.
  */
 fun NavHostController.navigateTopLevel(route: Route) {
+    val bottomDestId = currentBackStack.value
+        .firstOrNull { it.destination !is NavGraph }
+        ?.destination?.id
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) { inclusive = true; saveState = false }
+        bottomDestId?.let { popUpTo(it) { inclusive = true; saveState = false } }
         launchSingleTop = true
         restoreState = false
     }

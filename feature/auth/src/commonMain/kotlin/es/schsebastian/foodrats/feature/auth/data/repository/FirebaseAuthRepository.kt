@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.auth.data.firebase.AuthErrorMapper
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAuthDataSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.toAccount
@@ -16,6 +17,7 @@ import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.onEach
 
 internal class FirebaseAuthRepository(
     private val googleClient: GoogleAuthClient,
@@ -36,6 +38,11 @@ internal class FirebaseAuthRepository(
                     (CrewId.of(value) as? Result.Ok)?.value
                 }
                 session.copy(activeCrewId = crewId)
+            }
+        }.onEach { sess ->
+            FrLog.d(FrLog.Channel.Session) {
+                "repo.current emit account=${sess?.accountId?.value ?: "null"} " +
+                    "crew=${sess?.activeCrewId?.value ?: "null"}"
             }
         }
 
@@ -104,16 +111,22 @@ internal class FirebaseAuthRepository(
     }
 
     override suspend fun signOut(): Result<Unit, AuthError> {
+        FrLog.d(FrLog.Channel.SignOut) { "repo: signOut entry" }
         return try {
+            FrLog.d(FrLog.Channel.SignOut) { "repo: → firebase.signOut()" }
             firebase.signOut()
+            FrLog.d(FrLog.Channel.SignOut) { "repo: → googleClient.signOut()" }
             googleClient.signOut()
             // Clear both the session token AND the active crew so the next sign-in
             // lands on CrewPicker instead of silently inheriting the previous user's
             // crew (the active-crew flow re-derives from prefs at session-restore time).
+            FrLog.d(FrLog.Channel.SignOut) { "repo: → prefs.clear(SessionToken, ActiveCrewId)" }
             prefs.clear(Keys.SessionToken)
             prefs.clear(Keys.ActiveCrewId)
+            FrLog.d(FrLog.Channel.SignOut) { "repo: signOut complete (Ok)" }
             Result.success(Unit)
         } catch (t: Throwable) {
+            FrLog.w(FrLog.Channel.SignOut, t) { "repo: signOut threw: ${t.message}" }
             Result.failure(errorMapper.mapFirebase(t))
         }
     }

@@ -23,6 +23,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
@@ -45,11 +46,15 @@ fun CrewSettingsScreen(
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
+            FrLog.d(FrLog.Channel.SignOut) { "screen: effect=$eff" }
             when (eff) {
                 CrewSettingsEffect.NavigateToCrewPicker -> onSwitch()
                 CrewSettingsEffect.Left -> onLeft()
                 CrewSettingsEffect.Deleted -> onDeleted()
-                CrewSettingsEffect.SignedOut -> onSignedOut()
+                CrewSettingsEffect.SignedOut -> {
+                    FrLog.d(FrLog.Channel.SignOut) { "screen: invoking onSignedOut() (RootNav handles nav)" }
+                    onSignedOut()
+                }
             }
         }
     }

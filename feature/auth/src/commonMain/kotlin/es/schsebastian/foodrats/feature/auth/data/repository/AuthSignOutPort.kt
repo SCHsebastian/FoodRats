@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.data.repository
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 
@@ -21,9 +22,17 @@ internal class AuthSignOutPort(
 ) : SignOutPort {
 
     override suspend fun signOut(): Result<Unit, SessionError> {
+        FrLog.d(FrLog.Channel.SignOut) { "port: signOut entry" }
         return when (val r = auth.signOut()) {
-            is Result.Ok  -> Result.success(Unit)
-            is Result.Err -> Result.failure(r.error.toSessionError())
+            is Result.Ok  -> {
+                FrLog.d(FrLog.Channel.SignOut) { "port: repo returned Ok" }
+                Result.success(Unit)
+            }
+            is Result.Err -> {
+                val mapped = r.error.toSessionError()
+                FrLog.d(FrLog.Channel.SignOut) { "port: repo returned Err=${r.error} → mapped=$mapped" }
+                Result.failure(mapped)
+            }
         }
     }
 

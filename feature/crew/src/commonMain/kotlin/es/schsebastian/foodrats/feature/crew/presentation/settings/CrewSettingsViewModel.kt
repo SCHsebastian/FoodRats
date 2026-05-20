@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
@@ -99,9 +100,11 @@ class CrewSettingsViewModel(
     }
 
     private suspend fun doSignOut() {
+        FrLog.d(FrLog.Channel.SignOut) { "vm: doSignOut start" }
         update { it.copy(isSigningOut = true, signOutError = null) }
         when (val r = signOutPort.signOut()) {
             is Result.Ok -> {
+                FrLog.d(FrLog.Channel.SignOut) { "vm: port Ok → emit SignedOut effect" }
                 update { it.copy(isSigningOut = false) }
                 // No explicit navigation here — the RootNavViewModel observes
                 // SessionProvider.current going null and routes the app to SignIn,
@@ -110,7 +113,10 @@ class CrewSettingsViewModel(
                 // doesn't briefly see the (now stale) settings frame.
                 emit(CrewSettingsEffect.SignedOut)
             }
-            is Result.Err -> update { it.copy(isSigningOut = false, signOutError = r.error) }
+            is Result.Err -> {
+                FrLog.d(FrLog.Channel.SignOut) { "vm: port Err=${r.error}" }
+                update { it.copy(isSigningOut = false, signOutError = r.error) }
+            }
         }
     }
 }

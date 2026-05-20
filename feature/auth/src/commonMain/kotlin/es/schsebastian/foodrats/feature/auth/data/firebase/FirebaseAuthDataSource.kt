@@ -5,10 +5,12 @@ import dev.gitlive.firebase.auth.GoogleAuthProvider
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.session.Session
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleIdToken
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
 
 class FirebaseAuthDataSource(
@@ -73,13 +75,27 @@ class FirebaseAuthDataSource(
         // If exists & we're not in memberIds, security rules forbid self-add — caller swallows.
     }
 
-    suspend fun signOut() = withContext(dispatchers.io) { auth.signOut() }
+    suspend fun signOut() = withContext(dispatchers.io) {
+        FrLog.d(FrLog.Channel.SignOut) { "data: auth.signOut() about to call" }
+        auth.signOut()
+        FrLog.d(FrLog.Channel.SignOut) { "data: auth.signOut() returned" }
+    }
 
     fun sessions(): Flow<Session?> =
-        auth.authStateChanged.map { user ->
-            user?.uid?.let { uid ->
-                val acc = ensureAccountDoc(uid)
-                acc.toAccount()?.toSession()
+        auth.authStateChanged
+            .onEach { user ->
+                FrLog.d(FrLog.Channel.Session) { "data: authStateChanged user=${user?.uid ?: "null"}" }
             }
-        }.flowOn(dispatchers.io)
+            .map { user ->
+                user?.uid?.let { uid ->
+                    val acc = ensureAccountDoc(uid)
+                    acc.toAccount()?.toSession()
+                }
+            }
+            .onEach { session ->
+                FrLog.d(FrLog.Channel.Session) {
+                    "data: sessions emit account=${session?.accountId?.value ?: "null"}"
+                }
+            }
+            .flowOn(dispatchers.io)
 }
