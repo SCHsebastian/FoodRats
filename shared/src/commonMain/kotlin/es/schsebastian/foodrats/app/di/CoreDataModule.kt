@@ -8,8 +8,6 @@ import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.providePreferencesDataStore
 import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
-import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
-import es.schsebastian.foodrats.core.domain.telemetry.NoopCrashReporter
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.domain.time.SystemClock
 import kotlinx.datetime.TimeZone
@@ -20,7 +18,9 @@ val coreDataModule = module {
     single<DispatcherProvider> { DefaultDispatcherProvider() }
     single<Clock> { SystemClock() }
     single<TimeZone> { TimeZone.currentSystemDefault() }
-    single<CrashReporter> { NoopCrashReporter }
+    // CrashReporter is bound per-platform (Crashlytics has no KMP binding):
+    //   Android -> AndroidCrashReporter in FoodRatsApplication
+    //   iOS     -> crashIosModule(...) in MainViewController
     single { providePreferencesDataStore() }
     single { AppPreferences(get()) }
     single { Firebase.auth }
