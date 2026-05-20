@@ -9,9 +9,18 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 class CrewFirestoreDataSource(
@@ -20,6 +29,10 @@ class CrewFirestoreDataSource(
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
 ) {
+
+    private val obsScope = CoroutineScope(SupervisorJob() + dispatchers.default)
+    private val crewSharedFlowsLock = Mutex()
+    private val crewSharedFlows = mutableMapOf<String, SharedFlow<CrewDto?>>()
 
     private val crewsCol get() = firestore.collection("crews")
     private val codesCol get() = firestore.collection("crewCodes")
@@ -119,9 +132,16 @@ class CrewFirestoreDataSource(
             .snapshots
             .map { snap -> snap.documents.map { it.data<CrewDto>() } }
 
-    fun observeCrew(crewId: CrewId): Flow<CrewDto?> =
-        crewsCol.document(crewId.value).snapshots
-            .map { snap -> if (snap.exists) snap.data<CrewDto>() else null }
+    fun observeCrew(crewId: CrewId): Flow<CrewDto?> = flow {
+        val shared = crewSharedFlowsLock.withLock {
+            crewSharedFlows.getOrPut(crewId.value) {
+                crewsCol.document(crewId.value).snapshots
+                    .map { snap -> if (snap.exists) snap.data<CrewDto>() else null }
+                    .shareIn(obsScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
+            }
+        }
+        emitAll(shared)
+    }
 
     /** Cold flow projecting the members map from the live crew document. */
     fun observeMembersRaw(crewId: CrewId): Flow<List<CrewMemberView>> =
