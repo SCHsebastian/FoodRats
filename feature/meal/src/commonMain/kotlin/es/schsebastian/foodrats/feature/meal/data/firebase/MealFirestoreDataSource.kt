@@ -62,14 +62,24 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .exists
     }
 
-    /** Returns the set of slots already taken for the given crew/author/day. */
+    /** Returns the set of slots already taken for the given crew/author/day. One Firestore round-trip. */
     suspend fun takenSlots(
         crewId: CrewId,
         authorId: AccountId,
         dayKey: String,
-    ): Set<MealSlot> = MealSlot.entries
-        .filter { mealExists(crewId, authorId, dayKey, it) }
-        .toSet()
+    ): Set<MealSlot> {
+        val snaps = firestore.collection("crews").document(crewId.value).collection("meals")
+            .where {
+                ("authorId" equalTo authorId.value) and
+                    ("dayKey" equalTo dayKey)
+            }
+            .get()
+            .documents
+        return snaps.mapNotNull { doc ->
+            val slotKey = runCatching { doc.data<MealDto>().slot }.getOrNull() ?: return@mapNotNull null
+            MealSlot.entries.firstOrNull { it.key() == slotKey }
+        }.toSet()
+    }
 
     /** Returns the MealDto for the given mealId, or null if not found. */
     suspend fun readById(crewId: CrewId, mealId: String): MealDto? {
