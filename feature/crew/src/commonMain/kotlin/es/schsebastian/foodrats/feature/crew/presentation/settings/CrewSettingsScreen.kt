@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -43,6 +45,8 @@ import io.github.ismoy.imagepickerkmp.domain.models.MimeType
 import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
 import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
 import kotlinx.io.readByteArray
+import es.schsebastian.foodrats.core.data.share.ShareController
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -59,6 +63,7 @@ fun CrewSettingsScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
+    val share = koinInject<ShareController>()
     val picker = rememberImagePickerKMP()
 
     LaunchedEffect(picker.result) {
@@ -151,7 +156,7 @@ fun CrewSettingsScreen(
                     Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Invite code + copy
+                // Invite code + share + copy
                 item {
                     FrText(text = resolve(CrewStringKey.SettingsInviteCode))
                     Spacer(Modifier.height(Spacing.xs))
@@ -160,12 +165,22 @@ fun CrewSettingsScreen(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                     Spacer(Modifier.height(Spacing.sm))
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsShare),
-                        onClick = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
-                        variant = FrButtonVariant.Secondary,
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                         modifier = Modifier.fillMaxWidth(),
-                    )
+                    ) {
+                        FrButton(
+                            label = resolve(CrewStringKey.SettingsShare),
+                            onClick = { share.shareText(crew.code.value) },
+                            modifier = Modifier.weight(1f),
+                        )
+                        FrButton(
+                            label = resolve(CrewStringKey.SettingsCopyCta),
+                            onClick = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
+                            variant = FrButtonVariant.Secondary,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                     Spacer(Modifier.height(Spacing.md))
                 }
 

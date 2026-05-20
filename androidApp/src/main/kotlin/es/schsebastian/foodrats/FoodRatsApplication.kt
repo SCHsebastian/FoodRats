@@ -6,6 +6,8 @@ import es.schsebastian.foodrats.auth.GoogleAuthClientAndroidFactory
 import es.schsebastian.foodrats.core.data.datastore.installAndroidDataStoreContext
 import es.schsebastian.foodrats.core.data.firebase.FirebaseInitializer
 import es.schsebastian.foodrats.core.data.firebase.installAndroidFirebaseContext
+import es.schsebastian.foodrats.core.data.share.ShareController
+import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsAndroidModule
@@ -30,10 +32,15 @@ class FoodRatsApplication : Application() {
             modules(
                 appModules + listOf(
                     notificationsAndroidModule,
+                    androidShareModule(),
                     androidAuthModule(),
                 ),
             )
         }
+    }
+
+    private fun androidShareModule() = module {
+        single<ShareController> { ShareControllerAndroid(androidContext()) }
     }
 
     private fun androidAuthModule() = module {

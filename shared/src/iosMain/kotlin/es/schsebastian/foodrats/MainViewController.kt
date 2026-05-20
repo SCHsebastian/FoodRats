@@ -3,6 +3,7 @@ package es.schsebastian.foodrats
 import androidx.compose.ui.window.ComposeUIViewController
 import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.app.root.FoodRatsApp
+import es.schsebastian.foodrats.core.data.di.shareIosModule
 import es.schsebastian.foodrats.feature.auth.di.authIosModule
 import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
@@ -32,6 +33,7 @@ fun MainViewController(
             modules(
                 appModules + listOf(
                     notificationsIosModule,
+                    shareIosModule,
                     authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
                 ),
             )
