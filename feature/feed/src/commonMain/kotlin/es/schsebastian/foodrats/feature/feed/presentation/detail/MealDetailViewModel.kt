@@ -25,6 +25,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowU
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -100,22 +101,20 @@ class MealDetailViewModel(
                 else commentPort.observe(crewId, parsedMealId)
             }
 
-        commentsFlow
-            .flatMapLatest { r ->
-                when (r) {
-                    is Result.Err -> {
-                        update { it.copy(commentsLoading = false, commentReadError = r.error) }
-                        flowOf(emptyList())
-                    }
-                    is Result.Ok -> {
-                        val uniqueIds = r.value.map { it.authorId }.toSet()
-                        val perAuthorFlows = uniqueIds.map { id ->
-                            authorFlows.getOrPut(id) {
-                                accountReadPort.observe(id)
-                                    .stateIn(viewModelScope, SharingStarted.Eagerly, null)
-                            }
+        commentsFlow.collect { r ->
+            when (r) {
+                is Result.Err -> update {
+                    it.copy(commentsLoading = false, commentReadError = r.error)
+                }
+                is Result.Ok -> {
+                    val uniqueIds = r.value.map { it.authorId }.toSet()
+                    val perAuthorFlows = uniqueIds.map { id ->
+                        authorFlows.getOrPut(id) {
+                            accountReadPort.observe(id)
+                                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
                         }
-                        if (perAuthorFlows.isEmpty()) {
+                    }
+                    val joined: Flow<List<CommentRowUi>> = if (perAuthorFlows.isEmpty()) {
                             flowOf(joinRows(r.value, emptyMap()))
                         } else {
                             combine(perAuthorFlows) { snapshots ->
@@ -123,12 +122,14 @@ class MealDetailViewModel(
                                 joinRows(r.value, map)
                             }
                         }
+                    joined.collect { rows ->
+                        update {
+                            it.copy(commentRows = rows, commentsLoading = false, commentReadError = null)
+                        }
                     }
                 }
             }
-            .collect { rows ->
-                update { it.copy(commentRows = rows, commentsLoading = false, commentReadError = null) }
-            }
+        }
     }
 
     private fun joinRows(

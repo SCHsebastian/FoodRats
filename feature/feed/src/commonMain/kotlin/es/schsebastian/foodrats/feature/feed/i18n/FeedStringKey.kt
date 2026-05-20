@@ -8,13 +8,13 @@ import foodrats.feature.feed.generated.resources.feed_comments_error_unauthorize
 import foodrats.feature.feed.generated.resources.feed_comments_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_comments_empty
 import foodrats.feature.feed.generated.resources.feed_comments_input_placeholder
-import foodrats.feature.feed.generated.resources.feed_deleted_author
 import foodrats.feature.feed.generated.resources.feed_comments_relative_days
 import foodrats.feature.feed.generated.resources.feed_comments_relative_hours
 import foodrats.feature.feed.generated.resources.feed_comments_relative_just_now
 import foodrats.feature.feed.generated.resources.feed_comments_relative_minutes
 import foodrats.feature.feed.generated.resources.feed_comments_send_cta
 import foodrats.feature.feed.generated.resources.feed_comments_title
+import foodrats.feature.feed.generated.resources.feed_deleted_author
 import foodrats.feature.feed.generated.resources.feed_average_heading
 import foodrats.feature.feed.generated.resources.feed_detail_back_cta
 import foodrats.feature.feed.generated.resources.feed_detail_not_found

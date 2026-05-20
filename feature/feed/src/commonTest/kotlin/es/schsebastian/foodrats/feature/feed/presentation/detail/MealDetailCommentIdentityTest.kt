@@ -49,6 +49,10 @@ class FakeMealCommentPort : MealCommentPort {
     fun emit(comments: List<MealComment>) {
         flow.value = Result.success(comments)
     }
+
+    fun emitError(e: CommentError.Read) {
+        flow.value = Result.failure(e)
+    }
 }
 
 data class TestPorts(
@@ -155,6 +159,16 @@ class MealDetailCommentIdentityTest {
             assertEquals("Old", expectMostRecentItem().commentRows.single().displayName)
             ports.accountPort.set(accountId("user-1"), Account(accountId("user-1"), "h", "New", null, null))
             assertEquals("New", awaitItem().commentRows.single().displayName)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun surfaces_comment_read_error_when_port_fails() = runTest {
+        val (vm, ports) = newSut()
+        ports.commentPort.emitError(CommentError.Read.Unavailable)
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(CommentError.Read.Unavailable, s.commentReadError)
             cancelAndIgnoreRemainingEvents()
         }
     }

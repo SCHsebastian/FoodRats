@@ -59,9 +59,6 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.testJunit)
                 implementation(libs.junit)
-                implementation(libs.koin.test)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.turbine)
                 implementation(libs.androidx.testExt.junit)
                 implementation(libs.compose.ui.test.junit4)
                 implementation(libs.robolectric)
