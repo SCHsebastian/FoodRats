@@ -106,6 +106,23 @@ service cloud.firestore {
                         && request.resource.data.ratedAtEpochMs is int
                         && request.time.toMillis() - get(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId)).data.publishedAtEpochMs < 172800000;
         }
+
+        match /comments/{commentId} {
+          allow read: if request.auth != null
+                      && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds;
+
+          allow create: if request.auth != null
+                        && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
+                        && request.auth.uid == request.resource.data.authorId
+                        && request.resource.data.text is string
+                        && request.resource.data.text.size() >= 1
+                        && request.resource.data.text.size() <= 500
+                        && request.resource.data.createdAtEpochMs is int
+                        && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
+                        && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000;
+
+          // No update, no delete — comments are immutable.
+        }
       }
     }
 

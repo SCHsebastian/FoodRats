@@ -41,40 +41,6 @@ class FirebaseAuthDataSource(
             .also { ref.set(it) }
     }
 
-    // Dev-only: bootstrap the hardcoded test crew so meal publishing can write under it.
-    // Pairs with FirebaseAuthRepository.DEV_CREW_ID. Remove once the Crew picker is the
-    // primary post-signin destination.
-    suspend fun ensureDevCrewMembership(
-        crewId: String,
-        uid: String,
-        displayName: String,
-        nowEpochMs: Long,
-    ) = withContext(dispatchers.io) {
-        val ref = firestore.collection("crews").document(crewId)
-        val snap = ref.get()
-        if (!snap.exists) {
-            // create rule: request.auth.uid in memberIds && size == 1
-            ref.set(
-                mapOf(
-                    "id" to crewId,
-                    "name" to "Dev Crew",
-                    "code" to null,
-                    "ownerId" to uid,
-                    "createdAtEpochMs" to nowEpochMs,
-                    "memberIds" to listOf(uid),
-                    "members" to mapOf(
-                        uid to mapOf(
-                            "displayName" to displayName,
-                            "avatarUrl" to null,
-                            "joinedAtEpochMs" to nowEpochMs,
-                        ),
-                    ),
-                )
-            )
-        }
-        // If exists & we're not in memberIds, security rules forbid self-add — caller swallows.
-    }
-
     suspend fun signOut() = withContext(dispatchers.io) {
         FrLog.d(FrLog.Tags.SignOut) { "data: auth.signOut() about to call" }
         auth.signOut()

@@ -3,6 +3,7 @@
     <string name="crew_picker_title">Tus grupos</string>
     <string name="crew_picker_empty_headline">Aún no tienes un grupo</string>
     <string name="crew_picker_empty_subtext">Crea un grupo o únete con un código de invitación.</string>
+    <string name="crew_picker_hero_subtitle">Comemos juntos, incluso a la distancia.</string>
     <string name="crew_picker_create_cta">Crear un grupo</string>
     <string name="crew_picker_join_cta">Unirme con código</string>
     <string name="crew_create_name_label">Nombre del grupo</string>
@@ -23,7 +24,8 @@
     <string name="crew_settings_save">Guardar</string>
     <string name="crew_settings_switch_crew">Cambiar de grupo</string>
     <string name="crew_settings_invite_code">Código de invitación</string>
-    <string name="crew_settings_share">Copiar código</string>
+    <string name="crew_settings_share">Compartir</string>
+    <string name="crew_settings_copy_cta">Copiar código</string>
     <string name="crew_settings_delete_cta">Eliminar grupo</string>
     <string name="crew_settings_delete_title">¿Eliminar grupo?</string>
     <string name="crew_settings_delete_body">Esto eliminará permanentemente %1$s y expulsará a todos los miembros. Esta acción no se puede deshacer.</string>

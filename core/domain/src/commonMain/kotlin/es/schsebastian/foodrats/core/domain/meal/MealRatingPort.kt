@@ -12,5 +12,6 @@ sealed interface RateError {
     data object CannotRateOwnMeal  : RateError
     data object AlreadyRated       : RateError
     data object RatingWindowClosed : RateError
+    data object Offline            : RateError
     data object RateUnavailable    : RateError
 }

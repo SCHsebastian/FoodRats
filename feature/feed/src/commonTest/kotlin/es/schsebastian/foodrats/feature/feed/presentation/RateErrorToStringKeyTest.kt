@@ -11,6 +11,7 @@ class RateErrorToStringKeyTest {
         assertEquals(FeedStringKey.RateErrorAlreadyRated, RateError.AlreadyRated.toStringKey())
         assertEquals(FeedStringKey.RateErrorWindowClosed, RateError.RatingWindowClosed.toStringKey())
         assertEquals(FeedStringKey.RateErrorUnauthorized, RateError.Unauthorized.toStringKey())
+        assertEquals(FeedStringKey.RateErrorOffline, RateError.Offline.toStringKey())
         assertEquals(FeedStringKey.RateErrorUnavailable, RateError.RateUnavailable.toStringKey())
     }
 }

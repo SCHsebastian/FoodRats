@@ -57,6 +57,10 @@ class ComposePlateViewModel(
         }
 
         update { it.copy(takenSlots = taken, selectedSlot = selectedSlot) }
+        // Persist the default slot to the draft so PublishMealScreen's enable-gate
+        // (draft.slot != null) flips green even when the user accepts the default
+        // without tapping a slot button.
+        updateDraft(UpdateMealDraftCommand.SetSlot(selectedSlot))
     }
 
     override suspend fun handle(intent: ComposePlateIntent) {
@@ -70,8 +74,7 @@ class ComposePlateViewModel(
             }
             is ComposePlateIntent.SelectSlot   -> {
                 update { it.copy(selectedSlot = intent.slot) }
-                val draft = repository.observeDraft().first() ?: return
-                repository.saveDraft(draft.copy(slot = intent.slot))
+                updateDraft(UpdateMealDraftCommand.SetSlot(intent.slot))
             }
             ComposePlateIntent.Continue -> persistAndAdvance()
         }
@@ -84,6 +87,7 @@ class ComposePlateViewModel(
             FoodTag.Curated.entries.firstOrNull { it.label == raw }
                 ?: FoodTag.custom(raw).getOrElse { return failWith(MealError.Validation.Blank) }
         }
+        updateDraft(UpdateMealDraftCommand.SetSlot(state.selectedSlot))
         updateDraft(UpdateMealDraftCommand.SetDish(dish))
         val r = updateDraft(UpdateMealDraftCommand.SetTags(tags))
         if (r is Result.Ok) emit(ComposePlateEffect.NavigateToPublish)

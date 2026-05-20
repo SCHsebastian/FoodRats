@@ -22,8 +22,21 @@
     <string name="feed_rate_error_already_rated">Ya votaste</string>
     <string name="feed_rate_error_window_closed">Ya pasó la ventana de voto</string>
     <string name="feed_rate_error_unauthorized">Inicia sesión para votar</string>
-    <string name="feed_rate_error_unavailable">No se pudo enviar tu voto</string>
+    <string name="feed_rate_error_unavailable">No se pudo enviar tu voto. Inténtalo de nuevo.</string>
+    <string name="feed_rate_error_offline">Sin conexión. Vuelve a intentarlo cuando tengas internet.</string>
     <string name="feed_detail_back_cta">Atrás</string>
     <string name="feed_detail_title">Comida</string>
     <string name="feed_detail_not_found">Esta comida ya no está aquí.</string>
+    <string name="feed_comments_relative_just_now">ahora mismo</string>
+    <string name="feed_comments_relative_minutes">hace %1$d min</string>
+    <string name="feed_comments_relative_hours">hace %1$d h</string>
+    <string name="feed_comments_relative_days">hace %1$d d</string>
+    <string name="feed_comments_title">Comentarios</string>
+    <string name="feed_comments_empty">Aún no hay comentarios. Sé el primero.</string>
+    <string name="feed_comments_input_placeholder">Escribe un comentario…</string>
+    <string name="feed_comments_send_cta">Enviar</string>
+    <string name="feed_comments_error_blank">El comentario está vacío</string>
+    <string name="feed_comments_error_too_long">Máximo 500 caracteres</string>
+    <string name="feed_comments_error_unavailable">No se pudo publicar. Intenta de nuevo.</string>
+    <string name="feed_comments_error_unauthorized">No tienes permiso para comentar</string>
 </resources>

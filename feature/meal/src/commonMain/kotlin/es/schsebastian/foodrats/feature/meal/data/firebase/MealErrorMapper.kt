@@ -28,9 +28,11 @@ class MealErrorMapper(private val crashReporter: CrashReporter) {
     fun mapRate(t: Throwable): RateError {
         val message = t.message.orEmpty().lowercase()
         return when {
-            "already-exists" in message || "already_exists" in message -> RateError.AlreadyRated
-            "permission" in message || "permission_denied" in message -> RateError.RateUnavailable
-            "unavailable" in message || "network" in message           -> RateError.RateUnavailable
+            "already-exists" in message || "already_exists" in message      -> RateError.AlreadyRated
+            "unauthenticated" in message                                    -> RateError.Unauthorized
+            "permission" in message                                         -> RateError.RatingWindowClosed
+            "unavailable" in message || "unreachable" in message
+                || "no route" in message || "network" in message            -> RateError.Offline
             else -> {
                 crashReporter.recordNonFatal(t, tag = "meal-rate-unmapped")
                 RateError.RateUnavailable

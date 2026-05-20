@@ -50,19 +50,20 @@ fun FeedScreen(
                 Column(modifier = Modifier.fillMaxSize()) {
                     when {
                         state.error is FeedError.Session.NoActiveCrew -> {
-                            // FrEmptyState requires non-null ImageVector; use Settings icon as placeholder.
-                            FrEmptyState(
-                                icon = FrIcons.Settings,
-                                headline = resolve(FeedStringKey.NoActiveCrewHeadline),
-                                subtext = resolve(FeedStringKey.NoActiveCrewSubtext),
-                                cta = {
-                                    FrButton(
-                                        label = resolve(FeedStringKey.NoActiveCrewHeadline),
-                                        onClick = onPickCrewClick,
-                                        variant = FrButtonVariant.Primary,
-                                    )
-                                },
-                            )
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                FrEmptyState(
+                                    icon = FrIcons.Settings,
+                                    headline = resolve(FeedStringKey.NoActiveCrewHeadline),
+                                    subtext = resolve(FeedStringKey.NoActiveCrewSubtext),
+                                    cta = {
+                                        FrButton(
+                                            label = resolve(FeedStringKey.NoActiveCrewHeadline),
+                                            onClick = onPickCrewClick,
+                                            variant = FrButtonVariant.Primary,
+                                        )
+                                    },
+                                )
+                            }
                         }
                         state.isLoading && state.meals.isEmpty() -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -70,11 +71,13 @@ fun FeedScreen(
                             }
                         }
                         state.meals.isEmpty() && state.error == null -> {
-                            FrEmptyState(
-                                icon = FrIcons.GalleryImport,
-                                headline = resolve(FeedStringKey.EmptyHeadline),
-                                subtext = resolve(FeedStringKey.EmptySubtext),
-                            )
+                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                FrEmptyState(
+                                    icon = FrIcons.GalleryImport,
+                                    headline = resolve(FeedStringKey.EmptyHeadline),
+                                    subtext = resolve(FeedStringKey.EmptySubtext),
+                                )
+                            }
                         }
                         else -> {
                             val dayIso = state.day?.day?.date?.toString().orEmpty()

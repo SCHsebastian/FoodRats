@@ -26,6 +26,8 @@ import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
@@ -55,8 +57,22 @@ internal class FirebaseMealRepository(
     private val auth: FirebaseAuth,
     private val zone: TimeZone,
     private val crewMembers: CrewMembersPort,
-    private val repoScope: CoroutineScope = CoroutineScope(SupervisorJob() + dispatchers.default),
 ) : MealRepository {
+
+    // CoroutineExceptionHandler is mandatory: when sign-out revokes the auth token,
+    // Firestore listeners inside `shareIn` upstreams below fire PERMISSION_DENIED.
+    // Without a handler the exception escapes repoScope's parent → Android FATAL
+    // EXCEPTION / iOS Kotlin/Native terminateWithUnhandledException → SIGABRT.
+    // The handler is the safety net; each `shareIn` also has its own upstream
+    // `.catch { emit(emptyList()) }` so consumers see a benign empty list rather
+    // than a crash window.
+    private val repoScope: CoroutineScope = CoroutineScope(
+        SupervisorJob() +
+            dispatchers.default +
+            CoroutineExceptionHandler { _, t ->
+                FrLog.w("MealRepo", t) { "repoScope uncaught: ${t.message}" }
+            },
+    )
 
     private val streamsLock = Mutex()
     private val streams = mutableMapOf<CrewId, SharedFlow<List<MealWithRatings>>>()
@@ -75,11 +91,18 @@ internal class FirebaseMealRepository(
                     dtos.mapNotNull { dto ->
                         (dto.toMealWithRatings(lookup) as? Result.Ok)?.value
                     }
-                }.shareIn(
-                    scope = repoScope,
-                    started = SharingStarted.WhileSubscribed(stopTimeoutMillis = SHARE_STOP_TIMEOUT_MS),
-                    replay = 1,
-                )
+                }
+                    // PERMISSION_DENIED-on-signout becomes an empty list, which downstream
+                    // observers already render gracefully (no meals → empty state).
+                    .catch { t ->
+                        FrLog.w("MealRepo", t) { "crewStream upstream throw: ${t.message}" }
+                        emit(emptyList())
+                    }
+                    .shareIn(
+                        scope = repoScope,
+                        started = SharingStarted.WhileSubscribed(stopTimeoutMillis = SHARE_STOP_TIMEOUT_MS),
+                        replay = 1,
+                    )
             }
         }
 
@@ -222,15 +245,7 @@ internal class FirebaseMealRepository(
             }
         }.fold(
             onSuccess = { it },
-            onFailure = { t ->
-                val msg = t.message.orEmpty().lowercase()
-                val mapped = when {
-                    "permission-denied" in msg -> RateError.RatingWindowClosed
-                    "unauthenticated" in msg -> RateError.Unauthorized
-                    else -> errorMapper.mapRate(t)
-                }
-                Result.failure(mapped)
-            },
+            onFailure = { t -> Result.failure(errorMapper.mapRate(t)) },
         )
     }
 }

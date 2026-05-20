@@ -2,6 +2,10 @@ package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.CommentError
+import es.schsebastian.foodrats.core.domain.meal.CommentText
+import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
+import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
@@ -14,7 +18,9 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -25,6 +31,7 @@ class MealDetailViewModel(
     private val dayIso: String,
     observeFeed: ObserveFeedUseCase,
     private val ratingPort: MealRatingPort,
+    private val commentPort: MealCommentPort,
     private val activeCrew: ActiveCrewProvider,
     private val session: SessionProvider,
     private val clock: Clock,
@@ -34,7 +41,7 @@ class MealDetailViewModel(
     init {
         val parsedDay = runCatching { LocalDate.parse(dayIso) }.getOrNull()
         if (parsedDay == null) {
-            update { it.copy(isLoading = false, notFound = true) }
+            update { it.copy(isLoading = false, notFound = true, commentsLoading = false) }
         } else {
             val feedDay = FeedDay(MealDay(parsedDay, zone))
             viewModelScope.launch {
@@ -61,12 +68,44 @@ class MealDetailViewModel(
                     }
                 }
             }
+            observeComments()
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun observeComments() = viewModelScope.launch {
+        val parsedMealId = MealId.of(mealId).getOrElse {
+            update { it.copy(commentsLoading = false, commentReadError = CommentError.Read.Unavailable) }
+            return@launch
+        }
+        activeCrew.current
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf<Result<List<es.schsebastian.foodrats.core.domain.meal.MealComment>, CommentError.Read>>(
+                    Result.failure(CommentError.Read.Unauthorized)
+                )
+                else commentPort.observe(crewId, parsedMealId)
+            }
+            .collect { r ->
+                when (r) {
+                    is Result.Ok  -> update {
+                        it.copy(comments = r.value, commentsLoading = false, commentReadError = null)
+                    }
+                    is Result.Err -> update {
+                        it.copy(commentsLoading = false, commentReadError = r.error)
+                    }
+                }
+            }
+    }
+
     override suspend fun handle(intent: MealDetailIntent) = when (intent) {
-        is MealDetailIntent.RateMeal     -> rateMeal(intent.score)
-        MealDetailIntent.DismissError    -> update { it.copy(error = null, rateError = null) }
+        is MealDetailIntent.RateMeal               -> rateMeal(intent.score)
+        MealDetailIntent.DismissError              -> update {
+            it.copy(error = null, rateError = null, commentWriteError = null)
+        }
+        is MealDetailIntent.CommentInputChanged    -> update {
+            it.copy(commentInput = intent.value, commentWriteError = null)
+        }
+        MealDetailIntent.PostComment               -> postComment()
     }
 
     private suspend fun rateMeal(scoreRaw: Int) {
@@ -79,6 +118,32 @@ class MealDetailViewModel(
             when (r) {
                 is Result.Ok  -> it.copy(pendingRate = false)
                 is Result.Err -> it.copy(pendingRate = false, rateError = r.error)
+            }
+        }
+    }
+
+    private suspend fun postComment() {
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(commentWriteError = CommentError.Write.Unauthorized) }
+        val parsedMealId = MealId.of(mealId).getOrElse {
+            return update { it.copy(commentWriteError = CommentError.Write.Unavailable) }
+        }
+        val text = when (val v = CommentText.of(currentState.commentInput)) {
+            is Result.Ok  -> v.value
+            is Result.Err -> return update {
+                val writeErr = when (v.error) {
+                    CommentValidationError.Blank   -> CommentError.Write.Blank
+                    CommentValidationError.TooLong -> CommentError.Write.TooLong
+                }
+                it.copy(commentWriteError = writeErr)
+            }
+        }
+        update { it.copy(isPostingComment = true, commentWriteError = null) }
+        val r = commentPort.post(crewId, parsedMealId, text)
+        update {
+            when (r) {
+                is Result.Ok  -> it.copy(isPostingComment = false, commentInput = "")
+                is Result.Err -> it.copy(isPostingComment = false, commentWriteError = r.error)
             }
         }
     }

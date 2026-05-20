@@ -20,6 +20,12 @@ struct ComposeView: UIViewControllerRepresentable {
             },
             googleSignOut: {
                 GoogleSignInBridge.signOut()
+            },
+            crashRecordNonFatal: { domain, message in
+                CrashlyticsBridge.recordNonFatal(domain: domain, message: message)
+            },
+            crashLog: { message in
+                CrashlyticsBridge.log(message)
             }
         )
     }

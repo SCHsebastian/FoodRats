@@ -1,9 +1,12 @@
 package es.schsebastian.foodrats.feature.meal.di
 
+import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
+import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseCommentRepository
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
 import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
@@ -24,6 +27,7 @@ import org.koin.dsl.module
 
 val mealModule = module {
     singleOf(::MealFirestoreDataSource)
+    singleOf(::CommentFirestoreDataSource)
     singleOf(::PlateStorageDataSource)
     singleOf(::MealDraftLocalStore)
     singleOf(::MealErrorMapper)
@@ -42,6 +46,14 @@ val mealModule = module {
     }
     single<MealReadPort> { get<MealRepository>() }
     single<MealRatingPort> { get<MealRepository>() }
+    single<MealCommentPort> {
+        FirebaseCommentRepository(
+            ds = get(),
+            auth = get(),
+            clock = get(),
+            dispatchers = get(),
+        )
+    }
 
     factoryOf(::StartMealDraftUseCase)
     factoryOf(::UpdateMealDraftUseCase)

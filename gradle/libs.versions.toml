@@ -19,7 +19,7 @@ koin = "4.2.1"
 kotlinxCoroutines = "1.10.2"
 kotlinxDatetime = "0.8.0-0.6.x-compat"
 kotlinxSerialization = "1.7.3"
-ktor = "3.0.3"
+ktor = "3.1.0"
 datastore = "1.2.1"
 imagepickerkmp = "1.0.41"
 gitliveFirebase = "2.1.0"
@@ -31,6 +31,7 @@ navCompose = "2.9.2"
 okio = "3.9.1"
 konsist = "0.17.3"
 googleServices = "4.4.2"
+firebaseCrashlyticsPlugin = "3.0.2"
 roborazzi = "1.40.0"
 androidxWork = "2.10.0"
 androidxLifecycleProcess = "2.9.0"
@@ -118,3 +119,4 @@ composeCompiler                = { id = "org.jetbrains.kotlin.plugin.compose",  
 kotlinMultiplatform            = { id = "org.jetbrains.kotlin.multiplatform",            version.ref = "kotlin" }
 kotlinxSerialization           = { id = "org.jetbrains.kotlin.plugin.serialization",     version.ref = "kotlin" }
 googleServices                 = { id = "com.google.gms.google-services",                version.ref = "googleServices" }
+firebaseCrashlytics            = { id = "com.google.firebase.crashlytics",                version.ref = "firebaseCrashlyticsPlugin" }
