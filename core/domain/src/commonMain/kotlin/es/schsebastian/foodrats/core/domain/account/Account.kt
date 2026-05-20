@@ -1,4 +1,4 @@
-package es.schsebastian.foodrats.feature.auth.domain.model
+package es.schsebastian.foodrats.core.domain.account
 
 import es.schsebastian.foodrats.core.domain.model.AccountId
 
