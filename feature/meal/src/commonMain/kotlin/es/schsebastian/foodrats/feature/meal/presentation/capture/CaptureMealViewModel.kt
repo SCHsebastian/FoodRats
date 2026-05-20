@@ -34,8 +34,7 @@ class CaptureMealViewModel(
                 update { it.copy(isCapturing = false, error = if (r is Result.Err) r.error else null) }
                 if (r is Result.Ok) emit(CaptureMealEffect.NavigateToCompose)
             }
-            CaptureMealIntent.PickFromGallery -> emit(CaptureMealEffect.OpenGalleryPicker)
-            CaptureMealIntent.OpenSettings    -> emit(CaptureMealEffect.OpenAppSettings)
+            CaptureMealIntent.OpenSettings -> emit(CaptureMealEffect.OpenAppSettings)
         }
     }
 }

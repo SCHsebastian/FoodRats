@@ -16,12 +16,10 @@ sealed interface CaptureMealIntent : MviIntent {
         override fun equals(other: Any?) = other is PhotoTaken && bytes.contentEquals(other.bytes)
         override fun hashCode() = bytes.contentHashCode()
     }
-    data object PickFromGallery : CaptureMealIntent
     data object OpenSettings : CaptureMealIntent
 }
 
 sealed interface CaptureMealEffect : MviEffect {
     data object NavigateToCompose : CaptureMealEffect
-    data object OpenGalleryPicker : CaptureMealEffect
     data object OpenAppSettings : CaptureMealEffect
 }

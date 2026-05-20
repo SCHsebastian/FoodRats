@@ -109,7 +109,12 @@ fun NavGraph(navController: NavController = rememberNavController()) {
 
         composable<Route.CaptureMeal> {
             CaptureMealScreen(
-                onCaptured = { controller.navigate(Route.ComposePlate) },
+                onCaptured = {
+                    controller.navigate(Route.ComposePlate) {
+                        popUpTo<Route.CaptureMeal> { inclusive = true }
+                    }
+                },
+                onCancelled = { controller.popBackStack() },
                 onOpenSettings = { /* deferred */ },
             )
         }
