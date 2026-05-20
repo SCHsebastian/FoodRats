@@ -1,13 +1,20 @@
 package es.schsebastian.foodrats.feature.auth.di
 
+import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
+import es.schsebastian.foodrats.feature.auth.data.firebase.AccountSnapshotSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.AuthErrorMapper
+import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAccountSnapshotSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAuthDataSource
+import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountReadDataSource
 import es.schsebastian.foodrats.feature.auth.data.repository.AuthSignOutPort
 import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
@@ -18,5 +25,12 @@ val authModule = module {
     single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get()) }
     single<SessionProvider> { get<AuthRepository>() }
     single<SignOutPort> { AuthSignOutPort(get()) }
+    single<AccountSnapshotSource> {
+        FirebaseAccountSnapshotSource(
+            firestore = get(),
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+        )
+    }
+    single<AccountReadPort> { FirestoreAccountReadDataSource(source = get()) }
     viewModelOf(::SignInViewModel)
 }
