@@ -15,4 +15,10 @@ data class MealDto(
     val dishName: String? = null,
     val tags: List<String> = emptyList(),
     val publishedAtEpochMs: Long? = null,
+    // Denormalized per-rater scores keyed by accountId (uid). Empty when no one has voted.
+    val ratings: Map<String, RatingEntryDto> = emptyMap(),
+    // Cached sum of all `ratings.values.score` values; written together with `ratings`.
+    val ratingSum: Int = 0,
+    // Cached count `ratings.size`; written together with `ratings`.
+    val voterCount: Int = 0,
 )
