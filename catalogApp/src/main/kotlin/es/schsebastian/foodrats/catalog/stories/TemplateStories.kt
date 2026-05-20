@@ -1,6 +1,5 @@
 package es.schsebastian.foodrats.catalog.stories
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,11 +28,9 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
-import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarWithName
 import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
-import es.schsebastian.foodrats.core.designsystem.templates.FrCaptureLayout
 import es.schsebastian.foodrats.core.designsystem.templates.FrFeedLayout
 import es.schsebastian.foodrats.core.designsystem.templates.FrFormLayout
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
@@ -41,49 +38,10 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 internal fun templateStories(): List<CatalogEntry> = listOf(
-    CatalogEntry("template.captureLayout", CatalogGroup.TEMPLATES, "FrCaptureLayout", "Capture screen scaffold: viewfinder + controls") { CaptureLayoutStory() },
     CatalogEntry("template.feedLayout",    CatalogGroup.TEMPLATES, "FrFeedLayout",    "Day header + list region") { FeedLayoutStory() },
     CatalogEntry("template.formLayout",    CatalogGroup.TEMPLATES, "FrFormLayout",    "Padded column for forms") { FormLayoutStory() },
     CatalogEntry("template.screenScaffold", CatalogGroup.TEMPLATES, "FrScreenScaffold", "App scaffold honoring safeDrawing insets") { ScreenScaffoldStory() },
 )
-
-@Composable
-private fun CaptureLayoutStory() {
-    CatalogScene(label = "Phone-sized frame", padding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(440.dp)
-                .clip(RoundedCornerShape(Radius.md)),
-            color = MaterialTheme.colorScheme.surface,
-        ) {
-            FrCaptureLayout(
-                modifier = Modifier.fillMaxSize(),
-                viewfinder = {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("Viewfinder", style = MaterialTheme.typography.titleMedium)
-                    }
-                },
-                controls = {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        FrIconButton(icon = FrIcons.GalleryImport, onClick = {}, contentDescription = "Gallery")
-                        FrShutterButton(onClick = {}, contentDescription = "Take photo")
-                        FrIconButton(icon = FrIcons.Settings, onClick = {}, contentDescription = "Settings")
-                    }
-                },
-            )
-        }
-    }
-}
 
 @Composable
 private fun FeedLayoutStory() {

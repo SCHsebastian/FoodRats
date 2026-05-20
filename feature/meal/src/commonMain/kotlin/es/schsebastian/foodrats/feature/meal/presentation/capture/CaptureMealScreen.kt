@@ -2,8 +2,6 @@ package es.schsebastian.foodrats.feature.meal.presentation.capture
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.feature.meal.presentation.components.resizeForUpload
 import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
 import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
@@ -19,7 +17,6 @@ fun CaptureMealScreen(
     vm: CaptureMealViewModel = koinViewModel(),
 ) {
     val picker = rememberImagePickerKMP()
-    @Suppress("UNUSED_VARIABLE") val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         vm.onIntent(CaptureMealIntent.Start)
