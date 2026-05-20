@@ -12,14 +12,14 @@ class ScoreTest {
         assertEquals(1, r.value.value)
     }
 
-    @Test fun max_is_5() {
-        val r = Score.of(5)
+    @Test fun max_is_minotauro_6() {
+        val r = Score.of(Score.MINOTAURO)
         assertIs<Result.Ok<Score>>(r)
-        assertEquals(5, r.value.value)
+        assertEquals(6, r.value.value)
     }
 
-    @Test fun six_is_rejected() {
-        val r = Score.of(6)
+    @Test fun seven_is_rejected() {
+        val r = Score.of(7)
         assertIs<Result.Err<MealValueObjectError>>(r)
         assertEquals(MealValueObjectError.ScoreOutOfRange, r.error)
     }

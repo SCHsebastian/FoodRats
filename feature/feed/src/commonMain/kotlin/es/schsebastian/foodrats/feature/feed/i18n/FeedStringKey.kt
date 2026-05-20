@@ -8,6 +8,7 @@ import foodrats.feature.feed.generated.resources.feed_detail_not_found
 import foodrats.feature.feed.generated.resources.feed_detail_title
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
+import foodrats.feature.feed.generated.resources.feed_minotauro_label
 import foodrats.feature.feed.generated.resources.feed_error_crew_not_found
 import foodrats.feature.feed.generated.resources.feed_error_not_signed_in
 import foodrats.feature.feed.generated.resources.feed_error_unauthorized
@@ -45,6 +46,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     NoVotesYet(Res.string.feed_no_votes_yet),
     AverageHeading(Res.string.feed_average_heading),
     RateThisMeal(Res.string.feed_rate_this_meal),
+    MinotauroLabel(Res.string.feed_minotauro_label),
     YourVote(Res.string.feed_your_vote),
     RatingSummary(Res.string.feed_rating_summary),
     VoterScore(Res.string.feed_voter_score),

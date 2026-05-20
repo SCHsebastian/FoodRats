@@ -35,7 +35,7 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.labeledtextfield", CatalogGroup.MOLECULES, "FrLabeledTextField", "Text field with label and optional helper") { LabeledTextFieldStory() },
     CatalogEntry("molecule.scorebadge",     CatalogGroup.MOLECULES, "FrScoreBadge",     "Circular 1..10 score badge") { ScoreBadgeStory() },
     CatalogEntry("molecule.scorepicker",    CatalogGroup.MOLECULES, "FrScorePicker",    "Chip row picker for 1..10 score") { ScorePickerStory() },
-    CatalogEntry("molecule.starrating",     CatalogGroup.MOLECULES, "FrStarRatingPicker", "1..5 picker for tap-to-rate flows") { StarRatingStory() },
+    CatalogEntry("molecule.starrating",     CatalogGroup.MOLECULES, "FrStarRatingPicker", "1..6 picker; position 6 is the Minotauro tier (forge orange)") { StarRatingStory() },
     CatalogEntry("molecule.tagchiprow",     CatalogGroup.MOLECULES, "FrTagChipRow",     "Multi-select chip row") { TagChipRowStory() },
 )
 
@@ -211,8 +211,8 @@ private fun StarRatingStory() {
             FrStarRatingPicker(
                 onSelect = { rating = it },
                 value = rating,
-                groupContentDescription = "Rate this meal, 1 to 5 stars",
-                starLabel = { i -> "$i ${if (i == 1) "star" else "stars"}" },
+                groupContentDescription = "Rate this meal, 1 to 6 (Minotauro is 6)",
+                starLabel = { i -> if (i == 6) "Minotauro" else "$i ${if (i == 1) "star" else "stars"}" },
             )
         }
         CatalogScene(label = "Pre-filled = 3") {

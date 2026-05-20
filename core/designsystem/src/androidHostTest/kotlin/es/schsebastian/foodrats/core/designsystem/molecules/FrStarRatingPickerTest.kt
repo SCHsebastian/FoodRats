@@ -27,7 +27,14 @@ class FrStarRatingPickerTest {
         rule.setContent { FrStarRatingPicker(onSelect = { clicked = it }) }
         rule.onNodeWithContentDescription("1").performClick()
         assertEquals(1, clicked)
-        rule.onNodeWithContentDescription("5").performClick()
-        assertEquals(5, clicked)
+        rule.onNodeWithContentDescription("6").performClick()
+        assertEquals(6, clicked)
+    }
+
+    @Test fun minotauro_position_six_is_selectable() {
+        var clicked: Int? = null
+        rule.setContent { FrStarRatingPicker(onSelect = { clicked = it }) }
+        rule.onNodeWithContentDescription("6").performClick()
+        assertEquals(6, clicked)
     }
 }

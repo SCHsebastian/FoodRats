@@ -208,9 +208,11 @@ private fun MealDetailBody(
                     text = resolve(FeedStringKey.RateThisMeal),
                     style = MaterialTheme.typography.titleMedium,
                 )
+                val minotauroLabel = resolve(FeedStringKey.MinotauroLabel)
                 FrStarRatingPicker(
                     onSelect = onRate,
                     enabled = !pendingRate,
+                    starLabel = { i -> if (i == 6) minotauroLabel else i.toString() },
                 )
             }
             else -> Unit

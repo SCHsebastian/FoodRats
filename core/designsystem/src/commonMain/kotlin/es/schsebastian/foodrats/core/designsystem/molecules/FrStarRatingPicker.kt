@@ -23,13 +23,15 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
- * Tap-to-rate 1..5 stars. Renders actual star glyphs — the previous version showed digits
- * because `material-icons-extended` has no KMP-iOS publication; `Icons.Outlined.StarBorder`
- * and `Icons.Filled.Star` are both in `material-icons-core`.
+ * Tap-to-rate 1..6 stars. Position 6 is the **Minotauro** tier — a top-of-the-house
+ * rating above the regular 1..5 scale, tinted with `streakHot` (forge orange) so it
+ * reads as a distinct accolade rather than just "one more star". Renders actual star
+ * glyphs — `material-icons-extended` has no KMP-iOS publication; `Icons.Filled.Star`
+ * is in `material-icons-core`.
  *
- * Filled stars use [LocalFrSemanticColors.current.celebration] (honey/citrus tone) per
- * Apple/Letterboxd convention — single-tint star ratings, not a danger→success gradient.
- * Empty stars use `outlineVariant` so the unselected affordance reads at a glance.
+ * Filled 1..5 stars use [LocalFrSemanticColors.current.celebration] (honey/citrus tone)
+ * per Apple/Letterboxd convention. The Minotauro star uses `streakHot`. Empty stars use
+ * `outlineVariant` so the unselected affordance reads at a glance.
  *
  * Each star is wrapped in a 48dp Box so the tap target meets WCAG 2.2 / Material 3 floor
  * even though the glyph is 32dp. The container declares `selectableGroup()` and each star
@@ -48,6 +50,7 @@ fun FrStarRatingPicker(
     groupContentDescription: String? = null,
 ) {
     val filled = LocalFrSemanticColors.current.celebration
+    val minotauro = LocalFrSemanticColors.current.streakHot
     val empty = MaterialTheme.colorScheme.outlineVariant
     Row(
         modifier = modifier
@@ -60,8 +63,9 @@ fun FrStarRatingPicker(
         horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        (1..5).forEach { i ->
+        (1..6).forEach { i ->
             val selected = i <= value
+            val isMinotauro = i == 6
             val label = starLabel(i)
             Box(
                 modifier = Modifier
@@ -77,7 +81,11 @@ fun FrStarRatingPicker(
             ) {
                 FrIcon(
                     image = Icons.Filled.Star,
-                    tint = if (selected) filled else empty,
+                    tint = when {
+                        !selected -> empty
+                        isMinotauro -> minotauro
+                        else -> filled
+                    },
                     modifier = Modifier.size(Sizes.starIcon),
                 )
             }
@@ -95,6 +103,7 @@ private fun FrStarRatingPickerPreview() {
             FrStarRatingPicker(onSelect = {}, value = 0)
             FrStarRatingPicker(onSelect = {}, value = 3)
             FrStarRatingPicker(onSelect = {}, value = 5)
+            FrStarRatingPicker(onSelect = {}, value = 6)
         }
     }
 }

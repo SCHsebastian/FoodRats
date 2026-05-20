@@ -65,7 +65,7 @@ service cloud.firestore {
                         && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId)/ratings/$(raterUid))
                         && request.resource.data.score is int
                         && request.resource.data.score >= 1
-                        && request.resource.data.score <= 5
+                        && request.resource.data.score <= 6
                         && request.resource.data.ratedAtEpochMs is int
                         && request.time.toMillis() - get(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId)).data.publishedAtEpochMs < 172800000;
         }

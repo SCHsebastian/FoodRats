@@ -91,9 +91,11 @@ fun FrFeedMealCard(
                         text = resolve(FeedStringKey.RateThisMeal),
                         modifier = Modifier.padding(top = Spacing.sm),
                     )
+                    val minotauroLabel = resolve(FeedStringKey.MinotauroLabel)
                     FrStarRatingPicker(
                         onSelect = { score -> onRate(ui.mealId, score) },
                         modifier = Modifier.padding(top = Spacing.xs),
+                        starLabel = { i -> if (i == 6) minotauroLabel else i.toString() },
                     )
                 }
                 else -> Unit
