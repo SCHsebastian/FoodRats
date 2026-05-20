@@ -14,16 +14,14 @@ class CommentMapperTest {
 
     @Test fun maps_happy_path() {
         val dto = CommentDto(
-            id = "c1", authorId = "uid-a", authorName = "Maria",
-            authorAvatarUrl = "https://x/a.jpg", text = "qué buena pinta",
+            id = "c1", authorId = "uid-a", text = "qué buena pinta",
             createdAtEpochMs = 1_716_192_000_000L,
         )
         val r = dto.toDomain(crewId, mealId)
         assertTrue(r is Result.Ok)
         val c = (r as Result.Ok).value
         assertEquals("c1", c.id.value)
-        assertEquals("uid-a", c.author.accountId.value)
-        assertEquals("Maria", c.author.displayName)
+        assertEquals("uid-a", c.authorId.value)
         assertEquals("qué buena pinta", c.text.value)
     }
 

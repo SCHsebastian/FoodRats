@@ -51,8 +51,6 @@ internal class FirebaseCommentRepository(
                 crewId, mealId,
                 CommentDto(
                     authorId = user.uid,
-                    authorName = user.displayName.orEmpty(),
-                    authorAvatarUrl = user.photoURL,
                     text = text.value,
                     createdAtEpochMs = clock.now().toEpochMilliseconds(),
                 ),
