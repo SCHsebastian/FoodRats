@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -21,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -29,20 +32,26 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
+import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrTagChipRow
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
-import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.FrCommentRow
+import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -55,6 +64,7 @@ fun MealDetailScreen(
     vm: MealDetailViewModel = koinViewModel(parameters = { parametersOf(mealId, dayIso) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val clock: Clock = koinInject()
     FrScreenScaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -91,9 +101,9 @@ fun MealDetailScreen(
                 }
             }
             else -> MealDetailBody(
-                meal = state.meal!!,
-                pendingRate = state.pendingRate,
-                onRate = { score -> vm.onIntent(MealDetailIntent.RateMeal(score)) },
+                state = state,
+                clock = clock,
+                onIntent = vm::onIntent,
             )
         }
         state.rateError?.let { err ->
@@ -102,12 +112,14 @@ fun MealDetailScreen(
     }
 }
 
+@OptIn(kotlin.time.ExperimentalTime::class)
 @Composable
 private fun MealDetailBody(
-    meal: FeedMealUi,
-    pendingRate: Boolean,
-    onRate: (Int) -> Unit,
+    state: MealDetailState,
+    clock: Clock,
+    onIntent: (MealDetailIntent) -> Unit,
 ) {
+    val meal = state.meal ?: return
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -209,11 +221,71 @@ private fun MealDetailBody(
                     style = MaterialTheme.typography.titleMedium,
                 )
                 FrStarRatingPicker(
-                    onSelect = onRate,
-                    enabled = !pendingRate,
+                    onSelect = { score -> onIntent(MealDetailIntent.RateMeal(score)) },
+                    enabled = !state.pendingRate,
                 )
             }
             else -> Unit
+        }
+
+        // === Comments section ===
+        FrText(
+            text = resolve(FeedStringKey.CommentsTitle),
+            style = MaterialTheme.typography.titleMedium,
+        )
+
+        when {
+            state.commentsLoading && state.comments.isEmpty() -> {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(Spacing.md),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    FrProgressIndicator()
+                }
+            }
+            state.comments.isEmpty() && state.commentReadError == null -> {
+                FrEmptyState(
+                    icon = FrIcons.Settings,
+                    headline = resolve(FeedStringKey.CommentsEmpty),
+                    subtext = "",
+                )
+            }
+            state.commentReadError != null -> {
+                FrErrorBanner(text = resolve(state.commentReadError.toStringKey()))
+            }
+            else -> {
+                val now = remember(state.comments) { clock.now() }
+                state.comments.forEach { c ->
+                    FrCommentRow(
+                        displayName = c.author.displayName.ifBlank { "—" },
+                        avatarUrl = c.author.avatarUrl,
+                        text = c.text.value,
+                        relative = c.createdAt.toRelative(now),
+                    )
+                }
+            }
+        }
+
+        if (state.commentWriteError != null) {
+            FrErrorBanner(text = resolve(state.commentWriteError.toStringKey()))
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FrTextField(
+                value = state.commentInput,
+                onValueChange = { onIntent(MealDetailIntent.CommentInputChanged(it)) },
+                label = resolve(FeedStringKey.CommentsInputPlaceholder),
+                enabled = !state.isPostingComment,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(Spacing.sm))
+            FrButton(
+                label = resolve(FeedStringKey.CommentsSendCta),
+                onClick = { onIntent(MealDetailIntent.PostComment) },
+                enabled = !state.isPostingComment && state.commentInput.isNotBlank(),
+            )
         }
     }
 }
