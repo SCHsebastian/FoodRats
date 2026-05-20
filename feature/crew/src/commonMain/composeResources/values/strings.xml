@@ -3,6 +3,7 @@
     <string name="crew_picker_title">Your crews</string>
     <string name="crew_picker_empty_headline">No crew yet</string>
     <string name="crew_picker_empty_subtext">Create a crew or join one with an invite code.</string>
+    <string name="crew_picker_hero_subtitle">Eat together, even apart.</string>
     <string name="crew_picker_create_cta">Create a crew</string>
     <string name="crew_picker_join_cta">Join with code</string>
     <string name="crew_create_name_label">Crew name</string>
@@ -23,7 +24,8 @@
     <string name="crew_settings_save">Save</string>
     <string name="crew_settings_switch_crew">Switch crew</string>
     <string name="crew_settings_invite_code">Invite code</string>
-    <string name="crew_settings_share">Copy code</string>
+    <string name="crew_settings_share">Share</string>
+    <string name="crew_settings_copy_cta">Copy code</string>
     <string name="crew_settings_delete_cta">Delete crew</string>
     <string name="crew_settings_delete_title">Delete crew?</string>
     <string name="crew_settings_delete_body">This will permanently delete %1$s and remove all members. This action cannot be undone.</string>

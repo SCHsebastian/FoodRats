@@ -24,6 +24,7 @@ import foodrats.feature.crew.generated.resources.crew_join_submit
 import foodrats.feature.crew.generated.resources.crew_picker_create_cta
 import foodrats.feature.crew.generated.resources.crew_picker_empty_headline
 import foodrats.feature.crew.generated.resources.crew_picker_empty_subtext
+import foodrats.feature.crew.generated.resources.crew_picker_hero_subtitle
 import foodrats.feature.crew.generated.resources.crew_picker_join_cta
 import foodrats.feature.crew.generated.resources.crew_picker_title
 import foodrats.feature.crew.generated.resources.crew_settings_actions_section
@@ -44,6 +45,7 @@ import foodrats.feature.crew.generated.resources.crew_settings_members_section
 import foodrats.feature.crew.generated.resources.crew_settings_my_display_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_my_profile_section
 import foodrats.feature.crew.generated.resources.crew_settings_save
+import foodrats.feature.crew.generated.resources.crew_settings_copy_cta
 import foodrats.feature.crew.generated.resources.crew_settings_share
 import foodrats.feature.crew.generated.resources.crew_settings_share_code
 import foodrats.feature.crew.generated.resources.crew_settings_sign_out_cta
@@ -56,6 +58,7 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     PickerTitle(Res.string.crew_picker_title),
     PickerEmptyHeadline(Res.string.crew_picker_empty_headline),
     PickerEmptySubtext(Res.string.crew_picker_empty_subtext),
+    PickerHeroSubtitle(Res.string.crew_picker_hero_subtitle),
     PickerCreateCta(Res.string.crew_picker_create_cta),
     PickerJoinCta(Res.string.crew_picker_join_cta),
     CreateNameLabel(Res.string.crew_create_name_label),
@@ -77,6 +80,7 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsSwitchCrew(Res.string.crew_settings_switch_crew),
     SettingsInviteCode(Res.string.crew_settings_invite_code),
     SettingsShare(Res.string.crew_settings_share),
+    SettingsCopyCta(Res.string.crew_settings_copy_cta),
     SettingsDeleteCta(Res.string.crew_settings_delete_cta),
     SettingsDeleteTitle(Res.string.crew_settings_delete_title),
     SettingsDeleteBody(Res.string.crew_settings_delete_body),
