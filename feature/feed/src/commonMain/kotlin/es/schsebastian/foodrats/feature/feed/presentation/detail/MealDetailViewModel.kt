@@ -65,8 +65,10 @@ class MealDetailViewModel(
     }
 
     override suspend fun handle(intent: MealDetailIntent) = when (intent) {
-        is MealDetailIntent.RateMeal     -> rateMeal(intent.score)
-        MealDetailIntent.DismissError    -> update { it.copy(error = null, rateError = null) }
+        is MealDetailIntent.RateMeal            -> rateMeal(intent.score)
+        MealDetailIntent.DismissError           -> update { it.copy(error = null, rateError = null) }
+        is MealDetailIntent.CommentInputChanged -> update { it.copy(commentInput = intent.value) }
+        MealDetailIntent.PostComment            -> Unit // wired in a later task
     }
 
     private suspend fun rateMeal(scoreRaw: Int) {
