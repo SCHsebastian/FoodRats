@@ -35,9 +35,9 @@ internal class FirebaseAuthRepository(
 ) : AuthRepository {
 
     // The base session from Firebase Auth carries the account id; the active crew
-    // id lives in DataStore (set during sign-in via the dev-crew hack, and later
-    // by the Crew picker). Combine both so consumers see a complete Session and
-    // CaptureMealViewModel doesn't error with CrewNotFound for signed-in users.
+    // id lives in DataStore (set by the Crew picker when the user picks/creates one).
+    // Combine both so consumers see a complete Session and CaptureMealViewModel
+    // doesn't error with CrewNotFound for signed-in users without an active crew.
     // Shared as a hot StateFlow so all consumers share one Firebase Auth listener.
     override val current: StateFlow<Session?> =
         combine(firebase.sessions(), prefs.observe(Keys.ActiveCrewId)) { session, crewIdValue ->
@@ -96,31 +96,20 @@ internal class FirebaseAuthRepository(
     private suspend fun finishSignIn(uid: String): Result<Session, AuthError> {
         val account = firebase.ensureAccountDoc(uid).toAccount()
             ?: return Result.failure(AuthError.Firebase.Unavailable)
-        // TODO(scope = "feature:crew"): remove this dev-crew hardcode once the
-        // Crew feature lets users create/pick a crew. Until then, smoke-testing
-        // meal publishing needs a non-null Session.activeCrewId AND the crew
-        // document to actually exist (Firestore rules require auth.uid in
-        // crews/{crewId}.memberIds for meal writes). Without ensureDevCrewMembership,
-        // meal publish writes are silently rejected by Firestore rules: they queue
-        // locally (publish reports success) but never land on the server.
-        runCatching {
-            firebase.ensureDevCrewMembership(
-                crewId = DEV_CREW_ID,
-                uid = uid,
-                displayName = account.displayName,
-                nowEpochMs = kotlin.time.Clock.System.now().toEpochMilliseconds(),
-            )
+        // One-shot migration (2026-05-20): the prior build seeded every sign-in with
+        // activeCrewId = "test-crew-1" via the now-removed dev-crew hardcode. Users
+        // upgrading from that build still carry the legacy pref and get routed
+        // straight to Main → publish hits PERMISSION_DENIED because they're not in
+        // that crew's memberIds. Wipe the legacy value so the RootNavViewModel
+        // emits NeedsCrew → CrewPicker and the user can pick or create a real crew.
+        if (prefs.observe(Keys.ActiveCrewId).first() == LEGACY_DEV_CREW_ID) {
+            prefs.clear(Keys.ActiveCrewId)
         }
-        // If runCatching failed, the crew doc may already exist for another user
-        // and rules forbid self-add. We continue — only writes for an unauthorised
-        // user will fail later.
-        val devCrewId = (CrewId.of(DEV_CREW_ID) as Result.Ok).value
-        prefs.set(Keys.ActiveCrewId, DEV_CREW_ID)
-        return Result.success(account.toSession().copy(activeCrewId = devCrewId))
+        return Result.success(account.toSession())
     }
 
     private companion object {
-        const val DEV_CREW_ID = "test-crew-1"
+        const val LEGACY_DEV_CREW_ID = "test-crew-1"
     }
 
     override suspend fun signOut(): Result<Unit, AuthError> {
