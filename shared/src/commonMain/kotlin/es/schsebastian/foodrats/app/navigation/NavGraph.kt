@@ -72,6 +72,7 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             val args = entry.toRoute<Route.CrewSettings>()
             CrewSettingsScreen(
                 crewId = args.crewId,
+                onBack = { controller.popBackStack() },
                 onLeft = { controller.navigateTopLevel(Route.CrewPicker) },
                 onSwitch = { controller.navigate(Route.CrewPicker) },
                 onDeleted = { controller.navigateTopLevel(Route.CrewPicker) },

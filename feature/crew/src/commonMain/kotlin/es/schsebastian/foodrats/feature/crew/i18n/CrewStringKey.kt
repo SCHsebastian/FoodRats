@@ -28,6 +28,7 @@ import foodrats.feature.crew.generated.resources.crew_picker_join_cta
 import foodrats.feature.crew.generated.resources.crew_picker_title
 import foodrats.feature.crew.generated.resources.crew_settings_actions_section
 import foodrats.feature.crew.generated.resources.crew_settings_avatar_uploading
+import foodrats.feature.crew.generated.resources.crew_settings_back_cta
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
 import foodrats.feature.crew.generated.resources.crew_settings_change_avatar_cta
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
@@ -62,6 +63,7 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     JoinCodeLabel(Res.string.crew_join_code_label),
     JoinSubmit(Res.string.crew_join_submit),
     SettingsTitle(Res.string.crew_settings_title),
+    SettingsBackCta(Res.string.crew_settings_back_cta),
     SettingsMembersSection(Res.string.crew_settings_members_section),
     SettingsShareCode(Res.string.crew_settings_share_code),
     SettingsLeaveCta(Res.string.crew_settings_leave_cta),

@@ -7,7 +7,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,6 +23,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
@@ -39,9 +46,11 @@ import kotlinx.io.readByteArray
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrewSettingsScreen(
     crewId: String,
+    onBack: () -> Unit,
     onLeft: () -> Unit,
     onSwitch: () -> Unit = {},
     onDeleted: () -> Unit = {},
@@ -85,21 +94,31 @@ fun CrewSettingsScreen(
         }
     }
 
-    FrScreenScaffold {
+    FrScreenScaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = { Text(resolve(CrewStringKey.SettingsTitle)) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = FrIcons.Back,
+                            contentDescription = resolve(CrewStringKey.SettingsBackCta),
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            )
+        },
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(Spacing.lg),
         ) {
-            // Title
-            item {
-                FrText(
-                    text = resolve(CrewStringKey.SettingsTitle),
-                    style = MaterialTheme.typography.headlineSmall,
-                )
-                Spacer(Modifier.height(Spacing.lg))
-            }
-
             state.crew?.let { crew ->
                 // Section: Crew
                 item {

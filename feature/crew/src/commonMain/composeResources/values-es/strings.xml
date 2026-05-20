@@ -10,6 +10,7 @@
     <string name="crew_join_code_label">Código de invitación</string>
     <string name="crew_join_submit">Unirme</string>
     <string name="crew_settings_title">Grupo</string>
+    <string name="crew_settings_back_cta">Atrás</string>
     <string name="crew_settings_members_section">Miembros</string>
     <string name="crew_settings_share_code">Comparte el código: %1$s</string>
     <string name="crew_settings_leave_cta">Salir del grupo</string>

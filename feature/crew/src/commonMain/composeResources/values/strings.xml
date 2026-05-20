@@ -10,6 +10,7 @@
     <string name="crew_join_code_label">Invite code</string>
     <string name="crew_join_submit">Join</string>
     <string name="crew_settings_title">Crew</string>
+    <string name="crew_settings_back_cta">Back</string>
     <string name="crew_settings_members_section">Members</string>
     <string name="crew_settings_share_code">Share code: %1$s</string>
     <string name="crew_settings_leave_cta">Leave crew</string>
