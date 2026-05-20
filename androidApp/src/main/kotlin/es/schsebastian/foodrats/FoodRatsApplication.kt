@@ -13,7 +13,7 @@ import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
 import es.schsebastian.foodrats.core.data.telemetry.AndroidCrashReporter
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
-import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
+import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsAndroidModule
 import es.schsebastian.foodrats.feature.notifications.platform.NotificationChannels
 import kotlinx.coroutines.CoroutineScope
@@ -33,7 +33,7 @@ class FoodRatsApplication : Application() {
         installAndroidFirebaseContext(this)
         FirebaseInitializer.init()
         NotificationChannels.ensure(this)
-        installFeedImageLoader()
+        installImageLoader()
 
         startKoin {
             androidLogger()
