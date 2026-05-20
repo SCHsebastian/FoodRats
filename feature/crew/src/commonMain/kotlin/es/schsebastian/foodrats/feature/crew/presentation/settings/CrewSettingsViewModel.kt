@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
+import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
@@ -21,6 +22,7 @@ class CrewSettingsViewModel(
     private val deleteCrew: DeleteCrewUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val session: SessionProvider,
+    private val signOutPort: SignOutPort,
 ) : MviViewModel<CrewSettingsState, CrewSettingsIntent, CrewSettingsEffect>(CrewSettingsState()) {
 
     init {
@@ -54,10 +56,11 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.SaveMyDisplayName -> doSaveMyDisplayName()
         CrewSettingsIntent.SwitchCrew -> emit(CrewSettingsEffect.NavigateToCrewPicker)
         CrewSettingsIntent.Leave -> doLeave()
+        CrewSettingsIntent.SignOut -> doSignOut()
         CrewSettingsIntent.RequestDelete -> update { it.copy(showDeleteConfirm = true) }
         CrewSettingsIntent.CancelDelete -> update { it.copy(showDeleteConfirm = false) }
         CrewSettingsIntent.ConfirmDelete -> doDelete()
-        CrewSettingsIntent.DismissError -> update { it.copy(error = null) }
+        CrewSettingsIntent.DismissError -> update { it.copy(error = null, signOutError = null) }
     }
 
     private suspend fun doSaveCrewName() {
@@ -92,6 +95,22 @@ class CrewSettingsViewModel(
         when (val r = deleteCrew(crewId)) {
             is Result.Ok -> { update { it.copy(isDeleting = false) }; emit(CrewSettingsEffect.Deleted) }
             is Result.Err -> update { it.copy(isDeleting = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doSignOut() {
+        update { it.copy(isSigningOut = true, signOutError = null) }
+        when (val r = signOutPort.signOut()) {
+            is Result.Ok -> {
+                update { it.copy(isSigningOut = false) }
+                // No explicit navigation here — the RootNavViewModel observes
+                // SessionProvider.current going null and routes the app to SignIn,
+                // wiping the back stack via navigateTopLevel. The effect below is
+                // a hint for the screen to popBackStack defensively so the user
+                // doesn't briefly see the (now stale) settings frame.
+                emit(CrewSettingsEffect.SignedOut)
+            }
+            is Result.Err -> update { it.copy(isSigningOut = false, signOutError = r.error) }
         }
     }
 }

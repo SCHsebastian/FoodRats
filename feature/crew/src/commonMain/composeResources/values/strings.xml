@@ -43,4 +43,6 @@
     <string name="crew_error_authorization_not_owner">Only the crew owner can do this.</string>
     <string name="crew_error_validation_display_name_blank">Display name can\'t be empty.</string>
     <string name="crew_error_validation_display_name_too_long">Display name is too long (max 40 characters).</string>
+    <string name="crew_settings_sign_out_cta">Sign out</string>
+    <string name="crew_settings_sign_out_failed">Couldn\'t sign out. Try again.</string>
 </resources>

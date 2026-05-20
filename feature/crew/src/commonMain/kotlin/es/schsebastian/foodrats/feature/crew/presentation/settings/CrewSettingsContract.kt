@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
+import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
@@ -15,8 +16,10 @@ data class CrewSettingsState(
     val isSavingMyDisplayName: Boolean = false,
     val isLeaving: Boolean = false,
     val isDeleting: Boolean = false,
+    val isSigningOut: Boolean = false,
     val showDeleteConfirm: Boolean = false,
     val error: CrewError? = null,
+    val signOutError: SessionError? = null,
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {
@@ -26,6 +29,7 @@ sealed interface CrewSettingsIntent : MviIntent {
     data object SaveMyDisplayName : CrewSettingsIntent
     data object SwitchCrew : CrewSettingsIntent
     data object Leave : CrewSettingsIntent
+    data object SignOut : CrewSettingsIntent
     data object RequestDelete : CrewSettingsIntent
     data object ConfirmDelete : CrewSettingsIntent
     data object CancelDelete : CrewSettingsIntent
@@ -36,4 +40,5 @@ sealed interface CrewSettingsEffect : MviEffect {
     data object NavigateToCrewPicker : CrewSettingsEffect
     data object Left : CrewSettingsEffect
     data object Deleted : CrewSettingsEffect
+    data object SignedOut : CrewSettingsEffect
 }

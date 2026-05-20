@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -74,6 +75,11 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 onLeft = { controller.navigateTopLevel(Route.CrewPicker) },
                 onSwitch = { controller.navigate(Route.CrewPicker) },
                 onDeleted = { controller.navigateTopLevel(Route.CrewPicker) },
+                // Sign-out flow: defensively pop CrewSettings so the user doesn't briefly see
+                // the stale frame. The real auth-boundary transition happens through
+                // RootNavViewModel observing SessionProvider.current going null — it emits
+                // NavigateTo(Route.SignIn) which navigateTopLevel turns into a stack wipe.
+                onSignedOut = { controller.popBackStack() },
             )
         }
 
@@ -107,11 +113,18 @@ fun NavGraph(navController: NavController = rememberNavController()) {
     }
 }
 
-/** "Navigate top-level" replaces the back-stack, used for stage transitions. */
+/**
+ * Replace the back stack with [route] — used for stage transitions (Splash → SignIn → CrewPicker → Main,
+ * sign-out, session expiry). Pops everything up to and including the graph's start destination so the
+ * transition lands on a single-entry stack regardless of where it fires from. The previous version
+ * used `popUpTo<Route.Splash>` which silently becomes a no-op the moment Splash leaves the stack
+ * after the first transition — sign-out from deep inside the app would have leaked the previous stack.
+ */
 fun NavHostController.navigateTopLevel(route: Route) {
     navigate(route) {
-        popUpTo<Route.Splash> { inclusive = true; saveState = false }
+        popUpTo(graph.findStartDestination().id) { inclusive = true; saveState = false }
         launchSingleTop = true
+        restoreState = false
     }
 }
 

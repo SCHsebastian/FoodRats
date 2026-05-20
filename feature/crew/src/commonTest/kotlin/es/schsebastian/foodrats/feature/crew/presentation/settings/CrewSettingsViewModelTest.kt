@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
+import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
@@ -45,6 +46,16 @@ private class FakeSettingsSessionProvider(
             ?: Result.failure(SessionError.NotSignedIn)
 }
 
+private class FakeSignOutPort(
+    private val result: Result<Unit, SessionError> = Result.success(Unit),
+) : SignOutPort {
+    var calls = 0
+    override suspend fun signOut(): Result<Unit, SessionError> {
+        calls++
+        return result
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class CrewSettingsViewModelTest {
 
@@ -78,6 +89,7 @@ class CrewSettingsViewModelTest {
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,
+            signOutPort = FakeSignOutPort(),
         )
     }
 
@@ -136,6 +148,7 @@ class CrewSettingsViewModelTest {
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,
+            signOutPort = FakeSignOutPort(),
         )
         vm.onIntent(CrewSettingsIntent.CrewNameChanged("Some Name"))
         vm.onIntent(CrewSettingsIntent.SaveCrewName)
@@ -226,6 +239,7 @@ class CrewSettingsViewModelTest {
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,
+            signOutPort = FakeSignOutPort(),
         )
         vm.onIntent(CrewSettingsIntent.ConfirmDelete)
         assertFalse(vm.state.value.showDeleteConfirm)
@@ -242,5 +256,54 @@ class CrewSettingsViewModelTest {
         assertTrue(vm.state.value.error != null)
         vm.onIntent(CrewSettingsIntent.DismissError)
         assertNull(vm.state.value.error)
+    }
+
+    @Test
+    fun sign_out_success_emits_signedOut_effect_and_calls_port() = runTest {
+        val repo = FakeCrewRepository(initial = listOf(testCrew))
+        val provider = FakeSettingsSessionProvider(Session(ownerId, crewId))
+        val signOutPort = FakeSignOutPort(result = Result.success(Unit))
+        val vm = CrewSettingsViewModel(
+            crewId = crewId,
+            observeCrew = ObserveCrewUseCase(repo),
+            renameCrew = RenameCrewUseCase(repo, provider),
+            renameMember = RenameMemberUseCase(repo, provider),
+            deleteCrew = DeleteCrewUseCase(repo, provider),
+            leaveCrew = LeaveCrewUseCase(repo),
+            session = provider,
+            signOutPort = signOutPort,
+        )
+        vm.effects.test {
+            vm.onIntent(CrewSettingsIntent.SignOut)
+            assertEquals(CrewSettingsEffect.SignedOut, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, signOutPort.calls)
+        assertFalse(vm.state.value.isSigningOut)
+        assertNull(vm.state.value.signOutError)
+    }
+
+    @Test
+    fun sign_out_failure_sets_signOutError_and_no_effect() = runTest {
+        val repo = FakeCrewRepository(initial = listOf(testCrew))
+        val provider = FakeSettingsSessionProvider(Session(ownerId, crewId))
+        val signOutPort = FakeSignOutPort(result = Result.failure(SessionError.FirebaseUnavailable))
+        val vm = CrewSettingsViewModel(
+            crewId = crewId,
+            observeCrew = ObserveCrewUseCase(repo),
+            renameCrew = RenameCrewUseCase(repo, provider),
+            renameMember = RenameMemberUseCase(repo, provider),
+            deleteCrew = DeleteCrewUseCase(repo, provider),
+            leaveCrew = LeaveCrewUseCase(repo),
+            session = provider,
+            signOutPort = signOutPort,
+        )
+        vm.effects.test {
+            vm.onIntent(CrewSettingsIntent.SignOut)
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(SessionError.FirebaseUnavailable, vm.state.value.signOutError)
+        assertFalse(vm.state.value.isSigningOut)
     }
 }

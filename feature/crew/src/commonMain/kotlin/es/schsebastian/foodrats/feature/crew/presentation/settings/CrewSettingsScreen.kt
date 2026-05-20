@@ -37,6 +37,7 @@ fun CrewSettingsScreen(
     onLeft: () -> Unit,
     onSwitch: () -> Unit = {},
     onDeleted: () -> Unit = {},
+    onSignedOut: () -> Unit = {},
     vm: CrewSettingsViewModel = koinViewModel(parameters = { parametersOf((CrewId.of(crewId) as es.schsebastian.foodrats.core.domain.result.Result.Ok).value) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -48,6 +49,7 @@ fun CrewSettingsScreen(
                 CrewSettingsEffect.NavigateToCrewPicker -> onSwitch()
                 CrewSettingsEffect.Left -> onLeft()
                 CrewSettingsEffect.Deleted -> onDeleted()
+                CrewSettingsEffect.SignedOut -> onSignedOut()
             }
         }
     }
@@ -176,6 +178,18 @@ fun CrewSettingsScreen(
                         enabled = !state.isLeaving,
                         modifier = Modifier.fillMaxWidth(),
                     )
+                    Spacer(Modifier.height(Spacing.sm))
+                    FrButton(
+                        label = resolve(CrewStringKey.SettingsSignOutCta),
+                        onClick = { vm.onIntent(CrewSettingsIntent.SignOut) },
+                        variant = FrButtonVariant.Secondary,
+                        enabled = !state.isSigningOut,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (state.signOutError != null) {
+                        Spacer(Modifier.height(Spacing.sm))
+                        FrErrorBanner(text = resolve(CrewStringKey.SettingsSignOutFailed))
+                    }
                     Spacer(Modifier.height(Spacing.lg))
                 }
 

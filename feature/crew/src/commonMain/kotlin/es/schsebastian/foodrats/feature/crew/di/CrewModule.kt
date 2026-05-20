@@ -44,6 +44,6 @@ val crewModule = module {
 
     viewModelOf(::CrewPickerViewModel)
     viewModel { (crewId: es.schsebastian.foodrats.core.domain.model.CrewId) ->
-        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get())
+        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get(), get())
     }
 }

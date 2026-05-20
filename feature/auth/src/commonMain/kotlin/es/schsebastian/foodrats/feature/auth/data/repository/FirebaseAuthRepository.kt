@@ -107,7 +107,11 @@ internal class FirebaseAuthRepository(
         return try {
             firebase.signOut()
             googleClient.signOut()
+            // Clear both the session token AND the active crew so the next sign-in
+            // lands on CrewPicker instead of silently inheriting the previous user's
+            // crew (the active-crew flow re-derives from prefs at session-restore time).
             prefs.clear(Keys.SessionToken)
+            prefs.clear(Keys.ActiveCrewId)
             Result.success(Unit)
         } catch (t: Throwable) {
             Result.failure(errorMapper.mapFirebase(t))

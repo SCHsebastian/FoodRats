@@ -43,6 +43,8 @@ import foodrats.feature.crew.generated.resources.crew_settings_my_profile_sectio
 import foodrats.feature.crew.generated.resources.crew_settings_save
 import foodrats.feature.crew.generated.resources.crew_settings_share
 import foodrats.feature.crew.generated.resources.crew_settings_share_code
+import foodrats.feature.crew.generated.resources.crew_settings_sign_out_cta
+import foodrats.feature.crew.generated.resources.crew_settings_sign_out_failed
 import foodrats.feature.crew.generated.resources.crew_settings_switch_crew
 import foodrats.feature.crew.generated.resources.crew_settings_title
 import org.jetbrains.compose.resources.StringResource
@@ -76,6 +78,8 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsDeleteBody(Res.string.crew_settings_delete_body),
     SettingsDeleteConfirm(Res.string.crew_settings_delete_confirm),
     SettingsCancel(Res.string.crew_settings_cancel),
+    SettingsSignOutCta(Res.string.crew_settings_sign_out_cta),
+    SettingsSignOutFailed(Res.string.crew_settings_sign_out_failed),
     ErrorNameBlank(Res.string.crew_error_name_blank),
     ErrorNameTooLong(Res.string.crew_error_name_too_long),
     ErrorCodeMalformed(Res.string.crew_error_code_malformed),
