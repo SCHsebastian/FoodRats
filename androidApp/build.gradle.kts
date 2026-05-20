@@ -82,7 +82,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            signingConfig = signingConfigs.getByName("release")
+            if (System.getenv("ANDROID_KEYSTORE_PATH") != null) signingConfig = signingConfigs.getByName("release")
             // Crashlytics mapping upload is on for real releases, but the CI
             // R8 smoke build has no Firebase credentials — gate it with
             // -PcrashlyticsMappingUpload=false there.
