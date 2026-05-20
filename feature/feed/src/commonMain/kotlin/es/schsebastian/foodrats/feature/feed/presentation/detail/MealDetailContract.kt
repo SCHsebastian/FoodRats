@@ -1,12 +1,12 @@
 package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import es.schsebastian.foodrats.core.domain.meal.CommentError
-import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
+import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
 
 data class MealDetailState(
@@ -16,7 +16,7 @@ data class MealDetailState(
     val notFound: Boolean = false,
     val pendingRate: Boolean = false,
     val rateError: RateError? = null,
-    val comments: List<MealComment> = emptyList(),
+    val commentRows: List<CommentRowUi> = emptyList(),
     val commentsLoading: Boolean = true,
     val commentReadError: CommentError.Read? = null,
     val commentInput: String = "",

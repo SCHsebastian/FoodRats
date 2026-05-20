@@ -39,4 +39,5 @@
     <string name="feed_comments_error_too_long">Máximo 500 caracteres</string>
     <string name="feed_comments_error_unavailable">No se pudo publicar. Intenta de nuevo.</string>
     <string name="feed_comments_error_unauthorized">No tienes permiso para comentar</string>
+    <string name="feed_deleted_author">Usuario eliminado</string>
 </resources>

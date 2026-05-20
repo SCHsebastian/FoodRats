@@ -62,6 +62,9 @@ kotlin {
                 implementation(libs.koin.test)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.turbine)
+                implementation(libs.androidx.testExt.junit)
+                implementation(libs.compose.ui.test.junit4)
+                implementation(libs.robolectric)
             }
         }
         androidMain.dependencies {

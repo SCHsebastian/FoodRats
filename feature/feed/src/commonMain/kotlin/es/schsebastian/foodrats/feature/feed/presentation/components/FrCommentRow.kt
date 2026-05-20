@@ -17,6 +17,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 
 @Composable
 fun FrCommentRow(
@@ -25,19 +26,33 @@ fun FrCommentRow(
     text: String,
     relative: RelativeTimestamp,
     modifier: Modifier = Modifier,
+    loading: Boolean = false,
+    isDeleted: Boolean = false,
 ) {
+    val nameLabel = when {
+        isDeleted -> resolve(FeedStringKey.DeletedAuthor)
+        loading   -> "…"
+        else      -> displayName
+    }
+    val avatarInitials = when {
+        isDeleted -> "?"
+        loading   -> "·"
+        else      -> displayName.ifBlank { "?" }
+    }
+    val avatarImage = if (isDeleted || loading) null else avatarUrl
+
     Row(
         modifier = modifier.fillMaxWidth().padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.Top,
     ) {
-        FrAvatar(initials = displayName.ifBlank { "?" })
+        FrAvatar(initials = avatarInitials, imageUrl = avatarImage)
         Spacer(Modifier.width(Spacing.sm))
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                FrText(text = displayName, style = MaterialTheme.typography.labelLarge)
+                FrText(text = nameLabel, style = MaterialTheme.typography.labelLarge)
                 FrText(
                     text = resolve(relative.key, relative.amount),
                     style = MaterialTheme.typography.bodySmall,

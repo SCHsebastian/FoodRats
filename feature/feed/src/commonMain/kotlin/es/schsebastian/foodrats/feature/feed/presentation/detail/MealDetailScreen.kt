@@ -23,7 +23,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,14 +43,11 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrTagChipRow
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
-import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrCommentRow
-import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -64,7 +60,6 @@ fun MealDetailScreen(
     vm: MealDetailViewModel = koinViewModel(parameters = { parametersOf(mealId, dayIso) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val clock: Clock = koinInject()
     FrScreenScaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -102,7 +97,6 @@ fun MealDetailScreen(
             }
             else -> MealDetailBody(
                 state = state,
-                clock = clock,
                 onIntent = vm::onIntent,
             )
         }
@@ -116,7 +110,6 @@ fun MealDetailScreen(
 @Composable
 private fun MealDetailBody(
     state: MealDetailState,
-    clock: Clock,
     onIntent: (MealDetailIntent) -> Unit,
 ) {
     val meal = state.meal ?: return
@@ -235,7 +228,7 @@ private fun MealDetailBody(
         )
 
         when {
-            state.commentsLoading && state.comments.isEmpty() -> {
+            state.commentsLoading && state.commentRows.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxWidth().padding(Spacing.md),
                     contentAlignment = Alignment.Center,
@@ -243,7 +236,7 @@ private fun MealDetailBody(
                     FrProgressIndicator()
                 }
             }
-            state.comments.isEmpty() && state.commentReadError == null -> {
+            state.commentRows.isEmpty() && state.commentReadError == null -> {
                 FrEmptyState(
                     icon = FrIcons.Settings,
                     headline = resolve(FeedStringKey.CommentsEmpty),
@@ -254,13 +247,14 @@ private fun MealDetailBody(
                 FrErrorBanner(text = resolve(state.commentReadError.toStringKey()))
             }
             else -> {
-                val now = remember(state.comments) { clock.now() }
-                state.comments.forEach { c ->
+                state.commentRows.forEach { c ->
                     FrCommentRow(
-                        displayName = c.author.displayName.ifBlank { "—" },
-                        avatarUrl = c.author.avatarUrl,
-                        text = c.text.value,
-                        relative = c.createdAt.toRelative(now),
+                        displayName = c.displayName,
+                        avatarUrl = c.avatarUrl,
+                        text = c.text,
+                        relative = c.relative,
+                        loading = c.loading,
+                        isDeleted = c.isDeleted,
                     )
                 }
             }
