@@ -4,7 +4,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
-import es.schsebastian.foodrats.feature.meal.data.firebase.MealRatingsFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
 import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
@@ -25,7 +24,6 @@ import org.koin.dsl.module
 
 val mealModule = module {
     singleOf(::MealFirestoreDataSource)
-    singleOf(::MealRatingsFirestoreDataSource)
     singleOf(::PlateStorageDataSource)
     singleOf(::MealDraftLocalStore)
     singleOf(::MealErrorMapper)
