@@ -35,3 +35,17 @@ iosApp/build-cli/
 
 # Claude Code local state (settings, worktrees, transcripts).
 .claude/
+
+# Fastlane generated artifacts (reports, fetched metadata, ephemeral output).
+fastlane/report.xml
+fastlane/README.md
+fastlane/test_output/
+fastlane/Preview.html
+**/*.p8
+**/*.jks
+**/upload.keystore
+build/ios/
+
+# Ruby / Bundler local install path.
+vendor/bundle/
+.bundle/
