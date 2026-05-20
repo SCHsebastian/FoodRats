@@ -1,0 +1,9 @@
+# Code-signing assets (Apple distribution cert + provisioning profiles) live
+# encrypted in a PRIVATE git repo. CI uses them read-only; certificates are
+# created/rotated only from a developer machine with `bundle exec fastlane match appstore`.
+git_url(ENV["MATCH_GIT_URL"])
+storage_mode("git")
+
+type("appstore")
+app_identifier(["es.schsebastian.foodrats"])
+readonly(true)

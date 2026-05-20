@@ -1,3 +1,4 @@
+import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -47,9 +48,26 @@ android {
         applicationId = "es.schsebastian.foodrats"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        // Version is injected by CI via -PversionName / -PversionCode (see
+        // scripts/ci/compute_version.sh). Locals fall back to the dev defaults.
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = (project.findProperty("versionName") as String?) ?: "1.0"
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${project.findProperty("googleServerClientId") ?: ""}\"")
+    }
+    // Release signing reads the upload keystore from the environment. CI
+    // materializes it from the ANDROID_KEYSTORE_BASE64 secret and exports
+    // ANDROID_KEYSTORE_PATH; local release builds without these env vars
+    // simply produce an unsigned AAB (debug builds are unaffected).
+    signingConfigs {
+        create("release") {
+            val keystorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
+                storePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("ANDROID_KEY_ALIAS")
+                keyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+            }
+        }
     }
     packaging {
         resources {
@@ -58,7 +76,20 @@ android {
     }
     buildTypes {
         getByName("release") {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            signingConfig = signingConfigs.getByName("release")
+            // Crashlytics mapping upload is on for real releases, but the CI
+            // R8 smoke build has no Firebase credentials — gate it with
+            // -PcrashlyticsMappingUpload=false there.
+            configure<CrashlyticsExtension> {
+                mappingFileUploadEnabled =
+                    project.findProperty("crashlyticsMappingUpload") != "false"
+            }
         }
     }
     buildFeatures {

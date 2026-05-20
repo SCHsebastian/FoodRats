@@ -1,8 +1,14 @@
 name: CI
 
-# Runs the cross-platform host test suite on every PR and on pushes to the
-# protected branches. Firebase config is reconstructed from repository secrets
-# at build time so that google-services.json never lives in the repo.
+# Validates every PR and every push to the protected branches.
+#
+#  - host-tests:   the cross-platform host test suite. None of the tested
+#                  modules apply the Firebase/googleServices plugin, so this
+#                  job needs NO secrets and runs identically on fork PRs.
+#  - release-smoke: builds the minified (R8) release AAB so ProGuard config
+#                  errors surface on the PR. Self-contained: it synthesizes a
+#                  placeholder google-services.json and disables the Crashlytics
+#                  mapping upload, so it also needs no secrets.
 
 on:
   pull_request:
@@ -36,21 +42,6 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Materialize Firebase config from secret
-        env:
-          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
-        run: |
-          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
-            echo "::error::GOOGLE_SERVICES_JSON secret is empty or missing"; exit 1
-          fi
-          printf '%s' "$GOOGLE_SERVICES_JSON" | base64 --decode > androidApp/google-services.json
-
-      - name: Provide Google server client id
-        env:
-          GOOGLE_SERVER_CLIENT_ID: ${{ secrets.GOOGLE_SERVER_CLIENT_ID }}
-        run: |
-          echo "googleServerClientId=${GOOGLE_SERVER_CLIENT_ID}" >> gradle.properties
-
       - name: Run host tests
         run: >
           ./gradlew --no-daemon
@@ -71,3 +62,52 @@ jobs:
           path: '**/build/reports/tests/**'
           if-no-files-found: ignore
           retention-days: 7
+
+  release-smoke:
+    name: Release smoke (R8)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # The googleServices plugin (applied in :androidApp) needs a structurally
+      # valid google-services.json. The real one is a secret; for a build-only
+      # smoke we synthesize a placeholder with the correct package name. It is
+      # never shipped — the resulting AAB is unsigned and discarded.
+      - name: Synthesize placeholder google-services.json
+        run: |
+          cat > androidApp/google-services.json <<'JSON'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "foodrats-ci-placeholder",
+              "storage_bucket": "foodrats-ci-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": { "package_name": "es.schsebastian.foodrats" }
+                },
+                "oauth_client": [],
+                "api_key": [ { "current_key": "AIzaSyDUMMYKEYDUMMYKEYDUMMYKEYDUMMYKEY00" } ],
+                "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          JSON
+
+      - name: Build minified release AAB (unsigned, no Crashlytics upload)
+        run: >
+          ./gradlew --no-daemon :androidApp:bundleRelease
+          -PcrashlyticsMappingUpload=false

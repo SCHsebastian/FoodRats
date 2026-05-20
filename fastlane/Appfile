@@ -1,0 +1,9 @@
+for_platform :android do
+  package_name("es.schsebastian.foodrats")
+  json_key_file(ENV["PLAY_JSON_KEY_PATH"]) if ENV["PLAY_JSON_KEY_PATH"]
+end
+
+for_platform :ios do
+  app_identifier("es.schsebastian.foodrats")
+  team_id("2AH7L26L78")
+end
