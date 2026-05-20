@@ -1,6 +1,9 @@
 package es.schsebastian.foodrats.feature.crew.di
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
+import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.crew.data.firebase.AvatarStorageDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
@@ -24,6 +27,7 @@ import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
+import kotlinx.coroutines.flow.Flow
 import org.koin.dsl.module
 import kotlin.random.Random
 
@@ -33,6 +37,12 @@ val crewModule = module {
     singleOf(::CrewFirestoreDataSource)
     singleOf(::AvatarStorageDataSource)
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
+    single<CrewMembersPort> {
+        object : CrewMembersPort {
+            private val ds = get<CrewFirestoreDataSource>()
+            override fun observeMembers(crewId: CrewId): Flow<List<CrewMemberView>> = ds.observeMembersRaw(crewId)
+        }
+    }
     single<CrewRepository> {
         // (firestore, avatarStorage, auth, dispatchers, errorMapper, clock)
         FirebaseCrewRepository(get(), get(), get(), get(), get(), get())
@@ -50,7 +60,7 @@ val crewModule = module {
     factoryOf(::UpdateMyAvatarUseCase)
 
     viewModelOf(::CrewPickerViewModel)
-    viewModel { (crewId: es.schsebastian.foodrats.core.domain.model.CrewId) ->
+    viewModel { (crewId: CrewId) ->
         CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get(), get(), get())
     }
 }

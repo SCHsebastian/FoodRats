@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.crew.data.firebase
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -121,6 +122,18 @@ class CrewFirestoreDataSource(
     fun observeCrew(crewId: CrewId): Flow<CrewDto?> =
         crewsCol.document(crewId.value).snapshots
             .map { snap -> if (snap.exists) snap.data<CrewDto>() else null }
+
+    /** Cold flow projecting the members map from the live crew document. */
+    fun observeMembersRaw(crewId: CrewId): Flow<List<CrewMemberView>> =
+        observeCrew(crewId).map { dto ->
+            dto?.members?.entries?.map { (uid, m) ->
+                CrewMemberView(
+                    accountUid = uid,
+                    displayName = m.displayName.orEmpty(),
+                    avatarUrl = m.avatarUrl,
+                )
+            } ?: emptyList()
+        }
 
     /** Single-shot read of a crew; returns null on not-found or error. */
     suspend fun fetchOnce(crewId: CrewId): Crew? =
