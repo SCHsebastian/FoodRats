@@ -17,5 +17,6 @@ fun RateError.toStringKey(): FeedStringKey = when (this) {
     RateError.AlreadyRated       -> FeedStringKey.RateErrorAlreadyRated
     RateError.RatingWindowClosed -> FeedStringKey.RateErrorWindowClosed
     RateError.Unauthorized       -> FeedStringKey.RateErrorUnauthorized
+    RateError.Offline            -> FeedStringKey.RateErrorOffline
     RateError.RateUnavailable    -> FeedStringKey.RateErrorUnavailable
 }

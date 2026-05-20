@@ -33,6 +33,7 @@ import foodrats.feature.feed.generated.resources.feed_rating_summary
 import foodrats.feature.feed.generated.resources.feed_voter_score
 import foodrats.feature.feed.generated.resources.feed_rate_error_already_rated
 import foodrats.feature.feed.generated.resources.feed_rate_error_cannot_rate_own_meal
+import foodrats.feature.feed.generated.resources.feed_rate_error_offline
 import foodrats.feature.feed.generated.resources.feed_rate_error_unauthorized
 import foodrats.feature.feed.generated.resources.feed_rate_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_rate_error_window_closed
@@ -65,6 +66,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     RateErrorAlreadyRated(Res.string.feed_rate_error_already_rated),
     RateErrorWindowClosed(Res.string.feed_rate_error_window_closed),
     RateErrorUnauthorized(Res.string.feed_rate_error_unauthorized),
+    RateErrorOffline(Res.string.feed_rate_error_offline),
     RateErrorUnavailable(Res.string.feed_rate_error_unavailable),
     DetailBackCta(Res.string.feed_detail_back_cta),
     DetailTitle(Res.string.feed_detail_title),

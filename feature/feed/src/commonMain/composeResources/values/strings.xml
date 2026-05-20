@@ -22,7 +22,8 @@
     <string name="feed_rate_error_already_rated">You\'ve already voted</string>
     <string name="feed_rate_error_window_closed">Voting is closed</string>
     <string name="feed_rate_error_unauthorized">Sign in to vote</string>
-    <string name="feed_rate_error_unavailable">Couldn\'t submit your vote</string>
+    <string name="feed_rate_error_unavailable">Couldn\'t submit your vote. Please try again.</string>
+    <string name="feed_rate_error_offline">No internet connection. Try again when you\'re back online.</string>
     <string name="feed_detail_back_cta">Back</string>
     <string name="feed_detail_title">Meal</string>
     <string name="feed_detail_not_found">This meal is no longer here.</string>

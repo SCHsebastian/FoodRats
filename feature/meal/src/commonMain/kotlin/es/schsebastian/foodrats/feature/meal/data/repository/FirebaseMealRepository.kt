@@ -222,15 +222,7 @@ internal class FirebaseMealRepository(
             }
         }.fold(
             onSuccess = { it },
-            onFailure = { t ->
-                val msg = t.message.orEmpty().lowercase()
-                val mapped = when {
-                    "permission-denied" in msg -> RateError.RatingWindowClosed
-                    "unauthenticated" in msg -> RateError.Unauthorized
-                    else -> errorMapper.mapRate(t)
-                }
-                Result.failure(mapped)
-            },
+            onFailure = { t -> Result.failure(errorMapper.mapRate(t)) },
         )
     }
 }

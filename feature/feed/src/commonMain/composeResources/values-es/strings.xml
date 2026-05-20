@@ -22,7 +22,8 @@
     <string name="feed_rate_error_already_rated">Ya votaste</string>
     <string name="feed_rate_error_window_closed">Ya pasó la ventana de voto</string>
     <string name="feed_rate_error_unauthorized">Inicia sesión para votar</string>
-    <string name="feed_rate_error_unavailable">No se pudo enviar tu voto</string>
+    <string name="feed_rate_error_unavailable">No se pudo enviar tu voto. Inténtalo de nuevo.</string>
+    <string name="feed_rate_error_offline">Sin conexión. Vuelve a intentarlo cuando tengas internet.</string>
     <string name="feed_detail_back_cta">Atrás</string>
     <string name="feed_detail_title">Comida</string>
     <string name="feed_detail_not_found">Esta comida ya no está aquí.</string>
