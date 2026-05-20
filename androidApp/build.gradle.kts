@@ -120,5 +120,5 @@ val printDebugSha = tasks.register<Exec>("printDebugSha") {
 }
 
 afterEvaluate {
-    tasks.findByName("preBuild")?.dependsOn(printDebugSha)
+    if (System.getenv("CI") == null) tasks.findByName("preBuild")?.dependsOn(printDebugSha)
 }
