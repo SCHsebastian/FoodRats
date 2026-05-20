@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.app.navigation
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -35,6 +36,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
+import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
@@ -54,7 +58,22 @@ fun NavGraph(navController: NavController = rememberNavController()) {
     // Outer (root) NavHost
     val controller = navController as NavHostController
     NavHost(navController = controller, startDestination = Route.Splash) {
-        composable<Route.Splash> { /* empty — RootNavViewModel will navigate away */ }
+        composable<Route.Splash> {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.background),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                ) {
+                    FrLogo(size = 128.dp)
+                    FrProgressIndicator()
+                }
+            }
+        }
 
         composable<Route.SignIn> {
             SignInScreen(onSignedIn = { controller.navigateTopLevel(Route.CrewPicker) })
