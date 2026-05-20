@@ -15,7 +15,7 @@ import org.koin.dsl.module
 val authModule = module {
     singleOf(::AuthErrorMapper)
     singleOf(::FirebaseAuthDataSource)
-    single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get()) }
+    single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get()) }
     single<SessionProvider> { get<AuthRepository>() }
     single<SignOutPort> { AuthSignOutPort(get()) }
     viewModelOf(::SignInViewModel)

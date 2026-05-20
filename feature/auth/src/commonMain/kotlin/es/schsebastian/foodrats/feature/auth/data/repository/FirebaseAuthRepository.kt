@@ -14,23 +14,32 @@ import es.schsebastian.foodrats.feature.auth.data.firebase.toSession
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
+import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.stateIn
 
 internal class FirebaseAuthRepository(
     private val googleClient: GoogleAuthClient,
     private val firebase: FirebaseAuthDataSource,
     private val errorMapper: AuthErrorMapper,
     private val prefs: AppPreferences,
+    private val dispatchers: DispatcherProvider,
+    private val repoScope: CoroutineScope = CoroutineScope(SupervisorJob() + dispatchers.default),
 ) : AuthRepository {
 
     // The base session from Firebase Auth carries the account id; the active crew
     // id lives in DataStore (set during sign-in via the dev-crew hack, and later
     // by the Crew picker). Combine both so consumers see a complete Session and
     // CaptureMealViewModel doesn't error with CrewNotFound for signed-in users.
-    override val current: Flow<Session?> =
+    // Shared as a hot StateFlow so all consumers share one Firebase Auth listener.
+    override val current: StateFlow<Session?> =
         combine(firebase.sessions(), prefs.observe(Keys.ActiveCrewId)) { session, crewIdValue ->
             if (session == null) null
             else {
@@ -44,7 +53,11 @@ internal class FirebaseAuthRepository(
                 "repo.current emit account=${sess?.accountId?.value ?: "null"} " +
                     "crew=${sess?.activeCrewId?.value ?: "null"}"
             }
-        }
+        }.stateIn(
+            scope = repoScope,
+            started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
+            initialValue = null,
+        )
 
     override suspend fun requireCurrent(): Result<Session, SessionError> =
         current.first()?.let { Result.success(it) } ?: Result.failure(SessionError.NotSignedIn)
