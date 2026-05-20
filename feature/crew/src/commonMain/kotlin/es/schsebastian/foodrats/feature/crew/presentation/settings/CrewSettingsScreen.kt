@@ -27,8 +27,15 @@ import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
+import es.schsebastian.foodrats.feature.crew.presentation.components.MyAvatarPicker
+import es.schsebastian.foodrats.feature.crew.presentation.components.resizeAvatarForUpload
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
+import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
+import io.github.ismoy.imagepickerkmp.domain.models.MimeType
+import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
+import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
+import kotlinx.io.readByteArray
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -43,6 +50,25 @@ fun CrewSettingsScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
+    val picker = rememberImagePickerKMP()
+
+    LaunchedEffect(picker.result) {
+        when (val result = picker.result) {
+            is ImagePickerResult.Success -> {
+                val photo = result.first ?: return@LaunchedEffect
+                val bytes = photo.asSource().readByteArray().resizeAvatarForUpload()
+                vm.onIntent(CrewSettingsIntent.UpdateMyAvatar(bytes))
+                picker.reset()
+            }
+            is ImagePickerResult.Error -> {
+                println("[CrewSettingsScreen] avatar picker error: ${result.exception.message}")
+                picker.reset()
+            }
+            is ImagePickerResult.Dismissed,
+            is ImagePickerResult.Loading,
+            is ImagePickerResult.Idle -> Unit
+        }
+    }
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
@@ -143,6 +169,21 @@ fun CrewSettingsScreen(
                     FrText(
                         text = resolve(CrewStringKey.SettingsMyProfileSection),
                         style = MaterialTheme.typography.titleMedium,
+                    )
+                    Spacer(Modifier.height(Spacing.md))
+                    MyAvatarPicker(
+                        initials = state.editingMyDisplayName.ifBlank { "?" }.take(2),
+                        avatarUrl = state.myAvatarUrl,
+                        onPickClick = {
+                            picker.launchGallery(
+                                allowMultiple = false,
+                                mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
+                            )
+                        },
+                        busy = state.isUpdatingAvatar,
+                        changeLabel = resolve(CrewStringKey.SettingsChangeAvatarCta),
+                        uploadingLabel = resolve(CrewStringKey.SettingsAvatarUploading),
+                        modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(Spacing.md))
                     FrTextField(

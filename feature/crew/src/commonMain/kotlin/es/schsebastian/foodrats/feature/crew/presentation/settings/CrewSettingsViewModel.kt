@@ -12,6 +12,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameMemberUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.UpdateMyAvatarUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -20,6 +21,7 @@ class CrewSettingsViewModel(
     private val observeCrew: ObserveCrewUseCase,
     private val renameCrew: RenameCrewUseCase,
     private val renameMember: RenameMemberUseCase,
+    private val updateMyAvatar: UpdateMyAvatarUseCase,
     private val deleteCrew: DeleteCrewUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val session: SessionProvider,
@@ -40,6 +42,9 @@ class CrewSettingsViewModel(
                                 isOwner = crew.ownerId == myAccountId,
                                 editingCrewName = if (it.editingCrewName.isEmpty()) crew.name else it.editingCrewName,
                                 editingMyDisplayName = if (it.editingMyDisplayName.isEmpty()) myMember?.displayName.orEmpty() else it.editingMyDisplayName,
+                                // Always reflect the server's avatar (a fresh upload writes
+                                // here too, so this never clobbers an in-flight optimistic).
+                                myAvatarUrl = myMember?.avatarUrl,
                                 error = null,
                             )
                         }
@@ -55,6 +60,7 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.SaveCrewName -> doSaveCrewName()
         is CrewSettingsIntent.MyDisplayNameChanged -> update { it.copy(editingMyDisplayName = intent.value) }
         CrewSettingsIntent.SaveMyDisplayName -> doSaveMyDisplayName()
+        is CrewSettingsIntent.UpdateMyAvatar -> doUpdateAvatar(intent.bytes)
         CrewSettingsIntent.SwitchCrew -> emit(CrewSettingsEffect.NavigateToCrewPicker)
         CrewSettingsIntent.Leave -> doLeave()
         CrewSettingsIntent.SignOut -> doSignOut()
@@ -79,6 +85,14 @@ class CrewSettingsViewModel(
         when (val r = renameMember(name)) {
             is Result.Ok -> update { it.copy(isSavingMyDisplayName = false) }
             is Result.Err -> update { it.copy(isSavingMyDisplayName = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doUpdateAvatar(bytes: ByteArray) {
+        update { it.copy(isUpdatingAvatar = true, error = null) }
+        when (val r = updateMyAvatar(crewId, bytes)) {
+            is Result.Ok  -> update { it.copy(isUpdatingAvatar = false, myAvatarUrl = r.value) }
+            is Result.Err -> update { it.copy(isUpdatingAvatar = false, error = r.error) }
         }
     }
 

@@ -5,19 +5,15 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.feature.stats.domain.model.Streak
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
-import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 
 fun computeCrewStreak(
     meals: List<Meal>,
     memberIds: List<AccountId>,
     today: LocalDate,
-    zone: TimeZone,
 ): Streak {
     if (memberIds.isEmpty()) return Streak(0)
-    // Set of (memberAccountId, dayKey).
     val postedKeys: Set<Pair<AccountId, String>> = meals
-        .filter { it.day.zone == zone }
         .map { it.author.accountId to it.day.toKey() }
         .toSet()
     val memberSet = memberIds.toSet()

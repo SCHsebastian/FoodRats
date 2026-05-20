@@ -37,25 +37,25 @@ class PersonalStreakTest {
     )
 
     @Test fun posted_today_streak_is_one() {
-        assertEquals(1, computePersonalStreak(listOf(meal(me, today)), me, today, zone).days)
+        assertEquals(1, computePersonalStreak(listOf(meal(me, today)), me, today).days)
     }
 
     @Test fun did_not_post_today_streak_is_zero() {
-        assertEquals(0, computePersonalStreak(listOf(meal(me, today.minus(DatePeriod(days = 1)))), me, today, zone).days)
+        assertEquals(0, computePersonalStreak(listOf(meal(me, today.minus(DatePeriod(days = 1)))), me, today).days)
     }
 
     @Test fun three_consecutive_days_streak_is_three() {
         val meals = (0..2).map { meal(me, today.minus(DatePeriod(days = it))) }
-        assertEquals(3, computePersonalStreak(meals, me, today, zone).days)
+        assertEquals(3, computePersonalStreak(meals, me, today).days)
     }
 
     @Test fun other_users_meals_dont_count() {
         val meals = listOf(meal(other, today), meal(other, today.minus(DatePeriod(days = 1))))
-        assertEquals(0, computePersonalStreak(meals, me, today, zone).days)
+        assertEquals(0, computePersonalStreak(meals, me, today).days)
     }
 
     @Test fun gap_breaks_the_streak() {
         val meals = listOf(meal(me, today), meal(me, today.minus(DatePeriod(days = 2))))
-        assertEquals(1, computePersonalStreak(meals, me, today, zone).days)
+        assertEquals(1, computePersonalStreak(meals, me, today).days)
     }
 }

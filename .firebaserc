@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "foodrats-de4ec"
+  },
+  "targets": {
+    "foodrats-de4ec": {
+      "storage": {
+        "default": [
+          "foodrats-de4ec.firebasestorage.app"
+        ]
+      }
+    }
+  }
+}

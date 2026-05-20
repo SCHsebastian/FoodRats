@@ -31,6 +31,20 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .snapshots
             .map { snap -> snap.documents.map { it.data<MealDto>() } }
 
+    /**
+     * Streams all meals for a crew with `dayKey` in [from..to] (inclusive both ends).
+     * `dayKey` is `YYYY-MM-DD`, so lexicographic compare matches chronological order;
+     * a single-field range query needs no composite index.
+     */
+    fun observeForRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<List<MealDto>> =
+        firestore.collection("crews").document(crewId.value).collection("meals")
+            .where {
+                ("dayKey" greaterThanOrEqualTo from.toKey()) and
+                    ("dayKey" lessThanOrEqualTo to.toKey())
+            }
+            .snapshots
+            .map { snap -> snap.documents.map { it.data<MealDto>() } }
+
     /** Returns true if a meal document exists for the given crew/author/day/slot combination. */
     suspend fun mealExists(
         crewId: CrewId,

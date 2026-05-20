@@ -12,8 +12,10 @@ data class CrewSettingsState(
     val isOwner: Boolean = false,
     val editingCrewName: String = "",
     val editingMyDisplayName: String = "",
+    val myAvatarUrl: String? = null,
     val isSavingCrewName: Boolean = false,
     val isSavingMyDisplayName: Boolean = false,
+    val isUpdatingAvatar: Boolean = false,
     val isLeaving: Boolean = false,
     val isDeleting: Boolean = false,
     val isSigningOut: Boolean = false,
@@ -27,6 +29,11 @@ sealed interface CrewSettingsIntent : MviIntent {
     data object SaveCrewName : CrewSettingsIntent
     data class MyDisplayNameChanged(val value: String) : CrewSettingsIntent
     data object SaveMyDisplayName : CrewSettingsIntent
+    data class UpdateMyAvatar(val bytes: ByteArray) : CrewSettingsIntent {
+        override fun equals(other: Any?): Boolean =
+            this === other || (other is UpdateMyAvatar && bytes.contentEquals(other.bytes))
+        override fun hashCode(): Int = bytes.contentHashCode()
+    }
     data object SwitchCrew : CrewSettingsIntent
     data object Leave : CrewSettingsIntent
     data object SignOut : CrewSettingsIntent

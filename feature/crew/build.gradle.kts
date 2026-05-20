@@ -45,7 +45,17 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.firebase.common)
             implementation(libs.firebase.firestore)
+            implementation(libs.firebase.auth)
+            implementation(libs.firebase.storage)
             implementation(libs.androidx.datastore.preferences)
+            // Avatar picker (gallery) — same KMP picker the meal feature uses.
+            // Mirror feature:meal: if iOS link breaks on material-icons-extended, add the same
+            // exclude noted in CLAUDE.md.
+            implementation(libs.imagepickerkmp)
+            // AsyncImage for rendering avatar URLs.
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
+            implementation(libs.ktor.client.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -57,6 +67,12 @@ kotlin {
         androidMain.dependencies {
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
             implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+            // Ktor engine used by Coil's KtorNetworkFetcherFactory on Android.
+            implementation(libs.ktor.client.okhttp)
+        }
+        iosMain.dependencies {
+            // Ktor engine used by Coil's KtorNetworkFetcherFactory on iOS.
+            implementation(libs.ktor.client.darwin)
         }
         val androidHostTest by getting {
             dependencies {

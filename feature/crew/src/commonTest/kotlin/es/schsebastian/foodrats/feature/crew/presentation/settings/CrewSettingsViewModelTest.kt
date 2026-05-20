@@ -19,6 +19,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameMemberUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.UpdateMyAvatarUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -86,6 +87,7 @@ class CrewSettingsViewModelTest {
             observeCrew = ObserveCrewUseCase(repo),
             renameCrew = RenameCrewUseCase(repo, provider),
             renameMember = RenameMemberUseCase(repo, provider),
+            updateMyAvatar = UpdateMyAvatarUseCase(repo, provider),
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,
@@ -145,6 +147,7 @@ class CrewSettingsViewModelTest {
             observeCrew = ObserveCrewUseCase(repo),
             renameCrew = RenameCrewUseCase(repo, provider),
             renameMember = RenameMemberUseCase(repo, provider),
+            updateMyAvatar = UpdateMyAvatarUseCase(repo, provider),
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,
@@ -236,6 +239,7 @@ class CrewSettingsViewModelTest {
             observeCrew = ObserveCrewUseCase(repo),
             renameCrew = RenameCrewUseCase(repo, provider),
             renameMember = RenameMemberUseCase(repo, provider),
+            updateMyAvatar = UpdateMyAvatarUseCase(repo, provider),
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,
@@ -268,6 +272,7 @@ class CrewSettingsViewModelTest {
             observeCrew = ObserveCrewUseCase(repo),
             renameCrew = RenameCrewUseCase(repo, provider),
             renameMember = RenameMemberUseCase(repo, provider),
+            updateMyAvatar = UpdateMyAvatarUseCase(repo, provider),
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,
@@ -293,6 +298,7 @@ class CrewSettingsViewModelTest {
             observeCrew = ObserveCrewUseCase(repo),
             renameCrew = RenameCrewUseCase(repo, provider),
             renameMember = RenameMemberUseCase(repo, provider),
+            updateMyAvatar = UpdateMyAvatarUseCase(repo, provider),
             deleteCrew = DeleteCrewUseCase(repo, provider),
             leaveCrew = LeaveCrewUseCase(repo),
             session = provider,

@@ -109,4 +109,36 @@ class ObserveStatsUseCaseTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // Regression: meals come back from Firestore with TimeZone.UTC (MealMapper hardcodes it)
+    // even when the reader's session zone is non-UTC. dayKey is the source of truth, so the
+    // streak must still count when zones disagree.
+    @Test fun streak_counts_when_meal_zone_differs_from_session_zone() = runTest {
+        val madrid = TimeZone.of("Europe/Madrid")
+        val mealMine = Meal(
+            (MealId.of("m") as Result.Ok).value,
+            MealAuthor(me, "Me", null),
+            crew,
+            MealDay(today, TimeZone.UTC),  // simulates production data
+            MealSlot.Lunch,
+            "u",
+            (DishName.of("Pasta") as Result.Ok).value,
+            emptyList(),
+            now,
+        )
+        val uc = ObserveStatsUseCase(
+            FakeActive(crew),
+            FakeSession(Session(me, null)),
+            FakeRead(listOf(MealWithRatings(mealMine, emptyList()))),
+            clock,
+            madrid,
+        )
+        uc().test {
+            val r = awaitItem()
+            assertIs<Result.Ok<es.schsebastian.foodrats.feature.stats.domain.model.StatsSnapshot>>(r)
+            assertEquals(1, r.value.personalStreak.days)
+            assertEquals(1, r.value.crewStreak.days)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

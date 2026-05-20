@@ -22,11 +22,13 @@ fun FrLeaderboardRow(entry: MemberAverage, modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         FrAvatar(initials = entry.displayName.take(2))
-        FrText(text = entry.displayName, modifier = Modifier.padding(end = Spacing.md))
-        FrText(text = ((entry.averageScore * 10).toLong().toDouble() / 10).toString())
         FrText(
-            text = resolve(StatsStringKey.PostCount, entry.postCount),
-            modifier = Modifier.padding(start = Spacing.sm),
+            text = resolve(
+                StatsStringKey.LeaderboardRow,
+                entry.displayName,
+                entry.averageScore,
+                entry.postCount,
+            ),
         )
     }
 }

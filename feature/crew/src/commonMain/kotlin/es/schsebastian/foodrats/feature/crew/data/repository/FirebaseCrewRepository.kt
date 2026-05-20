@@ -1,11 +1,13 @@
 package es.schsebastian.foodrats.feature.crew.data.repository
 
+import dev.gitlive.firebase.auth.FirebaseAuth
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
+import es.schsebastian.foodrats.feature.crew.data.firebase.AvatarStorageDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
@@ -26,6 +28,8 @@ import kotlinx.coroutines.withContext
 
 internal class FirebaseCrewRepository(
     private val firestore: CrewFirestoreDataSource,
+    private val avatarStorage: AvatarStorageDataSource,
+    private val auth: FirebaseAuth,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
     private val clock: Clock,
@@ -117,6 +121,28 @@ internal class FirebaseCrewRepository(
 
     override suspend fun renameMember(crewId: CrewId, accountId: AccountId, newDisplayName: String): Result<Unit, CrewError> =
         firestore.renameMember(crewId, accountId, newDisplayName)
+
+    override suspend fun updateMyAvatar(
+        crewId: CrewId,
+        accountId: AccountId,
+        bytes: ByteArray,
+    ): Result<String, CrewError> = withContext(dispatchers.io) {
+        runCatching<Result<String, CrewError>> {
+            val url = avatarStorage.upload(accountId, bytes)
+            // Best-effort propagation. accounts/{uid} is the canonical source; the crew member
+            // map is what FrCrewMemberRow / leaderboard read today; FirebaseAuth profile is
+            // what new meals will denormalize. We surface the first hard failure but let the
+            // rest run so a partially-applied change still leaves the UI looking right.
+            val accountResult = firestore.updateAccountAvatarUrl(accountId, url)
+            val crewResult = firestore.updateMemberAvatarUrl(crewId, accountId, url)
+            runCatching { auth.currentUser?.updateProfile(photoUrl = url) }
+            when {
+                accountResult is Result.Err -> Result.failure(accountResult.error)
+                crewResult is Result.Err    -> Result.failure(crewResult.error)
+                else                        -> Result.success(url)
+            }
+        }.getOrElse { Result.failure(errorMapper.map(it)) }
+    }
 
     override suspend fun deleteCrew(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError> {
         val crew = firestore.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)

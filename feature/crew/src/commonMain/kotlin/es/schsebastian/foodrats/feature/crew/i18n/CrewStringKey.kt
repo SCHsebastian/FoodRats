@@ -27,7 +27,9 @@ import foodrats.feature.crew.generated.resources.crew_picker_empty_subtext
 import foodrats.feature.crew.generated.resources.crew_picker_join_cta
 import foodrats.feature.crew.generated.resources.crew_picker_title
 import foodrats.feature.crew.generated.resources.crew_settings_actions_section
+import foodrats.feature.crew.generated.resources.crew_settings_avatar_uploading
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
+import foodrats.feature.crew.generated.resources.crew_settings_change_avatar_cta
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
 import foodrats.feature.crew.generated.resources.crew_settings_danger_section
@@ -80,6 +82,8 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsCancel(Res.string.crew_settings_cancel),
     SettingsSignOutCta(Res.string.crew_settings_sign_out_cta),
     SettingsSignOutFailed(Res.string.crew_settings_sign_out_failed),
+    SettingsChangeAvatarCta(Res.string.crew_settings_change_avatar_cta),
+    SettingsAvatarUploading(Res.string.crew_settings_avatar_uploading),
     ErrorNameBlank(Res.string.crew_error_name_blank),
     ErrorNameTooLong(Res.string.crew_error_name_too_long),
     ErrorCodeMalformed(Res.string.crew_error_code_malformed),

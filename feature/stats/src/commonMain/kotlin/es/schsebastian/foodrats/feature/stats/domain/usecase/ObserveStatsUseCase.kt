@@ -66,8 +66,8 @@ class ObserveStatsUseCase(
         val meals = aggregates.map { it.meal }
         val memberIds = meals.map { it.author.accountId }.distinct()
         return StatsSnapshot(
-            crewStreak = computeCrewStreak(meals, memberIds, today, zone),
-            personalStreak = computePersonalStreak(meals, accountId, today, zone),
+            crewStreak = computeCrewStreak(meals, memberIds, today),
+            personalStreak = computePersonalStreak(meals, accountId, today),
             topDishes = computeTopDishes(meals, limit = 5),
             leaderboard = computeLeaderboard(aggregates),
             tagVarietyCount = computeTagVariety(meals),

@@ -41,7 +41,7 @@ class CrewStreakTest {
 
     @Test fun all_three_posted_today_streak_is_one() {
         val meals = listOf(meal(alice, today), meal(bob, today), meal(carol, today))
-        assertEquals(1, computeCrewStreak(meals, listOf(alice, bob, carol), today, zone).days)
+        assertEquals(1, computeCrewStreak(meals, listOf(alice, bob, carol), today).days)
     }
 
     @Test fun all_three_posted_today_and_yesterday_streak_is_two() {
@@ -49,12 +49,12 @@ class CrewStreakTest {
             meal(alice, today), meal(bob, today), meal(carol, today),
             meal(alice, daysAgo(1)), meal(bob, daysAgo(1)), meal(carol, daysAgo(1)),
         )
-        assertEquals(2, computeCrewStreak(meals, listOf(alice, bob, carol), today, zone).days)
+        assertEquals(2, computeCrewStreak(meals, listOf(alice, bob, carol), today).days)
     }
 
     @Test fun one_member_missed_today_streak_is_zero() {
         val meals = listOf(meal(alice, today), meal(bob, today))  // carol missed
-        assertEquals(0, computeCrewStreak(meals, listOf(alice, bob, carol), today, zone).days)
+        assertEquals(0, computeCrewStreak(meals, listOf(alice, bob, carol), today).days)
     }
 
     @Test fun break_in_history_stops_the_streak() {
@@ -65,14 +65,14 @@ class CrewStreakTest {
             meal(alice, daysAgo(2)), meal(bob, daysAgo(2)),  // carol missed day-2
             meal(alice, daysAgo(3)), meal(bob, daysAgo(3)), meal(carol, daysAgo(3)),
         )
-        assertEquals(2, computeCrewStreak(meals, listOf(alice, bob, carol), today, zone).days)
+        assertEquals(2, computeCrewStreak(meals, listOf(alice, bob, carol), today).days)
     }
 
     @Test fun empty_meals_streak_is_zero() {
-        assertEquals(0, computeCrewStreak(emptyList(), listOf(alice, bob, carol), today, zone).days)
+        assertEquals(0, computeCrewStreak(emptyList(), listOf(alice, bob, carol), today).days)
     }
 
     @Test fun zero_members_returns_zero() {
-        assertEquals(0, computeCrewStreak(emptyList(), emptyList(), today, zone).days)
+        assertEquals(0, computeCrewStreak(emptyList(), emptyList(), today).days)
     }
 }

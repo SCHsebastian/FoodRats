@@ -45,4 +45,6 @@
     <string name="crew_error_validation_display_name_too_long">El nombre de usuario es demasiado largo (máx. 40 caracteres).</string>
     <string name="crew_settings_sign_out_cta">Cerrar sesión</string>
     <string name="crew_settings_sign_out_failed">No se ha podido cerrar sesión. Inténtalo de nuevo.</string>
+    <string name="crew_settings_change_avatar_cta">Cambiar avatar</string>
+    <string name="crew_settings_avatar_uploading">Subiendo…</string>
 </resources>

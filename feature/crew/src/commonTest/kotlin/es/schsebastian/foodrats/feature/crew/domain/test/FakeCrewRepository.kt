@@ -98,6 +98,27 @@ class FakeCrewRepository(
         crews.value = crews.value.filterNot { it.id == crewId }
         return Result.success(Unit)
     }
+
+    var lastAvatarUpdate: Triple<CrewId, AccountId, Int>? = null
+    var nextAvatarUrl: String = "https://example.invalid/avatar.jpg"
+    var nextAvatarFailure: CrewError? = null
+
+    override suspend fun updateMyAvatar(
+        crewId: CrewId,
+        accountId: AccountId,
+        bytes: ByteArray,
+    ): Result<String, CrewError> {
+        nextAvatarFailure?.let { return Result.failure(it) }
+        lastAvatarUpdate = Triple(crewId, accountId, bytes.size)
+        crews.value = crews.value.map { crew ->
+            if (crew.id == crewId) {
+                crew.copy(members = crew.members.map { m ->
+                    if (m.accountId == accountId) m.copy(avatarUrl = nextAvatarUrl) else m
+                })
+            } else crew
+        }
+        return Result.success(nextAvatarUrl)
+    }
 }
 
 /** Helper: create AccountId without going through validation (tests only). */

@@ -149,6 +149,39 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
+    /**
+     * Writes a member's avatar URL into the crew's denormalized members map. Mirrors
+     * [renameMember] — same partial-update path so it falls under the rule's
+     * `members`-only diff allowance.
+     */
+    suspend fun updateMemberAvatarUrl(
+        crewId: CrewId,
+        accountId: AccountId,
+        avatarUrl: String,
+    ): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value)
+                    .update("members.${accountId.value}.avatarUrl" to avatarUrl)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    /**
+     * Writes `avatarUrl` into the canonical `accounts/{uid}` doc. Owner-only by rules.
+     */
+    suspend fun updateAccountAvatarUrl(
+        accountId: AccountId,
+        avatarUrl: String,
+    ): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                firestore.collection("accounts").document(accountId.value)
+                    .update("avatarUrl" to avatarUrl)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
     suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {

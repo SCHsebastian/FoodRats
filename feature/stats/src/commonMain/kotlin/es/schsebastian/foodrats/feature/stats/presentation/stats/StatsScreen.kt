@@ -57,11 +57,15 @@ fun StatsScreen(vm: StatsViewModel = koinViewModel()) {
                     FrStatTile(label = crewLabel, value = unit, modifier = Modifier.padding(top = Spacing.md))
                     FrStatTile(label = personalLabel, value = personalUnit, modifier = Modifier.padding(top = Spacing.sm))
 
-                    FrText(text = resolve(StatsStringKey.TopDishesSection), modifier = Modifier.padding(top = Spacing.lg))
-                    s.topDishes.forEach { tally -> FrDishTallyRow(tally) }
+                    if (s.topDishes.isNotEmpty()) {
+                        FrText(text = resolve(StatsStringKey.TopDishesSection), modifier = Modifier.padding(top = Spacing.lg))
+                        s.topDishes.forEach { tally -> FrDishTallyRow(tally) }
+                    }
 
-                    FrText(text = resolve(StatsStringKey.LeaderboardSection), modifier = Modifier.padding(top = Spacing.lg))
-                    s.leaderboard.entries.forEach { row -> FrLeaderboardRow(row) }
+                    if (s.leaderboard.entries.isNotEmpty()) {
+                        FrText(text = resolve(StatsStringKey.LeaderboardSection), modifier = Modifier.padding(top = Spacing.lg))
+                        s.leaderboard.entries.forEach { row -> FrLeaderboardRow(row) }
+                    }
 
                     FrText(
                         text = resolve(StatsStringKey.TagVarietyValue, s.tagVarietyCount),

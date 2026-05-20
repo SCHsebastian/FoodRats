@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.di
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.feature.crew.data.firebase.AvatarStorageDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
@@ -16,6 +17,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.UpdateMyAvatarUseCase
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsViewModel
 import org.koin.core.module.dsl.factoryOf
@@ -29,8 +31,12 @@ val crewModule = module {
     single { CrewCodeGenerator(random = Random.Default) }
     singleOf(::CrewErrorMapper)
     singleOf(::CrewFirestoreDataSource)
+    singleOf(::AvatarStorageDataSource)
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
-    single<CrewRepository> { FirebaseCrewRepository(get(), get(), get(), get()) }
+    single<CrewRepository> {
+        // (firestore, avatarStorage, auth, dispatchers, errorMapper, clock)
+        FirebaseCrewRepository(get(), get(), get(), get(), get(), get())
+    }
 
     factoryOf(::CreateCrewUseCase)
     factoryOf(::JoinCrewByCodeUseCase)
@@ -41,9 +47,10 @@ val crewModule = module {
     factoryOf(::RenameCrewUseCase)
     factoryOf(::RenameMemberUseCase)
     factoryOf(::DeleteCrewUseCase)
+    factoryOf(::UpdateMyAvatarUseCase)
 
     viewModelOf(::CrewPickerViewModel)
     viewModel { (crewId: es.schsebastian.foodrats.core.domain.model.CrewId) ->
-        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get(), get())
+        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get(), get(), get())
     }
 }

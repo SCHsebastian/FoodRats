@@ -65,11 +65,12 @@ internal class FirebaseMealRepository(
                     ?: return@runCatching Result.failure(MealError.Publish.NoSlotSelected)
                 val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
                 val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
+                val currentUser = auth.currentUser
                 val dto = MealDto(
                     id = mealId.value,
                     authorId = draft.authorId.value,
-                    authorName = "",
-                    authorAvatarUrl = null,
+                    authorName = currentUser?.displayName.orEmpty(),
+                    authorAvatarUrl = currentUser?.photoURL,
                     crewId = draft.crewId.value,
                     dayKey = draft.day.toKey(),
                     slot = slot.key(),
@@ -135,30 +136,37 @@ internal class FirebaseMealRepository(
         crewId: CrewId,
         day: MealDay,
     ): Flow<Result<List<MealWithRatings>, MealReadError>> =
-        firestore.observeForDay(crewId, day)
-            .flatMapLatest { dtos ->
-                if (dtos.isEmpty()) flowOf(emptyList<MealWithRatings>())
-                else combine(
-                    dtos.map { dto ->
-                        ratings.observe(crewId, dto.id ?: "")
-                            .map { pairs -> dto to pairs.toMealRatings() }
-                    }
-                ) { it.toList() }.map { combined ->
-                    combined.mapNotNull { (dto, rs) ->
-                        val mealResult = dto.toDomain()
-                        if (mealResult is Result.Ok) MealWithRatings(mealResult.value, rs) else null
-                    }
-                }
-            }
-            .map<List<MealWithRatings>, Result<List<MealWithRatings>, MealReadError>> { Result.success(it) }
-            .catch { t -> emit(Result.failure(errorMapper.mapRead(t))) }
-            .flowOn(dispatchers.io)
+        firestore.observeForDay(crewId, day).joinRatings(crewId)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeRange(
         crewId: CrewId,
         from: MealDay,
         to: MealDay,
-    ): Flow<Result<List<MealWithRatings>, MealReadError>> = observeFeed(crewId, from)
+    ): Flow<Result<List<MealWithRatings>, MealReadError>> =
+        firestore.observeForRange(crewId, from, to).joinRatings(crewId)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun Flow<List<MealDto>>.joinRatings(
+        crewId: CrewId,
+    ): Flow<Result<List<MealWithRatings>, MealReadError>> =
+        flatMapLatest { dtos ->
+            if (dtos.isEmpty()) flowOf(emptyList<MealWithRatings>())
+            else combine(
+                dtos.map { dto ->
+                    ratings.observe(crewId, dto.id ?: "")
+                        .map { pairs -> dto to pairs.toMealRatings() }
+                }
+            ) { it.toList() }.map { combined ->
+                combined.mapNotNull { (dto, rs) ->
+                    val mealResult = dto.toDomain()
+                    if (mealResult is Result.Ok) MealWithRatings(mealResult.value, rs) else null
+                }
+            }
+        }
+            .map<List<MealWithRatings>, Result<List<MealWithRatings>, MealReadError>> { Result.success(it) }
+            .catch { t -> emit(Result.failure(errorMapper.mapRead(t))) }
+            .flowOn(dispatchers.io)
 
     override suspend fun rate(
         crewId: CrewId,
