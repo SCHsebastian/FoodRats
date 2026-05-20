@@ -23,16 +23,4 @@
     <string name="meal_slot_dinner">Dinner</string>
     <string name="meal_publish_no_slot">Pick a slot (Breakfast, Lunch, or Dinner) before publishing.</string>
     <string name="meal_tag_separator"> • </string>
-    <string name="meal_comments_title">Comments</string>
-    <string name="meal_comments_empty">No comments yet. Be the first.</string>
-    <string name="meal_comments_input_placeholder">Write a comment…</string>
-    <string name="meal_comments_send_cta">Send</string>
-    <string name="meal_comments_relative_just_now">just now</string>
-    <string name="meal_comments_relative_minutes">%1$d min ago</string>
-    <string name="meal_comments_relative_hours">%1$d h ago</string>
-    <string name="meal_comments_relative_days">%1$d d ago</string>
-    <string name="meal_comments_error_blank">Comment is empty</string>
-    <string name="meal_comments_error_too_long">Max 500 characters</string>
-    <string name="meal_comments_error_unavailable">Couldn\'t post. Try again.</string>
-    <string name="meal_comments_error_unauthorized">You can\'t comment on this meal</string>
 </resources>

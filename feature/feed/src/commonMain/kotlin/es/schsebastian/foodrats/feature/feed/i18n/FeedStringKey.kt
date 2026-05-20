@@ -2,10 +2,18 @@ package es.schsebastian.foodrats.feature.feed.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.feed.generated.resources.Res
+import foodrats.feature.feed.generated.resources.feed_comments_error_blank
+import foodrats.feature.feed.generated.resources.feed_comments_error_too_long
+import foodrats.feature.feed.generated.resources.feed_comments_error_unauthorized
+import foodrats.feature.feed.generated.resources.feed_comments_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_comments_empty
+import foodrats.feature.feed.generated.resources.feed_comments_input_placeholder
 import foodrats.feature.feed.generated.resources.feed_comments_relative_days
 import foodrats.feature.feed.generated.resources.feed_comments_relative_hours
 import foodrats.feature.feed.generated.resources.feed_comments_relative_just_now
 import foodrats.feature.feed.generated.resources.feed_comments_relative_minutes
+import foodrats.feature.feed.generated.resources.feed_comments_send_cta
+import foodrats.feature.feed.generated.resources.feed_comments_title
 import foodrats.feature.feed.generated.resources.feed_average_heading
 import foodrats.feature.feed.generated.resources.feed_detail_back_cta
 import foodrats.feature.feed.generated.resources.feed_detail_not_found
@@ -61,8 +69,16 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     DetailBackCta(Res.string.feed_detail_back_cta),
     DetailTitle(Res.string.feed_detail_title),
     DetailNotFound(Res.string.feed_detail_not_found),
+    CommentsTitle(Res.string.feed_comments_title),
+    CommentsEmpty(Res.string.feed_comments_empty),
+    CommentsInputPlaceholder(Res.string.feed_comments_input_placeholder),
+    CommentsSendCta(Res.string.feed_comments_send_cta),
     CommentsRelativeJustNow(Res.string.feed_comments_relative_just_now),
     CommentsRelativeMinutes(Res.string.feed_comments_relative_minutes),
     CommentsRelativeHours(Res.string.feed_comments_relative_hours),
     CommentsRelativeDays(Res.string.feed_comments_relative_days),
+    CommentsErrorBlank(Res.string.feed_comments_error_blank),
+    CommentsErrorTooLong(Res.string.feed_comments_error_too_long),
+    CommentsErrorUnavailable(Res.string.feed_comments_error_unavailable),
+    CommentsErrorUnauthorized(Res.string.feed_comments_error_unauthorized),
 }
