@@ -32,6 +32,7 @@ kotlin {
             // material-icons-extended is excluded: no KMP iOS artifact.
             // FrIcons.kt uses core-only icons (see that file for substitution notes).
             implementation(libs.materialIconsCore)
+            implementation(libs.coil.compose)
         }
         val androidHostTest by getting {
             dependencies {
