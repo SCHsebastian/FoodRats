@@ -26,4 +26,8 @@
     <string name="feed_detail_back_cta">Atrás</string>
     <string name="feed_detail_title">Comida</string>
     <string name="feed_detail_not_found">Esta comida ya no está aquí.</string>
+    <string name="feed_comments_relative_just_now">ahora mismo</string>
+    <string name="feed_comments_relative_minutes">hace %1$d min</string>
+    <string name="feed_comments_relative_hours">hace %1$d h</string>
+    <string name="feed_comments_relative_days">hace %1$d d</string>
 </resources>

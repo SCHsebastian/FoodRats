@@ -26,4 +26,8 @@
     <string name="feed_detail_back_cta">Back</string>
     <string name="feed_detail_title">Meal</string>
     <string name="feed_detail_not_found">This meal is no longer here.</string>
+    <string name="feed_comments_relative_just_now">just now</string>
+    <string name="feed_comments_relative_minutes">%1$d min ago</string>
+    <string name="feed_comments_relative_hours">%1$d h ago</string>
+    <string name="feed_comments_relative_days">%1$d d ago</string>
 </resources>
