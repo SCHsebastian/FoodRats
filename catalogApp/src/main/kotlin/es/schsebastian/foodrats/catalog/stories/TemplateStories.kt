@@ -1,0 +1,192 @@
+package es.schsebastian.foodrats.catalog.stories
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.unit.dp
+import es.schsebastian.foodrats.catalog.components.CatalogScene
+import es.schsebastian.foodrats.catalog.registry.CatalogEntry
+import es.schsebastian.foodrats.catalog.registry.CatalogGroup
+import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
+import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarWithName
+import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
+import es.schsebastian.foodrats.core.designsystem.templates.FrCaptureLayout
+import es.schsebastian.foodrats.core.designsystem.templates.FrFeedLayout
+import es.schsebastian.foodrats.core.designsystem.templates.FrFormLayout
+import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+
+internal fun templateStories(): List<CatalogEntry> = listOf(
+    CatalogEntry("template.captureLayout", CatalogGroup.TEMPLATES, "FrCaptureLayout", "Capture screen scaffold: viewfinder + controls") { CaptureLayoutStory() },
+    CatalogEntry("template.feedLayout",    CatalogGroup.TEMPLATES, "FrFeedLayout",    "Day header + list region") { FeedLayoutStory() },
+    CatalogEntry("template.formLayout",    CatalogGroup.TEMPLATES, "FrFormLayout",    "Padded column for forms") { FormLayoutStory() },
+    CatalogEntry("template.screenScaffold", CatalogGroup.TEMPLATES, "FrScreenScaffold", "App scaffold honoring safeDrawing insets") { ScreenScaffoldStory() },
+)
+
+@Composable
+private fun CaptureLayoutStory() {
+    CatalogScene(label = "Phone-sized frame", padding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(440.dp)
+                .clip(RoundedCornerShape(Radius.md)),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            FrCaptureLayout(
+                modifier = Modifier.fillMaxSize(),
+                viewfinder = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("Viewfinder", style = MaterialTheme.typography.titleMedium)
+                    }
+                },
+                controls = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        FrIconButton(icon = FrIcons.GalleryImport, onClick = {}, contentDescription = "Gallery")
+                        FrShutterButton(onClick = {}, contentDescription = "Take photo")
+                        FrIconButton(icon = FrIcons.Settings, onClick = {}, contentDescription = "Settings")
+                    }
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FeedLayoutStory() {
+    CatalogScene(label = "Day header + list", padding = androidx.compose.foundation.layout.PaddingValues(Spacing.sm)) {
+        FrFeedLayout(
+            modifier = Modifier.fillMaxWidth(),
+            dayHeader = {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    FrIconButton(icon = FrIcons.ChevronLeft, onClick = {}, contentDescription = "Prev")
+                    Text("Tue · 2026-05-19", style = MaterialTheme.typography.titleMedium)
+                    FrIconButton(icon = FrIcons.ChevronRight, onClick = {}, contentDescription = "Next")
+                }
+            },
+            list = {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    listOf("Sebastián" to 8, "Anika" to 9, "Reggie" to 6).forEach { (name, score) ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            FrAvatarWithName(initials = name.take(2), name = name)
+                            FrScoreBadge(score = score)
+                        }
+                    }
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun FormLayoutStory() {
+    CatalogScene(label = "Form with two fields") {
+        FrFormLayout(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                horizontalAlignment = Alignment.End,
+            ) {
+                FrLabeledTextField(
+                    label = "Crew name",
+                    value = "Rats of Tuesday",
+                    onValueChange = {},
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FrLabeledTextField(
+                    label = "Invite code",
+                    value = "RATS-42",
+                    onValueChange = {},
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FrButton(label = "Create crew", onClick = {})
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ScreenScaffoldStory() {
+    CatalogScene(label = "Top bar + bottom nav", padding = androidx.compose.foundation.layout.PaddingValues(0.dp)) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(520.dp)
+                .clip(RoundedCornerShape(Radius.md)),
+            color = MaterialTheme.colorScheme.surface,
+        ) {
+            FrScreenScaffold(
+                topBar = {
+                    CenterAlignedTopAppBar(title = { Text("FoodRats") })
+                },
+                bottomBar = {
+                    NavigationBar {
+                        NavigationBarItem(
+                            selected = true,
+                            onClick = {},
+                            icon = { FrIcon(image = FrIcons.Home, contentDescription = "Feed") },
+                            label = { Text("Feed") },
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = {},
+                            icon = { FrIcon(image = FrIcons.Stats, contentDescription = "Stats") },
+                            label = { Text("Stats") },
+                        )
+                        NavigationBarItem(
+                            selected = false,
+                            onClick = {},
+                            icon = { FrIcon(image = FrIcons.Settings, contentDescription = "Settings") },
+                            label = { Text("Settings") },
+                        )
+                    }
+                },
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Screen body", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+    }
+}

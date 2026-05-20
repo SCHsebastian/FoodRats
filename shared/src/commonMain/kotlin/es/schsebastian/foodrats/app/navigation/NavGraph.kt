@@ -1,22 +1,30 @@
 package es.schsebastian.foodrats.app.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FabPosition
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -31,6 +39,7 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScreen
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsScreen
+import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailScreen
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedScreen
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealScreen
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
@@ -87,6 +96,14 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 controller.popBackStack(route = Route.Main, inclusive = false)
             })
         }
+        composable<Route.MealDetail> { entry ->
+            val args = entry.toRoute<Route.MealDetail>()
+            MealDetailScreen(
+                mealId = args.mealId,
+                dayIso = args.dayIso,
+                onBack = { controller.popBackStack() },
+            )
+        }
     }
 }
 
@@ -103,10 +120,23 @@ fun NavHostController.navigateTopLevel(route: Route) {
 private fun MainScaffold(rootController: NavHostController) {
     val inner = rememberNavController()
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
+    val backStack by inner.currentBackStackEntryAsState()
+    val currentRoute = backStack?.destination?.route
+    val isStats = currentRoute?.contains("Stats") == true
+    val titleKey = if (isStats) SharedStringKey.NavTabStats else SharedStringKey.NavTabFeed
     Scaffold(
+        // Make the Scaffold's own surface match the bottom bar tint so the area
+        // behind the Android system navigation bar (3-button or gesture pill)
+        // doesn't show through as warm-cream/white when edge-to-edge is on.
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("") },
+                title = { Text(resolve(titleKey)) },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
                 actions = {
                     activeCrew?.let { crewId ->
                         IconButton(
@@ -121,24 +151,18 @@ private fun MainScaffold(rootController: NavHostController) {
                 },
             )
         },
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { rootController.navigate(Route.CaptureMeal) },
-            ) {
-                Icon(
-                    imageVector = FrIcons.Camera,
-                    contentDescription = resolve(SharedStringKey.NavCaptureCta),
-                )
-            }
-        },
-        floatingActionButtonPosition = FabPosition.Center,
         bottomBar = {
-            val backStack by inner.currentBackStackEntryAsState()
-            val current = backStack?.destination?.route
-            NavigationBar {
+            // primaryContainer tints the bar (including the area drawn behind the
+            // system navigation bar via the bar's default windowInsets handling),
+            // so the bottom of the screen matches the brand color on Android the
+            // same way it does on iOS.
+            NavigationBar(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            ) {
                 NavigationBarItem(
                     modifier = Modifier.weight(1f),
-                    selected = current?.contains("Feed") == true,
+                    selected = !isStats,
                     onClick = {
                         inner.navigate(MainTab.Feed) {
                             popUpTo<MainTab.Feed> { saveState = true }
@@ -146,12 +170,34 @@ private fun MainScaffold(rootController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(FrIcons.Home, contentDescription = "Feed") },
-                    label = { Text("Feed") },
+                    icon = { Icon(FrIcons.Home, contentDescription = resolve(SharedStringKey.NavTabFeed)) },
+                    label = { Text(resolve(SharedStringKey.NavTabFeed)) },
                 )
                 NavigationBarItem(
                     modifier = Modifier.weight(1f),
-                    selected = current?.contains("Stats") == true,
+                    selected = false,
+                    onClick = { rootController.navigate(Route.CaptureMeal) },
+                    icon = {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = FrIcons.Camera,
+                                contentDescription = resolve(SharedStringKey.NavCaptureCta),
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        }
+                    },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = Color.Transparent,
+                    ),
+                )
+                NavigationBarItem(
+                    modifier = Modifier.weight(1f),
+                    selected = isStats,
                     onClick = {
                         inner.navigate(MainTab.Stats) {
                             popUpTo<MainTab.Feed> { saveState = true }
@@ -159,8 +205,8 @@ private fun MainScaffold(rootController: NavHostController) {
                             restoreState = true
                         }
                     },
-                    icon = { Icon(FrIcons.Stats, contentDescription = "Stats") },
-                    label = { Text("Stats") },
+                    icon = { Icon(FrIcons.Stats, contentDescription = resolve(SharedStringKey.NavTabStats)) },
+                    label = { Text(resolve(SharedStringKey.NavTabStats)) },
                 )
             }
         },
@@ -170,6 +216,9 @@ private fun MainScaffold(rootController: NavHostController) {
                 composable<MainTab.Feed> {
                     FeedScreen(
                         onPickCrewClick = { rootController.navigate(Route.CrewPicker) },
+                        onMealClick = { mealId, dayIso ->
+                            rootController.navigate(Route.MealDetail(mealId, dayIso))
+                        },
                     )
                 }
                 composable<MainTab.Stats> { StatsScreen() }

@@ -31,6 +31,7 @@ iosApp/iosApp/GoogleService-Info.plist
 
 # Xcode build output written outside the normal DerivedData path.
 iosApp/build-device/
+iosApp/build-cli/
 
 # Claude Code local state (settings, worktrees, transcripts).
 .claude/

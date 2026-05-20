@@ -64,7 +64,7 @@ private fun FrCaptureLayoutSample(darkTheme: Boolean) {
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     FrIconButton(icon = FrIcons.GalleryImport, onClick = {}, contentDescription = "Gallery")
-                    FrShutterButton(onClick = {})
+                    FrShutterButton(onClick = {}, contentDescription = "Take photo")
                     FrIconButton(icon = FrIcons.Settings, onClick = {}, contentDescription = "Settings")
                 }
             },

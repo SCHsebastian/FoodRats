@@ -4,125 +4,127 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-// Brand palette — Avocado + Citrus.
-// Avocado primary anchors the healthy identity; honey-citrus secondary highlights
-// streaks, scores, and badges; berry tertiary is reserved for rare celebration moments.
-private val AvocadoLight        = Color(0xFF3FB950)
-private val AvocadoLightOn      = Color(0xFFFFFFFF)
-private val AvocadoContainer    = Color(0xFFC5EFC9)
-private val AvocadoOnContainer  = Color(0xFF06310C)
+// Brand palette — Iron & Ember.
+// Deep olive primary anchors a rugged, masculine identity; ember-copper secondary
+// punches in for streaks and rare highlights; rust tertiary signals scarce
+// celebration moments. Surfaces sit on warm concrete in light and charcoal-olive
+// in dark — both intentionally low-saturation so the meaning colors carry weight.
+private val OliveLight          = Color(0xFF4F6E2B)
+private val OliveLightOn        = Color(0xFFFFFFFF)
+private val OliveContainer      = Color(0xFF9CB47A)
+private val OliveOnContainer    = Color(0xFF1A2509)
 
-private val CitrusLight         = Color(0xFFFFB020)
-private val CitrusOn            = Color(0xFF2C1A00)
-private val CitrusContainer     = Color(0xFFFFE9BD)
-private val CitrusOnContainer   = Color(0xFF2C1A00)
+private val EmberLight          = Color(0xFFB0561E)
+private val EmberOn             = Color(0xFFFFFFFF)
+private val EmberContainer      = Color(0xFFE6B894)
+private val EmberOnContainer    = Color(0xFF2C1300)
 
-private val BerryLight          = Color(0xFFE84B6A)
-private val BerryOn             = Color(0xFFFFFFFF)
-private val BerryContainer      = Color(0xFFFFD9DF)
-private val BerryOnContainer    = Color(0xFF410012)
+private val RustLight           = Color(0xFF7A3826)
+private val RustOn              = Color(0xFFFFFFFF)
+private val RustContainer       = Color(0xFFD9A99A)
+private val RustOnContainer     = Color(0xFF3D0E00)
 
-private val ErrorLight          = Color(0xFFBA1A1A)
+private val ErrorLight          = Color(0xFF8E2A2A)
 private val ErrorOnLight        = Color(0xFFFFFFFF)
-private val ErrorContainerLight = Color(0xFFFFDAD6)
+private val ErrorContainerLight = Color(0xFFE5B6B6)
 private val ErrorOnContainerLgt = Color(0xFF410002)
 
-private val WarmCream           = Color(0xFFFBFAF6)
-private val OnWarmCream         = Color(0xFF1A1C18)
-private val WarmCreamElevated   = Color(0xFFF2EFE6)
-private val OnWarmCreamElevated = Color(0xFF44483D)
-private val OutlineLight        = Color(0xFF74796C)
-private val OutlineVariantLight = Color(0xFFC4C8B7)
-private val InverseSurfaceLight = Color(0xFF2F312C)
-private val InverseOnLight      = Color(0xFFF1F1E9)
+private val Concrete            = Color(0xFFE8E6DE)
+private val OnConcrete          = Color(0xFF1A1C18)
+private val ConcreteElevated    = Color(0xFFD4D2C8)
+private val OnConcreteElevated  = Color(0xFF44483D)
+private val OutlineLight        = Color(0xFF5E6155)
+private val OutlineVariantLight = Color(0xFFB8BCB0)
+private val InverseSurfaceLight = Color(0xFF2A2C26)
+private val InverseOnLight      = Color(0xFFEEEDE6)
 
-private val AvocadoDark         = Color(0xFF6EDC78)
-private val AvocadoDarkOn       = Color(0xFF003910)
-private val AvocadoContainerD   = Color(0xFF1F5527)
-private val AvocadoOnContainerD = Color(0xFFC5EFC9)
+private val OliveDark           = Color(0xFFA8BC85)
+private val OliveDarkOn         = Color(0xFF1F3209)
+private val OliveContainerD     = Color(0xFF3A5021)
+private val OliveOnContainerD   = Color(0xFFC5D9A3)
 
-private val CitrusDark          = Color(0xFFFFCB78)
-private val CitrusOnDark        = Color(0xFF432B00)
-private val CitrusContainerD    = Color(0xFF5E3F00)
-private val CitrusOnContainerD  = Color(0xFFFFE0B2)
+private val EmberDark           = Color(0xFFE6A47B)
+private val EmberOnDark         = Color(0xFF3B1D00)
+private val EmberContainerD     = Color(0xFF5A2A0D)
+private val EmberOnContainerD   = Color(0xFFF2C8A8)
 
-private val BerryDark           = Color(0xFFFFB1BD)
-private val BerryOnDark         = Color(0xFF5F1124)
-private val BerryContainerD     = Color(0xFF82253A)
-private val BerryOnContainerD   = Color(0xFFFFD9DF)
+private val RustDark            = Color(0xFFC58D80)
+private val RustOnDark          = Color(0xFF3D0E00)
+private val RustContainerD      = Color(0xFF5C1F0F)
+private val RustOnContainerD    = Color(0xFFF2C8B5)
 
 private val ErrorDark           = Color(0xFFFFB4AB)
 private val ErrorOnDark         = Color(0xFF690005)
-private val ErrorContainerDark  = Color(0xFF93000A)
+private val ErrorContainerDark  = Color(0xFF7A1313)
 private val ErrorOnContainerDk  = Color(0xFFFFDAD6)
 
-private val ForestNight         = Color(0xFF0F1411)
-private val OnForestNight       = Color(0xFFE3E3DC)
-private val ForestNightElevated = Color(0xFF1B2520)
-private val OnForestNightElev   = Color(0xFFC4C8BB)
+private val Charcoal            = Color(0xFF1B1C19)
+private val OnCharcoal          = Color(0xFFE3E3DC)
+private val CharcoalElevated    = Color(0xFF3A3D36)
+private val OnCharcoalElevated  = Color(0xFFC4C8BB)
 private val OutlineDark         = Color(0xFF8E9387)
 private val OutlineVariantDark  = Color(0xFF44483D)
 
 internal val FoodRatsLightColors = lightColorScheme(
-    primary               = AvocadoLight,
-    onPrimary             = AvocadoLightOn,
-    primaryContainer      = AvocadoContainer,
-    onPrimaryContainer    = AvocadoOnContainer,
-    secondary             = CitrusLight,
-    onSecondary           = CitrusOn,
-    secondaryContainer    = CitrusContainer,
-    onSecondaryContainer  = CitrusOnContainer,
-    tertiary              = BerryLight,
-    onTertiary            = BerryOn,
-    tertiaryContainer     = BerryContainer,
-    onTertiaryContainer   = BerryOnContainer,
+    primary               = OliveLight,
+    onPrimary             = OliveLightOn,
+    primaryContainer      = OliveContainer,
+    onPrimaryContainer    = OliveOnContainer,
+    secondary             = EmberLight,
+    onSecondary           = EmberOn,
+    secondaryContainer    = EmberContainer,
+    onSecondaryContainer  = EmberOnContainer,
+    tertiary              = RustLight,
+    onTertiary            = RustOn,
+    tertiaryContainer     = RustContainer,
+    onTertiaryContainer   = RustOnContainer,
     error                 = ErrorLight,
     onError               = ErrorOnLight,
     errorContainer        = ErrorContainerLight,
     onErrorContainer      = ErrorOnContainerLgt,
-    background            = WarmCream,
-    onBackground          = OnWarmCream,
-    surface               = WarmCream,
-    onSurface             = OnWarmCream,
-    surfaceVariant        = WarmCreamElevated,
-    onSurfaceVariant      = OnWarmCreamElevated,
-    surfaceTint           = AvocadoLight,
+    background            = Concrete,
+    onBackground          = OnConcrete,
+    surface               = Concrete,
+    onSurface             = OnConcrete,
+    surfaceVariant        = ConcreteElevated,
+    onSurfaceVariant      = OnConcreteElevated,
+    surfaceTint           = OliveLight,
     outline               = OutlineLight,
     outlineVariant        = OutlineVariantLight,
     inverseSurface        = InverseSurfaceLight,
     inverseOnSurface      = InverseOnLight,
-    inversePrimary        = AvocadoDark,
+    inversePrimary        = OliveDark,
     scrim                 = Color.Black,
 )
 
 internal val FoodRatsDarkColors = darkColorScheme(
-    primary               = AvocadoDark,
-    onPrimary             = AvocadoDarkOn,
-    primaryContainer      = AvocadoContainerD,
-    onPrimaryContainer    = AvocadoOnContainerD,
-    secondary             = CitrusDark,
-    onSecondary           = CitrusOnDark,
-    secondaryContainer    = CitrusContainerD,
-    onSecondaryContainer  = CitrusOnContainerD,
-    tertiary              = BerryDark,
-    onTertiary            = BerryOnDark,
-    tertiaryContainer     = BerryContainerD,
-    onTertiaryContainer   = BerryOnContainerD,
+    primary               = OliveDark,
+    onPrimary             = OliveDarkOn,
+    primaryContainer      = OliveContainerD,
+    onPrimaryContainer    = OliveOnContainerD,
+    secondary             = EmberDark,
+    onSecondary           = EmberOnDark,
+    secondaryContainer    = EmberContainerD,
+    onSecondaryContainer  = EmberOnContainerD,
+    tertiary              = RustDark,
+    onTertiary            = RustOnDark,
+    tertiaryContainer     = RustContainerD,
+    onTertiaryContainer   = RustOnContainerD,
     error                 = ErrorDark,
     onError               = ErrorOnDark,
     errorContainer        = ErrorContainerDark,
     onErrorContainer      = ErrorOnContainerDk,
-    background            = ForestNight,
-    onBackground          = OnForestNight,
-    surface               = ForestNight,
-    onSurface             = OnForestNight,
-    surfaceVariant        = ForestNightElevated,
-    onSurfaceVariant      = OnForestNightElev,
-    surfaceTint           = AvocadoDark,
+    background            = Charcoal,
+    onBackground          = OnCharcoal,
+    surface               = Charcoal,
+    onSurface             = OnCharcoal,
+    surfaceVariant        = CharcoalElevated,
+    onSurfaceVariant      = OnCharcoalElevated,
+    surfaceTint           = OliveDark,
     outline               = OutlineDark,
     outlineVariant        = OutlineVariantDark,
-    inverseSurface        = OnForestNight,
+    inverseSurface        = OnCharcoal,
     inverseOnSurface      = InverseSurfaceLight,
-    inversePrimary        = AvocadoLight,
+    inversePrimary        = OliveLight,
     scrim                 = Color.Black,
 )

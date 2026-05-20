@@ -1,8 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="auth_signin_title">Bienvenido a FoodRats</string>
-    <string name="auth_signin_subtitle">Comparte lo que comes con tu grupo.</string>
+    <string name="auth_signin_title">FoodRats</string>
+    <string name="auth_signin_subtitle">Comida real con tu crew. Sin filtros.</string>
     <string name="auth_signin_continue_google">Continuar con Google</string>
+    <string name="auth_signin_highlight_share">Captura el plato del día</string>
+    <string name="auth_signin_highlight_rate">Puntúa lo que cocina tu grupo</string>
+    <string name="auth_signin_highlight_feed">Mantén viva la racha</string>
+    <string name="auth_signin_footer">Sin feed público. Solo tu crew.</string>
+    <string name="auth_field_email">Email</string>
+    <string name="auth_field_password">Contraseña</string>
+    <string name="auth_mode_signin_cta">Entrar</string>
+    <string name="auth_mode_signup_cta">Crear cuenta</string>
+    <string name="auth_toggle_to_signup">¿Sin cuenta? Regístrate</string>
+    <string name="auth_toggle_to_signin">¿Ya tienes cuenta? Entra</string>
+    <string name="auth_or_divider">o</string>
     <string name="auth_error_user_cancelled">Inicio de sesión cancelado.</string>
     <string name="auth_error_no_google_accounts">No hay cuentas de Google en este dispositivo.</string>
     <string name="auth_error_play_services">Google Play Services no disponible.</string>
@@ -10,4 +21,8 @@
     <string name="auth_error_unknown">No se ha podido iniciar sesión. Inténtalo de nuevo.</string>
     <string name="auth_error_missing_server_client_id">El inicio de sesión con Google no está configurado. Añade googleServerClientId en ~/.gradle/gradle.properties y vuelve a compilar.</string>
     <string name="auth_error_account_disabled">Esta cuenta está deshabilitada.</string>
+    <string name="auth_error_email_invalid">Introduce un email válido.</string>
+    <string name="auth_error_password_too_short">La contraseña debe tener al menos 6 caracteres.</string>
+    <string name="auth_error_email_in_use">Ese email ya está en uso.</string>
+    <string name="auth_error_wrong_credentials">Email o contraseña incorrectos.</string>
 </resources>

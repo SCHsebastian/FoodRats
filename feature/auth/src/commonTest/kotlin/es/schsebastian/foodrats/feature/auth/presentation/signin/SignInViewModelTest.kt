@@ -96,4 +96,73 @@ class SignInViewModelTest {
         vm.onIntent(SignInIntent.DismissError)
         assertNull(vm.state.value.error)
     }
+
+    @Test fun email_validation_blocks_submit() = runTest {
+        val repo = FakeAuthRepository(Result.success(sampleSession))
+        val vm = SignInViewModel(repo, noopRegisterDeviceToken())
+        vm.onIntent(SignInIntent.UpdateEmail("not-an-email"))
+        vm.onIntent(SignInIntent.UpdatePassword("longenough"))
+        vm.onIntent(SignInIntent.SubmitEmail)
+        assertEquals(AuthError.EmailPassword.InvalidEmail, vm.state.value.emailError)
+        // Repo should not have been called.
+        assertNull(repo.lastEmail)
+    }
+
+    @Test fun password_too_short_blocks_submit() = runTest {
+        val repo = FakeAuthRepository(Result.success(sampleSession))
+        val vm = SignInViewModel(repo, noopRegisterDeviceToken())
+        vm.onIntent(SignInIntent.UpdateEmail("a@b.co"))
+        vm.onIntent(SignInIntent.UpdatePassword("12345"))
+        vm.onIntent(SignInIntent.SubmitEmail)
+        assertEquals(AuthError.EmailPassword.WeakPassword, vm.state.value.passwordError)
+        assertNull(repo.lastEmail)
+    }
+
+    @Test fun email_signin_ok_emits_signedIn() = runTest {
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            emailSignInResult = Result.success(sampleSession),
+        )
+        val vm = SignInViewModel(repo, noopRegisterDeviceToken())
+        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats.app"))
+        vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.effects.test {
+            vm.onIntent(SignInIntent.SubmitEmail)
+            assertEquals(SignInEffect.SignedIn, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals("rat@foodrats.app", repo.lastEmail)
+        assertEquals("signIn", repo.lastMode)
+    }
+
+    @Test fun toggle_mode_to_signup_routes_to_signup() = runTest {
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            emailSignUpResult = Result.success(sampleSession),
+        )
+        val vm = SignInViewModel(repo, noopRegisterDeviceToken())
+        vm.onIntent(SignInIntent.ToggleMode)
+        assertEquals(SignInMode.SignUp, vm.state.value.mode)
+        vm.onIntent(SignInIntent.UpdateEmail("new@rat.com"))
+        vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.effects.test {
+            vm.onIntent(SignInIntent.SubmitEmail)
+            assertEquals(SignInEffect.SignedIn, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals("signUp", repo.lastMode)
+    }
+
+    @Test fun wrong_credentials_maps_to_passwordError() = runTest {
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            emailSignInResult = Result.failure(AuthError.EmailPassword.WrongCredentials),
+        )
+        val vm = SignInViewModel(repo, noopRegisterDeviceToken())
+        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats.app"))
+        vm.onIntent(SignInIntent.UpdatePassword("wrongpass"))
+        vm.onIntent(SignInIntent.SubmitEmail)
+        assertEquals(AuthError.EmailPassword.WrongCredentials, vm.state.value.passwordError)
+        assertNull(vm.state.value.error)
+    }
 }

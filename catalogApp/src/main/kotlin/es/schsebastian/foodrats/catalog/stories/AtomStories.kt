@@ -23,6 +23,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrChip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
+import es.schsebastian.foodrats.core.designsystem.atoms.FrFilterChip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
@@ -38,7 +39,8 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.avatar",        CatalogGroup.ATOMS, "FrAvatar",        "Initial-circle avatar at sm/md/lg sizes") { AvatarStory() },
     CatalogEntry("atom.button",        CatalogGroup.ATOMS, "FrButton",        "Primary / Secondary / Ghost · enabled & disabled") { ButtonStory() },
-    CatalogEntry("atom.chip",          CatalogGroup.ATOMS, "FrChip",          "Selectable AssistChip with selected / disabled states") { ChipStory() },
+    CatalogEntry("atom.chip",          CatalogGroup.ATOMS, "FrChip",          "One-shot assistive chip (Role.Button)") { ChipStory() },
+    CatalogEntry("atom.filterchip",    CatalogGroup.ATOMS, "FrFilterChip",    "Selection chip (Role.Checkbox) with check-on-selected") { FilterChipStory() },
     CatalogEntry("atom.divider",       CatalogGroup.ATOMS, "FrDivider",       "Thickness & tint variants") { DividerStory() },
     CatalogEntry("atom.icon",          CatalogGroup.ATOMS, "FrIcon",          "Tintable icon at three sizes") { IconStory() },
     CatalogEntry("atom.icons",         CatalogGroup.ATOMS, "FrIcons",         "Project-wide ImageVector catalog (core-only set)") { IconsCatalogStory() },
@@ -95,17 +97,45 @@ private fun ButtonStory() {
 
 @Composable
 private fun ChipStory() {
-    var pick by remember { mutableStateOf("Salad") }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        CatalogScene(label = "Selection — single-select group") {
+        CatalogScene(
+            label = "One-shot actions",
+            description = "FrChip is AssistChip. Use FrFilterChip for selection.",
+        ) {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                listOf("Pizza", "Salad", "Pasta", "Vegan").forEach { tag ->
-                    FrChip(label = tag, onClick = { pick = tag }, selected = pick == tag)
-                }
+                FrChip(label = "Edit",     onClick = {})
+                FrChip(label = "Share",    onClick = {})
+                FrChip(label = "Try again", onClick = {})
             }
         }
         CatalogScene(label = "Disabled") {
             FrChip(label = "Off", onClick = {}, enabled = false)
+        }
+    }
+}
+
+@Composable
+private fun FilterChipStory() {
+    var picks by remember { mutableStateOf(setOf("Salad")) }
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(
+            label = "Selectable — Role.Checkbox",
+            description = "Tap toggles state. Selected chips show a check.",
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                listOf("Pizza", "Salad", "Pasta", "Vegan").forEach { tag ->
+                    FrFilterChip(
+                        label = tag,
+                        selected = tag in picks,
+                        onClick = {
+                            picks = if (tag in picks) picks - tag else picks + tag
+                        },
+                    )
+                }
+            }
+        }
+        CatalogScene(label = "Disabled") {
+            FrFilterChip(label = "Off", selected = true, onClick = {}, enabled = false)
         }
     }
 }
@@ -155,7 +185,7 @@ private fun IconStory() {
 private fun IconsCatalogStory() {
     val entries = listOf(
         "Back"          to FrIcons.Back,
-        "Camera*"       to FrIcons.Camera,
+        "Camera"        to FrIcons.Camera,
         "AddPhoto*"     to FrIcons.AddPhoto,
         "GalleryImport*" to FrIcons.GalleryImport,
         "CameraOff*"    to FrIcons.CameraOff,
@@ -222,8 +252,8 @@ private fun ProgressStory() {
 private fun ShutterStory() {
     CatalogScene(label = "Shutter — enabled / disabled") {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-            FrShutterButton(onClick = {})
-            FrShutterButton(onClick = {}, enabled = false)
+            FrShutterButton(onClick = {}, contentDescription = "Take photo")
+            FrShutterButton(onClick = {}, contentDescription = "Take photo", enabled = false)
         }
     }
 }

@@ -10,10 +10,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 
 class FakeAuthRepository(
     private val signInResult: Result<Session, AuthError>,
+    private val emailSignInResult: Result<Session, AuthError> = signInResult,
+    private val emailSignUpResult: Result<Session, AuthError> = signInResult,
     private val initialSession: Session? = null,
 ) : AuthRepository {
     private val sessionFlow = MutableStateFlow(initialSession)
     override val current: Flow<Session?> = sessionFlow
+
+    var lastEmail: String? = null
+    var lastPassword: String? = null
+    var lastMode: String? = null
 
     override suspend fun requireCurrent(): Result<Session, SessionError> =
         sessionFlow.value?.let { Result.success(it) } ?: Result.failure(SessionError.NotSignedIn)
@@ -21,6 +27,18 @@ class FakeAuthRepository(
     override suspend fun signInWithGoogle(): Result<Session, AuthError> {
         if (signInResult is Result.Ok) sessionFlow.value = signInResult.value
         return signInResult
+    }
+
+    override suspend fun signInWithEmail(email: String, password: String): Result<Session, AuthError> {
+        lastEmail = email; lastPassword = password; lastMode = "signIn"
+        if (emailSignInResult is Result.Ok) sessionFlow.value = emailSignInResult.value
+        return emailSignInResult
+    }
+
+    override suspend fun signUpWithEmail(email: String, password: String): Result<Session, AuthError> {
+        lastEmail = email; lastPassword = password; lastMode = "signUp"
+        if (emailSignUpResult is Result.Ok) sessionFlow.value = emailSignUpResult.value
+        return emailSignUpResult
     }
 
     override suspend fun signOut(): Result<Unit, AuthError> {

@@ -26,4 +26,12 @@ class AuthErrorToStringKeyTest {
         assertEquals(AuthStringKey.ErrorUnknown, AuthError.Firebase.TokenExpired.toStringKey())
     @Test fun firebaseUnavailable_maps_to_unknown_string() =
         assertEquals(AuthStringKey.ErrorUnknown, AuthError.Firebase.Unavailable.toStringKey())
+    @Test fun emailInvalid_maps_to_emailInvalid_string() =
+        assertEquals(AuthStringKey.ErrorEmailInvalid, AuthError.EmailPassword.InvalidEmail.toStringKey())
+    @Test fun weakPassword_maps_to_passwordTooShort_string() =
+        assertEquals(AuthStringKey.ErrorPasswordTooShort, AuthError.EmailPassword.WeakPassword.toStringKey())
+    @Test fun emailAlreadyInUse_maps_to_emailInUse_string() =
+        assertEquals(AuthStringKey.ErrorEmailInUse, AuthError.EmailPassword.EmailAlreadyInUse.toStringKey())
+    @Test fun wrongCredentials_maps_to_wrongCredentials_string() =
+        assertEquals(AuthStringKey.ErrorWrongCredentials, AuthError.EmailPassword.WrongCredentials.toStringKey())
 }

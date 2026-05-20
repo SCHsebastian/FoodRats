@@ -3,6 +3,9 @@ package es.schsebastian.foodrats.feature.feed.i18n
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.feed.generated.resources.Res
 import foodrats.feature.feed.generated.resources.feed_average_heading
+import foodrats.feature.feed.generated.resources.feed_detail_back_cta
+import foodrats.feature.feed.generated.resources.feed_detail_not_found
+import foodrats.feature.feed.generated.resources.feed_detail_title
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
 import foodrats.feature.feed.generated.resources.feed_error_crew_not_found
@@ -51,4 +54,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     RateErrorWindowClosed(Res.string.feed_rate_error_window_closed),
     RateErrorUnauthorized(Res.string.feed_rate_error_unauthorized),
     RateErrorUnavailable(Res.string.feed_rate_error_unavailable),
+    DetailBackCta(Res.string.feed_detail_back_cta),
+    DetailTitle(Res.string.feed_detail_title),
+    DetailNotFound(Res.string.feed_detail_not_found),
 }

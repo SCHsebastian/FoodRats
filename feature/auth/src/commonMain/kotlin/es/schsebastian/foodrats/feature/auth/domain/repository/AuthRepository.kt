@@ -7,5 +7,7 @@ import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 
 interface AuthRepository : SessionProvider {
     suspend fun signInWithGoogle(): Result<Session, AuthError>
+    suspend fun signInWithEmail(email: String, password: String): Result<Session, AuthError>
+    suspend fun signUpWithEmail(email: String, password: String): Result<Session, AuthError>
     suspend fun signOut(): Result<Unit, AuthError>
 }

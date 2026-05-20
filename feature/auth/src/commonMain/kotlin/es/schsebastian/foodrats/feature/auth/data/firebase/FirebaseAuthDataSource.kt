@@ -21,6 +21,16 @@ class FirebaseAuthDataSource(
         auth.signInWithCredential(cred).user?.uid ?: error("Firebase Auth returned null user")
     }
 
+    suspend fun signInWithEmail(email: String, password: String): String = withContext(dispatchers.io) {
+        auth.signInWithEmailAndPassword(email, password).user?.uid
+            ?: error("Firebase Auth returned null user")
+    }
+
+    suspend fun createUserWithEmail(email: String, password: String): String = withContext(dispatchers.io) {
+        auth.createUserWithEmailAndPassword(email, password).user?.uid
+            ?: error("Firebase Auth returned null user")
+    }
+
     suspend fun ensureAccountDoc(uid: String): AccountDto = withContext(dispatchers.io) {
         val ref = firestore.collection("accounts").document(uid)
         val snap = ref.get()

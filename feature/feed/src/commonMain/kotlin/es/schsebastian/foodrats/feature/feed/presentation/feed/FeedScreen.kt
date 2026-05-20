@@ -22,13 +22,14 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedDayHeader
-import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedMealCard
+import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedMealRow
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun FeedScreen(
     onPickCrewClick: () -> Unit,
+    onMealClick: (mealId: String, dayIso: String) -> Unit,
     vm: FeedViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -75,11 +76,12 @@ fun FeedScreen(
                             )
                         }
                         else -> {
+                            val dayIso = state.day?.day?.date?.toString().orEmpty()
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
                                 items(state.meals, key = { it.mealId }) { ui ->
-                                    FrFeedMealCard(
+                                    FrFeedMealRow(
                                         ui = ui,
-                                        onRate = { mealId, score -> vm.onIntent(FeedIntent.RateMeal(mealId, score)) },
+                                        onClick = { onMealClick(ui.mealId, dayIso) },
                                     )
                                 }
                             }

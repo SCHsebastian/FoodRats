@@ -13,14 +13,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 
+/**
+ * Camera-style capture button: 72dp circle, ringed border, no fill. Carries [Role.Button]
+ * semantics and requires a caller-supplied [contentDescription] (typically resolved to
+ * "Take photo" / "Capturar foto" via the feature's StringKey).
+ */
 @Composable
 fun FrShutterButton(
     onClick: () -> Unit,
+    contentDescription: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
@@ -28,7 +38,13 @@ fun FrShutterButton(
         modifier = modifier
             .size(Sizes.shutter)
             .clip(CircleShape)
-            .then(if (enabled) Modifier.clickable(onClick = onClick) else Modifier),
+            .then(
+                if (enabled) Modifier.clickable(onClick = onClick) else Modifier,
+            )
+            .semantics {
+                this.contentDescription = contentDescription
+                role = Role.Button
+            },
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(3.dp, MaterialTheme.colorScheme.onSurface),
@@ -42,8 +58,8 @@ fun FrShutterButton(
 private fun FrShutterButtonPreview() {
     FrPreviewLightDark {
         Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-            FrShutterButton(onClick = {})
-            FrShutterButton(onClick = {}, enabled = false)
+            FrShutterButton(onClick = {}, contentDescription = "Take photo")
+            FrShutterButton(onClick = {}, contentDescription = "Take photo", enabled = false)
         }
     }
 }

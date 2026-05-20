@@ -49,32 +49,54 @@ internal class FirebaseAuthRepository(
         }
         return try {
             val uid = firebase.signInWithGoogle(token)
-            val account = firebase.ensureAccountDoc(uid).toAccount()
-                ?: return Result.failure(AuthError.Firebase.Unavailable)
-            // TODO(scope = "feature:crew"): remove this dev-crew hardcode once the
-            // Crew feature lets users create/pick a crew. Until then, smoke-testing
-            // meal publishing needs a non-null Session.activeCrewId AND the crew
-            // document to actually exist (Firestore rules require auth.uid in
-            // crews/{crewId}.memberIds for meal writes). Without ensureDevCrewMembership,
-            // meal publish writes are silently rejected by Firestore rules: they queue
-            // locally (publish reports success) but never land on the server.
-            runCatching {
-                firebase.ensureDevCrewMembership(
-                    crewId = DEV_CREW_ID,
-                    uid = uid,
-                    displayName = account.displayName,
-                    nowEpochMs = kotlin.time.Clock.System.now().toEpochMilliseconds(),
-                )
-            }
-            // If runCatching failed, the crew doc may already exist for another user
-            // and rules forbid self-add. We continue — only writes for an unauthorised
-            // user will fail later.
-            val devCrewId = (CrewId.of(DEV_CREW_ID) as Result.Ok).value
-            prefs.set(Keys.ActiveCrewId, DEV_CREW_ID)
-            Result.success(account.toSession().copy(activeCrewId = devCrewId))
+            finishSignIn(uid)
         } catch (t: Throwable) {
             Result.failure(errorMapper.mapFirebase(t))
         }
+    }
+
+    override suspend fun signInWithEmail(email: String, password: String): Result<Session, AuthError> {
+        return try {
+            val uid = firebase.signInWithEmail(email.trim(), password)
+            finishSignIn(uid)
+        } catch (t: Throwable) {
+            Result.failure(errorMapper.mapFirebase(t))
+        }
+    }
+
+    override suspend fun signUpWithEmail(email: String, password: String): Result<Session, AuthError> {
+        return try {
+            val uid = firebase.createUserWithEmail(email.trim(), password)
+            finishSignIn(uid)
+        } catch (t: Throwable) {
+            Result.failure(errorMapper.mapFirebase(t))
+        }
+    }
+
+    private suspend fun finishSignIn(uid: String): Result<Session, AuthError> {
+        val account = firebase.ensureAccountDoc(uid).toAccount()
+            ?: return Result.failure(AuthError.Firebase.Unavailable)
+        // TODO(scope = "feature:crew"): remove this dev-crew hardcode once the
+        // Crew feature lets users create/pick a crew. Until then, smoke-testing
+        // meal publishing needs a non-null Session.activeCrewId AND the crew
+        // document to actually exist (Firestore rules require auth.uid in
+        // crews/{crewId}.memberIds for meal writes). Without ensureDevCrewMembership,
+        // meal publish writes are silently rejected by Firestore rules: they queue
+        // locally (publish reports success) but never land on the server.
+        runCatching {
+            firebase.ensureDevCrewMembership(
+                crewId = DEV_CREW_ID,
+                uid = uid,
+                displayName = account.displayName,
+                nowEpochMs = kotlin.time.Clock.System.now().toEpochMilliseconds(),
+            )
+        }
+        // If runCatching failed, the crew doc may already exist for another user
+        // and rules forbid self-add. We continue — only writes for an unauthorised
+        // user will fail later.
+        val devCrewId = (CrewId.of(DEV_CREW_ID) as Result.Ok).value
+        prefs.set(Keys.ActiveCrewId, DEV_CREW_ID)
+        return Result.success(account.toSession().copy(activeCrewId = devCrewId))
     }
 
     private companion object {

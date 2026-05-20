@@ -1,8 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="auth_signin_title">Welcome to FoodRats</string>
-    <string name="auth_signin_subtitle">Share what you eat with your crew.</string>
+    <string name="auth_signin_title">FoodRats</string>
+    <string name="auth_signin_subtitle">Real food with your crew. No filters.</string>
     <string name="auth_signin_continue_google">Continue with Google</string>
+    <string name="auth_signin_highlight_share">Capture today\'s plate</string>
+    <string name="auth_signin_highlight_rate">Score your crew\'s cooking</string>
+    <string name="auth_signin_highlight_feed">Keep the streak alive</string>
+    <string name="auth_signin_footer">No public feed. Just your crew.</string>
+    <string name="auth_field_email">Email</string>
+    <string name="auth_field_password">Password</string>
+    <string name="auth_mode_signin_cta">Sign in</string>
+    <string name="auth_mode_signup_cta">Create account</string>
+    <string name="auth_toggle_to_signup">No account? Sign up</string>
+    <string name="auth_toggle_to_signin">Already a rat? Sign in</string>
+    <string name="auth_or_divider">or</string>
     <string name="auth_error_user_cancelled">Sign-in cancelled.</string>
     <string name="auth_error_no_google_accounts">No Google accounts on this device.</string>
     <string name="auth_error_play_services">Google Play Services unavailable.</string>
@@ -10,4 +21,8 @@
     <string name="auth_error_unknown">Couldn\'t sign in. Try again.</string>
     <string name="auth_error_missing_server_client_id">Google sign-in is not configured. Set googleServerClientId in ~/.gradle/gradle.properties and rebuild.</string>
     <string name="auth_error_account_disabled">This account is disabled.</string>
+    <string name="auth_error_email_invalid">Enter a valid email address.</string>
+    <string name="auth_error_password_too_short">Password must be at least 6 characters.</string>
+    <string name="auth_error_email_in_use">That email is already taken.</string>
+    <string name="auth_error_wrong_credentials">Wrong email or password.</string>
 </resources>
