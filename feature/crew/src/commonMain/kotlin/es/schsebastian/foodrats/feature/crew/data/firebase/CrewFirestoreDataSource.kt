@@ -31,6 +31,7 @@ class CrewFirestoreDataSource(
     private val codeGenerator: CrewCodeGenerator,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
+    private val writer: CrewMemberWriter,
 ) {
 
     // CoroutineExceptionHandler is mandatory here: any uncaught exception inside the
@@ -199,8 +200,7 @@ class CrewFirestoreDataSource(
     ): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
-                crewsCol.document(crewId.value)
-                    .update("members.${accountId.value}.displayName" to newDisplayName)
+                writer.renameAndPropagate(crewId, accountId, newDisplayName)
                 Result.success(Unit)
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }

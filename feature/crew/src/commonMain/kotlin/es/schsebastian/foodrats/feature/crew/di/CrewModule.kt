@@ -8,6 +8,8 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.AvatarStorageDataSour
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewMemberWriter
+import es.schsebastian.foodrats.feature.crew.data.firebase.FirestoreCrewMemberWriter
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
@@ -34,6 +36,7 @@ import kotlin.random.Random
 val crewModule = module {
     single { CrewCodeGenerator(random = Random.Default) }
     singleOf(::CrewErrorMapper)
+    single<CrewMemberWriter> { FirestoreCrewMemberWriter(firestore = get()) }
     singleOf(::CrewFirestoreDataSource)
     singleOf(::AvatarStorageDataSource)
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
