@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,7 +34,7 @@ fun FeedScreen(
     vm: FeedViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    FrScreenScaffold {
+    FrScreenScaffold(contentWindowInsets = WindowInsets(0)) {
         // FrFeedLayout slots are `dayHeader` and `list` (not header/body per plan).
         FrFeedLayout(
             dayHeader = {

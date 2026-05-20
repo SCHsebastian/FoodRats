@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.stats.presentation.stats
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -29,7 +30,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun StatsScreen(vm: StatsViewModel = koinViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
-    FrScreenScaffold {
+    FrScreenScaffold(contentWindowInsets = WindowInsets(0)) {
         Column(modifier = Modifier.fillMaxSize().padding(Spacing.lg).verticalScroll(rememberScrollState())) {
             FrText(text = resolve(StatsStringKey.Title))
             when {

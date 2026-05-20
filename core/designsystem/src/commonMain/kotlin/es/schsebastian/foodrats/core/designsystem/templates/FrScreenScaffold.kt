@@ -30,13 +30,16 @@ fun FrScreenScaffold(
     topBar: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() },
+    // safeDrawing covers status bar + navigation bar + display cutout + IME so
+    // standalone screens (no outer Scaffold) don't draw under system bars.
+    // When nested inside another Scaffold that already consumes insets (e.g.
+    // MainScaffold), pass WindowInsets(0) to avoid double-padding.
+    contentWindowInsets: WindowInsets = WindowInsets.safeDrawing,
     content: @Composable () -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
-        // safeDrawing covers status bar + navigation bar + display cutout + IME so
-        // content doesn't draw under system bars when topBar/bottomBar are empty.
-        contentWindowInsets = WindowInsets.safeDrawing,
+        contentWindowInsets = contentWindowInsets,
         topBar = topBar,
         bottomBar = bottomBar,
         snackbarHost = { SnackbarHost(snackbarHostState) },
