@@ -3,17 +3,26 @@ package es.schsebastian.foodrats
 import android.app.Application
 import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.auth.GoogleAuthClientAndroidFactory
+import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
 import es.schsebastian.foodrats.core.data.datastore.installAndroidDataStoreContext
 import es.schsebastian.foodrats.core.data.firebase.FirebaseInitializer
 import es.schsebastian.foodrats.core.data.firebase.installAndroidFirebaseContext
 import es.schsebastian.foodrats.core.data.share.ShareController
 import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
+import es.schsebastian.foodrats.core.data.telemetry.AndroidCrashReporter
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsAndroidModule
 import es.schsebastian.foodrats.feature.notifications.platform.NotificationChannels
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 
@@ -34,13 +43,26 @@ class FoodRatsApplication : Application() {
                     notificationsAndroidModule,
                     androidShareModule(),
                     androidAuthModule(),
+                    androidCrashModule(),
                 ),
             )
+        }
+
+        // One-shot self-healing migration: legacy "test-crew-1" pref from the removed
+        // dev-crew hardcode gets wiped so signed-in upgraders are re-routed to CrewPicker
+        // instead of pinning to a crew they're not a member of.
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            GlobalContext.get().get<AppPreferences>().clearLegacyDevCrewIfPresent()
         }
     }
 
     private fun androidShareModule() = module {
         single<ShareController> { ShareControllerAndroid(androidContext()) }
+    }
+
+    private fun androidCrashModule() = module {
+        // Disable Crashlytics collection in debug builds so dev crashes don't pollute prod data.
+        single<CrashReporter> { AndroidCrashReporter(collectionEnabled = !BuildConfig.DEBUG) }
     }
 
     private fun androidAuthModule() = module {

@@ -3,10 +3,18 @@ package es.schsebastian.foodrats
 import androidx.compose.ui.window.ComposeUIViewController
 import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.app.root.FoodRatsApp
+import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
+import es.schsebastian.foodrats.core.data.di.crashIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
 import es.schsebastian.foodrats.feature.auth.di.authIosModule
 import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import platform.UIKit.UIViewController
 
@@ -18,6 +26,9 @@ import platform.UIKit.UIViewController
  *
  * The [googleSignIn] completion is invoked with `(idToken, accessToken, errorCode)` — on
  * iOS Firebase requires both idToken and accessToken (see GoogleAuthClient.ios.kt).
+ *
+ * [crashRecordNonFatal] / [crashLog] bridge to CrashlyticsBridge — Firebase Crashlytics has no
+ * KMP binding and is resolved via SPM in Xcode, so it must be called from Swift.
  */
 fun MainViewController(
     viewControllerProvider: () -> UIViewController,
@@ -26,6 +37,8 @@ fun MainViewController(
         (idToken: String?, accessToken: String?, errorCode: String?) -> Unit,
     ) -> Unit,
     googleSignOut: () -> Unit,
+    crashRecordNonFatal: (domain: String, message: String) -> Unit,
+    crashLog: (String) -> Unit,
 ) = ComposeUIViewController(
     configure = {
         installFeedImageLoader()
@@ -35,8 +48,13 @@ fun MainViewController(
                     notificationsIosModule,
                     shareIosModule,
                     authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
+                    crashIosModule(crashRecordNonFatal, crashLog),
                 ),
             )
+        }
+        // Self-healing migration: see Android equivalent in FoodRatsApplication.onCreate.
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+            GlobalContext.get().get<AppPreferences>().clearLegacyDevCrewIfPresent()
         }
     },
 ) {
