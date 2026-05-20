@@ -6,14 +6,17 @@ import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -30,7 +33,18 @@ class CrewFirestoreDataSource(
     private val errorMapper: CrewErrorMapper,
 ) {
 
-    private val obsScope = CoroutineScope(SupervisorJob() + dispatchers.default)
+    // CoroutineExceptionHandler is mandatory here: any uncaught exception inside the
+    // `shareIn` upstream (e.g. Firestore PERMISSION_DENIED after sign-out token revoke)
+    // would otherwise propagate to Kotlin/Native's default handler → SIGABRT. The handler
+    // swallows + logs; consumers downstream of `observeCrew` already receive `null` via
+    // the upstream `.catch { emit(null) }` and map that to CrewError.Membership.NotFound.
+    private val obsScope = CoroutineScope(
+        SupervisorJob() +
+            dispatchers.default +
+            CoroutineExceptionHandler { _, t ->
+                FrLog.w("Crew", t) { "obsScope uncaught: ${t.message}" }
+            },
+    )
     private val crewSharedFlowsLock = Mutex()
     private val crewSharedFlows = mutableMapOf<String, SharedFlow<CrewDto?>>()
 
@@ -137,6 +151,15 @@ class CrewFirestoreDataSource(
             crewSharedFlows.getOrPut(crewId.value) {
                 crewsCol.document(crewId.value).snapshots
                     .map { snap -> if (snap.exists) snap.data<CrewDto>() else null }
+                    // Sign-out revokes the auth token; iOS Firestore fires a
+                    // PERMISSION_DENIED that GitLive surfaces by throwing into the
+                    // upstream of `shareIn`. Swallow it as `null` so the SharedFlow
+                    // stays alive and downstream maps to NotFound. The obsScope
+                    // CoroutineExceptionHandler above is the safety net.
+                    .catch { t ->
+                        FrLog.w("Crew", t) { "observeCrew upstream throw: ${t.message}" }
+                        emit(null)
+                    }
                     .shareIn(obsScope, SharingStarted.WhileSubscribed(5_000), replay = 1)
             }
         }
