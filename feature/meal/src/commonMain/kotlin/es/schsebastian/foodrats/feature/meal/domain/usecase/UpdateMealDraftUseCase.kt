@@ -15,6 +15,7 @@ class UpdateMealDraftUseCase(private val repository: MealRepository) {
             is UpdateMealDraftCommand.SetPhoto -> current.copy(plate = command.plate)
             is UpdateMealDraftCommand.SetDish  -> current.copy(dish = command.dish)
             is UpdateMealDraftCommand.SetTags  -> current.copy(tags = command.tags)
+            is UpdateMealDraftCommand.SetSlot  -> current.copy(slot = command.slot)
         }
         return repository.saveDraft(updated).map { updated }
     }
