@@ -22,9 +22,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
-import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
+import org.koin.mp.KoinPlatform
 
 class FoodRatsApplication : Application() {
     override fun onCreate() {
@@ -52,7 +52,7 @@ class FoodRatsApplication : Application() {
         // dev-crew hardcode gets wiped so signed-in upgraders are re-routed to CrewPicker
         // instead of pinning to a crew they're not a member of.
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
-            GlobalContext.get().get<AppPreferences>().clearLegacyDevCrewIfPresent()
+            KoinPlatform.getKoin().get<AppPreferences>().clearLegacyDevCrewIfPresent()
         }
     }
 

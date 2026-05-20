@@ -14,8 +14,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
+import org.koin.mp.KoinPlatform
 import platform.UIKit.UIViewController
 
 /**
@@ -54,7 +54,7 @@ fun MainViewController(
         }
         // Self-healing migration: see Android equivalent in FoodRatsApplication.onCreate.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            GlobalContext.get().get<AppPreferences>().clearLegacyDevCrewIfPresent()
+            KoinPlatform.getKoin().get<AppPreferences>().clearLegacyDevCrewIfPresent()
         }
     },
 ) {
