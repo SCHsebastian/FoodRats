@@ -76,15 +76,15 @@ class FirebaseAuthDataSource(
     }
 
     suspend fun signOut() = withContext(dispatchers.io) {
-        FrLog.d(FrLog.Channel.SignOut) { "data: auth.signOut() about to call" }
+        FrLog.d(FrLog.Tags.SignOut) { "data: auth.signOut() about to call" }
         auth.signOut()
-        FrLog.d(FrLog.Channel.SignOut) { "data: auth.signOut() returned" }
+        FrLog.d(FrLog.Tags.SignOut) { "data: auth.signOut() returned" }
     }
 
     fun sessions(): Flow<Session?> =
         auth.authStateChanged
             .onEach { user ->
-                FrLog.d(FrLog.Channel.Session) { "data: authStateChanged user=${user?.uid ?: "null"}" }
+                FrLog.d(FrLog.Tags.Session) { "data: authStateChanged user=${user?.uid ?: "null"}" }
             }
             .map { user ->
                 user?.uid?.let { uid ->
@@ -93,7 +93,7 @@ class FirebaseAuthDataSource(
                 }
             }
             .onEach { session ->
-                FrLog.d(FrLog.Channel.Session) {
+                FrLog.d(FrLog.Tags.Session) {
                     "data: sessions emit account=${session?.accountId?.value ?: "null"}"
                 }
             }

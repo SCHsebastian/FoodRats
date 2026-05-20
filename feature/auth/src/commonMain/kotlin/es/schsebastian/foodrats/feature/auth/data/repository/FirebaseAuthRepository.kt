@@ -40,7 +40,7 @@ internal class FirebaseAuthRepository(
                 session.copy(activeCrewId = crewId)
             }
         }.onEach { sess ->
-            FrLog.d(FrLog.Channel.Session) {
+            FrLog.d(FrLog.Tags.Session) {
                 "repo.current emit account=${sess?.accountId?.value ?: "null"} " +
                     "crew=${sess?.activeCrewId?.value ?: "null"}"
             }
@@ -111,22 +111,22 @@ internal class FirebaseAuthRepository(
     }
 
     override suspend fun signOut(): Result<Unit, AuthError> {
-        FrLog.d(FrLog.Channel.SignOut) { "repo: signOut entry" }
+        FrLog.d(FrLog.Tags.SignOut) { "repo: signOut entry" }
         return try {
-            FrLog.d(FrLog.Channel.SignOut) { "repo: → firebase.signOut()" }
+            FrLog.d(FrLog.Tags.SignOut) { "repo: → firebase.signOut()" }
             firebase.signOut()
-            FrLog.d(FrLog.Channel.SignOut) { "repo: → googleClient.signOut()" }
+            FrLog.d(FrLog.Tags.SignOut) { "repo: → googleClient.signOut()" }
             googleClient.signOut()
             // Clear both the session token AND the active crew so the next sign-in
             // lands on CrewPicker instead of silently inheriting the previous user's
             // crew (the active-crew flow re-derives from prefs at session-restore time).
-            FrLog.d(FrLog.Channel.SignOut) { "repo: → prefs.clear(SessionToken, ActiveCrewId)" }
+            FrLog.d(FrLog.Tags.SignOut) { "repo: → prefs.clear(SessionToken, ActiveCrewId)" }
             prefs.clear(Keys.SessionToken)
             prefs.clear(Keys.ActiveCrewId)
-            FrLog.d(FrLog.Channel.SignOut) { "repo: signOut complete (Ok)" }
+            FrLog.d(FrLog.Tags.SignOut) { "repo: signOut complete (Ok)" }
             Result.success(Unit)
         } catch (t: Throwable) {
-            FrLog.w(FrLog.Channel.SignOut, t) { "repo: signOut threw: ${t.message}" }
+            FrLog.w(FrLog.Tags.SignOut, t) { "repo: signOut threw: ${t.message}" }
             Result.failure(errorMapper.mapFirebase(t))
         }
     }

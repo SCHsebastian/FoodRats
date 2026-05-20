@@ -19,10 +19,10 @@ fun <T> EventsEffect(events: Flow<T>, onEvent: suspend (T) -> Unit) {
         events.collectLatest { event ->
             val state = owner.lifecycle.currentState
             if (state.isAtLeast(Lifecycle.State.RESUMED)) {
-                FrLog.d(FrLog.Channel.Lifecycle) { "EventsEffect deliver event=$event (state=$state)" }
+                FrLog.d(FrLog.Tags.Lifecycle) { "EventsEffect deliver event=$event (state=$state)" }
                 onEvent(event)
             } else {
-                FrLog.d(FrLog.Channel.Lifecycle) {
+                FrLog.d(FrLog.Tags.Lifecycle) {
                     "EventsEffect DROPPED event=$event (state=$state — not yet RESUMED)"
                 }
             }

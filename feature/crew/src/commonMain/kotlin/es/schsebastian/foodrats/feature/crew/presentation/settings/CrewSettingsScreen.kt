@@ -46,13 +46,13 @@ fun CrewSettingsScreen(
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
-            FrLog.d(FrLog.Channel.SignOut) { "screen: effect=$eff" }
+            FrLog.d(FrLog.Tags.SignOut) { "screen: effect=$eff" }
             when (eff) {
                 CrewSettingsEffect.NavigateToCrewPicker -> onSwitch()
                 CrewSettingsEffect.Left -> onLeft()
                 CrewSettingsEffect.Deleted -> onDeleted()
                 CrewSettingsEffect.SignedOut -> {
-                    FrLog.d(FrLog.Channel.SignOut) { "screen: invoking onSignedOut() (RootNav handles nav)" }
+                    FrLog.d(FrLog.Tags.SignOut) { "screen: invoking onSignedOut() (RootNav handles nav)" }
                     onSignedOut()
                 }
             }

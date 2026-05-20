@@ -12,16 +12,16 @@ class AppPreferences(private val store: DataStore<Preferences>) {
     fun <T : Any> observe(key: StoreKey<T>): Flow<T?> = store.data
         .map { prefs -> prefs[key.prefs] }
         .onEach { v ->
-            FrLog.d(FrLog.Channel.Prefs) { "observe(${key.prefs.name}) emit=${v ?: "null"}" }
+            FrLog.d(FrLog.Tags.Prefs) { "observe(${key.prefs.name}) emit=${v ?: "null"}" }
         }
 
     suspend fun <T : Any> set(key: StoreKey<T>, value: T) {
-        FrLog.d(FrLog.Channel.Prefs) { "set(${key.prefs.name}) = $value" }
+        FrLog.d(FrLog.Tags.Prefs) { "set(${key.prefs.name}) = $value" }
         store.edit { it[key.prefs] = value }
     }
 
     suspend fun <T : Any> clear(key: StoreKey<T>) {
-        FrLog.d(FrLog.Channel.Prefs) { "clear(${key.prefs.name})" }
+        FrLog.d(FrLog.Tags.Prefs) { "clear(${key.prefs.name})" }
         store.edit { it.remove(key.prefs) }
     }
 }

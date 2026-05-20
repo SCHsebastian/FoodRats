@@ -14,10 +14,10 @@ fun FoodRatsApp() {
     val rootController = rememberNavController()
     val rootVm: RootNavViewModel = koinViewModel()
     EventsEffect(events = rootVm.effects) { eff ->
-        FrLog.d(FrLog.Channel.RootNav) { "app: collected effect=$eff" }
+        FrLog.d(FrLog.Tags.RootNav) { "app: collected effect=$eff" }
         when (eff) {
             is RootNavEffect.NavigateTo -> {
-                FrLog.d(FrLog.Channel.RootNav) {
+                FrLog.d(FrLog.Tags.RootNav) {
                     "app: navigateTopLevel(${eff.route::class.simpleName})"
                 }
                 rootController.navigateTopLevel(eff.route)

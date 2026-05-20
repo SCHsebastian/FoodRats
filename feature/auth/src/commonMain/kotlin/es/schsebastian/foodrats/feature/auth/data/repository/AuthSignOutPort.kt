@@ -22,15 +22,15 @@ internal class AuthSignOutPort(
 ) : SignOutPort {
 
     override suspend fun signOut(): Result<Unit, SessionError> {
-        FrLog.d(FrLog.Channel.SignOut) { "port: signOut entry" }
+        FrLog.d(FrLog.Tags.SignOut) { "port: signOut entry" }
         return when (val r = auth.signOut()) {
             is Result.Ok  -> {
-                FrLog.d(FrLog.Channel.SignOut) { "port: repo returned Ok" }
+                FrLog.d(FrLog.Tags.SignOut) { "port: repo returned Ok" }
                 Result.success(Unit)
             }
             is Result.Err -> {
                 val mapped = r.error.toSessionError()
-                FrLog.d(FrLog.Channel.SignOut) { "port: repo returned Err=${r.error} → mapped=$mapped" }
+                FrLog.d(FrLog.Tags.SignOut) { "port: repo returned Err=${r.error} → mapped=$mapped" }
                 Result.failure(mapped)
             }
         }

@@ -29,21 +29,21 @@ class RootNavViewModel(
                         RootStage.NeedsCrew    -> Route.CrewPicker
                         RootStage.Ready        -> Route.Main
                     }
-                    FrLog.d(FrLog.Channel.RootNav) {
+                    FrLog.d(FrLog.Tags.RootNav) {
                         "tick sess=${sess?.accountId?.value ?: "null"} " +
                             "crew=${crewId?.value ?: "null"} " +
                             "stage=${currentState.stage::class.simpleName} → " +
                             "${nextStage::class.simpleName} target=${target?.let { it::class.simpleName }}"
                     }
                     if (currentState.stage != nextStage) {
-                        FrLog.d(FrLog.Channel.RootNav) {
+                        FrLog.d(FrLog.Tags.RootNav) {
                             "transition ${currentState.stage::class.simpleName} → " +
                                 "${nextStage::class.simpleName}, emitting NavigateTo(${target?.let { it::class.simpleName }})"
                         }
                         update { it.copy(stage = nextStage) }
                         target?.let { emit(RootNavEffect.NavigateTo(it)) }
                     } else {
-                        FrLog.d(FrLog.Channel.RootNav) { "no-op (same stage)" }
+                        FrLog.d(FrLog.Tags.RootNav) { "no-op (same stage)" }
                     }
                 }
         }

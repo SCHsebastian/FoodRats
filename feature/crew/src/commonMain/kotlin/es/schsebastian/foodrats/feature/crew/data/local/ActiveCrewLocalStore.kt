@@ -22,16 +22,16 @@ class ActiveCrewLocalStore(
             prefs[key]?.let { raw -> (CrewId.of(raw) as? es.schsebastian.foodrats.core.domain.result.Result.Ok)?.value }
         }
         .onEach { id ->
-            FrLog.d(FrLog.Channel.ActiveCrew) { "current emit=${id?.value ?: "null"}" }
+            FrLog.d(FrLog.Tags.ActiveCrew) { "current emit=${id?.value ?: "null"}" }
         }
 
     override suspend fun set(crewId: CrewId) {
-        FrLog.d(FrLog.Channel.ActiveCrew) { "set(${crewId.value})" }
+        FrLog.d(FrLog.Tags.ActiveCrew) { "set(${crewId.value})" }
         dataStore.edit { it[key] = crewId.value }
     }
 
     override suspend fun clear() {
-        FrLog.d(FrLog.Channel.ActiveCrew) { "clear()" }
+        FrLog.d(FrLog.Tags.ActiveCrew) { "clear()" }
         dataStore.edit { it.remove(key) }
     }
 }

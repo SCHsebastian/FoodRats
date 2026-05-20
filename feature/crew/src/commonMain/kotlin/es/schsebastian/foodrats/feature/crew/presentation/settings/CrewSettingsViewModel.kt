@@ -100,11 +100,11 @@ class CrewSettingsViewModel(
     }
 
     private suspend fun doSignOut() {
-        FrLog.d(FrLog.Channel.SignOut) { "vm: doSignOut start" }
+        FrLog.d(FrLog.Tags.SignOut) { "vm: doSignOut start" }
         update { it.copy(isSigningOut = true, signOutError = null) }
         when (val r = signOutPort.signOut()) {
             is Result.Ok -> {
-                FrLog.d(FrLog.Channel.SignOut) { "vm: port Ok → emit SignedOut effect" }
+                FrLog.d(FrLog.Tags.SignOut) { "vm: port Ok → emit SignedOut effect" }
                 update { it.copy(isSigningOut = false) }
                 // No explicit navigation here — the RootNavViewModel observes
                 // SessionProvider.current going null and routes the app to SignIn,
@@ -114,7 +114,7 @@ class CrewSettingsViewModel(
                 emit(CrewSettingsEffect.SignedOut)
             }
             is Result.Err -> {
-                FrLog.d(FrLog.Channel.SignOut) { "vm: port Err=${r.error}" }
+                FrLog.d(FrLog.Tags.SignOut) { "vm: port Err=${r.error}" }
                 update { it.copy(isSigningOut = false, signOutError = r.error) }
             }
         }
