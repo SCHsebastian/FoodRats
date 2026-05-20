@@ -52,8 +52,28 @@ service cloud.firestore {
                       && request.resource.data.slot in ["breakfast", "lunch", "dinner"]
                       && mealId == crewId + "_" + request.auth.uid + "_" + request.resource.data.dayKey + "_" + request.resource.data.slot
                       && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId));
-        // No update or delete path — meals are immutable once published.
+        // Rating-write update: a voter (not the author) may add their own entry to the
+        // `ratings` map. The diff must be limited to the three denormalized rating fields,
+        // the voter can only touch their own key in the map, and the cached sum/count
+        // must equal the recomputed values from the new map.
+        allow update: if request.auth != null
+                      && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
+                      && request.auth.uid != resource.data.authorId
+                      && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['ratings', 'ratingSum', 'voterCount'])
+                      && request.resource.data.ratings.diff(resource.data.ratings).affectedKeys()
+                           .hasOnly([request.auth.uid])
+                      && !(request.auth.uid in resource.data.ratings)
+                      && request.resource.data.ratings[request.auth.uid].score is int
+                      && request.resource.data.ratings[request.auth.uid].score >= 1
+                      && request.resource.data.ratings[request.auth.uid].score <= 5
+                      && request.resource.data.voterCount == request.resource.data.ratings.size()
+                      && request.time.toMillis() - resource.data.publishedAtEpochMs < 172800000;
 
+        // DEPRECATED 2026-05-20 — superseded by the denormalized `ratings` map on the
+        // meal document itself. New clients never write to this subcollection. The
+        // rule is kept for one release so any stragglers fail visibly rather than
+        // silently. Remove in a follow-up cleanup.
         match /ratings/{raterUid} {
           allow read: if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds;
