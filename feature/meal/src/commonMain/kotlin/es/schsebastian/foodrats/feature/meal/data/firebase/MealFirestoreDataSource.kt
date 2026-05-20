@@ -77,4 +77,48 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .collection("meals").document(mealId).get()
         return if (snap.exists) snap.data<MealDto>() else null
     }
+
+    /**
+     * Records a peer vote atomically. Returns one of:
+     *  - `RateOutcome.Ok` on success
+     *  - `RateOutcome.MealNotFound` if the meal document doesn't exist
+     *  - `RateOutcome.SelfRating` if the rater is the meal's author
+     *  - `RateOutcome.AlreadyRated` if the rater has already voted on this meal
+     *
+     * Voting-window enforcement and authorization are handled by Firestore security
+     * rules; the transaction here covers the read-modify-write cycle for the ratings
+     * map plus its denormalized `ratingSum` / `voterCount` aggregates.
+     */
+    suspend fun rateMeal(
+        crewId: CrewId,
+        mealId: String,
+        raterUid: String,
+        score: Int,
+        nowEpochMs: Long,
+    ): RateOutcome {
+        val ref = firestore.collection("crews").document(crewId.value)
+            .collection("meals").document(mealId)
+        return firestore.runTransaction {
+            val snap = get(ref)
+            if (!snap.exists) return@runTransaction RateOutcome.MealNotFound
+            val dto = snap.data<MealDto>()
+            if (raterUid == dto.authorId) return@runTransaction RateOutcome.SelfRating
+            if (dto.ratings.containsKey(raterUid)) return@runTransaction RateOutcome.AlreadyRated
+            val newRatings = dto.ratings + (raterUid to RatingEntryDto(score = score, atMs = nowEpochMs))
+            val newSum = newRatings.values.sumOf { it.score }
+            update(ref, mapOf(
+                "ratings" to newRatings,
+                "ratingSum" to newSum,
+                "voterCount" to newRatings.size,
+            ))
+            RateOutcome.Ok
+        }
+    }
+
+    sealed interface RateOutcome {
+        data object Ok : RateOutcome
+        data object MealNotFound : RateOutcome
+        data object SelfRating : RateOutcome
+        data object AlreadyRated : RateOutcome
+    }
 }
