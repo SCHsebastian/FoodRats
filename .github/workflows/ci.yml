@@ -13,8 +13,10 @@ name: CI
 on:
   pull_request:
     branches: [main, develop]
+    paths-ignore: ['**/*.md', 'docs/**']
   push:
     branches: [main, develop]
+    paths-ignore: ['**/*.md', 'docs/**']
 
 # Least privilege: the workflow only needs to read the checked-out code.
 permissions:
@@ -41,6 +43,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
 
       - name: Run host tests
         run: >
@@ -66,6 +70,8 @@ jobs:
   release-smoke:
     name: Release smoke (R8)
     runs-on: ubuntu-latest
+    # Heavy (~9 min) R8 build: run only on pushes to main, not on every PR.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -78,6 +84,8 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
 
       # The googleServices plugin (applied in :androidApp) needs a structurally
       # valid google-services.json. The real one is a secret; for a build-only
