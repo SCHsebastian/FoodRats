@@ -6,6 +6,8 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 /**
@@ -14,14 +16,17 @@ import kotlinx.coroutines.flow.map
  * tests run on the JVM/iOS Sim without spinning up Firebase.
  */
 interface AccountSnapshotSource {
-    fun snapshots(uid: String): StateFlow<AccountDto?>
+    suspend fun snapshots(uid: String): StateFlow<AccountDto?>
 }
 
 class FirestoreAccountReadDataSource(
     private val source: AccountSnapshotSource,
 ) : AccountReadPort {
-    override fun observe(id: AccountId): Flow<Account?> =
-        source.snapshots(id.value)
-            .map { dto -> dto?.toAccount() }
-            .distinctUntilChanged()
+    override fun observe(id: AccountId): Flow<Account?> = flow {
+        emitAll(
+            source.snapshots(id.value)
+                .map { dto -> dto?.toAccount() }
+                .distinctUntilChanged()
+        )
+    }
 }
