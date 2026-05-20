@@ -3,10 +3,13 @@ package es.schsebastian.foodrats.feature.auth.di
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
+import es.schsebastian.foodrats.core.domain.time.Clock
+import es.schsebastian.foodrats.feature.auth.data.firebase.AccountDocStore
 import es.schsebastian.foodrats.feature.auth.data.firebase.AccountSnapshotSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.AuthErrorMapper
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAccountSnapshotSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAuthDataSource
+import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountDocStore
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountReadDataSource
 import es.schsebastian.foodrats.feature.auth.data.repository.AuthSignOutPort
 import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthRepository
@@ -21,7 +24,8 @@ import org.koin.dsl.module
 
 val authModule = module {
     singleOf(::AuthErrorMapper)
-    singleOf(::FirebaseAuthDataSource)
+    single<AccountDocStore> { FirestoreAccountDocStore(firestore = get()) }
+    single { FirebaseAuthDataSource(auth = get(), store = get(), clock = get<Clock>(), dispatchers = get()) }
     single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get()) }
     single<SessionProvider> { get<AuthRepository>() }
     single<SignOutPort> { AuthSignOutPort(get()) }
