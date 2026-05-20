@@ -3,6 +3,18 @@ package es.schsebastian.foodrats.feature.meal.i18n
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.meal.generated.resources.Res
 import foodrats.feature.meal.generated.resources.meal_capture_no_perm_headline
+import foodrats.feature.meal.generated.resources.meal_comments_empty
+import foodrats.feature.meal.generated.resources.meal_comments_error_blank
+import foodrats.feature.meal.generated.resources.meal_comments_error_too_long
+import foodrats.feature.meal.generated.resources.meal_comments_error_unauthorized
+import foodrats.feature.meal.generated.resources.meal_comments_error_unavailable
+import foodrats.feature.meal.generated.resources.meal_comments_input_placeholder
+import foodrats.feature.meal.generated.resources.meal_comments_relative_days
+import foodrats.feature.meal.generated.resources.meal_comments_relative_hours
+import foodrats.feature.meal.generated.resources.meal_comments_relative_just_now
+import foodrats.feature.meal.generated.resources.meal_comments_relative_minutes
+import foodrats.feature.meal.generated.resources.meal_comments_send_cta
+import foodrats.feature.meal.generated.resources.meal_comments_title
 import foodrats.feature.meal.generated.resources.meal_capture_no_perm_subtext
 import foodrats.feature.meal.generated.resources.meal_capture_tap_to_take_photo
 import foodrats.feature.meal.generated.resources.meal_capture_title
@@ -49,4 +61,16 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     MealErrorReadUnauthorized(Res.string.meal_error_read_unauthorized),
     MealErrorReadCrewNotFound(Res.string.meal_error_read_crew_not_found),
     MealErrorReadNotFound(Res.string.meal_error_read_not_found),
+    CommentsTitle(Res.string.meal_comments_title),
+    CommentsEmpty(Res.string.meal_comments_empty),
+    CommentsInputPlaceholder(Res.string.meal_comments_input_placeholder),
+    CommentsSendCta(Res.string.meal_comments_send_cta),
+    CommentsRelativeJustNow(Res.string.meal_comments_relative_just_now),
+    CommentsRelativeMinutes(Res.string.meal_comments_relative_minutes),
+    CommentsRelativeHours(Res.string.meal_comments_relative_hours),
+    CommentsRelativeDays(Res.string.meal_comments_relative_days),
+    CommentsErrorBlank(Res.string.meal_comments_error_blank),
+    CommentsErrorTooLong(Res.string.meal_comments_error_too_long),
+    CommentsErrorUnavailable(Res.string.meal_comments_error_unavailable),
+    CommentsErrorUnauthorized(Res.string.meal_comments_error_unauthorized),
 }
