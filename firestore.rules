@@ -16,20 +16,37 @@ service cloud.firestore {
 
     // Crew root
     match /crews/{crewId} {
-      allow read:   if request.auth != null && request.auth.uid in resource.data.memberIds;
-      // Update is partitioned into three explicit paths so non-owners can't rename the crew
-      // and rogue clients can't rewrite ownerId / createdAt / code:
-      //   (1) owner-only rename of `name`
-      //   (2) self-rename inside the `members` map (any current member; client enforces self-only)
-      //   (3) membership flux — join/leave touches `memberIds` + `members` together, size <= 8
+      // Read is open to any authenticated user. `crewId` is a random UUID, so it
+      // functions as a soft access token — you need it to read the doc, and a
+      // joining user must be able to read the doc inside the joinByCode transaction
+      // before writing themselves into memberIds. Consistent with /crewCodes/ which
+      // is already readable by any authenticated user.
+      allow read:   if request.auth != null;
+      // Update is partitioned into four explicit branches so non-owners can't rename
+      // the crew and rogue clients can't rewrite ownerId / createdAt / code:
+      //   (1) owner renames `name`
+      //   (2) any current member renames themselves inside the `members` map
+      //   (3) join — non-member adds self (auth.uid moves from absent to present in memberIds)
+      //   (4) leave — existing member removes self (and only self) from memberIds + members
       allow update: if request.auth != null
-                    && request.auth.uid in resource.data.memberIds
                     && (
-                      (resource.data.ownerId == request.auth.uid
+                      (request.auth.uid in resource.data.memberIds
+                       && resource.data.ownerId == request.auth.uid
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
-                      || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
-                      || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
-                          && request.resource.data.memberIds.size() <= 8)
+                      ||
+                      (request.auth.uid in resource.data.memberIds
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
+                      ||
+                      (!(request.auth.uid in resource.data.memberIds)
+                       && request.auth.uid in request.resource.data.memberIds
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
+                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+                       && request.resource.data.memberIds.size() <= 8)
+                      ||
+                      (request.auth.uid in resource.data.memberIds
+                       && !(request.auth.uid in request.resource.data.memberIds)
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
+                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1)
                     );
       allow create: if request.auth != null
                     && request.auth.uid in request.resource.data.memberIds
