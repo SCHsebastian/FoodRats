@@ -13,6 +13,6 @@ val feedModule = module {
     single<TimeZone> { TimeZone.currentSystemDefault() }
     viewModel { FeedViewModel(get(), get(), get(), get(), get(), get()) }
     viewModel { (mealId: String, dayIso: String) ->
-        MealDetailViewModel(mealId, dayIso, get(), get(), get(), get(), get(), get())
+        MealDetailViewModel(mealId, dayIso, get(), get(), get(), get(), get(), get(), get())
     }
 }
