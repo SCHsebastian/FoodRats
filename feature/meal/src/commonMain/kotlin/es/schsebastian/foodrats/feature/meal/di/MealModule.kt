@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealRatingsFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
+import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseMealRepository
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
@@ -29,7 +30,17 @@ val mealModule = module {
     singleOf(::MealDraftLocalStore)
     singleOf(::MealErrorMapper)
     single<MealRepository> {
-        FirebaseMealRepository(get(), get(), get(), get(), get(), get(), get(), get(), get())
+        FirebaseMealRepository(
+            firestore = get(),
+            storage = get(),
+            drafts = get(),
+            dispatchers = get(),
+            errorMapper = get(),
+            clock = get(),
+            auth = get(),
+            zone = get(),
+            crewMembers = get(),
+        )
     }
     single<MealReadPort> { get<MealRepository>() }
     single<MealRatingPort> { get<MealRepository>() }

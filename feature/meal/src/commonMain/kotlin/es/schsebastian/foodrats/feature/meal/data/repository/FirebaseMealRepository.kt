@@ -2,10 +2,10 @@ package es.schsebastian.foodrats.feature.meal.data.repository
 
 import dev.gitlive.firebase.auth.FirebaseAuth
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
-import es.schsebastian.foodrats.core.domain.meal.MealRating
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
@@ -15,32 +15,38 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
+import es.schsebastian.foodrats.feature.meal.data.firebase.CrewMemberLookup
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
-import es.schsebastian.foodrats.feature.meal.data.firebase.MealRatingDto
-import es.schsebastian.foodrats.feature.meal.data.firebase.MealRatingsFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
+import es.schsebastian.foodrats.feature.meal.data.firebase.toMealWithRatings
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.shareIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.datetime.LocalDate
+import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.minus
 
 internal class FirebaseMealRepository(
     private val firestore: MealFirestoreDataSource,
-    private val ratings: MealRatingsFirestoreDataSource,
     private val storage: PlateStorageDataSource,
     private val drafts: MealDraftLocalStore,
     private val dispatchers: DispatcherProvider,
@@ -48,7 +54,39 @@ internal class FirebaseMealRepository(
     private val clock: Clock,
     private val auth: FirebaseAuth,
     private val zone: TimeZone,
+    private val crewMembers: CrewMembersPort,
+    private val repoScope: CoroutineScope = CoroutineScope(SupervisorJob() + dispatchers.default),
 ) : MealRepository {
+
+    private val streamsLock = Mutex()
+    private val streams = mutableMapOf<CrewId, SharedFlow<List<MealWithRatings>>>()
+
+    private suspend fun crewStream(crewId: CrewId): SharedFlow<List<MealWithRatings>> =
+        streamsLock.withLock {
+            streams.getOrPut(crewId) {
+                val today = MealDay.today(clock, zone)
+                val from = MealDay(today.date.minus(DatePeriod(days = STATS_WINDOW_DAYS - 1)), zone)
+                val mealsFlow = firestore.observeForRange(crewId, from, today)
+                val membersFlow = crewMembers.observeMembers(crewId)
+                combine(mealsFlow, membersFlow) { dtos, members ->
+                    val lookup = members.associate {
+                        it.accountUid to CrewMemberLookup(it.displayName, it.avatarUrl)
+                    }
+                    dtos.mapNotNull { dto ->
+                        (dto.toMealWithRatings(lookup) as? Result.Ok)?.value
+                    }
+                }.shareIn(
+                    scope = repoScope,
+                    started = SharingStarted.WhileSubscribed(stopTimeoutMillis = SHARE_STOP_TIMEOUT_MS),
+                    replay = 1,
+                )
+            }
+        }
+
+    private companion object {
+        const val STATS_WINDOW_DAYS = 30
+        const val SHARE_STOP_TIMEOUT_MS = 5_000L
+    }
 
     private fun currentAccountId(): AccountId? {
         val uid = auth.currentUser?.uid ?: return null
@@ -131,42 +169,35 @@ internal class FirebaseMealRepository(
 
     override suspend fun clearDraft() = drafts.clear()
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeFeed(
         crewId: CrewId,
         day: MealDay,
-    ): Flow<Result<List<MealWithRatings>, MealReadError>> =
-        firestore.observeForDay(crewId, day).joinRatings(crewId)
+    ): Flow<Result<List<MealWithRatings>, MealReadError>> = flow {
+        val dayKey = day.toKey()
+        emitAll(
+            crewStream(crewId)
+                .map { all -> all.filter { it.meal.day.toKey() == dayKey } }
+                .distinctUntilChanged()
+                .map<List<MealWithRatings>, Result<List<MealWithRatings>, MealReadError>> { Result.success(it) }
+                .catch { t -> emit(Result.failure(errorMapper.mapRead(t))) }
+        )
+    }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeRange(
         crewId: CrewId,
         from: MealDay,
         to: MealDay,
-    ): Flow<Result<List<MealWithRatings>, MealReadError>> =
-        firestore.observeForRange(crewId, from, to).joinRatings(crewId)
-
-    @OptIn(ExperimentalCoroutinesApi::class)
-    private fun Flow<List<MealDto>>.joinRatings(
-        crewId: CrewId,
-    ): Flow<Result<List<MealWithRatings>, MealReadError>> =
-        flatMapLatest { dtos ->
-            if (dtos.isEmpty()) flowOf(emptyList<MealWithRatings>())
-            else combine(
-                dtos.map { dto ->
-                    ratings.observe(crewId, dto.id ?: "")
-                        .map { pairs -> dto to pairs.toMealRatings() }
-                }
-            ) { it.toList() }.map { combined ->
-                combined.mapNotNull { (dto, rs) ->
-                    val mealResult = dto.toDomain()
-                    if (mealResult is Result.Ok) MealWithRatings(mealResult.value, rs) else null
-                }
-            }
-        }
-            .map<List<MealWithRatings>, Result<List<MealWithRatings>, MealReadError>> { Result.success(it) }
-            .catch { t -> emit(Result.failure(errorMapper.mapRead(t))) }
-            .flowOn(dispatchers.io)
+    ): Flow<Result<List<MealWithRatings>, MealReadError>> = flow {
+        val fromKey = from.toKey()
+        val toKey = to.toKey()
+        emitAll(
+            crewStream(crewId)
+                .map { all -> all.filter { val k = it.meal.day.toKey(); k in fromKey..toKey } }
+                .distinctUntilChanged()
+                .map<List<MealWithRatings>, Result<List<MealWithRatings>, MealReadError>> { Result.success(it) }
+                .catch { t -> emit(Result.failure(errorMapper.mapRead(t))) }
+        )
+    }
 
     override suspend fun rate(
         crewId: CrewId,
@@ -175,45 +206,31 @@ internal class FirebaseMealRepository(
     ): Result<Unit, RateError> = withContext(dispatchers.io) {
         val raterUid = auth.currentUser?.uid
             ?: return@withContext Result.failure(RateError.Unauthorized)
-
         runCatching<Result<Unit, RateError>> {
-            val mealDto: MealDto = firestore.readById(crewId, mealId.value)
-                ?: return@runCatching Result.failure(RateError.RateUnavailable)
-            if (mealDto.authorId == raterUid) return@runCatching Result.failure(RateError.CannotRateOwnMeal)
-
-            val mealDay = MealDay(LocalDate.parse(mealDto.dayKey ?: ""), zone)
-            val today = MealDay.today(clock, zone)
-            if (today.daysSince(mealDay) !in 0..1) {
-                return@runCatching Result.failure(RateError.RatingWindowClosed)
-            }
-
-            val dto = MealRatingDto(
+            val outcome = firestore.rateMeal(
+                crewId = crewId,
+                mealId = mealId.value,
+                raterUid = raterUid,
                 score = score.value,
-                ratedAtEpochMs = clock.now().toEpochMilliseconds(),
-                raterName = auth.currentUser?.displayName ?: "",
-                raterAvatarUrl = auth.currentUser?.photoURL,
+                nowEpochMs = clock.now().toEpochMilliseconds(),
             )
-            ratings.write(crewId, mealId.value, raterUid, dto)
-            Result.success(Unit)
+            when (outcome) {
+                MealFirestoreDataSource.RateOutcome.Ok -> Result.success(Unit)
+                MealFirestoreDataSource.RateOutcome.MealNotFound -> Result.failure(RateError.RateUnavailable)
+                MealFirestoreDataSource.RateOutcome.SelfRating -> Result.failure(RateError.CannotRateOwnMeal)
+                MealFirestoreDataSource.RateOutcome.AlreadyRated -> Result.failure(RateError.AlreadyRated)
+            }
         }.fold(
             onSuccess = { it },
             onFailure = { t ->
                 val msg = t.message.orEmpty().lowercase()
                 val mapped = when {
-                    "already-exists" in msg || "already_exists" in msg -> RateError.AlreadyRated
+                    "permission-denied" in msg -> RateError.RatingWindowClosed
+                    "unauthenticated" in msg -> RateError.Unauthorized
                     else -> errorMapper.mapRate(t)
                 }
                 Result.failure(mapped)
             },
         )
     }
-
-    private fun List<Pair<String, MealRatingDto>>.toMealRatings(): List<MealRating> =
-        mapNotNull { (raterUid, dto) ->
-            val raterId = AccountId.of(raterUid)
-            if (raterId is Result.Ok) {
-                val r = dto.toDomain(raterId.value)
-                if (r is Result.Ok) r.value else null
-            } else null
-        }
 }
