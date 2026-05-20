@@ -18,11 +18,21 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 
+/**
+ * Circular avatar that renders either an uploaded image (via Coil [SubcomposeAsyncImage]) or
+ * initials as a fallback when [imageUrl] is null/blank or the image is still loading/failed.
+ *
+ * Decorative by default — `contentDescription` is null and the badge is `clearAndSetSemantics { }`-ed
+ * out of the a11y tree. When it appears next to a name label, the name label carries the meaning
+ * and the avatar would just produce a duplicate announcement. Pass an explicit
+ * `contentDescription` for the rare case where the avatar stands alone.
+ */
 @Composable
 fun FrAvatar(
     initials: String,
@@ -31,34 +41,41 @@ fun FrAvatar(
     imageUrl: String? = null,
     contentDescription: String? = null,
 ) {
-    val semantics = if (contentDescription != null) {
-        Modifier.semantics { this.contentDescription = contentDescription }
-    } else {
-        Modifier.clearAndSetSemantics { }
-    }
     val box = modifier
         .size(size)
         .clip(CircleShape)
-        .then(semantics)
 
     if (!imageUrl.isNullOrBlank()) {
-        AsyncImage(
+        SubcomposeAsyncImage(
             model = imageUrl,
             contentDescription = contentDescription,
             modifier = box,
             contentScale = ContentScale.Crop,
+            loading = { InitialsContent(initials) },
+            error = { InitialsContent(initials) },
+            success = { SubcomposeAsyncImageContent() },
         )
     } else {
-        Box(
-            modifier = box.background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = initials.take(2).uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
+        val initialsModifier = if (contentDescription != null) {
+            box.semantics { this.contentDescription = contentDescription }
+        } else {
+            box.clearAndSetSemantics { }
         }
+        InitialsContent(initials, initialsModifier)
+    }
+}
+
+@Composable
+private fun InitialsContent(initials: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = initials.take(2).uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
     }
 }
 

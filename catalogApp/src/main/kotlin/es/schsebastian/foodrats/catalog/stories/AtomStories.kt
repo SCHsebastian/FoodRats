@@ -75,7 +75,7 @@ private fun AvatarStory() {
         CatalogScene(label = "Image loaded") {
             FrAvatar(initials = "sc", imageUrl = "https://placebear.com/120/120")
         }
-        CatalogScene(label = "Image error → initials fallback") {
+        CatalogScene(label = "Slow/failed load → initials fallback") {
             FrAvatar(initials = "sc", imageUrl = "https://example.invalid/missing.jpg")
         }
     }
