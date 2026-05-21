@@ -12,7 +12,6 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.stats.domain.compute.computeCrewStreak
 import es.schsebastian.foodrats.feature.stats.domain.compute.computeLeaderboard
 import es.schsebastian.foodrats.feature.stats.domain.compute.computePersonalStreak
-import es.schsebastian.foodrats.feature.stats.domain.compute.computeTagVariety
 import es.schsebastian.foodrats.feature.stats.domain.compute.computeTopDishes
 import es.schsebastian.foodrats.feature.stats.domain.error.StatsError
 import es.schsebastian.foodrats.feature.stats.domain.model.StatsSnapshot
@@ -70,7 +69,6 @@ class ObserveStatsUseCase(
             personalStreak = computePersonalStreak(meals, accountId, today),
             topDishes = computeTopDishes(meals, limit = 5),
             leaderboard = computeLeaderboard(aggregates),
-            tagVarietyCount = computeTagVariety(meals),
             mealsConsidered = meals.size,
         )
     }

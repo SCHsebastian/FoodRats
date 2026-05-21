@@ -7,8 +7,6 @@
     <string name="stats_streak_unit_plural">%1$d días</string>
     <string name="stats_top_dishes_section">Platos favoritos</string>
     <string name="stats_leaderboard_section">Puntuación media</string>
-    <string name="stats_tag_variety_label">Variedad de etiquetas</string>
-    <string name="stats_tag_variety_value">%1$d etiquetas distintas</string>
     <string name="stats_meals_considered">Basado en %1$d comidas (últimos 30 días)</string>
     <string name="stats_dish_tally_row">%1$s · %2$d</string>
     <string name="stats_leaderboard_row">%1$s · %2$.1f (%3$d publicaciones)</string>

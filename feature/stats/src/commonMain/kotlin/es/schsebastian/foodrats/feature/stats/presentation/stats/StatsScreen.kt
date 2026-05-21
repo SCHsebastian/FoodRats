@@ -69,12 +69,8 @@ fun StatsScreen(vm: StatsViewModel = koinViewModel()) {
                     }
 
                     FrText(
-                        text = resolve(StatsStringKey.TagVarietyValue, s.tagVarietyCount),
-                        modifier = Modifier.padding(top = Spacing.lg),
-                    )
-                    FrText(
                         text = resolve(StatsStringKey.MealsConsidered, s.mealsConsidered),
-                        modifier = Modifier.padding(top = Spacing.sm),
+                        modifier = Modifier.padding(top = Spacing.lg),
                     )
                 }
             }

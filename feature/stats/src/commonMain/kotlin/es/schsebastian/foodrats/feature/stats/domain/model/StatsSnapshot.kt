@@ -5,6 +5,5 @@ data class StatsSnapshot(
     val personalStreak: Streak,
     val topDishes: List<DishTally>,
     val leaderboard: Leaderboard,
-    val tagVarietyCount: Int,
     val mealsConsidered: Int,
 )

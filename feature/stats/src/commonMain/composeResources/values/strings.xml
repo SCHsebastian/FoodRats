@@ -7,8 +7,6 @@
     <string name="stats_streak_unit_plural">%1$d days</string>
     <string name="stats_top_dishes_section">Top dishes</string>
     <string name="stats_leaderboard_section">Average score</string>
-    <string name="stats_tag_variety_label">Tag variety</string>
-    <string name="stats_tag_variety_value">%1$d distinct tags</string>
     <string name="stats_meals_considered">Based on %1$d meals (last 30 days)</string>
     <string name="stats_dish_tally_row">%1$s · %2$d</string>
     <string name="stats_leaderboard_row">%1$s · %2$.1f (%3$d posts)</string>
