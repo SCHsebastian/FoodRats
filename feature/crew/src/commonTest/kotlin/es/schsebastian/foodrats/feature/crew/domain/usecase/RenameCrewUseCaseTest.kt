@@ -40,7 +40,7 @@ class RenameCrewUseCaseTest {
         code = (CrewCode.of("ABCD23") as Result.Ok).value,
         ownerId = ownerId,
         createdAt = Instant.fromEpochMilliseconds(0L),
-        members = listOf(Member(ownerId, "Owner", null, Instant.fromEpochMilliseconds(0L))),
+        members = listOf(Member(ownerId, Instant.fromEpochMilliseconds(0L))),
     )
     private val session = Session(accountId = ownerId, activeCrewId = crewId)
 

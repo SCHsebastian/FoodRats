@@ -22,6 +22,7 @@ import foodrats.feature.crew.generated.resources.crew_error_permission
 import foodrats.feature.crew.generated.resources.crew_error_unknown
 import foodrats.feature.crew.generated.resources.crew_join_code_label
 import foodrats.feature.crew.generated.resources.crew_join_submit
+import foodrats.feature.crew.generated.resources.crew_member_deleted
 import foodrats.feature.crew.generated.resources.crew_picker_create_cta
 import foodrats.feature.crew.generated.resources.crew_picker_empty_headline
 import foodrats.feature.crew.generated.resources.crew_picker_empty_subtext
@@ -101,4 +102,5 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsRemoveMemberCta(Res.string.crew_settings_remove_member_cta),
     SettingsRemoveMemberConfirmTitle(Res.string.crew_settings_remove_member_confirm_title),
     SettingsRemoveMemberConfirmBody(Res.string.crew_settings_remove_member_confirm_body),
+    MemberDeleted(Res.string.crew_member_deleted),
 }

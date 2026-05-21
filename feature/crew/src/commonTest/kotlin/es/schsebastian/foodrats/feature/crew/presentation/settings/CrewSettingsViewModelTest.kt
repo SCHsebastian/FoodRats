@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.account.Account
+import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
@@ -21,6 +23,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -47,8 +50,8 @@ class CrewSettingsViewModelTest {
         ownerId = ownerId,
         createdAt = Instant.fromEpochMilliseconds(0L),
         members = listOf(
-            Member(ownerId, "Owner", null, Instant.fromEpochMilliseconds(0L)),
-            Member(memberId, "Other", null, Instant.fromEpochMilliseconds(0L)),
+            Member(ownerId, Instant.fromEpochMilliseconds(0L)),
+            Member(memberId, Instant.fromEpochMilliseconds(0L)),
         ),
     )
 
@@ -200,6 +203,7 @@ class CrewSettingsViewModelTest {
             leaveCrew = LeaveCrewUseCase(repo),
             removeMember = RemoveMemberUseCase(),
             session = session,
+            accountRead = EmptyAccountReadPort,
         )
     }
 
@@ -207,5 +211,9 @@ class CrewSettingsViewModelTest {
         override val current: Flow<Session?> = flowOf(session)
         override suspend fun requireCurrent(): Result<Session, SessionError> =
             session?.let { Result.success(it) } ?: Result.failure(SessionError.NotSignedIn)
+    }
+
+    private object EmptyAccountReadPort : AccountReadPort {
+        override fun observe(id: AccountId): Flow<Account?> = MutableStateFlow(null)
     }
 }

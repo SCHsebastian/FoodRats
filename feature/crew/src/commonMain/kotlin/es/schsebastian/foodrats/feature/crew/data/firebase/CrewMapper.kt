@@ -33,8 +33,6 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
         val accountId = (AccountId.of(mid) as? Result.Ok)?.value ?: return@mapNotNull null
         Member(
             accountId = accountId,
-            displayName = info.displayName.orEmpty(),
-            avatarUrl = info.avatarUrl,
             joinedAt = Instant.fromEpochMilliseconds(joined),
         )
     }

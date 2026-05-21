@@ -22,7 +22,7 @@ class JoinCrewByCodeUseCaseTest {
         code = (CrewCode.of("ABCD23") as Result.Ok).value,
         ownerId = aid("uid-other"),
         createdAt = Instant.fromEpochMilliseconds(0L),
-        members = listOf(Member(aid("uid-other"), "Other", null, Instant.fromEpochMilliseconds(0L))),
+        members = listOf(Member(aid("uid-other"), Instant.fromEpochMilliseconds(0L))),
     )
 
     @Test fun malformed_code_returns_CodeMalformed_without_calling_repo() = runTest {
