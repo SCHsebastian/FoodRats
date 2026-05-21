@@ -4,7 +4,6 @@ import android.content.Context
 import com.google.firebase.FirebaseApp
 
 private var androidContext: Context? = null
-
 fun installAndroidFirebaseContext(context: Context) {
     androidContext = context.applicationContext
 }

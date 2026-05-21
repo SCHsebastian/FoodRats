@@ -31,6 +31,7 @@ import es.schsebastian.foodrats.catalog.registry.CatalogGroup
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Elevation
+import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -84,6 +85,13 @@ internal fun foundationStories(): List<CatalogEntry> = listOf(
         title = "Sizes",
         subtitle = "Component size tokens (avatar, icon, shutter, …)",
         content = { SizesStory() },
+    ),
+    CatalogEntry(
+        id = "foundation.motion",
+        group = CatalogGroup.FOUNDATIONS,
+        title = "Motion",
+        subtitle = "Duration tokens + easing curves",
+        content = { MotionStory() },
     ),
 )
 
@@ -360,6 +368,35 @@ private fun ShapesStory() {
                         )
                     }
                 }
+            }
+        }
+    }
+}
+// endregion
+
+// region Motion
+@Composable
+private fun MotionStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogSectionHeader("Durations (ms)")
+        CatalogScene(label = "Token table") {
+            Column {
+                CatalogSpecRow("Motion.quick",  "${Motion.quick} ms")
+                CatalogSpecRow("Motion.short",  "${Motion.short} ms")
+                CatalogSpecRow("Motion.medium", "${Motion.medium} ms")
+                CatalogSpecRow("Motion.long",   "${Motion.long} ms")
+            }
+        }
+        CatalogSectionHeader("Easing curves")
+        CatalogScene(
+            label = "Standard / Decelerated / Accelerated / Emphasized",
+            description = "Use Decelerated on enter, Accelerated on exit, Emphasized for playful overshoot.",
+        ) {
+            Column {
+                CatalogSpecRow("Motion.Standard",   "FastOutSlowIn (default)")
+                CatalogSpecRow("Motion.Decelerated", "cubic(0.05, 0.7, 0.1, 1.0) — entry")
+                CatalogSpecRow("Motion.Accelerated", "cubic(0.3, 0.0, 0.8, 0.15) — exit")
+                CatalogSpecRow("Motion.Emphasized",  "cubic(0.2, 0.0, 0.0, 1.2) — overshoot")
             }
         }
     }

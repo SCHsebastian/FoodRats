@@ -17,6 +17,8 @@ data class ComposePlateState(
     val photoBytes: ByteArray? = null,
     val coordinates: Coordinates? = null,
     val locating: Boolean = false,
+    val showConfirm: Boolean = false,
+    val canContinue: Boolean = false,
 ) : MviState {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -29,6 +31,8 @@ data class ComposePlateState(
             takenSlots == other.takenSlots &&
             coordinates == other.coordinates &&
             locating == other.locating &&
+            showConfirm == other.showConfirm &&
+            canContinue == other.canContinue &&
             (photoBytes?.contentEquals(other.photoBytes) ?: (other.photoBytes == null))
     }
 
@@ -41,6 +45,8 @@ data class ComposePlateState(
         result = 31 * result + takenSlots.hashCode()
         result = 31 * result + (coordinates?.hashCode() ?: 0)
         result = 31 * result + locating.hashCode()
+        result = 31 * result + showConfirm.hashCode()
+        result = 31 * result + canContinue.hashCode()
         result = 31 * result + (photoBytes?.contentHashCode() ?: 0)
         return result
     }
@@ -52,7 +58,16 @@ sealed interface ComposePlateIntent : MviIntent {
     data class SelectSlot(val slot: MealSlot) : ComposePlateIntent
     data object RequestLocation : ComposePlateIntent
     data object ClearLocation : ComposePlateIntent
-    data object Continue : ComposePlateIntent
+    data object RequestConfirm : ComposePlateIntent
+    data object DismissConfirm : ComposePlateIntent
+    data object ConfirmPublish : ComposePlateIntent
 }
 
-sealed interface ComposePlateEffect : MviEffect { data object NavigateToPublish : ComposePlateEffect }
+sealed interface ComposePlateEffect : MviEffect {
+    /**
+     * The upload has been enqueued on the background coordinator. The
+     * presentation layer should navigate back to the feed; the upload runs
+     * out-of-band and surfaces via `MealUploadProgressPort`.
+     */
+    data object UploadEnqueued : ComposePlateEffect
+}

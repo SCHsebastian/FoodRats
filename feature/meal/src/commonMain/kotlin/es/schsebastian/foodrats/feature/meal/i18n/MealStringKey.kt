@@ -24,6 +24,9 @@ import foodrats.feature.meal.generated.resources.meal_error_validation_descripti
 import foodrats.feature.meal.generated.resources.meal_error_validation_no_photo
 import foodrats.feature.meal.generated.resources.meal_error_validation_out_of_range
 import foodrats.feature.meal.generated.resources.meal_error_validation_too_long
+import foodrats.feature.meal.generated.resources.meal_publish_confirm_cta
+import foodrats.feature.meal.generated.resources.meal_publish_confirm_message
+import foodrats.feature.meal.generated.resources.meal_publish_confirm_title
 import foodrats.feature.meal.generated.resources.meal_publish_no_slot
 import foodrats.feature.meal.generated.resources.meal_publish_title
 import foodrats.feature.meal.generated.resources.meal_slot_breakfast
@@ -40,6 +43,9 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ComposeClearLocation(Res.string.meal_compose_clear_location),
     ComposeCoordinatesFormat(Res.string.meal_compose_coordinates_format),
     PublishTitle(Res.string.meal_publish_title),
+    PublishConfirmTitle(Res.string.meal_publish_confirm_title),
+    PublishConfirmMessage(Res.string.meal_publish_confirm_message),
+    PublishConfirmCta(Res.string.meal_publish_confirm_cta),
     SlotBreakfast(Res.string.meal_slot_breakfast),
     SlotLunch(Res.string.meal_slot_lunch),
     SlotDinner(Res.string.meal_slot_dinner),

@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.data.di.locationIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
 import es.schsebastian.foodrats.feature.auth.di.authIosModule
 import es.schsebastian.foodrats.core.data.image.installImageLoader
+import es.schsebastian.foodrats.feature.meal.di.mealIosModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +48,7 @@ fun MainViewController(
             modules(
                 appModules + listOf(
                     notificationsIosModule,
+                    mealIosModule,
                     shareIosModule,
                     authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
                     crashIosModule(crashRecordNonFatal, crashLog),

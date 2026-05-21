@@ -17,6 +17,7 @@ data class FeedState(
     val canGoNext: Boolean = false,
     val pendingRateMealId: String? = null,
     val rateError: RateError? = null,
+    val isUploadActive: Boolean = false,
 ) : MviState
 
 sealed interface FeedIntent : MviIntent {

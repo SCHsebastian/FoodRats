@@ -29,12 +29,14 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSpacer
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -56,6 +58,8 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.crownbadge",    CatalogGroup.ATOMS, "FrCrownBadge",    "Circular crown badge — primary / tertiary tints") { CrownBadgeStory() },
     CatalogEntry("atom.flameicon",     CatalogGroup.ATOMS, "FrFlameIcon",     "Flame with urgency-driven pulse (0 → 1)") { FlameIconStory() },
     CatalogEntry("atom.shimmerbox",    CatalogGroup.ATOMS, "FrShimmerBox",    "Skeleton with horizontal shimmer sweep") { ShimmerBoxStory() },
+    CatalogEntry("atom.uploadprogress", CatalogGroup.ATOMS, "FrUploadProgressBar", "Top-of-screen indeterminate bar that slides in while uploads run") { UploadProgressBarStory() },
+    CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — plate + ears at three sizes") { LogoStory() },
 )
 
 @Composable
@@ -372,6 +376,57 @@ private fun FlameIconStory() {
         }
         CatalogScene(label = "Fast pulse (urgency = 1.0)") {
             FrFlameIcon(urgency = 1f, tint = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun UploadProgressBarStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Visible — primary tint (default)") {
+            FrUploadProgressBar(visible = true)
+        }
+        CatalogScene(label = "Visible — semantic 'success' tint") {
+            FrUploadProgressBar(
+                visible = true,
+                color = es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors.current.success,
+            )
+        }
+        CatalogScene(label = "Hidden (no bar drawn)") {
+            FrUploadProgressBar(visible = false)
+        }
+        CatalogScene(label = "Toggle live") {
+            var on by remember { mutableStateOf(true) }
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                FrUploadProgressBar(visible = on)
+                FrButton(label = if (on) "Hide" else "Show", onClick = { on = !on })
+            }
+        }
+    }
+}
+
+@Composable
+private fun LogoStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(
+            label = "Sizes — 48 / 96 / 144 dp",
+            description = "Canvas-drawn plate + three ears. Defaults are the brand palette (concrete plate, ember ears).",
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FrLogo(size = 48.dp)
+                FrLogo(size = 96.dp)
+                FrLogo(size = 144.dp)
+            }
+        }
+        CatalogScene(label = "Tinted — primary plate / onPrimary ears") {
+            FrLogo(
+                size = 96.dp,
+                plateColor = MaterialTheme.colorScheme.primary,
+                earColor = MaterialTheme.colorScheme.onPrimary,
+            )
         }
     }
 }

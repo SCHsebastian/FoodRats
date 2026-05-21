@@ -22,6 +22,8 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisp
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileViewModel
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInViewModel
 import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -40,7 +42,17 @@ val authModule = module {
     single<AccountSnapshotSource> {
         FirebaseAccountSnapshotSource(
             firestore = get(),
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+            // Safety net mirroring FirebaseMealRepository.repoScope: even though the
+            // snapshot flow now `.catch`es PERMISSION_DENIED-on-signout, a handler-less
+            // scope means any other escaping exception would crash the process on
+            // iOS/Native. The handler keeps the stateIn sharing coroutine non-fatal.
+            scope = CoroutineScope(
+                SupervisorJob() +
+                    Dispatchers.Default +
+                    CoroutineExceptionHandler { _, t ->
+                        FrLog.w("AccountSnapshot", t) { "scope uncaught: ${t.message}" }
+                    },
+            ),
         )
     }
     single<AccountReadPort> { FirestoreAccountReadDataSource(source = get()) }

@@ -1,20 +1,30 @@
 package es.schsebastian.foodrats.feature.stats.presentation.stats
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.stats.domain.model.Tab
 import es.schsebastian.foodrats.feature.stats.domain.usecase.ObserveStatsUseCase
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.scan
 import kotlinx.coroutines.launch
 
 class StatsViewModel(
     observeStats: ObserveStatsUseCase,
+    uploadProgress: MealUploadProgressPort,
 ) : MviViewModel<StatsState, StatsIntent, StatsEffect>(StatsState()) {
 
     init {
+        uploadProgress.status
+            .map { it is MealUploadStatus.Uploading }
+            .distinctUntilChanged()
+            .onEach { active -> update { it.copy(isUploadActive = active) } }
+            .launchIn(viewModelScope)
         // Sticky historic toggle: once the user opens the Historic tab, the historic
         // observer stays subscribed for the VM lifetime so re-visits don't refetch.
         val historicEnabledFlow = state

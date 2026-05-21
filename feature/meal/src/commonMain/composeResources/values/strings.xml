@@ -30,4 +30,8 @@
     <string name="meal_error_location_permission">Location permission denied. You can enable it from system settings.</string>
     <string name="meal_error_location_unavailable">Location services are off or no fix is available.</string>
     <string name="meal_error_location_timeout">Couldn\'t get your location in time. Try again.</string>
+
+    <string name="meal_publish_confirm_title">Publish this meal?</string>
+    <string name="meal_publish_confirm_message">Your photo and details will be shared with the crew. The upload runs in the background — you can keep using the app.</string>
+    <string name="meal_publish_confirm_cta">Publish</string>
 </resources>
