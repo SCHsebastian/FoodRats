@@ -7,14 +7,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.materialPath
 import androidx.compose.material3.MaterialTheme
@@ -68,20 +64,174 @@ private val PhotoCameraVector: ImageVector = materialIcon(name = "Filled.PhotoCa
     }
 }
 
-// NOTE: AddAPhoto, Image (GalleryImport) and NoPhotography are still in
-// material-icons-extended (no KMP iOS artifact). We substitute with
-// material-icons-core equivalents until those icons can be vendored too.
+// Locally-defined AddAPhoto vector. material-icons-extended (which ships the
+// real `Icons.Filled.AddAPhoto`) has no KMP-compatible iOS artifact, so we
+// replicate the path data here using the `materialIcon` DSL. The path is the
+// standard Material Design "add_a_photo" filled glyph: a "+" badge in the
+// top-left, a camera body with a lens cut-out (EvenOdd fill), plus a small
+// solid dot for the lens center.
+private val AddAPhotoVector: ImageVector = materialIcon(name = "Filled.AddAPhoto") {
+    materialPath(pathFillType = PathFillType.EvenOdd) {
+        // "+" badge in the top-left corner.
+        moveTo(3f, 4f)
+        verticalLineTo(1f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(3f)
+        horizontalLineToRelative(3f)
+        verticalLineToRelative(2f)
+        horizontalLineTo(5f)
+        verticalLineToRelative(3f)
+        horizontalLineTo(3f)
+        verticalLineTo(6f)
+        horizontalLineTo(0f)
+        verticalLineTo(4f)
+        horizontalLineTo(3f)
+        close()
+        // Camera body with the lens hole (EvenOdd cuts the inner circle).
+        moveTo(6f, 10f)
+        verticalLineTo(7f)
+        horizontalLineToRelative(3f)
+        verticalLineTo(4f)
+        horizontalLineToRelative(7f)
+        lineToRelative(1.83f, 2f)
+        horizontalLineTo(21f)
+        curveToRelative(1.1f, 0f, 2f, 0.9f, 2f, 2f)
+        verticalLineToRelative(12f)
+        curveToRelative(0f, 1.1f, -0.9f, 2f, -2f, 2f)
+        horizontalLineTo(5f)
+        curveToRelative(-1.1f, 0f, -2f, -0.9f, -2f, -2f)
+        verticalLineTo(10f)
+        horizontalLineTo(6f)
+        close()
+        moveTo(13f, 19f)
+        curveToRelative(2.76f, 0f, 5f, -2.24f, 5f, -5f)
+        reflectiveCurveToRelative(-2.24f, -5f, -5f, -5f)
+        reflectiveCurveToRelative(-5f, 2.24f, -5f, 5f)
+        reflectiveCurveTo(10.24f, 19f, 13f, 19f)
+        close()
+    }
+    materialPath {
+        // Solid lens center.
+        moveTo(9.8f, 14f)
+        curveToRelative(0f, 1.77f, 1.43f, 3.2f, 3.2f, 3.2f)
+        reflectiveCurveToRelative(3.2f, -1.43f, 3.2f, -3.2f)
+        reflectiveCurveToRelative(-1.43f, -3.2f, -3.2f, -3.2f)
+        reflectiveCurveTo(9.8f, 12.23f, 9.8f, 14f)
+        close()
+    }
+}
+
+// Locally-defined Image vector. material-icons-extended (which ships the real
+// `Icons.Filled.Image`) has no KMP-compatible iOS artifact. Path is the
+// standard Material Design "image" filled glyph: a rounded square frame with
+// a stylized "mountain peak" cut-out (EvenOdd fill).
+private val ImageFilledVector: ImageVector = materialIcon(name = "Filled.Image") {
+    materialPath(pathFillType = PathFillType.EvenOdd) {
+        moveTo(21f, 19f)
+        verticalLineTo(5f)
+        curveToRelative(0f, -1.1f, -0.9f, -2f, -2f, -2f)
+        horizontalLineTo(5f)
+        curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+        verticalLineToRelative(14f)
+        curveToRelative(0f, 1.1f, 0.9f, 2f, 2f, 2f)
+        horizontalLineToRelative(14f)
+        curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+        close()
+        moveTo(8.5f, 13.5f)
+        lineToRelative(2.5f, 3.01f)
+        lineTo(14.5f, 12f)
+        lineToRelative(4.5f, 6f)
+        horizontalLineTo(5f)
+        lineToRelative(3.5f, -4.5f)
+        close()
+    }
+}
+
+// Locally-defined NoPhotography vector. material-icons-extended (which ships
+// the real `Icons.Filled.NoPhotography`) has no KMP-compatible iOS artifact.
+// Path is the standard Material Design "no_photography" filled glyph: a
+// camera body with a diagonal strike-through and a partial lens.
+private val NoPhotographyVector: ImageVector = materialIcon(name = "Filled.NoPhotography") {
+    materialPath {
+        // Upper-right camera body fragment.
+        moveTo(10.94f, 8.12f)
+        lineTo(7.48f, 4.66f)
+        lineTo(9f, 3f)
+        horizontalLineToRelative(6f)
+        lineToRelative(1.83f, 2f)
+        horizontalLineTo(20f)
+        curveToRelative(1.1f, 0f, 2f, 0.9f, 2f, 2f)
+        verticalLineToRelative(12f)
+        curveToRelative(0f, 0.05f, -0.01f, 0.1f, -0.02f, 0.16f)
+        lineToRelative(-5.1f, -5.1f)
+        curveTo(16.96f, 13.71f, 17f, 13.36f, 17f, 13f)
+        curveToRelative(0f, -2.76f, -2.24f, -5f, -5f, -5f)
+        curveTo(11.64f, 8f, 11.29f, 8.04f, 10.94f, 8.12f)
+        close()
+        // Lower-left camera body fragment + diagonal strike (the "no" slash).
+        moveTo(20.49f, 23.31f)
+        lineTo(18.17f, 21f)
+        horizontalLineTo(4f)
+        curveToRelative(-1.1f, 0f, -2f, -0.9f, -2f, -2f)
+        verticalLineTo(7f)
+        curveToRelative(0f, -0.59f, 0.27f, -1.12f, 0.68f, -1.49f)
+        lineToRelative(-2f, -2f)
+        lineTo(2.1f, 2.1f)
+        lineToRelative(19.8f, 19.8f)
+        lineTo(20.49f, 23.31f)
+        close()
+        // Partial lens.
+        moveTo(14.49f, 17.32f)
+        lineToRelative(-1.5f, -1.5f)
+        curveTo(12.67f, 15.92f, 12.35f, 16f, 12f, 16f)
+        curveToRelative(-1.66f, 0f, -3f, -1.34f, -3f, -3f)
+        curveToRelative(0f, -0.35f, 0.08f, -0.67f, 0.19f, -0.98f)
+        lineToRelative(-1.5f, -1.5f)
+        curveTo(7.25f, 11.24f, 7f, 12.09f, 7f, 13f)
+        curveToRelative(0f, 2.76f, 2.24f, 5f, 5f, 5f)
+        curveTo(12.91f, 18f, 13.76f, 17.75f, 14.49f, 17.32f)
+        close()
+    }
+}
+
+// Locally-defined BarChart vector. material-icons-extended (which ships the
+// real `Icons.Filled.BarChart`) has no KMP-compatible iOS artifact. Path is
+// the standard Material Design "bar_chart" filled glyph: three solid bars of
+// varying heights aligned along a common baseline at y=20.
+private val BarChartVector: ImageVector = materialIcon(name = "Filled.BarChart") {
+    materialPath {
+        // Left bar: rect x=4 y=9 w=4 h=11 → (4,9)-(8,20).
+        moveTo(4f, 9f)
+        horizontalLineToRelative(4f)
+        verticalLineToRelative(11f)
+        horizontalLineTo(4f)
+        close()
+        // Center (tallest) bar: rect x=10 y=4 w=4 h=16 → (10,4)-(14,20).
+        moveTo(10f, 4f)
+        horizontalLineToRelative(4f)
+        verticalLineToRelative(16f)
+        horizontalLineTo(10f)
+        close()
+        // Right bar: rect x=16 y=13 w=4 h=7 → (16,13)-(20,20).
+        moveTo(16f, 13f)
+        horizontalLineToRelative(4f)
+        verticalLineToRelative(7f)
+        horizontalLineTo(16f)
+        close()
+    }
+}
+
 object FrIcons {
     val Back: ImageVector          = Icons.Filled.ArrowBack
     val Camera: ImageVector        = PhotoCameraVector
-    val AddPhoto: ImageVector      = Icons.Filled.Add        // placeholder for AddAPhoto
-    val GalleryImport: ImageVector = Icons.Filled.List       // placeholder for Image
-    val CameraOff: ImageVector     = Icons.Filled.Warning    // placeholder for NoPhotography
+    val AddPhoto: ImageVector      = AddAPhotoVector
+    val GalleryImport: ImageVector = ImageFilledVector
+    val CameraOff: ImageVector     = NoPhotographyVector
     val Settings: ImageVector      = Icons.Filled.Settings
     val Close: ImageVector         = Icons.Filled.Close
     // Bottom-nav tabs.
     val Home: ImageVector          = Icons.Filled.Home
-    val Stats: ImageVector         = Icons.Filled.Star       // placeholder for BarChart
+    val Stats: ImageVector         = BarChartVector
     // ChevronLeft/Right are in material-icons-extended (no KMP iOS artifact); use
     // KeyboardArrowLeft/Right from material-icons-core automirrored as substitutes.
     val ChevronLeft: ImageVector   = Icons.AutoMirrored.Filled.KeyboardArrowLeft
@@ -94,13 +244,13 @@ private fun FrIconsPreview() {
     val entries: List<Pair<String, ImageVector>> = listOf(
         "Back"          to FrIcons.Back,
         "Camera"        to FrIcons.Camera,
-        "AddPhoto*"     to FrIcons.AddPhoto,
-        "Gallery*"      to FrIcons.GalleryImport,
-        "CameraOff*"    to FrIcons.CameraOff,
+        "AddPhoto"      to FrIcons.AddPhoto,
+        "Gallery"       to FrIcons.GalleryImport,
+        "CameraOff"     to FrIcons.CameraOff,
         "Settings"      to FrIcons.Settings,
         "Close"         to FrIcons.Close,
         "Home"          to FrIcons.Home,
-        "Stats*"        to FrIcons.Stats,
+        "Stats"         to FrIcons.Stats,
         "ChevronLeft"   to FrIcons.ChevronLeft,
         "ChevronRight"  to FrIcons.ChevronRight,
     )
@@ -116,11 +266,6 @@ private fun FrIconsPreview() {
                     }
                 }
             }
-            Text(
-                "* = material-icons-extended substitute (no KMP iOS artifact)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
         }
     }
 }
