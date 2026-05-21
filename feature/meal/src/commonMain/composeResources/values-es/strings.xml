@@ -30,4 +30,8 @@
     <string name="meal_error_location_permission">Permiso de ubicación denegado. Puedes activarlo en los ajustes del sistema.</string>
     <string name="meal_error_location_unavailable">La ubicación está desactivada o aún no hay señal.</string>
     <string name="meal_error_location_timeout">No se ha podido obtener tu ubicación a tiempo. Inténtalo otra vez.</string>
+
+    <string name="meal_publish_confirm_title">¿Publicar esta comida?</string>
+    <string name="meal_publish_confirm_message">Tu foto y los detalles se compartirán con el grupo. La subida se hace en segundo plano — puedes seguir usando la app.</string>
+    <string name="meal_publish_confirm_cta">Publicar</string>
 </resources>

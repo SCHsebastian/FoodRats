@@ -4,6 +4,8 @@ import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
+import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
@@ -16,7 +18,9 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -29,6 +33,7 @@ class FeedViewModel(
     private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
+    uploadProgress: MealUploadProgressPort,
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
     FeedState(
         day = FeedDay.today(clock.now().toLocalDateTime(zone).date, zone),
@@ -57,6 +62,11 @@ class FeedViewModel(
                 }
             }
         }
+        uploadProgress.status
+            .map { it is MealUploadStatus.Uploading }
+            .distinctUntilChanged()
+            .onEach { active -> update { it.copy(isUploadActive = active) } }
+            .launchIn(viewModelScope)
     }
 
     override suspend fun handle(intent: FeedIntent) = when (intent) {

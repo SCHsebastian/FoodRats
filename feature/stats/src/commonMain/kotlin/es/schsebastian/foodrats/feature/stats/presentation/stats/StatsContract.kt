@@ -15,6 +15,7 @@ data class StatsState(
     val error: StatsError? = null,
     val isRefreshing: Boolean = false,
     val epoch: Int = 0,
+    val isUploadActive: Boolean = false,
 ) : MviState
 
 sealed interface StatsIntent : MviIntent {

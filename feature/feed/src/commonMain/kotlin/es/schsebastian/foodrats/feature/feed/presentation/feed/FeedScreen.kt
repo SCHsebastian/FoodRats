@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
@@ -15,6 +16,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrFeedLayout
@@ -38,13 +40,16 @@ fun FeedScreen(
         // FrFeedLayout slots are `dayHeader` and `list` (not header/body per plan).
         FrFeedLayout(
             dayHeader = {
-                FrFeedDayHeader(
-                    label = state.day?.day?.toKey() ?: "",
-                    canGoPrev = state.canGoPrev,
-                    canGoNext = state.canGoNext,
-                    onPrev = { vm.onIntent(FeedIntent.PrevDay) },
-                    onNext = { vm.onIntent(FeedIntent.NextDay) },
-                )
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    FrUploadProgressBar(visible = state.isUploadActive)
+                    FrFeedDayHeader(
+                        label = state.day?.day?.toKey() ?: "",
+                        canGoPrev = state.canGoPrev,
+                        canGoNext = state.canGoNext,
+                        onPrev = { vm.onIntent(FeedIntent.PrevDay) },
+                        onNext = { vm.onIntent(FeedIntent.NextDay) },
+                    )
+                }
             },
             list = {
                 Column(modifier = Modifier.fillMaxSize()) {
@@ -86,6 +91,7 @@ fun FeedScreen(
                                     FrFeedMealRow(
                                         ui = ui,
                                         onClick = { onMealClick(ui.mealId, dayIso) },
+                                        modifier = Modifier.animateItem(),
                                     )
                                 }
                             }

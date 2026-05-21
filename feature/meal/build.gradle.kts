@@ -69,6 +69,10 @@ kotlin {
         androidMain.dependencies {
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
             implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+            // WorkManager runs the MealUploadWorker that resumes uploads after process death.
+            implementation(libs.androidx.work.runtime)
+            // Koin Android for KoinComponent in the worker (resolves the coordinator at runtime).
+            implementation(libs.koin.android)
         }
         iosMain.dependencies { }
     }

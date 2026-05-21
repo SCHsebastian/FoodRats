@@ -9,6 +9,8 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -77,6 +79,11 @@ class FeedViewModelTest {
     )
     private val sampleMealWithRatings = MealWithRatings(sampleMeal, emptyList())
 
+    private val idleUploadProgress = object : MealUploadProgressPort {
+        override val status: MutableStateFlow<MealUploadStatus> =
+            MutableStateFlow(MealUploadStatus.Idle)
+    }
+
     private fun buildVm(
         ratingPort: FakeMealRatingPort = FakeMealRatingPort(),
         active: FakeActiveCrewProvider = FakeActiveCrewProvider(initial = crew),
@@ -90,6 +97,7 @@ class FeedViewModelTest {
         session = session,
         clock = clock,
         zone = zone,
+        uploadProgress = idleUploadProgress,
     )
 
     @Test fun initial_state_today_with_meals() = runTest {

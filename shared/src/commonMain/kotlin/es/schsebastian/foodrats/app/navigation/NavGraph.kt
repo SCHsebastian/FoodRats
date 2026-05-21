@@ -52,7 +52,6 @@ import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailScree
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedScreen
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealScreen
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
-import es.schsebastian.foodrats.feature.meal.presentation.publish.PublishMealScreen
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
 import org.koin.compose.koinInject
@@ -123,13 +122,14 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             )
         }
         composable<Route.ComposePlate> {
-            ComposePlateScreen(onComposed = { controller.navigate(Route.PublishMeal) })
-        }
-        composable<Route.PublishMeal> {
-            PublishMealScreen(onPublished = {
-                // Clear the capture → compose → publish chain and return to Main (Feed tab).
-                controller.popBackStack(route = Route.Main, inclusive = false)
-            })
+            ComposePlateScreen(
+                onPublishStarted = {
+                    // Upload is now fire-and-forget on the background coordinator.
+                    // Pop the compose chain immediately so the user lands on Feed
+                    // and watches the top progress bar do its work.
+                    controller.popBackStack(route = Route.Main, inclusive = false)
+                },
+            )
         }
         composable<Route.MealDetail> { entry ->
             val args = entry.toRoute<Route.MealDetail>()

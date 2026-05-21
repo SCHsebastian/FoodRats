@@ -11,6 +11,8 @@ import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -85,7 +87,14 @@ class StatsViewModelTest {
             override fun observeFeed(crewId: CrewId, day: MealDay) = error("unused")
             override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) = mealsFlow
         }
-        return StatsViewModel(ObserveStatsUseCase(active, session, read, clock, zone))
+        val uploadProgress = object : MealUploadProgressPort {
+            override val status: MutableStateFlow<MealUploadStatus> =
+                MutableStateFlow(MealUploadStatus.Idle)
+        }
+        return StatsViewModel(
+            observeStats = ObserveStatsUseCase(active, session, read, clock, zone),
+            uploadProgress = uploadProgress,
+        )
     }
 
     @Test fun initial_state_loads_snapshot_for_week_tab() = runTest {

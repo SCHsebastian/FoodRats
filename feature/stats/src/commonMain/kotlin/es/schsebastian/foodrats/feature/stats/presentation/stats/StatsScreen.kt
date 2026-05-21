@@ -26,6 +26,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
@@ -49,22 +50,27 @@ import org.koin.compose.viewmodel.koinViewModel
 fun StatsScreen(vm: StatsViewModel = koinViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
     FrScreenScaffold(contentWindowInsets = WindowInsets(0)) {
-        when {
-            state.snapshot == null && state.error == null -> LoadingSkeleton()
-            state.error != null -> {
-                Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
-                    FrErrorBanner(text = resolve(state.error!!.toStringKey()))
+        androidx.compose.foundation.layout.Column(
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            FrUploadProgressBar(visible = state.isUploadActive)
+            when {
+                state.snapshot == null && state.error == null -> LoadingSkeleton()
+                state.error != null -> {
+                    Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
+                        FrErrorBanner(text = resolve(state.error!!.toStringKey()))
+                    }
                 }
+                state.snapshot != null -> StatsContent(
+                    state = state,
+                    onSelectTab = { vm.onIntent(StatsIntent.SelectTab(it)) },
+                )
+                else -> FrEmptyState(
+                    icon = FrIcons.Stats,
+                    headline = resolve(StatsStringKey.EmptyHeadline),
+                    subtext = resolve(StatsStringKey.EmptySubtext),
+                )
             }
-            state.snapshot != null -> StatsContent(
-                state = state,
-                onSelectTab = { vm.onIntent(StatsIntent.SelectTab(it)) },
-            )
-            else -> FrEmptyState(
-                icon = FrIcons.Stats,
-                headline = resolve(StatsStringKey.EmptyHeadline),
-                subtext = resolve(StatsStringKey.EmptySubtext),
-            )
         }
     }
 }

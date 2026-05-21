@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -27,6 +28,7 @@ class ComposePlateViewModel(
     private val updateDraft: UpdateMealDraftUseCase,
     private val repository: MealRepository,
     private val activeCrew: ActiveCrewProvider,
+    private val uploadCoordinator: MealUploadCoordinator,
     private val locationProvider: LocationProvider,
     private val clock: Clock,
     private val zone: TimeZone,
@@ -39,6 +41,13 @@ class ComposePlateViewModel(
                 it.copy(
                     photoBytes = draft?.plate?.photoBytes,
                     coordinates = draft?.coordinates,
+                    canContinue = computeCanContinue(
+                        dish = it.dish,
+                        descriptionTooLong = it.descriptionTooLong,
+                        photo = draft?.plate?.photoBytes,
+                        slot = it.selectedSlot,
+                        taken = it.takenSlots,
+                    ),
                 )
             }
         }.launchIn(viewModelScope)
@@ -61,13 +70,27 @@ class ComposePlateViewModel(
             MealSlot.entries.firstOrNull { it !in taken } ?: defaultSlot
         }
 
-        update { it.copy(takenSlots = taken, selectedSlot = selectedSlot) }
+        update {
+            it.copy(
+                takenSlots = taken,
+                selectedSlot = selectedSlot,
+                canContinue = computeCanContinue(it.dish, it.descriptionTooLong, it.photoBytes, selectedSlot, taken),
+            )
+        }
         updateDraft(UpdateMealDraftCommand.SetSlot(selectedSlot))
     }
 
     override suspend fun handle(intent: ComposePlateIntent) {
         when (intent) {
-            is ComposePlateIntent.DishChanged -> update { it.copy(dish = intent.value, error = null) }
+            is ComposePlateIntent.DishChanged -> update {
+                it.copy(
+                    dish = intent.value,
+                    error = null,
+                    canContinue = computeCanContinue(
+                        intent.value, it.descriptionTooLong, it.photoBytes, it.selectedSlot, it.takenSlots,
+                    ),
+                )
+            }
             is ComposePlateIntent.DescriptionChanged -> {
                 val tooLong = intent.value.trim().length > Description.MAX_LEN
                 update {
@@ -75,11 +98,17 @@ class ComposePlateViewModel(
                         descriptionInput = intent.value,
                         descriptionTooLong = tooLong,
                         error = if (tooLong) MealError.Validation.DescriptionTooLong else null,
+                        canContinue = computeCanContinue(it.dish, tooLong, it.photoBytes, it.selectedSlot, it.takenSlots),
                     )
                 }
             }
             is ComposePlateIntent.SelectSlot -> {
-                update { it.copy(selectedSlot = intent.slot) }
+                update {
+                    it.copy(
+                        selectedSlot = intent.slot,
+                        canContinue = computeCanContinue(it.dish, it.descriptionTooLong, it.photoBytes, intent.slot, it.takenSlots),
+                    )
+                }
                 updateDraft(UpdateMealDraftCommand.SetSlot(intent.slot))
             }
             ComposePlateIntent.RequestLocation -> requestLocation()
@@ -87,7 +116,16 @@ class ComposePlateViewModel(
                 update { it.copy(coordinates = null, error = null) }
                 updateDraft(UpdateMealDraftCommand.SetCoordinates(null))
             }
-            ComposePlateIntent.Continue -> persistAndAdvance()
+            ComposePlateIntent.RequestConfirm -> {
+                val ok = persistDraft()
+                if (ok) update { it.copy(showConfirm = true) }
+            }
+            ComposePlateIntent.DismissConfirm -> update { it.copy(showConfirm = false) }
+            ComposePlateIntent.ConfirmPublish -> {
+                update { it.copy(showConfirm = false) }
+                uploadCoordinator.enqueueDraftUpload()
+                emit(ComposePlateEffect.UploadEnqueued)
+            }
         }
     }
 
@@ -110,17 +148,39 @@ class ComposePlateViewModel(
         }
     }
 
-    private suspend fun persistAndAdvance() {
+    /**
+     * Persists the in-memory draft (dish + description) to the draft store so
+     * the background coordinator can read it via `observeDraft().first()`.
+     * Returns false (and surfaces an error) when validation fails.
+     */
+    private suspend fun persistDraft(): Boolean {
         val state = currentState
-        val dish = DishName.of(state.dish).getOrElse { return failWith(MealError.Validation.Blank) }
-        val description = Description.of(state.descriptionInput)
-            .getOrElse { return failWith(MealError.Validation.DescriptionTooLong) }
+        val dish = DishName.of(state.dish).getOrElse {
+            update { it.copy(error = MealError.Validation.Blank) }
+            return false
+        }
+        val description = Description.of(state.descriptionInput).getOrElse {
+            update { it.copy(error = MealError.Validation.DescriptionTooLong) }
+            return false
+        }
         updateDraft(UpdateMealDraftCommand.SetSlot(state.selectedSlot))
         updateDraft(UpdateMealDraftCommand.SetDish(dish))
         val r = updateDraft(UpdateMealDraftCommand.SetDescription(description))
-        if (r is Result.Ok) emit(ComposePlateEffect.NavigateToPublish)
-        else if (r is Result.Err) update { it.copy(error = r.error) }
+        if (r is Result.Err) {
+            update { it.copy(error = r.error) }
+            return false
+        }
+        return true
     }
 
-    private fun failWith(err: MealError) { update { it.copy(error = err) } }
+    private fun computeCanContinue(
+        dish: String,
+        descriptionTooLong: Boolean,
+        photo: ByteArray?,
+        slot: MealSlot,
+        taken: Set<MealSlot>,
+    ): Boolean = dish.isNotBlank() &&
+        !descriptionTooLong &&
+        photo != null &&
+        slot !in taken
 }

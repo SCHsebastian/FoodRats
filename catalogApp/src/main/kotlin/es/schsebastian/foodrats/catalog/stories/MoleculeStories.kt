@@ -18,7 +18,10 @@ import es.schsebastian.foodrats.catalog.registry.CatalogEntry
 import es.schsebastian.foodrats.catalog.registry.CatalogGroup
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarWithName
+import es.schsebastian.foodrats.core.designsystem.molecules.FrComposerHeroCard
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
@@ -35,6 +38,9 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.scorebadge",     CatalogGroup.MOLECULES, "FrScoreBadge",     "Circular 1..10 score badge") { ScoreBadgeStory() },
     CatalogEntry("molecule.scorepicker",    CatalogGroup.MOLECULES, "FrScorePicker",    "Chip row picker for 1..10 score") { ScorePickerStory() },
     CatalogEntry("molecule.starrating",     CatalogGroup.MOLECULES, "FrStarRatingPicker", "1..5 picker for tap-to-rate flows") { StarRatingStory() },
+    CatalogEntry("molecule.confirmdialog",  CatalogGroup.MOLECULES, "FrConfirmDialog",    "Affirmative/destructive confirmation dialog") { ConfirmDialogStory() },
+    CatalogEntry("molecule.composerhero",   CatalogGroup.MOLECULES, "FrComposerHeroCard", "Photo hero with rounded clip + entry scale animation") { ComposerHeroCardStory() },
+    CatalogEntry("molecule.avatarpicker",   CatalogGroup.MOLECULES, "FrAvatarPicker",     "Avatar preview + change-avatar button (initials fallback, busy state)") { AvatarPickerStory() },
 )
 
 @Composable
@@ -218,6 +224,79 @@ private fun StarRatingStory() {
         }
         CatalogScene(label = "Empty (value = 0)") {
             FrStarRatingPicker(onSelect = {}, value = 0)
+        }
+    }
+}
+
+@Composable
+private fun ConfirmDialogStory() {
+    var open by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Open dialog (tap to preview)") {
+            FrButton(label = "Show confirm dialog", onClick = { open = true })
+        }
+        if (open) {
+            FrConfirmDialog(
+                title = "Publish this meal?",
+                message = "Your photo and description will be shared with the crew.",
+                confirmLabel = "Publish",
+                dismissLabel = "Cancel",
+                onConfirm = { open = false },
+                onDismiss = { open = false },
+            )
+        }
+    }
+}
+
+@Composable
+private fun AvatarPickerStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(
+            label = "Initials fallback — idle",
+            description = "Avatar slot + 'Change' button. Tapping either calls onPickClick().",
+        ) {
+            FrAvatarPicker(
+                initials = "SC",
+                avatarUrl = null,
+                onPickClick = {},
+                busy = false,
+                changeLabel = "Change",
+                uploadingLabel = "Uploading…",
+            )
+        }
+        CatalogScene(label = "With image — idle") {
+            FrAvatarPicker(
+                initials = "SC",
+                avatarUrl = "https://placebear.com/200/200",
+                onPickClick = {},
+                busy = false,
+                changeLabel = "Change",
+                uploadingLabel = "Uploading…",
+            )
+        }
+        CatalogScene(label = "Busy — disables tap, swaps label") {
+            FrAvatarPicker(
+                initials = "SC",
+                avatarUrl = null,
+                onPickClick = {},
+                busy = true,
+                changeLabel = "Change",
+                uploadingLabel = "Uploading…",
+            )
+        }
+    }
+}
+
+@Composable
+private fun ComposerHeroCardStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Empty — placeholder colour") {
+            FrComposerHeroCard(contentKey = null, modifier = Modifier.width(280.dp)) { }
+        }
+        CatalogScene(label = "Filled — entry scale animation") {
+            FrComposerHeroCard(contentKey = "demo", modifier = Modifier.width(280.dp)) {
+                FrAvatarWithName(initials = "FR", name = "Demo plate")
+            }
         }
     }
 }
