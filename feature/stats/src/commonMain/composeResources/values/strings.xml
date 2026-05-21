@@ -1,16 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="stats_title">Stats</string>
-    <string name="stats_crew_streak_label">Crew streak</string>
-    <string name="stats_personal_streak_label">Your streak</string>
-    <string name="stats_streak_unit_singular">%1$d day</string>
-    <string name="stats_streak_unit_plural">%1$d days</string>
-    <string name="stats_top_dishes_section">Top dishes</string>
-    <string name="stats_leaderboard_section">Average score</string>
-    <string name="stats_meals_considered">Based on %1$d meals (last 30 days)</string>
-    <string name="stats_dish_tally_row">%1$s · %2$d</string>
-    <string name="stats_leaderboard_row">%1$s · %2$.1f (%3$d posts)</string>
-    <string name="stats_post_count">(%1$d)</string>
+
+    <!-- Tabs -->
+    <string name="stats_tab_week">Week</string>
+    <string name="stats_tab_month">Month</string>
+    <string name="stats_tab_historic">All time</string>
+
+    <!-- Hero card -->
+    <string name="stats_hero_personal_streak_singular">%1$d day streak</string>
+    <string name="stats_hero_personal_streak_plural">%1$d-day streak</string>
+    <string name="stats_hero_crew_streak_singular">Crew: %1$d day</string>
+    <string name="stats_hero_crew_streak_plural">Crew: %1$d days</string>
+    <string name="stats_hero_plates_today_singular">%1$d plate today</string>
+    <string name="stats_hero_plates_today_plural">%1$d plates today</string>
+    <string name="stats_hero_i_posted_today">You posted today ✓</string>
+    <string name="stats_hero_no_streak">No streak yet — post your first plate</string>
+
+    <!-- Window empty -->
+    <string name="stats_window_empty_week">No plates this week yet — be the first</string>
+    <string name="stats_window_empty_month">No plates this month yet</string>
+    <string name="stats_window_empty_historic">No plates in the last year yet</string>
+
+    <!-- Summary -->
+    <string name="stats_summary_total_plates_label">Plates</string>
+    <string name="stats_summary_avg_per_day_label">Per day</string>
+
+    <!-- Best plate -->
+    <string name="stats_best_plate_title">Top plate</string>
+    <string name="stats_best_plate_score_format">%1$s ★</string>
+    <string name="stats_best_plate_author_format">by %1$s</string>
+
+    <!-- Most-voted plate -->
+    <string name="stats_most_voted_plate_title">Most rated plate</string>
+    <string name="stats_most_voted_plate_voters_singular">%1$d voter</string>
+    <string name="stats_most_voted_plate_voters_plural">%1$d voters</string>
+
+    <!-- Cooks -->
+    <string name="stats_cooks_section_title">Cooks</string>
+    <string name="stats_best_cook_title">Top cook</string>
+    <string name="stats_best_cook_metric_format">%1$s ★ avg · %2$d plates</string>
+    <string name="stats_most_prolific_title">Most prolific</string>
+    <string name="stats_most_prolific_metric_format">%1$d plates</string>
+
+    <!-- Roast -->
+    <string name="stats_roast_section_title">Roast</string>
+    <string name="stats_most_criticized_title">Most criticized</string>
+    <string name="stats_most_criticized_metric_format">%1$s ★ avg · ouch</string>
+
+    <!-- Threshold hint -->
+    <string name="stats_cook_award_needs_more_singular">%1$d more plate to qualify</string>
+    <string name="stats_cook_award_needs_more_plural">%1$d more plates to qualify</string>
+
+    <!-- Empty / errors -->
     <string name="stats_empty_headline">No stats yet</string>
     <string name="stats_empty_subtext">Post a meal to get the numbers rolling.</string>
     <string name="stats_error_no_active_crew">Pick a crew to see its stats.</string>

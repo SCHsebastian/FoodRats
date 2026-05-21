@@ -22,12 +22,15 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrChip
+import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFilterChip
+import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSpacer
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
@@ -50,6 +53,9 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.spacer",        CatalogGroup.ATOMS, "FrSpacer",        "Spacing token visualization") { SpacerStory() },
     CatalogEntry("atom.text",          CatalogGroup.ATOMS, "FrText",          "Wraps Material Text with FrTextStyles") { TextStory() },
     CatalogEntry("atom.textfield",     CatalogGroup.ATOMS, "FrTextField",     "OutlinedTextField with error / disabled states") { TextFieldStory() },
+    CatalogEntry("atom.crownbadge",    CatalogGroup.ATOMS, "FrCrownBadge",    "Circular crown badge — primary / tertiary tints") { CrownBadgeStory() },
+    CatalogEntry("atom.flameicon",     CatalogGroup.ATOMS, "FrFlameIcon",     "Flame with urgency-driven pulse (0 → 1)") { FlameIconStory() },
+    CatalogEntry("atom.shimmerbox",    CatalogGroup.ATOMS, "FrShimmerBox",    "Skeleton with horizontal shimmer sweep") { ShimmerBoxStory() },
 )
 
 @Composable
@@ -334,6 +340,58 @@ private fun TextFieldStory() {
                 label = "Notes",
                 singleLine = false,
                 modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun CrownBadgeStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Default (primary)") { FrCrownBadge() }
+        CatalogScene(label = "Tertiary (bronze)") {
+            FrCrownBadge(
+                background = MaterialTheme.colorScheme.tertiary,
+                iconTint = MaterialTheme.colorScheme.onTertiary,
+            )
+        }
+        CatalogScene(label = "Large") {
+            FrCrownBadge(iconSize = 40.dp)
+        }
+    }
+}
+
+@Composable
+private fun FlameIconStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Slow pulse (urgency = 0)") {
+            FrFlameIcon(urgency = 0f, tint = MaterialTheme.colorScheme.primary)
+        }
+        CatalogScene(label = "Medium pulse (urgency = 0.5)") {
+            FrFlameIcon(urgency = 0.5f, tint = MaterialTheme.colorScheme.primary)
+        }
+        CatalogScene(label = "Fast pulse (urgency = 1.0)") {
+            FrFlameIcon(urgency = 1f, tint = MaterialTheme.colorScheme.error)
+        }
+    }
+}
+
+@Composable
+private fun ShimmerBoxStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Rectangle") {
+            FrShimmerBox(modifier = Modifier.fillMaxWidth().size(width = 320.dp, height = 60.dp))
+        }
+        CatalogScene(label = "Rounded card silhouette") {
+            FrShimmerBox(
+                modifier = Modifier.fillMaxWidth().size(width = 320.dp, height = 120.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
+            )
+        }
+        CatalogScene(label = "Circle (avatar silhouette)") {
+            FrShimmerBox(
+                modifier = Modifier.size(48.dp),
+                shape = androidx.compose.foundation.shape.CircleShape,
             )
         }
     }

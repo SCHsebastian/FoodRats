@@ -194,6 +194,52 @@ private val NoPhotographyVector: ImageVector = materialIcon(name = "Filled.NoPho
     }
 }
 
+// Locally-defined Crown vector. material-icons-extended (`Icons.Filled.EmojiEvents`)
+// has no KMP-compatible iOS artifact. Path is a simplified crown glyph for the
+// "best plate" podium badge in stats.
+private val CrownVector: ImageVector = materialIcon(name = "Filled.Crown") {
+    materialPath {
+        // Crown body: three pointed peaks rising from a base bar.
+        moveTo(5f, 16f)
+        horizontalLineToRelative(14f)
+        verticalLineToRelative(3f)
+        horizontalLineTo(5f)
+        close()
+        moveTo(12f, 4f)
+        lineTo(15f, 10f)
+        lineTo(19f, 6f)
+        lineTo(19f, 14f)
+        horizontalLineTo(5f)
+        lineTo(5f, 6f)
+        lineTo(9f, 10f)
+        close()
+    }
+}
+
+// Locally-defined Flame vector. material-icons-extended (`Icons.Filled.Whatshot`)
+// has no KMP-compatible iOS artifact. Path is a stylized flame for the streak hero.
+private val FlameVector: ImageVector = materialIcon(name = "Filled.Flame") {
+    materialPath {
+        moveTo(13.5f, 0.67f)
+        curveToRelative(0f, 0f, 0.74f, 2.65f, 0.74f, 4.8f)
+        curveToRelative(0f, 2.06f, -1.35f, 3.73f, -3.41f, 3.73f)
+        curveToRelative(-2.07f, 0f, -3.63f, -1.67f, -3.63f, -3.73f)
+        lineToRelative(0.03f, -0.36f)
+        curveTo(5.21f, 7.51f, 3f, 10.62f, 3f, 14.25f)
+        curveTo(3f, 18.81f, 6.69f, 22.5f, 11.25f, 22.5f)
+        curveToRelative(4.56f, 0f, 8.25f, -3.69f, 8.25f, -8.25f)
+        curveTo(19.5f, 8.74f, 16.79f, 3.91f, 13.5f, 0.67f)
+        close()
+        moveTo(11.71f, 19f)
+        curveToRelative(-1.78f, 0f, -3.22f, -1.4f, -3.22f, -3.14f)
+        curveToRelative(0f, -1.62f, 1.05f, -2.76f, 2.81f, -3.12f)
+        curveToRelative(1.77f, -0.36f, 3.6f, -1.21f, 4.62f, -2.58f)
+        curveToRelative(0.39f, 1.29f, 0.59f, 2.65f, 0.59f, 4.04f)
+        curveTo(16.5f, 16.81f, 14.36f, 19f, 11.71f, 19f)
+        close()
+    }
+}
+
 // Locally-defined BarChart vector. material-icons-extended (which ships the
 // real `Icons.Filled.BarChart`) has no KMP-compatible iOS artifact. Path is
 // the standard Material Design "bar_chart" filled glyph: three solid bars of
@@ -232,6 +278,8 @@ object FrIcons {
     // Bottom-nav tabs.
     val Home: ImageVector          = Icons.Filled.Home
     val Stats: ImageVector         = BarChartVector
+    val Crown: ImageVector         = CrownVector
+    val Flame: ImageVector         = FlameVector
     // ChevronLeft/Right are in material-icons-extended (no KMP iOS artifact); use
     // KeyboardArrowLeft/Right from material-icons-core automirrored as substitutes.
     val ChevronLeft: ImageVector   = Icons.AutoMirrored.Filled.KeyboardArrowLeft
@@ -251,6 +299,8 @@ private fun FrIconsPreview() {
         "Close"         to FrIcons.Close,
         "Home"          to FrIcons.Home,
         "Stats"         to FrIcons.Stats,
+        "Crown"         to FrIcons.Crown,
+        "Flame"         to FrIcons.Flame,
         "ChevronLeft"   to FrIcons.ChevronLeft,
         "ChevronRight"  to FrIcons.ChevronRight,
     )
