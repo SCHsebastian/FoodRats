@@ -8,9 +8,12 @@ import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
 import es.schsebastian.foodrats.core.data.datastore.installAndroidDataStoreContext
 import es.schsebastian.foodrats.core.data.firebase.FirebaseInitializer
 import es.schsebastian.foodrats.core.data.firebase.installAndroidFirebaseContext
+import es.schsebastian.foodrats.core.data.location.AndroidLocationProvider
+import es.schsebastian.foodrats.core.data.location.LocationPermissionLauncherHolder
 import es.schsebastian.foodrats.core.data.share.ShareController
 import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
 import es.schsebastian.foodrats.core.data.telemetry.AndroidCrashReporter
+import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.core.data.image.installImageLoader
@@ -44,6 +47,7 @@ class FoodRatsApplication : Application() {
                     androidShareModule(),
                     androidAuthModule(),
                     androidCrashModule(),
+                    androidLocationModule(),
                 ),
             )
         }
@@ -63,6 +67,11 @@ class FoodRatsApplication : Application() {
     private fun androidCrashModule() = module {
         // Disable Crashlytics collection in debug builds so dev crashes don't pollute prod data.
         single<CrashReporter> { AndroidCrashReporter(collectionEnabled = !BuildConfig.DEBUG) }
+    }
+
+    private fun androidLocationModule() = module {
+        single { LocationPermissionLauncherHolder() }
+        single<LocationProvider> { AndroidLocationProvider(androidContext(), get()) }
     }
 
     private fun androidAuthModule() = module {

@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.location.LocationError
+import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -25,6 +27,7 @@ class ComposePlateViewModel(
     private val updateDraft: UpdateMealDraftUseCase,
     private val repository: MealRepository,
     private val activeCrew: ActiveCrewProvider,
+    private val locationProvider: LocationProvider,
     private val clock: Clock,
     private val zone: TimeZone,
 ) : MviViewModel<ComposePlateState, ComposePlateIntent, ComposePlateEffect>(ComposePlateState()) {
@@ -32,7 +35,12 @@ class ComposePlateViewModel(
     init {
         viewModelScope.launch { loadTakenSlots() }
         repository.observeDraft().onEach { draft ->
-            update { it.copy(photoBytes = draft?.plate?.photoBytes) }
+            update {
+                it.copy(
+                    photoBytes = draft?.plate?.photoBytes,
+                    coordinates = draft?.coordinates,
+                )
+            }
         }.launchIn(viewModelScope)
     }
 
@@ -74,7 +82,31 @@ class ComposePlateViewModel(
                 update { it.copy(selectedSlot = intent.slot) }
                 updateDraft(UpdateMealDraftCommand.SetSlot(intent.slot))
             }
+            ComposePlateIntent.RequestLocation -> requestLocation()
+            ComposePlateIntent.ClearLocation -> {
+                update { it.copy(coordinates = null, error = null) }
+                updateDraft(UpdateMealDraftCommand.SetCoordinates(null))
+            }
             ComposePlateIntent.Continue -> persistAndAdvance()
+        }
+    }
+
+    private suspend fun requestLocation() {
+        if (currentState.locating) return
+        update { it.copy(locating = true, error = null) }
+        when (val r = locationProvider.current()) {
+            is Result.Ok  -> {
+                updateDraft(UpdateMealDraftCommand.SetCoordinates(r.value))
+                update { it.copy(locating = false, coordinates = r.value, error = null) }
+            }
+            is Result.Err -> {
+                val mealErr: MealError = when (r.error) {
+                    LocationError.PermissionDenied -> MealError.Location.PermissionDenied
+                    LocationError.Unavailable      -> MealError.Location.Unavailable
+                    LocationError.Timeout          -> MealError.Location.Timeout
+                }
+                update { it.copy(locating = false, error = mealErr) }
+            }
         }
     }
 

@@ -148,6 +148,8 @@ internal class FirebaseMealRepository(
                     photoUrl = photoUrl,
                     dishName = draft.dish?.value,
                     description = draft.description.value,
+                    latitude = draft.coordinates?.latitude,
+                    longitude = draft.coordinates?.longitude,
                     publishedAtEpochMs = clock.now().toEpochMilliseconds(),
                 )
                 firestore.write(dto, mealId.value)

@@ -21,4 +21,13 @@
     <string name="meal_slot_lunch">Lunch</string>
     <string name="meal_slot_dinner">Dinner</string>
     <string name="meal_publish_no_slot">Pick a slot (Breakfast, Lunch, or Dinner) before publishing.</string>
+
+    <string name="meal_compose_add_location">Pin where you ate</string>
+    <string name="meal_compose_locating">Finding you…</string>
+    <string name="meal_compose_clear_location">Remove pin</string>
+    <string name="meal_compose_coordinates_format">%1$.5f, %2$.5f</string>
+
+    <string name="meal_error_location_permission">Location permission denied. You can enable it from system settings.</string>
+    <string name="meal_error_location_unavailable">Location services are off or no fix is available.</string>
+    <string name="meal_error_location_timeout">Couldn\'t get your location in time. Try again.</string>
 </resources>

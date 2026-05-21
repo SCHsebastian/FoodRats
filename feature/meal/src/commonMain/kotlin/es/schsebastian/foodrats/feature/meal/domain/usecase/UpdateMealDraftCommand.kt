@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.domain.usecase
 
+import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
@@ -10,4 +11,6 @@ sealed interface UpdateMealDraftCommand {
     data class SetDish(val dish: DishName) : UpdateMealDraftCommand
     data class SetDescription(val description: Description) : UpdateMealDraftCommand
     data class SetSlot(val slot: MealSlot) : UpdateMealDraftCommand
+    /** Pass `null` to clear an attached coordinate pair. */
+    data class SetCoordinates(val coordinates: Coordinates?) : UpdateMealDraftCommand
 }

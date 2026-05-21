@@ -17,4 +17,7 @@ fun MealError.toStringKey(): MealStringKey = when (this) {
     MealError.Read.Unauthorized           -> MealStringKey.MealErrorReadUnauthorized
     MealError.Read.CrewNotFound           -> MealStringKey.MealErrorReadCrewNotFound
     MealError.Read.NotFound               -> MealStringKey.MealErrorReadNotFound
+    MealError.Location.PermissionDenied   -> MealStringKey.MealErrorLocationPermission
+    MealError.Location.Unavailable        -> MealStringKey.MealErrorLocationUnavailable
+    MealError.Location.Timeout            -> MealStringKey.MealErrorLocationTimeout
 }

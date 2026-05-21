@@ -2,12 +2,14 @@ package es.schsebastian.foodrats.feature.meal.data.local
 
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.Keys
+import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
@@ -32,6 +34,8 @@ private data class MealDraftJson(
     val dish: String?,
     val description: String = "",
     val slot: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -56,6 +60,9 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
         val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied) }
         val d = dish?.let { DishName.of(it).getOrElse { return null } }
         val desc = Description.of(description).getOrElse { Description.EMPTY }
+        val coords = if (latitude != null && longitude != null) {
+            (Coordinates.of(latitude, longitude) as? Result.Ok)?.value
+        } else null
         return MealDraft(
             crewId = crew,
             authorId = acc,
@@ -64,6 +71,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             dish = d,
             description = desc,
             slot = slot?.let(MealSlot::fromKey),
+            coordinates = coords,
         )
     }
 
@@ -79,6 +87,8 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             dish = d.dish?.value,
             description = d.description.value,
             slot = d.slot?.key(),
+            latitude = d.coordinates?.latitude,
+            longitude = d.coordinates?.longitude,
         )
     }
 }

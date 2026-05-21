@@ -42,4 +42,9 @@ class MealErrorToStringKeyTest {
         assertEquals(MealStringKey.MealErrorReadCrewNotFound, (MealError.Read.CrewNotFound as MealError).toStringKey())
         assertEquals(MealStringKey.MealErrorReadNotFound, (MealError.Read.NotFound as MealError).toStringKey())
     }
+    @Test fun maps_all_location_errors() {
+        assertEquals(MealStringKey.MealErrorLocationPermission, (MealError.Location.PermissionDenied as MealError).toStringKey())
+        assertEquals(MealStringKey.MealErrorLocationUnavailable, (MealError.Location.Unavailable as MealError).toStringKey())
+        assertEquals(MealStringKey.MealErrorLocationTimeout, (MealError.Location.Timeout as MealError).toStringKey())
+    }
 }
