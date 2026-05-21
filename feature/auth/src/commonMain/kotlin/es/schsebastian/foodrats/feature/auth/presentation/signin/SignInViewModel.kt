@@ -1,16 +1,16 @@
 package es.schsebastian.foodrats.feature.auth.presentation.signin
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
-import es.schsebastian.foodrats.feature.notifications.domain.usecase.RegisterDeviceTokenUseCase
 import kotlinx.coroutines.launch
 
 class SignInViewModel(
     private val auth: AuthRepository,
-    private val registerDeviceToken: RegisterDeviceTokenUseCase,
+    private val tokenRegistration: TokenRegistrationPort,
 ) : MviViewModel<SignInState, SignInIntent, SignInEffect>(SignInState()) {
 
     override suspend fun handle(intent: SignInIntent) = when (intent) {
@@ -51,7 +51,7 @@ class SignInViewModel(
         when (r) {
             is Result.Ok  -> {
                 update { it.copy(isLoading = false, error = null) }
-                viewModelScope.launch { registerDeviceToken() }
+                viewModelScope.launch { tokenRegistration.registerCurrentDeviceToken() }
                 emit(SignInEffect.SignedIn)
             }
             is Result.Err -> {
