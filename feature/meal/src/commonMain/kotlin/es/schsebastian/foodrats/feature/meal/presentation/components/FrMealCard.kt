@@ -14,8 +14,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
-import es.schsebastian.foodrats.core.i18n.resolve
-import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 
 data class MealUi(
     val dish: String,
@@ -43,7 +41,6 @@ fun FrMealCard(ui: MealUi, modifier: Modifier = Modifier) {
                 }
             }
             FrText(text = ui.dish)
-            FrText(text = ui.tags.joinToString(resolve(MealStringKey.TagSeparator)))
         }
     }
 }

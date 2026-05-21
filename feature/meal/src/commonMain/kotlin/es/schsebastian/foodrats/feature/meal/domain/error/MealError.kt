@@ -6,6 +6,7 @@ sealed interface MealError {
         data object TooLong : Validation
         data object OutOfRange : Validation
         data object NoPhoto : Validation
+        data object DescriptionTooLong : Validation
     }
     sealed interface Publish : MealError {
         data object AlreadyPostedToday : Publish

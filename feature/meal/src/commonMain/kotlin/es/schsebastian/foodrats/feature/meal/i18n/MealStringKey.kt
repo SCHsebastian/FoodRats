@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.meal.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.meal.generated.resources.Res
+import foodrats.feature.meal.generated.resources.meal_compose_description_counter
+import foodrats.feature.meal.generated.resources.meal_compose_description_placeholder
 import foodrats.feature.meal.generated.resources.meal_compose_title
 import foodrats.feature.meal.generated.resources.meal_error_already_posted
 import foodrats.feature.meal.generated.resources.meal_error_not_today
@@ -11,6 +13,7 @@ import foodrats.feature.meal.generated.resources.meal_error_read_crew_not_found
 import foodrats.feature.meal.generated.resources.meal_error_read_not_found
 import foodrats.feature.meal.generated.resources.meal_error_read_unauthorized
 import foodrats.feature.meal.generated.resources.meal_error_validation_blank
+import foodrats.feature.meal.generated.resources.meal_error_validation_description_too_long
 import foodrats.feature.meal.generated.resources.meal_error_validation_no_photo
 import foodrats.feature.meal.generated.resources.meal_error_validation_out_of_range
 import foodrats.feature.meal.generated.resources.meal_error_validation_too_long
@@ -19,16 +22,16 @@ import foodrats.feature.meal.generated.resources.meal_publish_title
 import foodrats.feature.meal.generated.resources.meal_slot_breakfast
 import foodrats.feature.meal.generated.resources.meal_slot_dinner
 import foodrats.feature.meal.generated.resources.meal_slot_lunch
-import foodrats.feature.meal.generated.resources.meal_tag_separator
 import org.jetbrains.compose.resources.StringResource
 
 enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ComposeTitle(Res.string.meal_compose_title),
+    ComposeDescriptionPlaceholder(Res.string.meal_compose_description_placeholder),
+    ComposeDescriptionCounter(Res.string.meal_compose_description_counter),
     PublishTitle(Res.string.meal_publish_title),
     SlotBreakfast(Res.string.meal_slot_breakfast),
     SlotLunch(Res.string.meal_slot_lunch),
     SlotDinner(Res.string.meal_slot_dinner),
-    TagSeparator(Res.string.meal_tag_separator),
     MealErrorAlreadyPosted(Res.string.meal_error_already_posted),
     MealErrorNotToday(Res.string.meal_error_not_today),
     MealErrorPublishUnavailable(Res.string.meal_error_publish_unavailable),
@@ -36,6 +39,7 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     MealErrorPhotoUploadFailed(Res.string.meal_error_photo_upload_failed),
     MealErrorValidationBlank(Res.string.meal_error_validation_blank),
     MealErrorValidationTooLong(Res.string.meal_error_validation_too_long),
+    MealErrorValidationDescriptionTooLong(Res.string.meal_error_validation_description_too_long),
     MealErrorValidationOutOfRange(Res.string.meal_error_validation_out_of_range),
     MealErrorValidationNoPhoto(Res.string.meal_error_validation_no_photo),
     MealErrorReadUnauthorized(Res.string.meal_error_read_unauthorized),
