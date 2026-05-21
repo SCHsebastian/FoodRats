@@ -11,9 +11,7 @@ import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Validation.DisplayNameBlank -> AuthStringKey.ProfileDisplayNameBlank
     ProfileError.Validation.DisplayNameTooLong -> AuthStringKey.ProfileDisplayNameTooLong
-    // EmptyBytes is structurally unreachable from the UI (picker won't return zero bytes),
-    // but the mapping has to exist for exhaustiveness. Fall back to generic backend message.
-    ProfileError.Validation.EmptyBytes -> AuthStringKey.ProfileBackendUnavailable
+    ProfileError.Validation.EmptyBytes -> AuthStringKey.ProfileAvatarEmptyBytes
     ProfileError.Backend.Unavailable -> AuthStringKey.ProfileBackendUnavailable
     ProfileError.Session.SignedOut -> AuthStringKey.ProfileBackendUnavailable
 }

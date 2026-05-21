@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
+import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
@@ -29,6 +30,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -70,8 +73,124 @@ class CrewSettingsViewModelTest {
         assertEquals(memberId, vm.state.value.myAccountId)
     }
 
-    private fun buildVm(actingAs: AccountId): CrewSettingsViewModel {
+    @Test
+    fun save_crew_name_success_keeps_state_clean() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(ownerId, repo)
+
+        vm.onIntent(CrewSettingsIntent.CrewNameChanged("Renamed Crew"))
+        vm.onIntent(CrewSettingsIntent.SaveCrewName)
+
+        assertEquals(false, vm.state.value.isSavingCrewName)
+        assertNull(vm.state.value.error)
+        assertEquals(Pair(crewId, "Renamed Crew"), repo.lastRename)
+    }
+
+    @Test
+    fun save_crew_name_fails_with_authorization_not_owner_when_non_owner() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(memberId, repo)
+
+        vm.onIntent(CrewSettingsIntent.CrewNameChanged("Hostile Rename"))
+        vm.onIntent(CrewSettingsIntent.SaveCrewName)
+
+        assertEquals(CrewError.Authorization.NotOwner, vm.state.value.error)
+        assertEquals(false, vm.state.value.isSavingCrewName)
+    }
+
+    @Test
+    fun save_crew_name_blank_is_rejected_via_validation() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(ownerId, repo)
+
+        vm.onIntent(CrewSettingsIntent.CrewNameChanged("   "))
+        vm.onIntent(CrewSettingsIntent.SaveCrewName)
+
+        assertEquals(CrewError.Validation.NameBlank, vm.state.value.error)
+        assertEquals(false, vm.state.value.isSavingCrewName)
+    }
+
+    @Test
+    fun leave_crew_emits_left_effect_on_success() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew)).apply {
+            nextLeave = Result.success(Unit)
+        }
+        val vm = buildVm(memberId, repo)
+
+        vm.effects.test {
+            vm.onIntent(CrewSettingsIntent.Leave)
+            assertEquals(CrewSettingsEffect.Left, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(false, vm.state.value.isLeaving)
+        // Note: after a successful leave the crew is removed from the fake repo, so
+        // observeCrew re-emits NotFound — that error surfacing back onto state is the
+        // expected behavior (the screen has navigated away by then).
+    }
+
+    @Test
+    fun leave_crew_error_surfaces_on_state() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew)).apply {
+            nextLeave = Result.failure(CrewError.Backend.Network)
+        }
+        val vm = buildVm(memberId, repo)
+
+        vm.onIntent(CrewSettingsIntent.Leave)
+
+        assertEquals(CrewError.Backend.Network, vm.state.value.error)
+        assertEquals(false, vm.state.value.isLeaving)
+    }
+
+    @Test
+    fun confirm_delete_emits_deleted_effect_on_success_for_owner() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(ownerId, repo)
+
+        vm.effects.test {
+            vm.onIntent(CrewSettingsIntent.ConfirmDelete)
+            assertEquals(CrewSettingsEffect.Deleted, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(crewId, repo.lastDelete)
+        assertEquals(false, vm.state.value.isDeleting)
+        assertEquals(false, vm.state.value.showDeleteConfirm)
+    }
+
+    @Test
+    fun request_delete_sets_dialog_flag() = runTest {
+        val vm = buildVm(ownerId)
+
+        vm.onIntent(CrewSettingsIntent.RequestDelete)
+
+        assertTrue(vm.state.value.showDeleteConfirm)
+    }
+
+    @Test
+    fun cancel_delete_clears_dialog_flag() = runTest {
+        val vm = buildVm(ownerId)
+        vm.onIntent(CrewSettingsIntent.RequestDelete)
+        assertTrue(vm.state.value.showDeleteConfirm)
+
+        vm.onIntent(CrewSettingsIntent.CancelDelete)
+
+        assertEquals(false, vm.state.value.showDeleteConfirm)
+    }
+
+    @Test
+    fun switch_crew_emits_navigate_effect() = runTest {
+        val vm = buildVm(ownerId)
+
+        vm.effects.test {
+            vm.onIntent(CrewSettingsIntent.SwitchCrew)
+            assertEquals(CrewSettingsEffect.NavigateToCrewPicker, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    private fun buildVm(
+        actingAs: AccountId,
+        repo: FakeCrewRepository = FakeCrewRepository(listOf(sampleCrew)),
+    ): CrewSettingsViewModel {
         val session = FixedSessionProvider(Session(accountId = actingAs, activeCrewId = crewId))
         return CrewSettingsViewModel(
             crewId = crewId,

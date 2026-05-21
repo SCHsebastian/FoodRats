@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.crew.presentation.picker
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.account.Account
+import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -46,6 +48,10 @@ class FakeActiveCrew : ActiveCrewProvider {
     override suspend fun clear() { active.value = null }
 }
 
+class FakeAccountReadPort(private val account: Account?) : AccountReadPort {
+    override fun observe(id: AccountId): Flow<Account?> = MutableStateFlow(account)
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class CrewPickerViewModelTest {
 
@@ -62,6 +68,14 @@ class CrewPickerViewModelTest {
         members = listOf(Member(me, "Me", null, Instant.fromEpochMilliseconds(0L))),
     )
 
+    private val myAccount = Account(
+        id = me,
+        handle = "me",
+        displayName = "Me",
+        email = null,
+        avatarUrl = null,
+    )
+
     private fun viewModel(repo: FakeCrewRepository, active: FakeActiveCrew = FakeActiveCrew()) =
         CrewPickerViewModel(
             session = FakeSessionProvider(Session(me, null)),
@@ -69,6 +83,7 @@ class CrewPickerViewModelTest {
             createCrew = CreateCrewUseCase(repo),
             joinCrew = JoinCrewByCodeUseCase(repo),
             switchActive = SwitchActiveCrewUseCase(active),
+            accountRead = FakeAccountReadPort(myAccount),
         )
 
     @Test fun load_emits_crews() = runTest {
