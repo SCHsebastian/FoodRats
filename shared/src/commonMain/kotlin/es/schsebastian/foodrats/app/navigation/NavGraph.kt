@@ -35,14 +35,17 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import es.schsebastian.foodrats.app.i18n.SharedStringKey
+import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
+import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScreen
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsScreen
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailScreen
@@ -53,6 +56,7 @@ import es.schsebastian.foodrats.feature.meal.presentation.publish.PublishMealScr
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
 import org.koin.compose.koinInject
+import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun NavGraph(navController: NavController = rememberNavController()) {
@@ -178,6 +182,8 @@ private fun MainScaffold(rootController: NavHostController) {
     val currentRoute = backStack?.destination?.route
     val isStats = currentRoute?.contains("Stats") == true
     val titleKey = if (isStats) SharedStringKey.NavTabStats else SharedStringKey.NavTabFeed
+    val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
+    val topBarAvatar by topBarAvatarVm.state.collectAsState()
     Scaffold(
         // Make the Scaffold's own surface match the bottom bar tint so the area
         // behind the Android system navigation bar (3-button or gesture pill)
@@ -186,9 +192,20 @@ private fun MainScaffold(rootController: NavHostController) {
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text(resolve(titleKey)) },
+                navigationIcon = {
+                    IconButton(onClick = { rootController.navigate(Route.Profile) }) {
+                        FrAvatar(
+                            initials = topBarAvatar.initials,
+                            imageUrl = topBarAvatar.avatarUrl,
+                            size = Sizes.avatarSm,
+                            contentDescription = resolve(SharedStringKey.NavProfileCta),
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 ),
                 actions = {

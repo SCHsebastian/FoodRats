@@ -21,6 +21,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvat
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileViewModel
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInViewModel
+import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -51,4 +52,5 @@ val authModule = module {
     factoryOf(::UpdateMyAvatarUseCase)
     viewModelOf(::SignInViewModel)
     viewModelOf(::ProfileViewModel)
+    viewModelOf(::TopBarAvatarViewModel)
 }
