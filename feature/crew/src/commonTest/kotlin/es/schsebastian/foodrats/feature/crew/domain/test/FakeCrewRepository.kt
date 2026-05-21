@@ -18,6 +18,10 @@ class FakeCrewRepository(
     var nextCreate: Result<Crew, CrewError>? = null
     var nextJoin: Result<Crew, CrewError>? = null
     var nextLeave: Result<Unit, CrewError>? = null
+    /** When set, overrides the default rename behavior (ownership check + mutation). */
+    var nextRename: Result<Unit, CrewError>? = null
+    /** When set, overrides the default delete behavior (ownership check + mutation). */
+    var nextDelete: Result<Unit, CrewError>? = null
 
     var lastRename: Pair<CrewId, String>? = null
     var lastMemberRename: Triple<CrewId, AccountId, String>? = null
@@ -63,6 +67,7 @@ class FakeCrewRepository(
         requestedBy: AccountId,
         newName: String,
     ): Result<Unit, CrewError> {
+        nextRename?.let { return it }
         val crew = crews.value.firstOrNull { it.id == crewId }
             ?: return Result.failure(CrewError.Membership.NotFound)
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
@@ -75,6 +80,7 @@ class FakeCrewRepository(
         crewId: CrewId,
         requestedBy: AccountId,
     ): Result<Unit, CrewError> {
+        nextDelete?.let { return it }
         val crew = crews.value.firstOrNull { it.id == crewId }
             ?: return Result.failure(CrewError.Membership.NotFound)
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
