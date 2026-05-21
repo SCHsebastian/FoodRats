@@ -1,8 +1,8 @@
 package es.schsebastian.foodrats.feature.meal.data.repository
 
 import dev.gitlive.firebase.auth.FirebaseAuth
+import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
-import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -29,14 +29,15 @@ import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.shareIn
@@ -56,7 +57,7 @@ internal class FirebaseMealRepository(
     private val clock: Clock,
     private val auth: FirebaseAuth,
     private val zone: TimeZone,
-    private val crewMembers: CrewMembersPort,
+    private val accountRead: AccountReadPort,
 ) : MealRepository {
 
     // CoroutineExceptionHandler is mandatory: when sign-out revokes the auth token,
@@ -77,21 +78,30 @@ internal class FirebaseMealRepository(
     private val streamsLock = Mutex()
     private val streams = mutableMapOf<CrewId, SharedFlow<List<MealWithRatings>>>()
 
+    // Identity for authors and raters is sourced from the live `accounts/{id}` doc via
+    // AccountReadPort, not from the denormalized snapshots baked into the meal document
+    // or the crew members cache. A profile rename in :feature:auth propagates to the
+    // feed and the meal detail vote breakdown without a republish or rejoin.
+    @OptIn(ExperimentalCoroutinesApi::class)
     private suspend fun crewStream(crewId: CrewId): SharedFlow<List<MealWithRatings>> =
         streamsLock.withLock {
             streams.getOrPut(crewId) {
                 val today = MealDay.today(clock, zone)
                 val from = MealDay(today.date.minus(DatePeriod(days = STATS_WINDOW_DAYS - 1)), zone)
-                val mealsFlow = firestore.observeForRange(crewId, from, today)
-                val membersFlow = crewMembers.observeMembers(crewId)
-                combine(mealsFlow, membersFlow) { dtos, members ->
-                    val lookup = members.associate {
-                        it.accountUid to CrewMemberLookup(it.displayName, it.avatarUrl)
+                firestore.observeForRange(crewId, from, today)
+                    .flatMapLatest { dtos ->
+                        val ids = dtos.flatMap { dto ->
+                            listOfNotNull(dto.authorId) + dto.ratings.keys
+                        }.mapNotNull { (AccountId.of(it) as? Result.Ok)?.value }.toSet()
+                        accountRead.observeMany(ids).map { identities ->
+                            val lookup = identities.entries.mapNotNull { (id, acc) ->
+                                acc?.let { id.value to CrewMemberLookup(acc.displayName, acc.avatarUrl) }
+                            }.toMap()
+                            dtos.mapNotNull { dto ->
+                                (dto.toMealWithRatings(lookup) as? Result.Ok)?.value
+                            }
+                        }
                     }
-                    dtos.mapNotNull { dto ->
-                        (dto.toMealWithRatings(lookup) as? Result.Ok)?.value
-                    }
-                }
                     // PERMISSION_DENIED-on-signout becomes an empty list, which downstream
                     // observers already render gracefully (no meals → empty state).
                     .catch { t ->
