@@ -17,10 +17,13 @@ import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountWrite
 import es.schsebastian.foodrats.feature.auth.data.repository.AuthSignOutPort
 import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
@@ -43,5 +46,7 @@ val authModule = module {
     single<AccountWritePort> {
         FirestoreAccountWriter(firestore = get(), avatarStorage = get(), dispatchers = get())
     }
+    factoryOf(::UpdateMyDisplayNameUseCase)
+    factoryOf(::UpdateMyAvatarUseCase)
     viewModelOf(::SignInViewModel)
 }
