@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import es.schsebastian.foodrats.core.data.share.ShareController
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
@@ -32,20 +33,11 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.model.CrewId
-import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
-import es.schsebastian.foodrats.feature.crew.presentation.components.MyAvatarPicker
-import es.schsebastian.foodrats.feature.crew.presentation.components.resizeAvatarForUpload
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
-import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
-import io.github.ismoy.imagepickerkmp.domain.models.MimeType
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
-import kotlinx.io.readByteArray
-import es.schsebastian.foodrats.core.data.share.ShareController
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -58,43 +50,18 @@ fun CrewSettingsScreen(
     onLeft: () -> Unit,
     onSwitch: () -> Unit = {},
     onDeleted: () -> Unit = {},
-    onSignedOut: () -> Unit = {},
     vm: CrewSettingsViewModel = koinViewModel(parameters = { parametersOf((CrewId.of(crewId) as es.schsebastian.foodrats.core.domain.result.Result.Ok).value) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val share = koinInject<ShareController>()
-    val picker = rememberImagePickerKMP()
-
-    LaunchedEffect(picker.result) {
-        when (val result = picker.result) {
-            is ImagePickerResult.Success -> {
-                val photo = result.first ?: return@LaunchedEffect
-                val bytes = photo.asSource().readByteArray().resizeAvatarForUpload()
-                vm.onIntent(CrewSettingsIntent.UpdateMyAvatar(bytes))
-                picker.reset()
-            }
-            is ImagePickerResult.Error -> {
-                println("[CrewSettingsScreen] avatar picker error: ${result.exception.message}")
-                picker.reset()
-            }
-            is ImagePickerResult.Dismissed,
-            is ImagePickerResult.Loading,
-            is ImagePickerResult.Idle -> Unit
-        }
-    }
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
-            FrLog.d(FrLog.Tags.SignOut) { "screen: effect=$eff" }
             when (eff) {
                 CrewSettingsEffect.NavigateToCrewPicker -> onSwitch()
                 CrewSettingsEffect.Left -> onLeft()
                 CrewSettingsEffect.Deleted -> onDeleted()
-                CrewSettingsEffect.SignedOut -> {
-                    FrLog.d(FrLog.Tags.SignOut) { "screen: invoking onSignedOut() (RootNav handles nav)" }
-                    onSignedOut()
-                }
             }
         }
     }
@@ -198,45 +165,6 @@ fun CrewSettingsScreen(
 
                 item { Spacer(Modifier.height(Spacing.lg)) }
 
-                // Section: Your profile
-                item {
-                    FrText(
-                        text = resolve(CrewStringKey.SettingsMyProfileSection),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(Spacing.md))
-                    MyAvatarPicker(
-                        initials = state.editingMyDisplayName.ifBlank { "?" }.take(2),
-                        avatarUrl = state.myAvatarUrl,
-                        onPickClick = {
-                            picker.launchGallery(
-                                allowMultiple = false,
-                                mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
-                            )
-                        },
-                        busy = state.isUpdatingAvatar,
-                        changeLabel = resolve(CrewStringKey.SettingsChangeAvatarCta),
-                        uploadingLabel = resolve(CrewStringKey.SettingsAvatarUploading),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.md))
-                    FrTextField(
-                        value = state.editingMyDisplayName,
-                        onValueChange = { vm.onIntent(CrewSettingsIntent.MyDisplayNameChanged(it)) },
-                        label = resolve(CrewStringKey.SettingsMyDisplayNameLabel),
-                        enabled = !state.isSavingMyDisplayName,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.sm))
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsSave),
-                        onClick = { vm.onIntent(CrewSettingsIntent.SaveMyDisplayName) },
-                        enabled = state.editingMyDisplayName.isNotBlank() && !state.isSavingMyDisplayName,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.lg))
-                }
-
                 // Section: Actions
                 item {
                     FrText(
@@ -258,18 +186,6 @@ fun CrewSettingsScreen(
                         enabled = !state.isLeaving,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(Modifier.height(Spacing.sm))
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsSignOutCta),
-                        onClick = { vm.onIntent(CrewSettingsIntent.SignOut) },
-                        variant = FrButtonVariant.Secondary,
-                        enabled = !state.isSigningOut,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (state.signOutError != null) {
-                        Spacer(Modifier.height(Spacing.sm))
-                        FrErrorBanner(text = resolve(CrewStringKey.SettingsSignOutFailed))
-                    }
                     Spacer(Modifier.height(Spacing.lg))
                 }
 

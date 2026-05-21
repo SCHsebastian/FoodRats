@@ -100,11 +100,6 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 onLeft = { controller.navigateTopLevel(Route.CrewPicker) },
                 onSwitch = { controller.navigate(Route.CrewPicker) },
                 onDeleted = { controller.navigateTopLevel(Route.CrewPicker) },
-                // No screen-side navigation on sign-out: RootNavViewModel observes
-                // SessionProvider.current going null and routes the app to SignIn via
-                // navigateTopLevel (the real stack wipe). A defensive popBackStack here
-                // races against that stack wipe and lands the user on a stale frame.
-                onSignedOut = { /* handled by RootNavViewModel */ },
             )
         }
 

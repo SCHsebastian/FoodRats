@@ -71,22 +71,6 @@ class FakeCrewRepository(
         return Result.success(Unit)
     }
 
-    override suspend fun renameMember(
-        crewId: CrewId,
-        accountId: AccountId,
-        newDisplayName: String,
-    ): Result<Unit, CrewError> {
-        lastMemberRename = Triple(crewId, accountId, newDisplayName)
-        crews.value = crews.value.map { crew ->
-            if (crew.id == crewId) {
-                crew.copy(members = crew.members.map { m ->
-                    if (m.accountId == accountId) m.copy(displayName = newDisplayName) else m
-                })
-            } else crew
-        }
-        return Result.success(Unit)
-    }
-
     override suspend fun deleteCrew(
         crewId: CrewId,
         requestedBy: AccountId,
@@ -99,26 +83,6 @@ class FakeCrewRepository(
         return Result.success(Unit)
     }
 
-    var lastAvatarUpdate: Triple<CrewId, AccountId, Int>? = null
-    var nextAvatarUrl: String = "https://example.invalid/avatar.jpg"
-    var nextAvatarFailure: CrewError? = null
-
-    override suspend fun updateMyAvatar(
-        crewId: CrewId,
-        accountId: AccountId,
-        bytes: ByteArray,
-    ): Result<String, CrewError> {
-        nextAvatarFailure?.let { return Result.failure(it) }
-        lastAvatarUpdate = Triple(crewId, accountId, bytes.size)
-        crews.value = crews.value.map { crew ->
-            if (crew.id == crewId) {
-                crew.copy(members = crew.members.map { m ->
-                    if (m.accountId == accountId) m.copy(avatarUrl = nextAvatarUrl) else m
-                })
-            } else crew
-        }
-        return Result.success(nextAvatarUrl)
-    }
 }
 
 /** Helper: create AccountId without going through validation (tests only). */

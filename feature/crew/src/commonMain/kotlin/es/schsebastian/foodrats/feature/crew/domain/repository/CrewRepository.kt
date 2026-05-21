@@ -28,19 +28,6 @@ interface CrewRepository {
     /** Renames a Crew. Only the owner may rename. */
     suspend fun renameCrew(crewId: CrewId, requestedBy: AccountId, newName: String): Result<Unit, CrewError>
 
-    /** Renames a member's display name within a Crew. */
-    suspend fun renameMember(crewId: CrewId, accountId: AccountId, newDisplayName: String): Result<Unit, CrewError>
-
-    /**
-     * Uploads new avatar bytes for the caller and propagates the URL to:
-     *  - `accounts/{uid}.avatarUrl` (canonical)
-     *  - `crews/{crewId}.members.{uid}.avatarUrl` (denormalized, what the UI reads today)
-     *  - the FirebaseAuth profile (so future meal publishes pick it up via `currentUser.photoURL`)
-     *
-     * Returns the new download URL on success.
-     */
-    suspend fun updateMyAvatar(crewId: CrewId, accountId: AccountId, bytes: ByteArray): Result<String, CrewError>
-
     /** Deletes a Crew entirely. Only the owner may delete. */
     suspend fun deleteCrew(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError>
 }
