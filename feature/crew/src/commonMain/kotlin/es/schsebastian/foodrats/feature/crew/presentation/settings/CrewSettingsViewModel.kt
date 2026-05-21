@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -18,6 +19,7 @@ class CrewSettingsViewModel(
     private val renameCrew: RenameCrewUseCase,
     private val deleteCrew: DeleteCrewUseCase,
     private val leaveCrew: LeaveCrewUseCase,
+    private val removeMember: RemoveMemberUseCase,
     private val session: SessionProvider,
 ) : MviViewModel<CrewSettingsState, CrewSettingsIntent, CrewSettingsEffect>(CrewSettingsState()) {
 
@@ -32,6 +34,7 @@ class CrewSettingsViewModel(
                             it.copy(
                                 crew = crew,
                                 isOwner = crew.ownerId == myAccountId,
+                                myAccountId = myAccountId,
                                 editingCrewName = if (it.editingCrewName.isEmpty()) crew.name else it.editingCrewName,
                                 error = null,
                             )
@@ -51,6 +54,7 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.RequestDelete -> update { it.copy(showDeleteConfirm = true) }
         CrewSettingsIntent.CancelDelete -> update { it.copy(showDeleteConfirm = false) }
         CrewSettingsIntent.ConfirmDelete -> doDelete()
+        is CrewSettingsIntent.RemoveMemberConfirmed -> doRemoveMember(intent)
         CrewSettingsIntent.DismissError -> update { it.copy(error = null) }
     }
 
@@ -77,6 +81,13 @@ class CrewSettingsViewModel(
         when (val r = deleteCrew(crewId)) {
             is Result.Ok -> { update { it.copy(isDeleting = false) }; emit(CrewSettingsEffect.Deleted) }
             is Result.Err -> update { it.copy(isDeleting = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doRemoveMember(intent: CrewSettingsIntent.RemoveMemberConfirmed) {
+        when (val r = removeMember(intent.accountId)) {
+            is Result.Ok -> Unit
+            is Result.Err -> update { it.copy(error = r.error) }
         }
     }
 }

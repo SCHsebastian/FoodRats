@@ -9,16 +9,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -32,6 +37,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
@@ -55,6 +61,7 @@ fun CrewSettingsScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val share = koinInject<ShareController>()
+    var memberPendingRemoval by remember { mutableStateOf<AccountId?>(null) }
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
@@ -160,7 +167,21 @@ fun CrewSettingsScreen(
                     Spacer(Modifier.height(Spacing.sm))
                 }
                 items(crew.members, key = { it.accountId.value }) { m ->
-                    FrCrewMemberRow(displayName = m.displayName, avatarUrl = m.avatarUrl)
+                    val canRemove = state.isOwner && m.accountId != state.myAccountId
+                    FrCrewMemberRow(
+                        displayName = m.displayName,
+                        avatarUrl = m.avatarUrl,
+                        trailing = if (canRemove) {
+                            {
+                                IconButton(onClick = { memberPendingRemoval = m.accountId }) {
+                                    Icon(
+                                        imageVector = FrIcons.Close,
+                                        contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
+                                    )
+                                }
+                            }
+                        } else null,
+                    )
                 }
 
                 item { Spacer(Modifier.height(Spacing.lg)) }
@@ -226,6 +247,26 @@ fun CrewSettingsScreen(
             crewName = state.crew?.name.orEmpty(),
             onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmDelete) },
             onDismiss = { vm.onIntent(CrewSettingsIntent.CancelDelete) },
+        )
+    }
+
+    memberPendingRemoval?.let { pendingId ->
+        val memberName = state.crew?.members?.firstOrNull { it.accountId == pendingId }?.displayName.orEmpty()
+        AlertDialog(
+            onDismissRequest = { memberPendingRemoval = null },
+            title = { Text(resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName)) },
+            text = { Text(resolve(CrewStringKey.SettingsRemoveMemberConfirmBody, memberName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(pendingId))
+                    memberPendingRemoval = null
+                }) { Text(resolve(CrewStringKey.SettingsRemoveMemberCta)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { memberPendingRemoval = null }) {
+                    Text(resolve(CrewStringKey.SettingsCancel))
+                }
+            },
         )
     }
 }

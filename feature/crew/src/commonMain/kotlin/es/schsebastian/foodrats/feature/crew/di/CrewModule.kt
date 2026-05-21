@@ -20,6 +20,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveMyCrewsUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerViewModel
@@ -58,9 +59,10 @@ val crewModule = module {
     factoryOf(::SwitchActiveCrewUseCase)
     factoryOf(::RenameCrewUseCase)
     factoryOf(::DeleteCrewUseCase)
+    factoryOf(::RemoveMemberUseCase)
 
     viewModelOf(::CrewPickerViewModel)
     viewModel { (crewId: CrewId) ->
-        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get())
+        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get())
     }
 }

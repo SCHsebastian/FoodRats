@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
@@ -9,6 +10,7 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 data class CrewSettingsState(
     val crew: Crew? = null,
     val isOwner: Boolean = false,
+    val myAccountId: AccountId? = null,
     val editingCrewName: String = "",
     val isSavingCrewName: Boolean = false,
     val isLeaving: Boolean = false,
@@ -25,6 +27,7 @@ sealed interface CrewSettingsIntent : MviIntent {
     data object RequestDelete : CrewSettingsIntent
     data object ConfirmDelete : CrewSettingsIntent
     data object CancelDelete : CrewSettingsIntent
+    data class RemoveMemberConfirmed(val accountId: AccountId) : CrewSettingsIntent
     data object DismissError : CrewSettingsIntent
 }
 

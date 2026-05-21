@@ -8,6 +8,7 @@ import foodrats.feature.crew.generated.resources.crew_error_already_member
 import foodrats.feature.crew.generated.resources.crew_error_authorization_not_owner
 import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_blank
 import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_too_long
+import foodrats.feature.crew.generated.resources.crew_remove_member_not_yet_available
 import foodrats.feature.crew.generated.resources.crew_error_code_malformed
 import foodrats.feature.crew.generated.resources.crew_error_code_unknown
 import foodrats.feature.crew.generated.resources.crew_error_collision
@@ -40,6 +41,9 @@ import foodrats.feature.crew.generated.resources.crew_settings_delete_title
 import foodrats.feature.crew.generated.resources.crew_settings_invite_code
 import foodrats.feature.crew.generated.resources.crew_settings_leave_cta
 import foodrats.feature.crew.generated.resources.crew_settings_members_section
+import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_body
+import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_title
+import foodrats.feature.crew.generated.resources.crew_settings_remove_member_cta
 import foodrats.feature.crew.generated.resources.crew_settings_save
 import foodrats.feature.crew.generated.resources.crew_settings_copy_cta
 import foodrats.feature.crew.generated.resources.crew_settings_share
@@ -93,4 +97,8 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     ErrorAuthorizationNotOwner(Res.string.crew_error_authorization_not_owner),
     ErrorValidationDisplayNameBlank(Res.string.crew_error_validation_display_name_blank),
     ErrorValidationDisplayNameTooLong(Res.string.crew_error_validation_display_name_too_long),
+    RemoveMemberNotYetAvailable(Res.string.crew_remove_member_not_yet_available),
+    SettingsRemoveMemberCta(Res.string.crew_settings_remove_member_cta),
+    SettingsRemoveMemberConfirmTitle(Res.string.crew_settings_remove_member_confirm_title),
+    SettingsRemoveMemberConfirmBody(Res.string.crew_settings_remove_member_confirm_body),
 }

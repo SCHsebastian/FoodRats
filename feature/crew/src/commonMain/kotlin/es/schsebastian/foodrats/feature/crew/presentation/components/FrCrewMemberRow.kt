@@ -16,6 +16,7 @@ fun FrCrewMemberRow(
     displayName: String,
     avatarUrl: String?,
     modifier: Modifier = Modifier,
+    trailing: (@Composable () -> Unit)? = null,
 ) {
     Row(
         modifier = modifier.fillMaxWidth().padding(vertical = Spacing.sm),
@@ -24,6 +25,7 @@ fun FrCrewMemberRow(
     ) {
         // FrAvatar takes initials (not a URL). Use first two uppercase chars of displayName.
         FrAvatar(initials = displayName.take(2))
-        FrText(text = displayName)
+        FrText(text = displayName, modifier = Modifier.weight(1f))
+        if (trailing != null) trailing()
     }
 }

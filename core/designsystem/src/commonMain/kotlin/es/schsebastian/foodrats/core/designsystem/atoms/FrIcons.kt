@@ -9,6 +9,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
@@ -77,6 +78,7 @@ object FrIcons {
     val GalleryImport: ImageVector = Icons.Filled.List       // placeholder for Image
     val CameraOff: ImageVector     = Icons.Filled.Warning    // placeholder for NoPhotography
     val Settings: ImageVector      = Icons.Filled.Settings
+    val Close: ImageVector         = Icons.Filled.Close
     // Bottom-nav tabs.
     val Home: ImageVector          = Icons.Filled.Home
     val Stats: ImageVector         = Icons.Filled.Star       // placeholder for BarChart
@@ -96,6 +98,7 @@ private fun FrIconsPreview() {
         "Gallery*"      to FrIcons.GalleryImport,
         "CameraOff*"    to FrIcons.CameraOff,
         "Settings"      to FrIcons.Settings,
+        "Close"         to FrIcons.Close,
         "Home"          to FrIcons.Home,
         "Stats*"        to FrIcons.Stats,
         "ChevronLeft"   to FrIcons.ChevronLeft,

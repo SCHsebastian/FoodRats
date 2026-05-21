@@ -21,4 +21,5 @@ fun CrewError.toStringKey(): CrewStringKey = when (this) {
     CrewError.Backend.Network               -> CrewStringKey.ErrorNetwork
     CrewError.Backend.PermissionDenied      -> CrewStringKey.ErrorPermission
     CrewError.Backend.Unavailable           -> CrewStringKey.ErrorUnknown
+    CrewError.NotImplemented.RemoveMember   -> CrewStringKey.RemoveMemberNotYetAvailable
 }
