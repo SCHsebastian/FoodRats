@@ -19,16 +19,30 @@ data class CrewMemberLookup(
 
 /**
  * Builds a `MealWithRatings` from a `MealDto` (with its denormalized `ratings` map)
- * and a snapshot of the crew's members. Ratings whose raterUid is no longer in the
- * crew document are kept (so `ratingSum` / `voterCount` stay accurate) but show a
- * placeholder display name.
+ * and a live identity lookup keyed by accountId. When the lookup resolves the
+ * author or a rater, its values override the denormalized snapshots on the
+ * meal document so a profile rename propagates without a republish.
+ *
+ * Ratings whose raterUid is missing from the lookup fall back to a placeholder.
+ * The author falls back to the `MealDto.authorName` baked at publish time.
  */
 fun MealDto.toMealWithRatings(
     crewMembers: Map<String, CrewMemberLookup>,
 ): Result<MealWithRatings, MealReadError> {
     val mealResult = this.toDomain()
     if (mealResult !is Result.Ok) return Result.failure(MealReadError.Unavailable)
-    val meal = mealResult.value
+    val baseMeal = mealResult.value
+    val live = crewMembers[this.authorId]
+    val meal = if (live != null) {
+        baseMeal.copy(
+            author = baseMeal.author.copy(
+                displayName = live.displayName,
+                avatarUrl = live.avatarUrl,
+            ),
+        )
+    } else {
+        baseMeal
+    }
     val ratings = this.ratings.mapNotNull { (uid, entry) ->
         val raterId = (AccountId.of(uid) as? Result.Ok)?.value ?: return@mapNotNull null
         val score = (Score.of(entry.score) as? Result.Ok)?.value ?: return@mapNotNull null

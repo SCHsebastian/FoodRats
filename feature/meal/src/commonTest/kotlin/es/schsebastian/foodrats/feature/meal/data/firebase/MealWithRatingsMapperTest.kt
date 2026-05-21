@@ -63,6 +63,51 @@ class MealWithRatingsMapperTest {
     }
 
     @Test
+    fun overrides_stale_author_name_when_lookup_has_live_identity() {
+        val dto = MealDto(
+            id = "m1",
+            authorId = "uid-a",
+            authorName = "OldName",
+            authorAvatarUrl = "https://old/avatar.jpg",
+            crewId = "test-crew-1",
+            dayKey = "2026-05-21",
+            slot = "lunch",
+            photoUrl = "https://example.com/p.jpg",
+            dishName = "Paella",
+            publishedAtEpochMs = 1L,
+        )
+        val members = mapOf(
+            "uid-a" to CrewMemberLookup(displayName = "NewName", avatarUrl = "https://new/a.jpg"),
+        )
+        val result = dto.toMealWithRatings(crewMembers = members)
+        assertTrue(result is Result.Ok)
+        val mwr = (result as Result.Ok).value
+        assertEquals("NewName", mwr.meal.author.displayName)
+        assertEquals("https://new/a.jpg", mwr.meal.author.avatarUrl)
+    }
+
+    @Test
+    fun keeps_dto_author_name_when_lookup_has_no_entry() {
+        val dto = MealDto(
+            id = "m1",
+            authorId = "uid-a",
+            authorName = "FallbackName",
+            authorAvatarUrl = "https://fallback/avatar.jpg",
+            crewId = "test-crew-1",
+            dayKey = "2026-05-21",
+            slot = "lunch",
+            photoUrl = "https://example.com/p.jpg",
+            dishName = "Paella",
+            publishedAtEpochMs = 1L,
+        )
+        val result = dto.toMealWithRatings(crewMembers = emptyMap())
+        assertTrue(result is Result.Ok)
+        val mwr = (result as Result.Ok).value
+        assertEquals("FallbackName", mwr.meal.author.displayName)
+        assertEquals("https://fallback/avatar.jpg", mwr.meal.author.avatarUrl)
+    }
+
+    @Test
     fun substitutes_placeholder_for_ex_members() {
         val dto = MealDto(
             id = "m1",
