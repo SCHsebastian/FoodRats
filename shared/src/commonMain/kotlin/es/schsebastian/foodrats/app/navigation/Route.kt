@@ -11,6 +11,7 @@ sealed interface Route {
 
     @Serializable data object CrewPicker : Route
     @Serializable data class CrewSettings(val crewId: String) : Route
+    @Serializable data object Profile : Route
 
     @Serializable data object Main : Route               // bottom-nav scaffold (Feed + Stats)
 

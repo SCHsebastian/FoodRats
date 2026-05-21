@@ -19,6 +19,7 @@ import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthReposit
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
+import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileViewModel
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,4 +50,5 @@ val authModule = module {
     factoryOf(::UpdateMyDisplayNameUseCase)
     factoryOf(::UpdateMyAvatarUseCase)
     viewModelOf(::SignInViewModel)
+    viewModelOf(::ProfileViewModel)
 }

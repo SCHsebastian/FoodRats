@@ -41,6 +41,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScreen
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsScreen
@@ -101,6 +102,10 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 // races against that stack wipe and lands the user on a stale frame.
                 onSignedOut = { /* handled by RootNavViewModel */ },
             )
+        }
+
+        composable<Route.Profile> {
+            ProfileScreen(onBack = { controller.popBackStack() })
         }
 
         composable<Route.Main> {
