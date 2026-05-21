@@ -40,7 +40,6 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
-import es.schsebastian.foodrats.core.designsystem.molecules.FrTagChipRow
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -169,11 +168,10 @@ private fun MealDetailBody(
             style = MaterialTheme.typography.headlineSmall,
         )
 
-        if (meal.tags.isNotEmpty()) {
-            FrTagChipRow(
-                tags = meal.tags,
-                selected = emptySet(),
-                onToggle = {},
+        if (meal.description.isNotBlank()) {
+            FrText(
+                text = meal.description,
+                style = MaterialTheme.typography.bodyMedium,
             )
         }
 
