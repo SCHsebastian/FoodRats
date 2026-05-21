@@ -16,11 +16,9 @@
     <string name="crew_settings_share_code">Comparte el código: %1$s</string>
     <string name="crew_settings_leave_cta">Salir del grupo</string>
     <string name="crew_settings_crew_section">Grupo</string>
-    <string name="crew_settings_my_profile_section">Tu perfil en este grupo</string>
     <string name="crew_settings_actions_section">Acciones</string>
     <string name="crew_settings_danger_section">Zona de peligro</string>
     <string name="crew_settings_crew_name_label">Nombre del grupo</string>
-    <string name="crew_settings_my_display_name_label">Nombre de usuario</string>
     <string name="crew_settings_save">Guardar</string>
     <string name="crew_settings_switch_crew">Cambiar de grupo</string>
     <string name="crew_settings_invite_code">Código de invitación</string>
@@ -46,8 +44,8 @@
     <string name="crew_error_authorization_not_owner">Solo el dueño del grupo puede hacer esto.</string>
     <string name="crew_error_validation_display_name_blank">El nombre de usuario no puede estar vacío.</string>
     <string name="crew_error_validation_display_name_too_long">El nombre de usuario es demasiado largo (máx. 40 caracteres).</string>
-    <string name="crew_settings_sign_out_cta">Cerrar sesión</string>
-    <string name="crew_settings_sign_out_failed">No se ha podido cerrar sesión. Inténtalo de nuevo.</string>
-    <string name="crew_settings_change_avatar_cta">Cambiar avatar</string>
-    <string name="crew_settings_avatar_uploading">Subiendo…</string>
+    <string name="crew_remove_member_not_yet_available">Quitar miembros aún no está disponible — pronto.</string>
+    <string name="crew_settings_remove_member_cta">Quitar</string>
+    <string name="crew_settings_remove_member_confirm_title">¿Quitar a %1$s?</string>
+    <string name="crew_settings_remove_member_confirm_body">%1$s perderá el acceso al grupo.</string>
 </resources>

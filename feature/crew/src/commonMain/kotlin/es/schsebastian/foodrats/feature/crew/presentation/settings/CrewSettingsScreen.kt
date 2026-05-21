@@ -9,20 +9,26 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import es.schsebastian.foodrats.core.data.share.ShareController
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
@@ -31,21 +37,13 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
-import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
-import es.schsebastian.foodrats.feature.crew.presentation.components.MyAvatarPicker
-import es.schsebastian.foodrats.feature.crew.presentation.components.resizeAvatarForUpload
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
-import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
-import io.github.ismoy.imagepickerkmp.domain.models.MimeType
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
-import kotlinx.io.readByteArray
-import es.schsebastian.foodrats.core.data.share.ShareController
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -58,43 +56,19 @@ fun CrewSettingsScreen(
     onLeft: () -> Unit,
     onSwitch: () -> Unit = {},
     onDeleted: () -> Unit = {},
-    onSignedOut: () -> Unit = {},
     vm: CrewSettingsViewModel = koinViewModel(parameters = { parametersOf((CrewId.of(crewId) as es.schsebastian.foodrats.core.domain.result.Result.Ok).value) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val share = koinInject<ShareController>()
-    val picker = rememberImagePickerKMP()
-
-    LaunchedEffect(picker.result) {
-        when (val result = picker.result) {
-            is ImagePickerResult.Success -> {
-                val photo = result.first ?: return@LaunchedEffect
-                val bytes = photo.asSource().readByteArray().resizeAvatarForUpload()
-                vm.onIntent(CrewSettingsIntent.UpdateMyAvatar(bytes))
-                picker.reset()
-            }
-            is ImagePickerResult.Error -> {
-                println("[CrewSettingsScreen] avatar picker error: ${result.exception.message}")
-                picker.reset()
-            }
-            is ImagePickerResult.Dismissed,
-            is ImagePickerResult.Loading,
-            is ImagePickerResult.Idle -> Unit
-        }
-    }
+    var memberPendingRemoval by remember { mutableStateOf<AccountId?>(null) }
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
-            FrLog.d(FrLog.Tags.SignOut) { "screen: effect=$eff" }
             when (eff) {
                 CrewSettingsEffect.NavigateToCrewPicker -> onSwitch()
                 CrewSettingsEffect.Left -> onLeft()
                 CrewSettingsEffect.Deleted -> onDeleted()
-                CrewSettingsEffect.SignedOut -> {
-                    FrLog.d(FrLog.Tags.SignOut) { "screen: invoking onSignedOut() (RootNav handles nav)" }
-                    onSignedOut()
-                }
             }
         }
     }
@@ -193,49 +167,24 @@ fun CrewSettingsScreen(
                     Spacer(Modifier.height(Spacing.sm))
                 }
                 items(crew.members, key = { it.accountId.value }) { m ->
-                    FrCrewMemberRow(displayName = m.displayName, avatarUrl = m.avatarUrl)
+                    val canRemove = state.isOwner && m.accountId != state.myAccountId
+                    FrCrewMemberRow(
+                        displayName = m.displayName,
+                        avatarUrl = m.avatarUrl,
+                        trailing = if (canRemove) {
+                            {
+                                IconButton(onClick = { memberPendingRemoval = m.accountId }) {
+                                    Icon(
+                                        imageVector = FrIcons.Close,
+                                        contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
+                                    )
+                                }
+                            }
+                        } else null,
+                    )
                 }
 
                 item { Spacer(Modifier.height(Spacing.lg)) }
-
-                // Section: Your profile
-                item {
-                    FrText(
-                        text = resolve(CrewStringKey.SettingsMyProfileSection),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(Spacing.md))
-                    MyAvatarPicker(
-                        initials = state.editingMyDisplayName.ifBlank { "?" }.take(2),
-                        avatarUrl = state.myAvatarUrl,
-                        onPickClick = {
-                            picker.launchGallery(
-                                allowMultiple = false,
-                                mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
-                            )
-                        },
-                        busy = state.isUpdatingAvatar,
-                        changeLabel = resolve(CrewStringKey.SettingsChangeAvatarCta),
-                        uploadingLabel = resolve(CrewStringKey.SettingsAvatarUploading),
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.md))
-                    FrTextField(
-                        value = state.editingMyDisplayName,
-                        onValueChange = { vm.onIntent(CrewSettingsIntent.MyDisplayNameChanged(it)) },
-                        label = resolve(CrewStringKey.SettingsMyDisplayNameLabel),
-                        enabled = !state.isSavingMyDisplayName,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.sm))
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsSave),
-                        onClick = { vm.onIntent(CrewSettingsIntent.SaveMyDisplayName) },
-                        enabled = state.editingMyDisplayName.isNotBlank() && !state.isSavingMyDisplayName,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.lg))
-                }
 
                 // Section: Actions
                 item {
@@ -258,18 +207,6 @@ fun CrewSettingsScreen(
                         enabled = !state.isLeaving,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(Modifier.height(Spacing.sm))
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsSignOutCta),
-                        onClick = { vm.onIntent(CrewSettingsIntent.SignOut) },
-                        variant = FrButtonVariant.Secondary,
-                        enabled = !state.isSigningOut,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (state.signOutError != null) {
-                        Spacer(Modifier.height(Spacing.sm))
-                        FrErrorBanner(text = resolve(CrewStringKey.SettingsSignOutFailed))
-                    }
                     Spacer(Modifier.height(Spacing.lg))
                 }
 
@@ -310,6 +247,26 @@ fun CrewSettingsScreen(
             crewName = state.crew?.name.orEmpty(),
             onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmDelete) },
             onDismiss = { vm.onIntent(CrewSettingsIntent.CancelDelete) },
+        )
+    }
+
+    memberPendingRemoval?.let { pendingId ->
+        val memberName = state.crew?.members?.firstOrNull { it.accountId == pendingId }?.displayName.orEmpty()
+        AlertDialog(
+            onDismissRequest = { memberPendingRemoval = null },
+            title = { Text(resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName)) },
+            text = { Text(resolve(CrewStringKey.SettingsRemoveMemberConfirmBody, memberName)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(pendingId))
+                    memberPendingRemoval = null
+                }) { Text(resolve(CrewStringKey.SettingsRemoveMemberCta)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { memberPendingRemoval = null }) {
+                    Text(resolve(CrewStringKey.SettingsCancel))
+                }
+            },
         )
     }
 }

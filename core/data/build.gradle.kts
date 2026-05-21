@@ -29,6 +29,8 @@ kotlin {
             implementation(libs.firebase.storage)
             implementation(libs.koin.core)
             implementation(libs.okio)
+            implementation(libs.coil.core)
+            implementation(libs.coil.network.ktor3)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -43,9 +45,13 @@ kotlin {
             // Crashlytics has no GitLive KMP binding — AndroidCrashReporter (androidMain) wraps the
             // native SDK directly. Version pinned by the BOM above.
             implementation("com.google.firebase:firebase-crashlytics")
+            // Ktor engine for Coil's KtorNetworkFetcherFactory on Android.
+            implementation(libs.ktor.client.okhttp)
         }
         iosMain.dependencies {
             // PreferenceDataStoreFactory.createWithPath is provided by datastore-preferences (KMP)
+            // Ktor engine for Coil's KtorNetworkFetcherFactory on iOS.
+            implementation(libs.ktor.client.darwin)
         }
     }
 }

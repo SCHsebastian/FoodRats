@@ -8,7 +8,7 @@ import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
 import es.schsebastian.foodrats.core.data.di.crashIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
 import es.schsebastian.foodrats.feature.auth.di.authIosModule
-import es.schsebastian.foodrats.feature.feed.data.image.installFeedImageLoader
+import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -41,7 +41,7 @@ fun MainViewController(
     crashLog: (String) -> Unit,
 ) = ComposeUIViewController(
     configure = {
-        installFeedImageLoader()
+        installImageLoader()
         startKoin {
             modules(
                 appModules + listOf(

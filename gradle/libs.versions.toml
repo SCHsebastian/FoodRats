@@ -108,6 +108,7 @@ androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", 
 
 # Coil 3 — multiplatform image loader (Android + iOS). Used by FrFeedMealCard for meal photos.
 # coil-network-ktor3 plugs into the existing Ktor 3 client so we don't pull a second HTTP stack.
+coil-core          = { module = "io.coil-kt.coil3:coil",               version.ref = "coil" }
 coil-compose       = { module = "io.coil-kt.coil3:coil-compose",       version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 

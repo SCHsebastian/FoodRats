@@ -31,6 +31,7 @@ class CrewFirestoreDataSource(
     private val codeGenerator: CrewCodeGenerator,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
+    private val writer: CrewMemberWriter,
 ) {
 
     // CoroutineExceptionHandler is mandatory here: any uncaught exception inside the
@@ -193,6 +194,24 @@ class CrewFirestoreDataSource(
         }
 
     suspend fun renameMember(
+        crewId: CrewId,
+        accountId: AccountId,
+        newDisplayName: String,
+    ): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                writer.renameAndPropagate(crewId, accountId, newDisplayName)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    /**
+     * Writes ONLY the denormalized `crews/{crewId}.members.{uid}.displayName` field.
+     * Unlike [renameMember], this does NOT touch `accounts/{uid}` — the canonical write
+     * is the caller's responsibility (see `AccountWritePort` from :core:domain).
+     * Used by `CrewMemberCacheWritePort` to satisfy the no-cross-feature-deps rule.
+     */
+    suspend fun setMemberDisplayName(
         crewId: CrewId,
         accountId: AccountId,
         newDisplayName: String,

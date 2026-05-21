@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="meal_capture_title">Today\'s meal</string>
-    <string name="meal_capture_tap_to_take_photo">Tap to take photo</string>
-    <string name="meal_capture_no_perm_headline">Camera permission needed</string>
-    <string name="meal_capture_no_perm_subtext">FoodRats needs the camera to capture your meal photo.</string>
     <string name="meal_compose_title">Compose your plate</string>
     <string name="meal_publish_title">Review and publish</string>
 

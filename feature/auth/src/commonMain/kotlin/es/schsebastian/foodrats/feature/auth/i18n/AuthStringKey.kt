@@ -18,6 +18,19 @@ import foodrats.feature.auth.generated.resources.auth_field_password
 import foodrats.feature.auth.generated.resources.auth_mode_signin_cta
 import foodrats.feature.auth.generated.resources.auth_mode_signup_cta
 import foodrats.feature.auth.generated.resources.auth_or_divider
+import foodrats.feature.auth.generated.resources.auth_profile_account_section
+import foodrats.feature.auth.generated.resources.auth_profile_avatar_uploading
+import foodrats.feature.auth.generated.resources.auth_profile_backend_unavailable
+import foodrats.feature.auth.generated.resources.auth_profile_change_avatar_cta
+import foodrats.feature.auth.generated.resources.auth_profile_display_name_blank
+import foodrats.feature.auth.generated.resources.auth_profile_display_name_label
+import foodrats.feature.auth.generated.resources.auth_profile_display_name_too_long
+import foodrats.feature.auth.generated.resources.auth_profile_identity_section
+import foodrats.feature.auth.generated.resources.auth_profile_save
+import foodrats.feature.auth.generated.resources.auth_profile_sign_out_cta
+import foodrats.feature.auth.generated.resources.auth_profile_sign_out_failed
+import foodrats.feature.auth.generated.resources.auth_profile_signed_in_as_label
+import foodrats.feature.auth.generated.resources.auth_profile_title
 import foodrats.feature.auth.generated.resources.auth_signin_continue_google
 import foodrats.feature.auth.generated.resources.auth_signin_footer
 import foodrats.feature.auth.generated.resources.auth_signin_highlight_feed
@@ -55,4 +68,17 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ErrorPasswordTooShort(Res.string.auth_error_password_too_short),
     ErrorEmailInUse(Res.string.auth_error_email_in_use),
     ErrorWrongCredentials(Res.string.auth_error_wrong_credentials),
+    ProfileTitle(Res.string.auth_profile_title),
+    ProfileIdentitySection(Res.string.auth_profile_identity_section),
+    ProfileDisplayNameLabel(Res.string.auth_profile_display_name_label),
+    ProfileSignedInAsLabel(Res.string.auth_profile_signed_in_as_label),
+    ProfileSave(Res.string.auth_profile_save),
+    ProfileChangeAvatarCta(Res.string.auth_profile_change_avatar_cta),
+    ProfileAvatarUploading(Res.string.auth_profile_avatar_uploading),
+    ProfileAccountSection(Res.string.auth_profile_account_section),
+    ProfileSignOutCta(Res.string.auth_profile_sign_out_cta),
+    ProfileSignOutFailed(Res.string.auth_profile_sign_out_failed),
+    ProfileDisplayNameBlank(Res.string.auth_profile_display_name_blank),
+    ProfileDisplayNameTooLong(Res.string.auth_profile_display_name_too_long),
+    ProfileBackendUnavailable(Res.string.auth_profile_backend_unavailable),
 }

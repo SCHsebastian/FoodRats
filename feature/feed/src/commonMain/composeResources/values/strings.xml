@@ -39,4 +39,5 @@
     <string name="feed_comments_error_too_long">Max 500 characters</string>
     <string name="feed_comments_error_unavailable">Couldn\'t post. Try again.</string>
     <string name="feed_comments_error_unauthorized">You can\'t comment on this meal</string>
+    <string name="feed_deleted_author">Deleted user</string>
 </resources>

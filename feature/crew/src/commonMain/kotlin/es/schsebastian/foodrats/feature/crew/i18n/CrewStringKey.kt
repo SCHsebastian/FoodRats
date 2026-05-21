@@ -8,6 +8,7 @@ import foodrats.feature.crew.generated.resources.crew_error_already_member
 import foodrats.feature.crew.generated.resources.crew_error_authorization_not_owner
 import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_blank
 import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_too_long
+import foodrats.feature.crew.generated.resources.crew_remove_member_not_yet_available
 import foodrats.feature.crew.generated.resources.crew_error_code_malformed
 import foodrats.feature.crew.generated.resources.crew_error_code_unknown
 import foodrats.feature.crew.generated.resources.crew_error_collision
@@ -28,10 +29,8 @@ import foodrats.feature.crew.generated.resources.crew_picker_hero_subtitle
 import foodrats.feature.crew.generated.resources.crew_picker_join_cta
 import foodrats.feature.crew.generated.resources.crew_picker_title
 import foodrats.feature.crew.generated.resources.crew_settings_actions_section
-import foodrats.feature.crew.generated.resources.crew_settings_avatar_uploading
 import foodrats.feature.crew.generated.resources.crew_settings_back_cta
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
-import foodrats.feature.crew.generated.resources.crew_settings_change_avatar_cta
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
 import foodrats.feature.crew.generated.resources.crew_settings_danger_section
@@ -42,14 +41,13 @@ import foodrats.feature.crew.generated.resources.crew_settings_delete_title
 import foodrats.feature.crew.generated.resources.crew_settings_invite_code
 import foodrats.feature.crew.generated.resources.crew_settings_leave_cta
 import foodrats.feature.crew.generated.resources.crew_settings_members_section
-import foodrats.feature.crew.generated.resources.crew_settings_my_display_name_label
-import foodrats.feature.crew.generated.resources.crew_settings_my_profile_section
+import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_body
+import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_title
+import foodrats.feature.crew.generated.resources.crew_settings_remove_member_cta
 import foodrats.feature.crew.generated.resources.crew_settings_save
 import foodrats.feature.crew.generated.resources.crew_settings_copy_cta
 import foodrats.feature.crew.generated.resources.crew_settings_share
 import foodrats.feature.crew.generated.resources.crew_settings_share_code
-import foodrats.feature.crew.generated.resources.crew_settings_sign_out_cta
-import foodrats.feature.crew.generated.resources.crew_settings_sign_out_failed
 import foodrats.feature.crew.generated.resources.crew_settings_switch_crew
 import foodrats.feature.crew.generated.resources.crew_settings_title
 import org.jetbrains.compose.resources.StringResource
@@ -71,11 +69,9 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsShareCode(Res.string.crew_settings_share_code),
     SettingsLeaveCta(Res.string.crew_settings_leave_cta),
     SettingsCrewSection(Res.string.crew_settings_crew_section),
-    SettingsMyProfileSection(Res.string.crew_settings_my_profile_section),
     SettingsActionsSection(Res.string.crew_settings_actions_section),
     SettingsDangerSection(Res.string.crew_settings_danger_section),
     SettingsCrewNameLabel(Res.string.crew_settings_crew_name_label),
-    SettingsMyDisplayNameLabel(Res.string.crew_settings_my_display_name_label),
     SettingsSave(Res.string.crew_settings_save),
     SettingsSwitchCrew(Res.string.crew_settings_switch_crew),
     SettingsInviteCode(Res.string.crew_settings_invite_code),
@@ -86,10 +82,6 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsDeleteBody(Res.string.crew_settings_delete_body),
     SettingsDeleteConfirm(Res.string.crew_settings_delete_confirm),
     SettingsCancel(Res.string.crew_settings_cancel),
-    SettingsSignOutCta(Res.string.crew_settings_sign_out_cta),
-    SettingsSignOutFailed(Res.string.crew_settings_sign_out_failed),
-    SettingsChangeAvatarCta(Res.string.crew_settings_change_avatar_cta),
-    SettingsAvatarUploading(Res.string.crew_settings_avatar_uploading),
     ErrorNameBlank(Res.string.crew_error_name_blank),
     ErrorNameTooLong(Res.string.crew_error_name_too_long),
     ErrorCodeMalformed(Res.string.crew_error_code_malformed),
@@ -105,4 +97,8 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     ErrorAuthorizationNotOwner(Res.string.crew_error_authorization_not_owner),
     ErrorValidationDisplayNameBlank(Res.string.crew_error_validation_display_name_blank),
     ErrorValidationDisplayNameTooLong(Res.string.crew_error_validation_display_name_too_long),
+    RemoveMemberNotYetAvailable(Res.string.crew_remove_member_not_yet_available),
+    SettingsRemoveMemberCta(Res.string.crew_settings_remove_member_cta),
+    SettingsRemoveMemberConfirmTitle(Res.string.crew_settings_remove_member_confirm_title),
+    SettingsRemoveMemberConfirmBody(Res.string.crew_settings_remove_member_confirm_body),
 }

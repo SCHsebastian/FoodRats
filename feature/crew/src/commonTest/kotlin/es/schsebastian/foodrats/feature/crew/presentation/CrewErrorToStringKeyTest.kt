@@ -23,4 +23,5 @@ class CrewErrorToStringKeyTest {
     @Test fun maps_authorization_not_owner() = assertEquals(CrewStringKey.ErrorAuthorizationNotOwner, CrewError.Authorization.NotOwner.toStringKey())
     @Test fun maps_validation_display_name_blank() = assertEquals(CrewStringKey.ErrorValidationDisplayNameBlank, CrewError.Validation.DisplayNameBlank.toStringKey())
     @Test fun maps_validation_display_name_too_long() = assertEquals(CrewStringKey.ErrorValidationDisplayNameTooLong, CrewError.Validation.DisplayNameTooLong.toStringKey())
+    @Test fun maps_not_implemented_remove_member() = assertEquals(CrewStringKey.RemoveMemberNotYetAvailable, CrewError.NotImplemented.RemoveMember.toStringKey())
 }

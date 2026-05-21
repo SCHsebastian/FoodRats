@@ -2,10 +2,6 @@ package es.schsebastian.foodrats.feature.meal.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.meal.generated.resources.Res
-import foodrats.feature.meal.generated.resources.meal_capture_no_perm_headline
-import foodrats.feature.meal.generated.resources.meal_capture_no_perm_subtext
-import foodrats.feature.meal.generated.resources.meal_capture_tap_to_take_photo
-import foodrats.feature.meal.generated.resources.meal_capture_title
 import foodrats.feature.meal.generated.resources.meal_compose_title
 import foodrats.feature.meal.generated.resources.meal_error_already_posted
 import foodrats.feature.meal.generated.resources.meal_error_not_today
@@ -27,10 +23,6 @@ import foodrats.feature.meal.generated.resources.meal_tag_separator
 import org.jetbrains.compose.resources.StringResource
 
 enum class MealStringKey(override val resourceId: StringResource) : StringKey {
-    CaptureTitle(Res.string.meal_capture_title),
-    CaptureTapToTakePhoto(Res.string.meal_capture_tap_to_take_photo),
-    CaptureNoPermissionHeadline(Res.string.meal_capture_no_perm_headline),
-    CaptureNoPermissionSubtext(Res.string.meal_capture_no_perm_subtext),
     ComposeTitle(Res.string.meal_compose_title),
     PublishTitle(Res.string.meal_publish_title),
     SlotBreakfast(Res.string.meal_slot_breakfast),

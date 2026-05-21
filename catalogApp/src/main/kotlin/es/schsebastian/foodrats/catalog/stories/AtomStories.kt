@@ -72,6 +72,12 @@ private fun AvatarStory() {
                 FrAvatar(initials = "1234")
             }
         }
+        CatalogScene(label = "Image loaded") {
+            FrAvatar(initials = "sc", imageUrl = "https://placebear.com/120/120")
+        }
+        CatalogScene(label = "Slow/failed load → initials fallback") {
+            FrAvatar(initials = "sc", imageUrl = "https://example.invalid/missing.jpg")
+        }
     }
 }
 

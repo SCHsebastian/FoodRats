@@ -12,41 +12,63 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 
 /**
- * Initial-circle avatar. Decorative by default — `contentDescription` is null and the badge
- * is `clearAndSetSemantics { }`-ed out of the a11y tree. When it appears next to a name
- * label, the name label carries the meaning and the avatar would just produce a duplicate
- * announcement. Pass an explicit `contentDescription` for the rare case where the avatar
- * stands alone.
+ * Circular avatar that renders either an uploaded image (via Coil [SubcomposeAsyncImage]) or
+ * initials as a fallback when [imageUrl] is null/blank or the image is still loading/failed.
+ *
+ * Decorative by default — `contentDescription` is null and the badge is `clearAndSetSemantics { }`-ed
+ * out of the a11y tree. When it appears next to a name label, the name label carries the meaning
+ * and the avatar would just produce a duplicate announcement. Pass an explicit
+ * `contentDescription` for the rare case where the avatar stands alone.
  */
 @Composable
 fun FrAvatar(
     initials: String,
     modifier: Modifier = Modifier,
     size: Dp = Sizes.avatarMd,
+    imageUrl: String? = null,
     contentDescription: String? = null,
 ) {
+    val box = modifier
+        .size(size)
+        .clip(CircleShape)
+
+    if (!imageUrl.isNullOrBlank()) {
+        SubcomposeAsyncImage(
+            model = imageUrl,
+            contentDescription = contentDescription,
+            modifier = box,
+            contentScale = ContentScale.Crop,
+            loading = { InitialsContent(initials) },
+            error = { InitialsContent(initials) },
+            success = { SubcomposeAsyncImageContent() },
+        )
+    } else {
+        val initialsModifier = if (contentDescription != null) {
+            box.semantics { this.contentDescription = contentDescription }
+        } else {
+            box.clearAndSetSemantics { }
+        }
+        InitialsContent(initials, initialsModifier)
+    }
+}
+
+@Composable
+private fun InitialsContent(initials: String, modifier: Modifier = Modifier) {
     Box(
-        modifier = modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .then(
-                if (contentDescription != null) {
-                    Modifier.semantics { this.contentDescription = contentDescription }
-                } else {
-                    Modifier.clearAndSetSemantics { }
-                },
-            ),
+        modifier = modifier.background(MaterialTheme.colorScheme.primaryContainer),
         contentAlignment = Alignment.Center,
     ) {
         Text(

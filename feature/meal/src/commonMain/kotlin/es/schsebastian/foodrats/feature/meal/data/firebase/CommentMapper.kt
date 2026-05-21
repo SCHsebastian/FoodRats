@@ -1,6 +1,5 @@
 package es.schsebastian.foodrats.feature.meal.data.firebase
 
-import es.schsebastian.foodrats.core.domain.meal.CommentAuthor
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealComment
@@ -22,7 +21,7 @@ fun CommentDto.toDomain(crewId: CrewId, mealId: MealId): Result<MealComment, Com
             id = MealCommentId(id),
             mealId = mealId,
             crewId = crewId,
-            author = CommentAuthor(accountId, authorName.orEmpty(), authorAvatarUrl),
+            authorId = accountId,
             text = text,
             createdAt = Instant.fromEpochMilliseconds(createdAtEpochMs ?: 0L),
         )

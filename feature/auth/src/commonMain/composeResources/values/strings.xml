@@ -25,4 +25,17 @@
     <string name="auth_error_password_too_short">Password must be at least 6 characters.</string>
     <string name="auth_error_email_in_use">That email is already taken.</string>
     <string name="auth_error_wrong_credentials">Wrong email or password.</string>
+    <string name="auth_profile_title">Your Profile</string>
+    <string name="auth_profile_identity_section">Identity</string>
+    <string name="auth_profile_display_name_label">Display name</string>
+    <string name="auth_profile_signed_in_as_label">Signed in as</string>
+    <string name="auth_profile_save">Save</string>
+    <string name="auth_profile_change_avatar_cta">Tap to change avatar</string>
+    <string name="auth_profile_avatar_uploading">Uploading…</string>
+    <string name="auth_profile_account_section">Account</string>
+    <string name="auth_profile_sign_out_cta">Sign out</string>
+    <string name="auth_profile_sign_out_failed">Couldn\'t sign out. Try again.</string>
+    <string name="auth_profile_display_name_blank">Display name can\'t be empty.</string>
+    <string name="auth_profile_display_name_too_long">Display name is too long (max 40).</string>
+    <string name="auth_profile_backend_unavailable">Network unavailable. Try again.</string>
 </resources>

@@ -41,12 +41,9 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
-            // Image loading for meal photos (FrFeedMealCard).
+            // Image loading for meal photos (FrFeedMealCard). The singleton ImageLoader
+            // (with Ktor fetcher + memory/disk cache) is installed by :core:data.
             implementation(libs.coil.compose)
-            implementation(libs.coil.network.ktor3)
-            // Coil 3 with the Ktor 3 fetcher needs a Ktor engine on each platform; we share
-            // the project's Ktor client artifacts so we don't bring in a second HTTP stack.
-            implementation(libs.ktor.client.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -59,18 +56,10 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.testJunit)
                 implementation(libs.junit)
-                implementation(libs.koin.test)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.turbine)
+                implementation(libs.androidx.testExt.junit)
+                implementation(libs.compose.ui.test.junit4)
+                implementation(libs.robolectric)
             }
-        }
-        androidMain.dependencies {
-            // Ktor engine used by Coil's KtorNetworkFetcherFactory on Android.
-            implementation(libs.ktor.client.okhttp)
-        }
-        iosMain.dependencies {
-            // Ktor engine used by Coil's KtorNetworkFetcherFactory on iOS.
-            implementation(libs.ktor.client.darwin)
         }
     }
 }

@@ -14,6 +14,7 @@ import foodrats.feature.feed.generated.resources.feed_comments_relative_just_now
 import foodrats.feature.feed.generated.resources.feed_comments_relative_minutes
 import foodrats.feature.feed.generated.resources.feed_comments_send_cta
 import foodrats.feature.feed.generated.resources.feed_comments_title
+import foodrats.feature.feed.generated.resources.feed_deleted_author
 import foodrats.feature.feed.generated.resources.feed_average_heading
 import foodrats.feature.feed.generated.resources.feed_detail_back_cta
 import foodrats.feature.feed.generated.resources.feed_detail_not_found
@@ -83,4 +84,5 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     CommentsErrorTooLong(Res.string.feed_comments_error_too_long),
     CommentsErrorUnavailable(Res.string.feed_comments_error_unavailable),
     CommentsErrorUnauthorized(Res.string.feed_comments_error_unauthorized),
+    DeletedAuthor(Res.string.feed_deleted_author),
 }

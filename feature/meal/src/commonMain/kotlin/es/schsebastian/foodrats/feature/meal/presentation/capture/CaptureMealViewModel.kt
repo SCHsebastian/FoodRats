@@ -3,7 +3,6 @@ package es.schsebastian.foodrats.feature.meal.presentation.capture
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
-import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftCommand
@@ -20,22 +19,22 @@ class CaptureMealViewModel(
             CaptureMealIntent.Start -> {
                 val session = when (val r = sessionProvider.requireCurrent()) {
                     is Result.Ok  -> r.value
-                    is Result.Err -> { update { it.copy(error = MealError.Read.Unauthorized) }; return }
+                    is Result.Err -> { println("[CaptureMealViewModel] session error: ${r.error}"); return }
                 }
                 val crewId = session.activeCrewId
-                    ?: run { update { it.copy(error = MealError.Read.CrewNotFound) }; return }
+                    ?: run { println("[CaptureMealViewModel] no active crew"); return }
                 startDraft(crewId, session.accountId).also { result ->
-                    if (result is Result.Err) update { it.copy(error = result.error) }
+                    if (result is Result.Err) println("[CaptureMealViewModel] startDraft error: ${result.error}")
                 }
             }
             is CaptureMealIntent.PhotoTaken -> {
                 update { it.copy(isCapturing = true) }
                 val r = updateDraft(UpdateMealDraftCommand.SetPhoto(Plate(intent.bytes)))
-                update { it.copy(isCapturing = false, error = if (r is Result.Err) r.error else null) }
+                update { it.copy(isCapturing = false) }
                 if (r is Result.Ok) emit(CaptureMealEffect.NavigateToCompose)
+                else if (r is Result.Err) println("[CaptureMealViewModel] updateDraft error: ${r.error}")
             }
-            CaptureMealIntent.PickFromGallery -> emit(CaptureMealEffect.OpenGalleryPicker)
-            CaptureMealIntent.OpenSettings    -> emit(CaptureMealEffect.OpenAppSettings)
+            CaptureMealIntent.OpenSettings -> emit(CaptureMealEffect.OpenAppSettings)
         }
     }
 }

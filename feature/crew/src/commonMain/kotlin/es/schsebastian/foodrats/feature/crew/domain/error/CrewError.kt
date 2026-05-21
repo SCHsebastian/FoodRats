@@ -36,4 +36,8 @@ sealed interface CrewError {
         data object PermissionDenied : Backend
         data object Unavailable : Backend
     }
+
+    sealed interface NotImplemented : CrewError {
+        data object RemoveMember : NotImplemented
+    }
 }

@@ -25,4 +25,17 @@
     <string name="auth_error_password_too_short">La contraseña debe tener al menos 6 caracteres.</string>
     <string name="auth_error_email_in_use">Ese email ya está en uso.</string>
     <string name="auth_error_wrong_credentials">Email o contraseña incorrectos.</string>
+    <string name="auth_profile_title">Tu perfil</string>
+    <string name="auth_profile_identity_section">Identidad</string>
+    <string name="auth_profile_display_name_label">Nombre</string>
+    <string name="auth_profile_signed_in_as_label">Sesión iniciada como</string>
+    <string name="auth_profile_save">Guardar</string>
+    <string name="auth_profile_change_avatar_cta">Toca para cambiar avatar</string>
+    <string name="auth_profile_avatar_uploading">Subiendo…</string>
+    <string name="auth_profile_account_section">Cuenta</string>
+    <string name="auth_profile_sign_out_cta">Cerrar sesión</string>
+    <string name="auth_profile_sign_out_failed">No se pudo cerrar sesión. Inténtalo de nuevo.</string>
+    <string name="auth_profile_display_name_blank">El nombre no puede estar vacío.</string>
+    <string name="auth_profile_display_name_too_long">El nombre es demasiado largo (máx. 40).</string>
+    <string name="auth_profile_backend_unavailable">Sin conexión. Inténtalo de nuevo.</string>
 </resources>

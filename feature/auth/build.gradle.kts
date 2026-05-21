@@ -48,6 +48,11 @@ kotlin {
             implementation(libs.firebase.common)
             implementation(libs.firebase.auth)
             implementation(libs.firebase.firestore)
+            implementation(libs.firebase.storage)
+            // Avatar picker (gallery) — mirrors :feature:crew. If iOS link breaks on
+            // material-icons-extended, add the same exclude noted in CLAUDE.md.
+            implementation(libs.imagepickerkmp)
+            implementation(libs.coil.compose)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
