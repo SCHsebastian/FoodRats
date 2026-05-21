@@ -137,7 +137,7 @@ internal class FirebaseMealRepository(
                     slot = slot.key(),
                     photoUrl = photoUrl,
                     dishName = draft.dish?.value,
-                    tags = draft.tags.map { it.label },
+                    description = draft.description.value,
                     publishedAtEpochMs = clock.now().toEpochMilliseconds(),
                 )
                 firestore.write(dto, mealId.value)

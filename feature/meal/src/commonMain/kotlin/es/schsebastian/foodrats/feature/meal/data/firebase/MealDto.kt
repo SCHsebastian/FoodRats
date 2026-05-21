@@ -13,7 +13,7 @@ data class MealDto(
     val slot: String = "lunch",
     val photoUrl: String? = null,
     val dishName: String? = null,
-    val tags: List<String> = emptyList(),
+    val description: String = "",
     val publishedAtEpochMs: Long? = null,
     // Denormalized per-rater scores keyed by accountId (uid). Empty when no one has voted.
     val ratings: Map<String, RatingEntryDto> = emptyMap(),

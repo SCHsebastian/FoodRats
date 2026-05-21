@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.domain.usecase
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -21,7 +22,7 @@ class StartMealDraftUseCase(
             crewId = crewId,
             authorId = authorId,
             day = MealDay.today(clock, zone),
-            plate = null, dish = null, tags = emptyList(),
+            plate = null, dish = null, description = Description.EMPTY,
         )
         return repository.saveDraft(fresh).map { fresh }
     }

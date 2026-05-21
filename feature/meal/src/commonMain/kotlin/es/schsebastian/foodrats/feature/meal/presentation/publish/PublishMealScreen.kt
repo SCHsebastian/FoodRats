@@ -33,7 +33,7 @@ fun PublishMealScreen(onPublished: () -> Unit, vm: PublishMealViewModel = koinVi
                 state.draft?.let { draft ->
                     FrMealCard(MealUi(
                         dish = draft.dish?.value ?: "",
-                        tags = draft.tags.map { it.label },
+                        description = draft.description.value,
                         photoBytes = draft.plate?.photoBytes,
                     ))
                 }

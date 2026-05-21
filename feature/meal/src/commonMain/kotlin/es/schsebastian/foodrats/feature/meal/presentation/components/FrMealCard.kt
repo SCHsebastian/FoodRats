@@ -17,7 +17,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 data class MealUi(
     val dish: String,
-    val tags: List<String>,
+    val description: String,
     val photoBytes: ByteArray?,
 )
 
@@ -41,6 +41,9 @@ fun FrMealCard(ui: MealUi, modifier: Modifier = Modifier) {
                 }
             }
             FrText(text = ui.dish)
+            if (ui.description.isNotBlank()) {
+                FrText(text = ui.description, modifier = Modifier.padding(top = Spacing.xs))
+            }
         }
     }
 }

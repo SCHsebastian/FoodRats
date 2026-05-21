@@ -2,8 +2,8 @@ package es.schsebastian.foodrats.feature.meal.data.local
 
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.Keys
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
-import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -30,7 +30,7 @@ private data class MealDraftJson(
     val photoBase64: String?,
     val overlayApplied: Boolean,
     val dish: String?,
-    val tags: List<String>,
+    val description: String = "",
     val slot: String? = null,
 )
 
@@ -55,17 +55,14 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
         val zone = runCatching { TimeZone.of(zoneId) }.getOrNull() ?: TimeZone.UTC
         val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied) }
         val d = dish?.let { DishName.of(it).getOrElse { return null } }
-        val mappedTags: List<FoodTag> = tags.map { raw ->
-            FoodTag.Curated.entries.firstOrNull { it.label == raw }
-                ?: FoodTag.custom(raw).getOrElse { return null }
-        }
+        val desc = Description.of(description).getOrElse { Description.EMPTY }
         return MealDraft(
             crewId = crew,
             authorId = acc,
             day = MealDay(day, zone),
             plate = plate,
             dish = d,
-            tags = mappedTags,
+            description = desc,
             slot = slot?.let(MealSlot::fromKey),
         )
     }
@@ -80,7 +77,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             photoBase64 = d.plate?.photoBytes?.let { Base64.encode(it) },
             overlayApplied = d.plate?.overlayApplied ?: false,
             dish = d.dish?.value,
-            tags = d.tags.map { it.label },
+            description = d.description.value,
             slot = d.slot?.key(),
         )
     }

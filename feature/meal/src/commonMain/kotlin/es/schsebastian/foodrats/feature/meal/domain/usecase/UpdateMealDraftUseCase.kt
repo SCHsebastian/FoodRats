@@ -12,10 +12,10 @@ class UpdateMealDraftUseCase(private val repository: MealRepository) {
         val current = repository.observeDraft().first()
             ?: return Result.failure(MealError.Publish.NotToday)
         val updated = when (command) {
-            is UpdateMealDraftCommand.SetPhoto -> current.copy(plate = command.plate)
-            is UpdateMealDraftCommand.SetDish  -> current.copy(dish = command.dish)
-            is UpdateMealDraftCommand.SetTags  -> current.copy(tags = command.tags)
-            is UpdateMealDraftCommand.SetSlot  -> current.copy(slot = command.slot)
+            is UpdateMealDraftCommand.SetPhoto       -> current.copy(plate = command.plate)
+            is UpdateMealDraftCommand.SetDish        -> current.copy(dish = command.dish)
+            is UpdateMealDraftCommand.SetDescription -> current.copy(description = command.description)
+            is UpdateMealDraftCommand.SetSlot        -> current.copy(slot = command.slot)
         }
         return repository.saveDraft(updated).map { updated }
     }

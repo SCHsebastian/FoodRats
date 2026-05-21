@@ -8,7 +8,8 @@ import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 
 data class ComposePlateState(
     val dish: String = "",
-    val selectedTags: Set<String> = emptySet(),
+    val descriptionInput: String = "",
+    val descriptionTooLong: Boolean = false,
     val error: MealError? = null,
     val selectedSlot: MealSlot = MealSlot.Lunch,
     val takenSlots: Set<MealSlot> = emptySet(),
@@ -18,7 +19,8 @@ data class ComposePlateState(
         if (this === other) return true
         if (other !is ComposePlateState) return false
         return dish == other.dish &&
-            selectedTags == other.selectedTags &&
+            descriptionInput == other.descriptionInput &&
+            descriptionTooLong == other.descriptionTooLong &&
             error == other.error &&
             selectedSlot == other.selectedSlot &&
             takenSlots == other.takenSlots &&
@@ -27,7 +29,8 @@ data class ComposePlateState(
 
     override fun hashCode(): Int {
         var result = dish.hashCode()
-        result = 31 * result + selectedTags.hashCode()
+        result = 31 * result + descriptionInput.hashCode()
+        result = 31 * result + descriptionTooLong.hashCode()
         result = 31 * result + (error?.hashCode() ?: 0)
         result = 31 * result + selectedSlot.hashCode()
         result = 31 * result + takenSlots.hashCode()
@@ -38,7 +41,7 @@ data class ComposePlateState(
 
 sealed interface ComposePlateIntent : MviIntent {
     data class DishChanged(val value: String) : ComposePlateIntent
-    data class TagToggled(val tag: String) : ComposePlateIntent
+    data class DescriptionChanged(val value: String) : ComposePlateIntent
     data class SelectSlot(val slot: MealSlot) : ComposePlateIntent
     data object Continue : ComposePlateIntent
 }

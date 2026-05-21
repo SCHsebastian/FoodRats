@@ -2,8 +2,8 @@ package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
-import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -31,9 +31,6 @@ class ComposePlateViewModel(
 
     init {
         viewModelScope.launch { loadTakenSlots() }
-        // Mirror the captured photo bytes from the draft into state so the screen
-        // can render a preview. The draft is the source of truth for the photo
-        // (set in CaptureMealViewModel.PhotoTaken).
         repository.observeDraft().onEach { draft ->
             update { it.copy(photoBytes = draft?.plate?.photoBytes) }
         }.launchIn(viewModelScope)
@@ -57,22 +54,23 @@ class ComposePlateViewModel(
         }
 
         update { it.copy(takenSlots = taken, selectedSlot = selectedSlot) }
-        // Persist the default slot to the draft so PublishMealScreen's enable-gate
-        // (draft.slot != null) flips green even when the user accepts the default
-        // without tapping a slot button.
         updateDraft(UpdateMealDraftCommand.SetSlot(selectedSlot))
     }
 
     override suspend fun handle(intent: ComposePlateIntent) {
         when (intent) {
-            is ComposePlateIntent.DishChanged  -> update { it.copy(dish = intent.value, error = null) }
-            is ComposePlateIntent.TagToggled   -> update {
-                val tags = it.selectedTags.toMutableSet().also { s ->
-                    if (intent.tag in s) s.remove(intent.tag) else s.add(intent.tag)
+            is ComposePlateIntent.DishChanged -> update { it.copy(dish = intent.value, error = null) }
+            is ComposePlateIntent.DescriptionChanged -> {
+                val tooLong = intent.value.trim().length > Description.MAX_LEN
+                update {
+                    it.copy(
+                        descriptionInput = intent.value,
+                        descriptionTooLong = tooLong,
+                        error = if (tooLong) MealError.Validation.DescriptionTooLong else null,
+                    )
                 }
-                it.copy(selectedTags = tags)
             }
-            is ComposePlateIntent.SelectSlot   -> {
+            is ComposePlateIntent.SelectSlot -> {
                 update { it.copy(selectedSlot = intent.slot) }
                 updateDraft(UpdateMealDraftCommand.SetSlot(intent.slot))
             }
@@ -83,13 +81,11 @@ class ComposePlateViewModel(
     private suspend fun persistAndAdvance() {
         val state = currentState
         val dish = DishName.of(state.dish).getOrElse { return failWith(MealError.Validation.Blank) }
-        val tags = state.selectedTags.map { raw ->
-            FoodTag.Curated.entries.firstOrNull { it.label == raw }
-                ?: FoodTag.custom(raw).getOrElse { return failWith(MealError.Validation.Blank) }
-        }
+        val description = Description.of(state.descriptionInput)
+            .getOrElse { return failWith(MealError.Validation.DescriptionTooLong) }
         updateDraft(UpdateMealDraftCommand.SetSlot(state.selectedSlot))
         updateDraft(UpdateMealDraftCommand.SetDish(dish))
-        val r = updateDraft(UpdateMealDraftCommand.SetTags(tags))
+        val r = updateDraft(UpdateMealDraftCommand.SetDescription(description))
         if (r is Result.Ok) emit(ComposePlateEffect.NavigateToPublish)
         else if (r is Result.Err) update { it.copy(error = r.error) }
     }

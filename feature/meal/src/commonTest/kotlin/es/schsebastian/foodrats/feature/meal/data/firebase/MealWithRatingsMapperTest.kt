@@ -19,7 +19,7 @@ class MealWithRatingsMapperTest {
             slot = "lunch",
             photoUrl = "https://example.com/p.jpg",
             dishName = "Paella",
-            tags = listOf("savory"),
+            description = "Hot off the pan",
             publishedAtEpochMs = 1_716_192_000_000L,
         )
         val result = dto.toMealWithRatings(crewMembers = emptyMap())
@@ -40,7 +40,6 @@ class MealWithRatingsMapperTest {
             slot = "lunch",
             photoUrl = "https://example.com/p.jpg",
             dishName = "Paella",
-            tags = emptyList(),
             publishedAtEpochMs = 1_716_192_000_000L,
             ratings = mapOf(
                 "uid-b" to RatingEntryDto(score = 4, atMs = 1_716_193_000_000L),
