@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.data.firebase
 
+import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -28,6 +29,7 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
     val dish = DishName.of(dishName ?: "").getOrElse { return Result.failure(MealError.Read.NotFound) }
     val desc = Description.of(description).getOrElse { return Result.failure(MealError.Read.NotFound) }
     val slot = MealSlot.fromKey(slot) ?: return Result.failure(MealError.Read.NotFound)
+    val coords = parseCoordinates(latitude, longitude)
     return Result.success(
         Meal(
             id = mealId,
@@ -39,6 +41,12 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             dish = dish,
             description = desc,
             publishedAt = Instant.fromEpochMilliseconds(publishedAtEpochMs ?: 0L),
+            coordinates = coords,
         )
     )
+}
+
+private fun parseCoordinates(lat: Double?, lon: Double?): Coordinates? {
+    if (lat == null || lon == null) return null
+    return (Coordinates.of(lat, lon) as? Result.Ok)?.value
 }

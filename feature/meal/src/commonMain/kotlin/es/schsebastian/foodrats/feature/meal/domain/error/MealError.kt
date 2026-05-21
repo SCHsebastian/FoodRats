@@ -15,6 +15,11 @@ sealed interface MealError {
         data object PublishUnavailable : Publish
         data object PhotoUploadFailed : Publish
     }
+    sealed interface Location : MealError {
+        data object PermissionDenied : Location
+        data object Unavailable : Location
+        data object Timeout : Location
+    }
     sealed interface Read : MealError {
         data object Unauthorized : Read
         data object CrewNotFound : Read

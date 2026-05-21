@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
+import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
@@ -14,6 +15,8 @@ data class ComposePlateState(
     val selectedSlot: MealSlot = MealSlot.Lunch,
     val takenSlots: Set<MealSlot> = emptySet(),
     val photoBytes: ByteArray? = null,
+    val coordinates: Coordinates? = null,
+    val locating: Boolean = false,
 ) : MviState {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -24,6 +27,8 @@ data class ComposePlateState(
             error == other.error &&
             selectedSlot == other.selectedSlot &&
             takenSlots == other.takenSlots &&
+            coordinates == other.coordinates &&
+            locating == other.locating &&
             (photoBytes?.contentEquals(other.photoBytes) ?: (other.photoBytes == null))
     }
 
@@ -34,6 +39,8 @@ data class ComposePlateState(
         result = 31 * result + (error?.hashCode() ?: 0)
         result = 31 * result + selectedSlot.hashCode()
         result = 31 * result + takenSlots.hashCode()
+        result = 31 * result + (coordinates?.hashCode() ?: 0)
+        result = 31 * result + locating.hashCode()
         result = 31 * result + (photoBytes?.contentHashCode() ?: 0)
         return result
     }
@@ -43,6 +50,8 @@ sealed interface ComposePlateIntent : MviIntent {
     data class DishChanged(val value: String) : ComposePlateIntent
     data class DescriptionChanged(val value: String) : ComposePlateIntent
     data class SelectSlot(val slot: MealSlot) : ComposePlateIntent
+    data object RequestLocation : ComposePlateIntent
+    data object ClearLocation : ComposePlateIntent
     data object Continue : ComposePlateIntent
 }
 

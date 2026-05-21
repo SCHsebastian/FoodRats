@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.domain.model
 
+import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -15,4 +16,5 @@ data class MealDraft(
     val dish: DishName?,
     val description: Description,
     val slot: MealSlot? = null,
+    val coordinates: Coordinates? = null,
 )

@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.app.root.FoodRatsApp
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
 import es.schsebastian.foodrats.core.data.di.crashIosModule
+import es.schsebastian.foodrats.core.data.di.locationIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
 import es.schsebastian.foodrats.feature.auth.di.authIosModule
 import es.schsebastian.foodrats.core.data.image.installImageLoader
@@ -49,6 +50,7 @@ fun MainViewController(
                     shareIosModule,
                     authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
                     crashIosModule(crashRecordNonFatal, crashLog),
+                    locationIosModule,
                 ),
             )
         }

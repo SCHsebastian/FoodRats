@@ -267,6 +267,25 @@ private val BarChartVector: ImageVector = materialIcon(name = "Filled.BarChart")
     }
 }
 
+// Material `place` (location pin) glyph — vendored because material-icons-extended
+// has no KMP iOS artifact. Standard 24x24 teardrop with a circle hole.
+private val PlaceVector: ImageVector = materialIcon(name = "Filled.Place") {
+    materialPath {
+        moveTo(12f, 2f)
+        curveTo(8.13f, 2f, 5f, 5.13f, 5f, 9f)
+        curveToRelative(0f, 5.25f, 7f, 13f, 7f, 13f)
+        reflectiveCurveToRelative(7f, -7.75f, 7f, -13f)
+        curveToRelative(0f, -3.87f, -3.13f, -7f, -7f, -7f)
+        close()
+        moveTo(12f, 11.5f)
+        curveToRelative(-1.38f, 0f, -2.5f, -1.12f, -2.5f, -2.5f)
+        reflectiveCurveToRelative(1.12f, -2.5f, 2.5f, -2.5f)
+        reflectiveCurveToRelative(2.5f, 1.12f, 2.5f, 2.5f)
+        reflectiveCurveToRelative(-1.12f, 2.5f, -2.5f, 2.5f)
+        close()
+    }
+}
+
 object FrIcons {
     val Back: ImageVector          = Icons.Filled.ArrowBack
     val Camera: ImageVector        = PhotoCameraVector
@@ -280,6 +299,7 @@ object FrIcons {
     val Stats: ImageVector         = BarChartVector
     val Crown: ImageVector         = CrownVector
     val Flame: ImageVector         = FlameVector
+    val Place: ImageVector         = PlaceVector
     // ChevronLeft/Right are in material-icons-extended (no KMP iOS artifact); use
     // KeyboardArrowLeft/Right from material-icons-core automirrored as substitutes.
     val ChevronLeft: ImageVector   = Icons.AutoMirrored.Filled.KeyboardArrowLeft
@@ -303,6 +323,7 @@ private fun FrIconsPreview() {
         "Flame"         to FrIcons.Flame,
         "ChevronLeft"   to FrIcons.ChevronLeft,
         "ChevronRight"  to FrIcons.ChevronRight,
+        "Place"         to FrIcons.Place,
     )
     FrPreviewLightDark {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -14,6 +14,10 @@ data class MealDto(
     val photoUrl: String? = null,
     val dishName: String? = null,
     val description: String = "",
+    // Optional GPS coordinates the user attached at compose time. Both null means
+    // "no location attached"; the feed/detail UI renders a small map preview when set.
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val publishedAtEpochMs: Long? = null,
     // Denormalized per-rater scores keyed by accountId (uid). Empty when no one has voted.
     val ratings: Map<String, RatingEntryDto> = emptyMap(),

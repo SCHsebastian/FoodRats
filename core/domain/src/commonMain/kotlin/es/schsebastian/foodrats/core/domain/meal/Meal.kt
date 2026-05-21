@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.core.domain.meal
 
+import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlin.time.Instant
 
@@ -13,4 +14,5 @@ data class Meal(
     val dish: DishName,
     val description: Description,
     val publishedAt: Instant,
+    val coordinates: Coordinates? = null,
 )

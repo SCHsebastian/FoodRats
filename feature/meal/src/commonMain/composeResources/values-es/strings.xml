@@ -21,4 +21,13 @@
     <string name="meal_slot_lunch">Almuerzo</string>
     <string name="meal_slot_dinner">Cena</string>
     <string name="meal_publish_no_slot">Elige una franja (Desayuno, Almuerzo o Cena) antes de publicar.</string>
+
+    <string name="meal_compose_add_location">Marca dónde comiste</string>
+    <string name="meal_compose_locating">Localizándote…</string>
+    <string name="meal_compose_clear_location">Quitar marca</string>
+    <string name="meal_compose_coordinates_format">%1$.5f, %2$.5f</string>
+
+    <string name="meal_error_location_permission">Permiso de ubicación denegado. Puedes activarlo en los ajustes del sistema.</string>
+    <string name="meal_error_location_unavailable">La ubicación está desactivada o aún no hay señal.</string>
+    <string name="meal_error_location_timeout">No se ha podido obtener tu ubicación a tiempo. Inténtalo otra vez.</string>
 </resources>

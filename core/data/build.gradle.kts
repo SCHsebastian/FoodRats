@@ -47,6 +47,8 @@ kotlin {
             implementation("com.google.firebase:firebase-crashlytics")
             // Ktor engine for Coil's KtorNetworkFetcherFactory on Android.
             implementation(libs.ktor.client.okhttp)
+            // ActivityResultLauncher + ActivityResultContracts for LocationPermissionLauncherHolder.
+            implementation(libs.androidx.activity.compose)
         }
         iosMain.dependencies {
             // PreferenceDataStoreFactory.createWithPath is provided by datastore-preferences (KMP)
