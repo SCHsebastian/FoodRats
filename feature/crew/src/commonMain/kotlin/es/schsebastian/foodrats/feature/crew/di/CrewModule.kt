@@ -1,16 +1,12 @@
 package es.schsebastian.foodrats.feature.crew.di
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
-import es.schsebastian.foodrats.core.domain.crew.CrewMemberCacheWritePort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
-import es.schsebastian.foodrats.feature.crew.data.firebase.CrewMemberWriter
-import es.schsebastian.foodrats.feature.crew.data.firebase.FirestoreCrewMemberCacheWriter
-import es.schsebastian.foodrats.feature.crew.data.firebase.FirestoreCrewMemberWriter
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
@@ -36,9 +32,7 @@ import kotlin.random.Random
 val crewModule = module {
     single { CrewCodeGenerator(random = Random.Default) }
     singleOf(::CrewErrorMapper)
-    single<CrewMemberWriter> { FirestoreCrewMemberWriter(firestore = get()) }
     singleOf(::CrewFirestoreDataSource)
-    single<CrewMemberCacheWritePort> { FirestoreCrewMemberCacheWriter(dataSource = get()) }
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
     single<CrewMembersPort> {
         object : CrewMembersPort {

@@ -31,7 +31,6 @@ class CrewFirestoreDataSource(
     private val codeGenerator: CrewCodeGenerator,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
-    private val writer: CrewMemberWriter,
 ) {
 
     // CoroutineExceptionHandler is mandatory here: any uncaught exception inside the
@@ -189,70 +188,6 @@ class CrewFirestoreDataSource(
         withContext(dispatchers.io) {
             runCatching {
                 crewsCol.document(crewId.value).update("name" to newName)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
-        }
-
-    suspend fun renameMember(
-        crewId: CrewId,
-        accountId: AccountId,
-        newDisplayName: String,
-    ): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                writer.renameAndPropagate(crewId, accountId, newDisplayName)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
-        }
-
-    /**
-     * Writes ONLY the denormalized `crews/{crewId}.members.{uid}.displayName` field.
-     * Unlike [renameMember], this does NOT touch `accounts/{uid}` — the canonical write
-     * is the caller's responsibility (see `AccountWritePort` from :core:domain).
-     * Used by `CrewMemberCacheWritePort` to satisfy the no-cross-feature-deps rule.
-     */
-    suspend fun setMemberDisplayName(
-        crewId: CrewId,
-        accountId: AccountId,
-        newDisplayName: String,
-    ): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value)
-                    .update("members.${accountId.value}.displayName" to newDisplayName)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
-        }
-
-    /**
-     * Writes a member's avatar URL into the crew's denormalized members map. Mirrors
-     * [renameMember] — same partial-update path so it falls under the rule's
-     * `members`-only diff allowance.
-     */
-    suspend fun updateMemberAvatarUrl(
-        crewId: CrewId,
-        accountId: AccountId,
-        avatarUrl: String,
-    ): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value)
-                    .update("members.${accountId.value}.avatarUrl" to avatarUrl)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
-        }
-
-    /**
-     * Writes `avatarUrl` into the canonical `accounts/{uid}` doc. Owner-only by rules.
-     */
-    suspend fun updateAccountAvatarUrl(
-        accountId: AccountId,
-        avatarUrl: String,
-    ): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                firestore.collection("accounts").document(accountId.value)
-                    .update("avatarUrl" to avatarUrl)
                 Result.success(Unit)
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
