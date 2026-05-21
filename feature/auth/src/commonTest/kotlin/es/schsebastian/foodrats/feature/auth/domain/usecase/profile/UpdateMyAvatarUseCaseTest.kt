@@ -1,16 +1,13 @@
 package es.schsebastian.foodrats.feature.auth.domain.usecase.profile
 
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
-import es.schsebastian.foodrats.core.domain.crew.CrewMemberCacheWriteError
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.feature.auth.domain.error.ProfileError
 import es.schsebastian.foodrats.feature.auth.testdoubles.FakeAccountWritePort
-import es.schsebastian.foodrats.feature.auth.testdoubles.FakeCrewMemberCacheWritePort
 import es.schsebastian.foodrats.feature.auth.testdoubles.FixedSessionProvider
-import es.schsebastian.foodrats.feature.auth.testdoubles.RecordingCrashReporter
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,8 +21,8 @@ class UpdateMyAvatarUseCaseTest {
     @Test
     fun rejects_empty_bytes() = runTest {
         val r = UpdateMyAvatarUseCase(
-            FakeAccountWritePort(), FakeCrewMemberCacheWritePort(),
-            FixedSessionProvider(session), RecordingCrashReporter(),
+            FakeAccountWritePort(),
+            FixedSessionProvider(session),
         ).invoke(ByteArray(0))
         assertTrue(r is Result.Err)
         assertEquals(ProfileError.Validation.EmptyBytes, r.error)
@@ -34,47 +31,30 @@ class UpdateMyAvatarUseCaseTest {
     @Test
     fun signed_out_returns_session_error() = runTest {
         val r = UpdateMyAvatarUseCase(
-            FakeAccountWritePort(), FakeCrewMemberCacheWritePort(),
-            FixedSessionProvider(null), RecordingCrashReporter(),
+            FakeAccountWritePort(),
+            FixedSessionProvider(null),
         ).invoke(ByteArray(100) { 1 })
         assertTrue(r is Result.Err)
         assertEquals(ProfileError.Session.SignedOut, r.error)
     }
 
     @Test
-    fun success_returns_url_and_writes_cache() = runTest {
+    fun success_returns_url() = runTest {
         val acc = FakeAccountWritePort().also { it.nextAvatarUrl = "https://example.test/avatar.jpg" }
-        val cache = FakeCrewMemberCacheWritePort()
-        val uc = UpdateMyAvatarUseCase(acc, cache, FixedSessionProvider(session), RecordingCrashReporter())
+        val uc = UpdateMyAvatarUseCase(acc, FixedSessionProvider(session))
 
         val r = uc.invoke(ByteArray(100) { 1 })
         assertTrue(r is Result.Ok)
         assertEquals("https://example.test/avatar.jpg", r.value)
-        assertEquals(listOf(Triple(crewId, accountId, "https://example.test/avatar.jpg")), cache.setAvatarUrlCalls)
     }
 
     @Test
-    fun upload_failure_short_circuits() = runTest {
+    fun upload_failure_propagates() = runTest {
         val acc = FakeAccountWritePort().also { it.nextAvatarError = AccountWriteError.Backend.Unavailable }
-        val cache = FakeCrewMemberCacheWritePort()
-        val uc = UpdateMyAvatarUseCase(acc, cache, FixedSessionProvider(session), RecordingCrashReporter())
+        val uc = UpdateMyAvatarUseCase(acc, FixedSessionProvider(session))
 
         val r = uc.invoke(ByteArray(100) { 1 })
         assertTrue(r is Result.Err)
         assertEquals(ProfileError.Backend.Unavailable, r.error)
-        assertTrue(cache.setAvatarUrlCalls.isEmpty())
-    }
-
-    @Test
-    fun cache_write_failure_swallowed_and_logged() = runTest {
-        val acc = FakeAccountWritePort().also { it.nextAvatarUrl = "https://example.test/avatar.jpg" }
-        val cache = FakeCrewMemberCacheWritePort().also { it.nextAvatarUrlError = CrewMemberCacheWriteError.Backend.Unavailable }
-        val crash = RecordingCrashReporter()
-        val uc = UpdateMyAvatarUseCase(acc, cache, FixedSessionProvider(session), crash)
-
-        val r = uc.invoke(ByteArray(100) { 1 })
-        assertTrue(r is Result.Ok)
-        assertEquals(1, crash.logs.size)
-        assertTrue(crash.logs.first().contains("setAvatarUrl"))
     }
 }
