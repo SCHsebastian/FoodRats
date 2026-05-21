@@ -5,6 +5,5 @@ sealed interface MealValueObjectError {
     data object DishNameBlank      : MealValueObjectError
     data object DishNameTooLong    : MealValueObjectError
     data object MealIdBlank        : MealValueObjectError
-    data object FoodTagBlank       : MealValueObjectError
     data object DescriptionTooLong : MealValueObjectError
 }

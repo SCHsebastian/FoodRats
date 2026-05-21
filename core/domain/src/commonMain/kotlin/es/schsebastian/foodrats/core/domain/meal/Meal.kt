@@ -11,6 +11,6 @@ data class Meal(
     val slot: MealSlot,
     val photoUrl: String,
     val dish: DishName,
-    val tags: List<FoodTag>,
+    val description: Description,
     val publishedAt: Instant,
 )

@@ -24,7 +24,7 @@ class MealWithRatingsTest {
         slot = MealSlot.Lunch,
         photoUrl = "https://example.com/p.jpg",
         dish = (DishName.of("Pasta") as Result.Ok).value,
-        tags = emptyList(),
+        description = Description.EMPTY,
         publishedAt = Instant.parse("2026-05-19T12:00:00Z"),
     )
 
