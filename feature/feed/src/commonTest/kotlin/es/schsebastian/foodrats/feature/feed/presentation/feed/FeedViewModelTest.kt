@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -71,7 +72,7 @@ class FeedViewModelTest {
         slot = MealSlot.Lunch,
         photoUrl = "https://x/p.jpg",
         dish = (DishName.of("Pasta") as Result.Ok).value,
-        tags = emptyList(),
+        description = Description.EMPTY,
         publishedAt = nowInstant,
     )
     private val sampleMealWithRatings = MealWithRatings(sampleMeal, emptyList())

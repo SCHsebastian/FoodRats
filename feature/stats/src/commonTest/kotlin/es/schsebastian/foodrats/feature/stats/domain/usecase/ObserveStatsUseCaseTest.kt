@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.stats.domain.usecase
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -80,7 +81,7 @@ class ObserveStatsUseCaseTest {
             MealSlot.Lunch,
             "u",
             (DishName.of("Pasta") as Result.Ok).value,
-            emptyList(),
+            Description.EMPTY,
             now,
         )
         val uc = ObserveStatsUseCase(
@@ -123,7 +124,7 @@ class ObserveStatsUseCaseTest {
             MealSlot.Lunch,
             "u",
             (DishName.of("Pasta") as Result.Ok).value,
-            emptyList(),
+            Description.EMPTY,
             now,
         )
         val uc = ObserveStatsUseCase(

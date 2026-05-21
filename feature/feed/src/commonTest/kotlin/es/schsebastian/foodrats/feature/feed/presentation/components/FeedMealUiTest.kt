@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -37,7 +38,7 @@ class FeedMealUiTest {
         slot = MealSlot.Lunch,
         photoUrl = "https://example.com/p.jpg",
         dish = (DishName.of("Pasta") as Result.Ok).value,
-        tags = emptyList(),
+        description = Description.EMPTY,
         publishedAt = Instant.parse("2026-05-19T12:00:00Z"),
     )
 
@@ -76,6 +77,14 @@ class FeedMealUiTest {
         val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
         assertNull(ui.averageScore)
         assertEquals(0, ui.ratingCount)
+    }
+
+    @Test fun description_flows_into_feed_ui() {
+        val withDesc = sampleMeal.copy(
+            description = (Description.of("Tortilla, just a bit runny") as Result.Ok).value,
+        )
+        val ui = MealWithRatings(withDesc, emptyList()).toFeedUi(viewerId, today)
+        assertEquals("Tortilla, just a bit runny", ui.description)
     }
 
     @Test fun average_computed_from_ratings() {

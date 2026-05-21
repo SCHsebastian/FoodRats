@@ -11,6 +11,9 @@
     <string name="meal_error_validation_too_long">Keep the dish name short.</string>
     <string name="meal_error_validation_out_of_range">Score must be between 1 and 10.</string>
     <string name="meal_error_validation_no_photo">Snap a photo first.</string>
+    <string name="meal_error_validation_description_too_long">Description is too long (max %1$d characters).</string>
+    <string name="meal_compose_description_placeholder">What did you eat? (optional)</string>
+    <string name="meal_compose_description_counter">%1$d / %2$d</string>
     <string name="meal_error_read_unauthorized">You don\'t have access to this crew.</string>
     <string name="meal_error_read_crew_not_found">Crew not found.</string>
     <string name="meal_error_read_not_found">Meal not found.</string>
@@ -18,5 +21,4 @@
     <string name="meal_slot_lunch">Lunch</string>
     <string name="meal_slot_dinner">Dinner</string>
     <string name="meal_publish_no_slot">Pick a slot (Breakfast, Lunch, or Dinner) before publishing.</string>
-    <string name="meal_tag_separator"> • </string>
 </resources>

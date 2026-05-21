@@ -17,7 +17,6 @@ import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarWithName
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
-import es.schsebastian.foodrats.core.designsystem.molecules.FrTagChipRow
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
@@ -60,11 +59,9 @@ fun FrFeedMealCard(
                         .clip(RoundedCornerShape(Spacing.sm)),
                 )
             }
-            if (ui.tags.isNotEmpty()) {
-                FrTagChipRow(
-                    tags = ui.tags,
-                    selected = emptySet(),
-                    onToggle = {},
+            if (ui.description.isNotBlank()) {
+                FrText(
+                    text = ui.description,
                     modifier = Modifier.padding(top = Spacing.sm),
                 )
             }

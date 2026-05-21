@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.meal.presentation.publish
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
@@ -34,7 +35,7 @@ class PublishMealViewModelTest {
         val crew = (CrewId.of("c") as Result.Ok).value
         val acc = (AccountId.of("a") as Result.Ok).value
         val draft = MealDraft(crew, acc, MealDay.today(clock, zone), Plate(byteArrayOf(1)),
-            (DishName.of("Tacos") as Result.Ok).value, emptyList(),
+            (DishName.of("Tacos") as Result.Ok).value, Description.EMPTY,
             slot = MealSlot.Lunch)
         repo.saveDraft(draft)
         val vm = PublishMealViewModel(

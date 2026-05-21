@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.domain.compute
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -69,7 +70,7 @@ private fun withRatings(authorId: String, ratings: List<Int>): MealWithRatings {
         slot = MealSlot.Lunch,
         photoUrl = "u",
         dish = (DishName.of("d") as Result.Ok).value,
-        tags = emptyList(),
+        description = Description.EMPTY,
         publishedAt = Instant.parse("2026-05-19T12:00:00Z"),
     )
     val mealRatings = ratings.mapIndexed { i, s ->

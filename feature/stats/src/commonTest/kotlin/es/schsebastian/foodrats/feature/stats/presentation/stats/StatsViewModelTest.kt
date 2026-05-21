@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.stats.presentation.stats
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -58,7 +59,7 @@ class StatsViewModelTest {
             MealSlot.Lunch,
             "u",
             (DishName.of("Pasta") as Result.Ok).value,
-            emptyList(),
+            Description.EMPTY,
             now,
         )
         val active = object : ActiveCrewProvider {

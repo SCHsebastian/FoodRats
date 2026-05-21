@@ -1,7 +1,7 @@
 package es.schsebastian.foodrats.feature.meal.data.firebase
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
-import es.schsebastian.foodrats.core.domain.meal.FoodTag
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -26,10 +26,7 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
     val day = runCatching { LocalDate.parse(dayKey ?: "") }.getOrNull()
         ?: return Result.failure(MealError.Read.NotFound)
     val dish = DishName.of(dishName ?: "").getOrElse { return Result.failure(MealError.Read.NotFound) }
-    val resolvedTags: List<FoodTag> = tags.map { raw ->
-        FoodTag.Curated.entries.firstOrNull { it.label == raw }
-            ?: FoodTag.custom(raw).getOrElse { return Result.failure(MealError.Read.NotFound) }
-    }
+    val desc = Description.of(description).getOrElse { return Result.failure(MealError.Read.NotFound) }
     val slot = MealSlot.fromKey(slot) ?: return Result.failure(MealError.Read.NotFound)
     return Result.success(
         Meal(
@@ -40,7 +37,7 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             slot = slot,
             photoUrl = photoUrl ?: "",
             dish = dish,
-            tags = resolvedTags,
+            description = desc,
             publishedAt = Instant.fromEpochMilliseconds(publishedAtEpochMs ?: 0L),
         )
     )

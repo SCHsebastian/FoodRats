@@ -9,10 +9,11 @@ fun MealError.toStringKey(): MealStringKey = when (this) {
     MealError.Publish.NoSlotSelected      -> MealStringKey.MealErrorPublishNoSlotSelected
     MealError.Publish.PublishUnavailable  -> MealStringKey.MealErrorPublishUnavailable
     MealError.Publish.PhotoUploadFailed   -> MealStringKey.MealErrorPhotoUploadFailed
-    MealError.Validation.Blank            -> MealStringKey.MealErrorValidationBlank
-    MealError.Validation.TooLong          -> MealStringKey.MealErrorValidationTooLong
-    MealError.Validation.OutOfRange       -> MealStringKey.MealErrorValidationOutOfRange
-    MealError.Validation.NoPhoto          -> MealStringKey.MealErrorValidationNoPhoto
+    MealError.Validation.Blank              -> MealStringKey.MealErrorValidationBlank
+    MealError.Validation.TooLong            -> MealStringKey.MealErrorValidationTooLong
+    MealError.Validation.DescriptionTooLong -> MealStringKey.MealErrorValidationDescriptionTooLong
+    MealError.Validation.OutOfRange         -> MealStringKey.MealErrorValidationOutOfRange
+    MealError.Validation.NoPhoto            -> MealStringKey.MealErrorValidationNoPhoto
     MealError.Read.Unauthorized           -> MealStringKey.MealErrorReadUnauthorized
     MealError.Read.CrewNotFound           -> MealStringKey.MealErrorReadCrewNotFound
     MealError.Read.NotFound               -> MealStringKey.MealErrorReadNotFound

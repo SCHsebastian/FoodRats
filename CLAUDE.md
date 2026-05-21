@@ -106,9 +106,15 @@ Authoritative design: `docs/specs/2026-05-20-cicd-store-release-pipeline-design.
 - **CI needs no secrets and is fork-safe.** `host-tests` runs only the 8 host-test tasks — none of those modules apply the `googleServices`/`firebaseCrashlytics` plugin, so no `google-services.json` is required. `release-smoke` builds the minified release AAB after synthesizing a placeholder `google-services.json` inline and disabling Crashlytics upload. **Do not reintroduce a "materialize Firebase secret or `exit 1`" step into the test job** — that was the original bug that made every CI run fail when the secret wasn't set, for modules that never needed it.
 - **Fastlane lives in `fastlane/`** (`Appfile`, `Matchfile`, `Fastfile`) pinned by the root `Gemfile`; lanes `android beta/release`, `ios beta/release`. Android lanes only upload (Gradle builds the AAB first); iOS lanes build via `gym` (which triggers the KMP framework Gradle task — the self-hosted Mac needs a JDK).
 
-## Recent decisions (2026-05-19 → 2026-05-20)
+## Recent decisions (2026-05-19 → 2026-05-21)
 
 These are the recent shifts in conventions or implementation that you should carry forward when touching the area. Each entry: **what** changed, **why** it changed, **how** to apply it.
+
+### Description replaces tags on `Meal` (2026-05-21)
+
+- **What.** `Meal.tags: List<FoodTag>` and `MealDraft.tags` are gone. They're replaced by a single `description: Description` value object (≤ 280 chars, optional, `Description.EMPTY` represents "no description"). `FoodTag.kt` and `FrTagChipRow.kt` are deleted. The stats `TagVariety` leaderboard is removed with the tag concept. Spec: `docs/specs/2026-05-21-meal-description-replaces-tags-design.md`.
+- **Why.** Curated tags duplicated `MealSlot` (breakfast/lunch/dinner/snack); `Custom` tags were unconstrained free text dressed up as chips. A single description is honest about being prose and removes the false structure. The "tag variety" stat couldn't tell `lasagna` apart from `Lasagna ` and was dropped along with its source data.
+- **How.** Compose flow's chip row → multi-line `FrTextField` + `N / 280` counter. Old Firestore meals with `tags: [...]` arrays are silently ignored on read (kotlinx-serialization tolerates unknown fields); no migration script. Lines 368 and 903 of `docs/specs/2026-05-16-foodrats-ddd-kmp-design.md` (the `Meal.tags` field and the `FoodTag.kt` module-layout entry) are superseded. `MealError.Validation.DescriptionTooLong` is the new error leaf; `MealStringKey.MealErrorValidationDescriptionTooLong` is its string key. When adding new Meal-touching tests, fixtures use `description = Description.EMPTY` (positional or named).
 
 ### Design system v3 — Iron & Ember refresh (2026-05-20)
 

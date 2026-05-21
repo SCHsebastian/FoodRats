@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.domain.compute
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -25,7 +26,7 @@ class TopDishesTest {
         MealSlot.Lunch,
         "u",
         (DishName.of(dish) as Result.Ok).value,
-        emptyList(),
+        Description.EMPTY,
         Instant.fromEpochMilliseconds(0L),
     )
 

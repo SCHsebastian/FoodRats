@@ -57,7 +57,7 @@ class FakeMealRepository : MealRepository {
                 slot = MealSlot.Lunch,
                 photoUrl = "fake://photo",
                 dish = draft.dish!!,
-                tags = draft.tags,
+                description = draft.description,
                 publishedAt = Instant.parse("2026-05-16T00:00:00Z"),
             )
         )

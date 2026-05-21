@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.domain.usecase
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -31,7 +32,7 @@ class PublishMealUseCaseTest {
     private fun draftForDay(day: MealDay) = MealDraft(
         crewId = crew, authorId = account, day = day,
         plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
-        dish = dish, tags = emptyList(),
+        dish = dish, description = Description.EMPTY,
         slot = MealSlot.Lunch,
     )
 
@@ -41,7 +42,7 @@ class PublishMealUseCaseTest {
     ) = MealDraft(
         crewId = crew, authorId = account, day = day,
         plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
-        dish = dish, tags = emptyList(),
+        dish = dish, description = Description.EMPTY,
         slot = slot,
     )
 
@@ -56,7 +57,7 @@ class PublishMealUseCaseTest {
         slot = slot,
         photoUrl = "fake://photo",
         dish = dish,
-        tags = emptyList(),
+        description = Description.EMPTY,
         publishedAt = Instant.parse("2026-05-18T12:00:00Z"),
     )
 

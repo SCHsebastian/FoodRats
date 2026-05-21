@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.domain.usecase
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -65,7 +66,7 @@ class ObserveFeedUseCaseTest {
         slot = MealSlot.Lunch,
         photoUrl = "https://example/p.jpg",
         dish = (DishName.of("Pasta") as Result.Ok).value,
-        tags = emptyList(),
+        description = Description.EMPTY,
         publishedAt = Instant.fromEpochMilliseconds(1_700_000_000_000L),
     )
     private val sampleMealWithRatings = MealWithRatings(sampleMeal, emptyList())

@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.domain.compute
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -32,7 +33,7 @@ class PersonalStreakTest {
         MealSlot.Lunch,
         "u",
         (DishName.of("Pasta") as Result.Ok).value,
-        emptyList(),
+        Description.EMPTY,
         Instant.fromEpochMilliseconds(0L),
     )
 

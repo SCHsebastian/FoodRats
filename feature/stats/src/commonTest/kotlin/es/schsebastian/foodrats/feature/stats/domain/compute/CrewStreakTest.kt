@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.domain.compute
 
+import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
@@ -33,7 +34,7 @@ class CrewStreakTest {
         slot = MealSlot.Lunch,
         photoUrl = "u",
         dish = (DishName.of(dish) as Result.Ok).value,
-        tags = emptyList(),
+        description = Description.EMPTY,
         publishedAt = Instant.fromEpochMilliseconds(0L),
     )
 
