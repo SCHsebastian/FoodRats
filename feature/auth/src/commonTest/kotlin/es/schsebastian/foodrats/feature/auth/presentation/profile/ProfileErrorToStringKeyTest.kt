@@ -12,8 +12,8 @@ class ProfileErrorToStringKeyTest {
     @Test fun too_long_maps_to_too_long_key() =
         assertEquals(AuthStringKey.ProfileDisplayNameTooLong, ProfileError.Validation.DisplayNameTooLong.toStringKey())
 
-    @Test fun empty_bytes_maps_to_backend_unavailable() =
-        assertEquals(AuthStringKey.ProfileBackendUnavailable, ProfileError.Validation.EmptyBytes.toStringKey())
+    @Test fun empty_bytes_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileAvatarEmptyBytes, ProfileError.Validation.EmptyBytes.toStringKey())
 
     @Test fun backend_maps_to_backend_unavailable() =
         assertEquals(AuthStringKey.ProfileBackendUnavailable, ProfileError.Backend.Unavailable.toStringKey())

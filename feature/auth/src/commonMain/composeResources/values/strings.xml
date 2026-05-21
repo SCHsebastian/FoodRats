@@ -38,4 +38,5 @@
     <string name="auth_profile_display_name_blank">Display name can\'t be empty.</string>
     <string name="auth_profile_display_name_too_long">Display name is too long (max 40).</string>
     <string name="auth_profile_backend_unavailable">Network unavailable. Try again.</string>
+    <string name="auth_profile_avatar_empty_bytes">Couldn\'t read the selected image. Try another one.</string>
 </resources>
