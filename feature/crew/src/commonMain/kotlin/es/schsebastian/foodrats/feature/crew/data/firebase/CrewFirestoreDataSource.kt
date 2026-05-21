@@ -206,6 +206,25 @@ class CrewFirestoreDataSource(
         }
 
     /**
+     * Writes ONLY the denormalized `crews/{crewId}.members.{uid}.displayName` field.
+     * Unlike [renameMember], this does NOT touch `accounts/{uid}` — the canonical write
+     * is the caller's responsibility (see `AccountWritePort` from :core:domain).
+     * Used by `CrewMemberCacheWritePort` to satisfy the no-cross-feature-deps rule.
+     */
+    suspend fun setMemberDisplayName(
+        crewId: CrewId,
+        accountId: AccountId,
+        newDisplayName: String,
+    ): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value)
+                    .update("members.${accountId.value}.displayName" to newDisplayName)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    /**
      * Writes a member's avatar URL into the crew's denormalized members map. Mirrors
      * [renameMember] — same partial-update path so it falls under the rule's
      * `members`-only diff allowance.

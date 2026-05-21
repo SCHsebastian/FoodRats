@@ -48,6 +48,7 @@ kotlin {
             implementation(libs.firebase.common)
             implementation(libs.firebase.auth)
             implementation(libs.firebase.firestore)
+            implementation(libs.firebase.storage)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

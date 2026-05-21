@@ -1,16 +1,19 @@
 package es.schsebastian.foodrats.feature.auth.di
 
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.account.AccountWritePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.auth.data.firebase.AccountDocStore
 import es.schsebastian.foodrats.feature.auth.data.firebase.AccountSnapshotSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.AuthErrorMapper
+import es.schsebastian.foodrats.feature.auth.data.firebase.AvatarStorageDataSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAccountSnapshotSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAuthDataSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountDocStore
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountReadDataSource
+import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountWriter
 import es.schsebastian.foodrats.feature.auth.data.repository.AuthSignOutPort
 import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
@@ -36,5 +39,9 @@ val authModule = module {
         )
     }
     single<AccountReadPort> { FirestoreAccountReadDataSource(source = get()) }
+    singleOf(::AvatarStorageDataSource)
+    single<AccountWritePort> {
+        FirestoreAccountWriter(firestore = get(), avatarStorage = get(), dispatchers = get())
+    }
     viewModelOf(::SignInViewModel)
 }
