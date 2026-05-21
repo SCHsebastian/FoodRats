@@ -65,7 +65,7 @@ class CrewPickerViewModelTest {
         code = (CrewCode.of("ABCD23") as Result.Ok).value,
         ownerId = me,
         createdAt = Instant.fromEpochMilliseconds(0L),
-        members = listOf(Member(me, "Me", null, Instant.fromEpochMilliseconds(0L))),
+        members = listOf(Member(me, Instant.fromEpochMilliseconds(0L))),
     )
 
     private val myAccount = Account(

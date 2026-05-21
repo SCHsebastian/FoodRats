@@ -169,8 +169,7 @@ fun CrewSettingsScreen(
                 items(crew.members, key = { it.accountId.value }) { m ->
                     val canRemove = state.isOwner && m.accountId != state.myAccountId
                     FrCrewMemberRow(
-                        displayName = m.displayName,
-                        avatarUrl = m.avatarUrl,
+                        account = state.identities[m.accountId],
                         trailing = if (canRemove) {
                             {
                                 IconButton(onClick = { memberPendingRemoval = m.accountId }) {
@@ -251,7 +250,8 @@ fun CrewSettingsScreen(
     }
 
     memberPendingRemoval?.let { pendingId ->
-        val memberName = state.crew?.members?.firstOrNull { it.accountId == pendingId }?.displayName.orEmpty()
+        val memberName = state.identities[pendingId]?.displayName
+            ?: resolve(CrewStringKey.MemberDeleted)
         AlertDialog(
             onDismissRequest = { memberPendingRemoval = null },
             title = { Text(resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName)) },

@@ -10,20 +10,22 @@ import androidx.compose.ui.Modifier
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.account.Account
+import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 
 @Composable
 fun FrCrewMemberRow(
-    displayName: String,
-    avatarUrl: String?,
+    account: Account?,
     modifier: Modifier = Modifier,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    val displayName = account?.displayName ?: resolve(CrewStringKey.MemberDeleted)
     Row(
         modifier = modifier.fillMaxWidth().padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        // FrAvatar takes initials (not a URL). Use first two uppercase chars of displayName.
         FrAvatar(initials = displayName.take(2))
         FrText(text = displayName, modifier = Modifier.weight(1f))
         if (trailing != null) trailing()

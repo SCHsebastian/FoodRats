@@ -24,7 +24,7 @@ class CreateCrewUseCaseTest {
         ownerId = founderId,
         createdAt = Instant.fromEpochMilliseconds(0L),
         members = listOf(
-            Member(founderId, "Sam", null, Instant.fromEpochMilliseconds(0L)),
+            Member(founderId, Instant.fromEpochMilliseconds(0L)),
         ),
     )
 

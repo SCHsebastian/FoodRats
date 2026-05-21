@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
+import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
@@ -17,6 +18,11 @@ data class CrewSettingsState(
     val isDeleting: Boolean = false,
     val showDeleteConfirm: Boolean = false,
     val error: CrewError? = null,
+    /**
+     * Live identities resolved from `AccountReadPort.observeMany`. Keys are the current
+     * crew's member ids; a `null` value means the account doc is missing or deleted.
+     */
+    val identities: Map<AccountId, Account?> = emptyMap(),
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {

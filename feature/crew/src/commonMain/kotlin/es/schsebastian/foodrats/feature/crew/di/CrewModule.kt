@@ -63,6 +63,6 @@ val crewModule = module {
 
     viewModelOf(::CrewPickerViewModel)
     viewModel { (crewId: CrewId) ->
-        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get())
+        CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get(), get())
     }
 }

@@ -48,4 +48,5 @@
     <string name="crew_settings_remove_member_cta">Quitar</string>
     <string name="crew_settings_remove_member_confirm_title">¿Quitar a %1$s?</string>
     <string name="crew_settings_remove_member_confirm_body">%1$s perderá el acceso al grupo.</string>
+    <string name="crew_member_deleted">Usuario eliminado</string>
 </resources>
