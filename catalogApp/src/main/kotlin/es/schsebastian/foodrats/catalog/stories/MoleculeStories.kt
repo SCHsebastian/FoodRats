@@ -25,7 +25,6 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScorePicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
-import es.schsebastian.foodrats.core.designsystem.molecules.FrTagChipRow
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 internal fun moleculeStories(): List<CatalogEntry> = listOf(
@@ -36,7 +35,6 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.scorebadge",     CatalogGroup.MOLECULES, "FrScoreBadge",     "Circular 1..10 score badge") { ScoreBadgeStory() },
     CatalogEntry("molecule.scorepicker",    CatalogGroup.MOLECULES, "FrScorePicker",    "Chip row picker for 1..10 score") { ScorePickerStory() },
     CatalogEntry("molecule.starrating",     CatalogGroup.MOLECULES, "FrStarRatingPicker", "1..5 picker for tap-to-rate flows") { StarRatingStory() },
-    CatalogEntry("molecule.tagchiprow",     CatalogGroup.MOLECULES, "FrTagChipRow",     "Multi-select chip row") { TagChipRowStory() },
 )
 
 @Composable
@@ -224,32 +222,3 @@ private fun StarRatingStory() {
     }
 }
 
-@Composable
-private fun TagChipRowStory() {
-    var selected by remember { mutableStateOf(setOf("salad", "vegan")) }
-    val tags = listOf("breakfast", "lunch", "dinner", "snack", "brunch", "dessert", "drink", "salad", "vegan", "spicy", "other")
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-        CatalogScene(
-            label = "Multi-select — wraps onto multiple rows",
-            description = "FilterChip with leading check; FlowRow handles width.",
-        ) {
-            FrTagChipRow(
-                tags = tags,
-                selected = selected,
-                onToggle = { tag ->
-                    selected = if (tag in selected) selected - tag else selected + tag
-                },
-            )
-        }
-        CatalogScene(
-            label = "Narrow 240dp — chips wrap aggressively",
-        ) {
-            FrTagChipRow(
-                modifier = Modifier.width(240.dp),
-                tags = tags,
-                selected = setOf("lunch", "vegan"),
-                onToggle = {},
-            )
-        }
-    }
-}
