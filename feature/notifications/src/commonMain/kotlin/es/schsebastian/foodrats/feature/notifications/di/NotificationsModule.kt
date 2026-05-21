@@ -1,5 +1,9 @@
 package es.schsebastian.foodrats.feature.notifications.di
 
+import es.schsebastian.foodrats.core.domain.notifications.StreakNotificationPort
+import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
+import es.schsebastian.foodrats.feature.notifications.data.adapter.StreakNotificationAdapter
+import es.schsebastian.foodrats.feature.notifications.data.adapter.TokenRegistrationAdapter
 import es.schsebastian.foodrats.feature.notifications.data.firebase.DeviceTokenFirestoreDataSource
 import es.schsebastian.foodrats.feature.notifications.data.repository.DeviceTokenRepositoryImpl
 import es.schsebastian.foodrats.feature.notifications.domain.bus.NotificationBus
@@ -26,6 +30,11 @@ val notificationsModule = module {
     factoryOf(::RequestNotificationPermissionUseCase)
     factory { ScheduleStreakNudgeUseCase(get(), get(), TimeZone.currentSystemDefault()) }
     factoryOf(::HandleIncomingPushUseCase)
+
+    // Cross-feature ports — :feature:auth and :feature:meal call these instead of importing
+    // this feature directly.
+    single<TokenRegistrationPort> { TokenRegistrationAdapter(get()) }
+    single<StreakNotificationPort> { StreakNotificationAdapter(get()) }
 
     viewModelOf(::NotificationPermissionViewModel)
 }
