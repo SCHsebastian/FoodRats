@@ -10,7 +10,7 @@ export const weeklyDigest = onSchedule(
   {
     schedule: "0 9 * * 1",
     timeZone: "UTC",
-    region: "us-central1",
+    region: "europe-west3",
   },
   async () => {
     const now = DateTime.utc();
