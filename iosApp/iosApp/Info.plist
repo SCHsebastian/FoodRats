@@ -8,6 +8,8 @@
 	<string>FoodRats uses the camera to capture your daily meal.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FoodRats can import meal photos from your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FoodRats can tag your meal with where you ate it.</string>
 	<key>GIDClientID</key>
 	<string>475840003160-2grnq2fqeplj74b81rqrddk5p9f46dts.apps.googleusercontent.com</string>
 	<key>CFBundleURLTypes</key>

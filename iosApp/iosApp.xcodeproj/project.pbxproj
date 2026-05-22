@@ -18,10 +18,12 @@
 		6ADB0E162FBB800300BCF21E /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E152FBB800300BCF21E /* FirebaseStorage */; };
 		6ADB0E192FBB805800BCF21E /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E182FBB805800BCF21E /* GoogleSignIn */; };
 		6ADB0E1B2FBB805800BCF21E /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E1A2FBB805800BCF21E /* GoogleSignInSwift */; };
+		6AC0CA7100000000000000A1 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6AC0CA7100000000000000A2 /* CoreLocation.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		2250B356FD973D8CF8F13981 /* FoodRats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FoodRats.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6AC0CA7100000000000000A2 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -66,6 +68,7 @@
 				6ADB0E0C2FBB800300BCF21E /* FirebaseAuth in Frameworks */,
 				6ADB0E122FBB800300BCF21E /* FirebaseFirestore in Frameworks */,
 				6ADB0E1B2FBB805800BCF21E /* GoogleSignInSwift in Frameworks */,
+				6AC0CA7100000000000000A1 /* CoreLocation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,8 +88,17 @@
 			children = (
 				9C81C07F6F3274ED9DBEED23 /* Configuration */,
 				EA0799DCD3E76EAFB883865E /* iosApp */,
+				6AC0CA7100000000000000A3 /* Frameworks */,
 				06DAED8608A94379F832D5E0 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		6AC0CA7100000000000000A3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				6AC0CA7100000000000000A2 /* CoreLocation.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
