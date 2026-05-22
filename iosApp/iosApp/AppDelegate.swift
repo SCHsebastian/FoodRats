@@ -1,5 +1,6 @@
 import FirebaseCore
 import FirebaseMessaging
+import FoodRatsShared
 import GoogleSignIn
 import UIKit
 import UserNotifications
@@ -31,13 +32,33 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return GIDSignIn.sharedInstance.handle(url)
     }
 
-    // Foreground notification handling — show banner + sound.
+    // Foreground notification handling — show banner + sound and forward the data payload
+    // through the Kotlin bridge so the in-app banner observers see it.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
+        forwardData(notification.request.content.userInfo)
         completionHandler([.banner, .sound, .badge])
+    }
+
+    // Background tap → app foregrounded by the user. Forward so observers see the same payload.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        forwardData(response.notification.request.content.userInfo)
+        completionHandler()
+    }
+
+    private func forwardData(_ userInfo: [AnyHashable: Any]) {
+        var stringMap: [String: String] = [:]
+        for (k, v) in userInfo {
+            if let key = k as? String, let value = v as? String { stringMap[key] = value }
+        }
+        IosNotificationBridge.shared.publish(data: stringMap)
     }
 }
 
