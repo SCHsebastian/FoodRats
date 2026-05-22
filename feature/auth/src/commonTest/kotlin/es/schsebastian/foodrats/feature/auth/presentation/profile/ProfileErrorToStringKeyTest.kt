@@ -20,4 +20,31 @@ class ProfileErrorToStringKeyTest {
 
     @Test fun signed_out_maps_to_backend_unavailable() =
         assertEquals(AuthStringKey.ProfileBackendUnavailable, ProfileError.Session.SignedOut.toStringKey())
+
+    @Test fun theme_persist_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileThemePersistFailed, ProfileError.Theme.PersistFailed.toStringKey())
+
+    @Test fun locale_persist_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileLanguagePersistFailed, ProfileError.Locale.PersistFailed.toStringKey())
+
+    @Test fun notifications_persist_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileNotificationsPersistFailed, ProfileError.Notifications.PersistFailed.toStringKey())
+
+    @Test fun notifications_permission_denied_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileNotificationsPermissionDenied, ProfileError.Notifications.PermissionDenied.toStringKey())
+
+    @Test fun notifications_permission_denied_forever_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileNotificationsPermissionDeniedForever, ProfileError.Notifications.PermissionDeniedForever.toStringKey())
+
+    @Test fun delete_phrase_mismatch_maps_to_phrase_key() =
+        assertEquals(AuthStringKey.DeleteAccountErrorPhrase, ProfileError.Delete.PhraseMismatch.toStringKey())
+
+    @Test fun delete_not_implemented_maps_to_not_implemented_key() =
+        assertEquals(AuthStringKey.DeleteAccountErrorNotImplemented, ProfileError.Delete.NotImplemented.toStringKey())
+
+    @Test fun delete_unavailable_maps_to_backend_key() =
+        assertEquals(AuthStringKey.DeleteAccountErrorBackend, ProfileError.Delete.Unavailable.toStringKey())
+
+    @Test fun delete_ownership_maps_to_ownership_key() =
+        assertEquals(AuthStringKey.DeleteAccountErrorOwnership, ProfileError.Delete.OwnerOfActiveCrew.toStringKey())
 }

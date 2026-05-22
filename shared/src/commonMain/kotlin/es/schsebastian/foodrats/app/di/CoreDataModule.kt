@@ -6,8 +6,14 @@ import dev.gitlive.firebase.firestore.firestore
 import dev.gitlive.firebase.storage.storage
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.providePreferencesDataStore
+import es.schsebastian.foodrats.core.data.preferences.LocaleRepository
+import es.schsebastian.foodrats.core.data.preferences.NotificationsPreferenceRepository
+import es.schsebastian.foodrats.core.data.preferences.ThemeModeRepository
 import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.preferences.LocalePort
+import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
+import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.domain.time.SystemClock
 import kotlinx.datetime.TimeZone
@@ -23,6 +29,11 @@ val coreDataModule = module {
     //   iOS     -> crashIosModule(...) in MainViewController
     single { providePreferencesDataStore() }
     single { AppPreferences(get()) }
+    single<ThemeModePort> { ThemeModeRepository(prefs = get(), dispatchers = get()) }
+    single<LocalePort> { LocaleRepository(prefs = get(), dispatchers = get()) }
+    single<NotificationsPreferencePort> {
+        NotificationsPreferenceRepository(prefs = get(), dispatchers = get())
+    }
     single { Firebase.auth }
     single { Firebase.firestore }
     single { Firebase.storage }

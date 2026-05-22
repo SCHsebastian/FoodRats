@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviState
 sealed interface RootStage {
     data object Splash : RootStage
     data object NeedsSignIn : RootStage
+    data object NeedsNotificationPermission : RootStage
     data object NeedsCrew : RootStage
     data object Ready : RootStage
 }

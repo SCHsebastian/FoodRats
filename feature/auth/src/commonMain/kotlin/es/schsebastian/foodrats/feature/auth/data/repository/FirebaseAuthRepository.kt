@@ -129,9 +129,12 @@ internal class FirebaseAuthRepository(
             // Clear both the session token AND the active crew so the next sign-in
             // lands on CrewPicker instead of silently inheriting the previous user's
             // crew (the active-crew flow re-derives from prefs at session-restore time).
-            FrLog.d(FrLog.Tags.SignOut) { "repo: → prefs.clear(SessionToken, ActiveCrewId)" }
+            // Also reset the post-signin notification-permission prompt flag so a
+            // different account on this device sees the gate again.
+            FrLog.d(FrLog.Tags.SignOut) { "repo: → prefs.clear(SessionToken, ActiveCrewId, NotificationsPermissionPrompted)" }
             prefs.clear(Keys.SessionToken)
             prefs.clear(Keys.ActiveCrewId)
+            prefs.clear(Keys.NotificationsPermissionPrompted)
             FrLog.d(FrLog.Tags.SignOut) { "repo: signOut complete (Ok)" }
             Result.success(Unit)
         } catch (t: Throwable) {

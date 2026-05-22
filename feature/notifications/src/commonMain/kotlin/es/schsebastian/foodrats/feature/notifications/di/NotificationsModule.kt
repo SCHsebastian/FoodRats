@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.feature.notifications.di
 
+import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.StreakNotificationPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
+import es.schsebastian.foodrats.feature.notifications.data.adapter.NotificationPermissionAdapter
 import es.schsebastian.foodrats.feature.notifications.data.adapter.StreakNotificationAdapter
 import es.schsebastian.foodrats.feature.notifications.data.adapter.TokenRegistrationAdapter
 import es.schsebastian.foodrats.feature.notifications.data.firebase.DeviceTokenFirestoreDataSource
@@ -35,6 +37,7 @@ val notificationsModule = module {
     // this feature directly.
     single<TokenRegistrationPort> { TokenRegistrationAdapter(get()) }
     single<StreakNotificationPort> { StreakNotificationAdapter(get()) }
+    single<NotificationPermissionPort> { NotificationPermissionAdapter(get()) }
 
     viewModelOf(::NotificationPermissionViewModel)
 }

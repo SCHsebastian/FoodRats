@@ -40,6 +40,11 @@ class IosNotificationPermissionGateway : NotificationPermissionGateway {
 
     override fun openSystemSettings() {
         val url = NSURL.URLWithString(UIApplicationOpenSettingsURLString) ?: return
-        UIApplication.sharedApplication.openURL(url)
+        // Modern API — the deprecated single-arg openURL: is a silent no-op on recent iOS.
+        UIApplication.sharedApplication.openURL(
+            url = url,
+            options = emptyMap<Any?, Any>(),
+            completionHandler = null,
+        )
     }
 }

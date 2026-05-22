@@ -25,8 +25,11 @@
     <string name="auth_error_password_too_short">Password must be at least 6 characters.</string>
     <string name="auth_error_email_in_use">That email is already taken.</string>
     <string name="auth_error_wrong_credentials">Wrong email or password.</string>
-    <string name="auth_profile_title">Your Profile</string>
-    <string name="auth_profile_identity_section">Identity</string>
+    <string name="auth_profile_title">Settings</string>
+    <string name="auth_profile_identity_section">General</string>
+    <string name="auth_profile_preferences_section">Preferences</string>
+    <string name="auth_profile_danger_zone_section">Danger Zone</string>
+    <string name="auth_profile_danger_zone_subtitle">Irreversible actions. Read carefully.</string>
     <string name="auth_profile_display_name_label">Display name</string>
     <string name="auth_profile_signed_in_as_label">Signed in as</string>
     <string name="auth_profile_save">Save</string>
@@ -39,4 +42,48 @@
     <string name="auth_profile_display_name_too_long">Display name is too long (max 40).</string>
     <string name="auth_profile_backend_unavailable">Network unavailable. Try again.</string>
     <string name="auth_profile_avatar_empty_bytes">Couldn\'t read the selected image. Try another one.</string>
+
+    <string name="auth_profile_theme_row">Theme</string>
+    <string name="auth_profile_theme_picker_title">Choose theme</string>
+    <string name="auth_profile_theme_option_light">Light</string>
+    <string name="auth_profile_theme_option_dark">Dark</string>
+    <string name="auth_profile_theme_option_system">System default</string>
+    <string name="auth_profile_theme_persist_failed">Couldn\'t save your theme. Try again.</string>
+
+    <string name="auth_profile_language_row">Language</string>
+    <string name="auth_profile_language_picker_title">Choose language</string>
+    <string name="auth_profile_language_option_system">System default</string>
+    <string name="auth_profile_language_option_en">English</string>
+    <string name="auth_profile_language_option_es">Español</string>
+    <string name="auth_profile_language_persist_failed">Couldn\'t save your language. Try again.</string>
+
+    <string name="auth_profile_notifications_row">Notifications</string>
+    <string name="auth_profile_notifications_subtitle_on">Streak nudges, comments and rating updates.</string>
+    <string name="auth_profile_notifications_subtitle_off">Push notifications are paused.</string>
+    <string name="auth_profile_notifications_persist_failed">Couldn\'t save your preference. Try again.</string>
+    <string name="auth_profile_notifications_permission_denied">Notifications were not allowed. You can change this later.</string>
+    <string name="auth_profile_notifications_permission_denied_forever">Notifications are blocked. Enable them in system settings to receive updates.</string>
+    <string name="auth_profile_notifications_open_system_settings_cta">Open system settings</string>
+
+    <string name="auth_profile_delete_account_row">Delete my account</string>
+    <string name="auth_profile_delete_account_subtitle">Permanently removes your meals, ratings and memberships.</string>
+
+    <string name="auth_delete_account_title">Delete your account</string>
+    <string name="auth_delete_account_intro">This action is permanent and cannot be undone. Before continuing, make sure you understand what happens.</string>
+    <string name="auth_delete_account_warning_meals">Every meal you\'ve posted will be removed from every crew.</string>
+    <string name="auth_delete_account_warning_ratings">Your ratings on other meals will be removed.</string>
+    <string name="auth_delete_account_warning_crews">Crews you own must be transferred to another member or left empty first.</string>
+    <string name="auth_delete_account_warning_irreversible">Your account cannot be recovered.</string>
+    <string name="auth_delete_account_phrase_label">Type DELETE %1$s to confirm</string>
+    <string name="auth_delete_account_phrase_template">DELETE %1$s</string>
+    <string name="auth_delete_account_confirm_cta">Delete forever</string>
+    <string name="auth_delete_account_dialog_title">Delete account?</string>
+    <string name="auth_delete_account_dialog_body">Your data will be permanently removed. This cannot be undone.</string>
+    <string name="auth_delete_account_dialog_cancel">Cancel</string>
+    <string name="auth_delete_account_dialog_confirm">Delete forever</string>
+    <string name="auth_delete_account_in_flight">Deleting account…</string>
+    <string name="auth_delete_account_error_phrase">The confirmation phrase didn\'t match. Type it exactly.</string>
+    <string name="auth_delete_account_error_not_implemented">Account deletion is being rolled out. Reach out to support to delete your account today.</string>
+    <string name="auth_delete_account_error_backend">Couldn\'t reach the deletion service. Try again.</string>
+    <string name="auth_delete_account_error_ownership">Transfer ownership of your crews before deleting your account.</string>
 </resources>

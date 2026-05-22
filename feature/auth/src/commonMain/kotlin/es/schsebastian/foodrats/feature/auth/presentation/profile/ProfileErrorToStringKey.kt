@@ -14,4 +14,13 @@ internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Validation.EmptyBytes -> AuthStringKey.ProfileAvatarEmptyBytes
     ProfileError.Backend.Unavailable -> AuthStringKey.ProfileBackendUnavailable
     ProfileError.Session.SignedOut -> AuthStringKey.ProfileBackendUnavailable
+    ProfileError.Theme.PersistFailed -> AuthStringKey.ProfileThemePersistFailed
+    ProfileError.Locale.PersistFailed -> AuthStringKey.ProfileLanguagePersistFailed
+    ProfileError.Notifications.PersistFailed -> AuthStringKey.ProfileNotificationsPersistFailed
+    ProfileError.Notifications.PermissionDenied -> AuthStringKey.ProfileNotificationsPermissionDenied
+    ProfileError.Notifications.PermissionDeniedForever -> AuthStringKey.ProfileNotificationsPermissionDeniedForever
+    ProfileError.Delete.PhraseMismatch -> AuthStringKey.DeleteAccountErrorPhrase
+    ProfileError.Delete.NotImplemented -> AuthStringKey.DeleteAccountErrorNotImplemented
+    ProfileError.Delete.Unavailable -> AuthStringKey.DeleteAccountErrorBackend
+    ProfileError.Delete.OwnerOfActiveCrew -> AuthStringKey.DeleteAccountErrorOwnership
 }

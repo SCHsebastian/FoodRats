@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.app.root
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -12,40 +13,45 @@ import kotlinx.coroutines.launch
 class RootNavViewModel(
     private val session: SessionProvider,
     private val activeCrew: ActiveCrewProvider,
+    private val notifications: NotificationsPreferencePort,
 ) : MviViewModel<RootNavState, RootNavIntent, RootNavEffect>(RootNavState()) {
 
     init {
         viewModelScope.launch {
-            combine(session.current, activeCrew.current) { sess, crewId -> sess to crewId }
-                .collect { (sess, crewId) ->
-                    val nextStage = when {
-                        sess == null   -> RootStage.NeedsSignIn
-                        crewId == null -> RootStage.NeedsCrew
-                        else           -> RootStage.Ready
-                    }
-                    val target = when (nextStage) {
-                        RootStage.Splash       -> null   // unreachable here
-                        RootStage.NeedsSignIn  -> Route.SignIn
-                        RootStage.NeedsCrew    -> Route.CrewPicker
-                        RootStage.Ready        -> Route.Main
-                    }
-                    FrLog.d(FrLog.Tags.RootNav) {
-                        "tick sess=${sess?.accountId?.value ?: "null"} " +
-                            "crew=${crewId?.value ?: "null"} " +
-                            "stage=${currentState.stage::class.simpleName} → " +
-                            "${nextStage::class.simpleName} target=${target?.let { it::class.simpleName }}"
-                    }
-                    if (currentState.stage != nextStage) {
-                        FrLog.d(FrLog.Tags.RootNav) {
-                            "transition ${currentState.stage::class.simpleName} → " +
-                                "${nextStage::class.simpleName}, emitting NavigateTo(${target?.let { it::class.simpleName }})"
-                        }
-                        update { it.copy(stage = nextStage) }
-                        target?.let { emit(RootNavEffect.NavigateTo(it)) }
-                    } else {
-                        FrLog.d(FrLog.Tags.RootNav) { "no-op (same stage)" }
-                    }
+            combine(session.current, activeCrew.current, notifications.prompted) { sess, crewId, prompted ->
+                Triple(sess, crewId, prompted)
+            }.collect { (sess, crewId, prompted) ->
+                val nextStage = when {
+                    sess == null   -> RootStage.NeedsSignIn
+                    !prompted      -> RootStage.NeedsNotificationPermission
+                    crewId == null -> RootStage.NeedsCrew
+                    else           -> RootStage.Ready
                 }
+                val target = when (nextStage) {
+                    RootStage.Splash                      -> null   // unreachable here
+                    RootStage.NeedsSignIn                 -> Route.SignIn
+                    RootStage.NeedsNotificationPermission -> Route.NotificationPermission
+                    RootStage.NeedsCrew                   -> Route.CrewPicker
+                    RootStage.Ready                       -> Route.Main
+                }
+                FrLog.d(FrLog.Tags.RootNav) {
+                    "tick sess=${sess?.accountId?.value ?: "null"} " +
+                        "crew=${crewId?.value ?: "null"} " +
+                        "prompted=$prompted " +
+                        "stage=${currentState.stage::class.simpleName} → " +
+                        "${nextStage::class.simpleName} target=${target?.let { it::class.simpleName }}"
+                }
+                if (currentState.stage != nextStage) {
+                    FrLog.d(FrLog.Tags.RootNav) {
+                        "transition ${currentState.stage::class.simpleName} → " +
+                            "${nextStage::class.simpleName}, emitting NavigateTo(${target?.let { it::class.simpleName }})"
+                    }
+                    update { it.copy(stage = nextStage) }
+                    target?.let { emit(RootNavEffect.NavigateTo(it)) }
+                } else {
+                    FrLog.d(FrLog.Tags.RootNav) { "no-op (same stage)" }
+                }
+            }
         }
     }
 

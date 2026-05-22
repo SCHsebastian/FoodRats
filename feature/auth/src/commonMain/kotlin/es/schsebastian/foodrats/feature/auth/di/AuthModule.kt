@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.auth.di
 
+import es.schsebastian.foodrats.core.domain.account.AccountDeletionPort
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.account.AccountWritePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -14,9 +15,15 @@ import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAuthDataSourc
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountDocStore
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountReadDataSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountWriter
+import es.schsebastian.foodrats.feature.auth.data.firebase.StubAccountDeletionPort
 import es.schsebastian.foodrats.feature.auth.data.repository.AuthSignOutPort
 import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileViewModel
@@ -60,8 +67,14 @@ val authModule = module {
     single<AccountWritePort> {
         FirestoreAccountWriter(firestore = get(), avatarStorage = get(), dispatchers = get())
     }
+    single<AccountDeletionPort> { StubAccountDeletionPort() }
     factoryOf(::UpdateMyDisplayNameUseCase)
     factoryOf(::UpdateMyAvatarUseCase)
+    factoryOf(::SetThemeModeUseCase)
+    factoryOf(::SetLocaleUseCase)
+    factoryOf(::SetNotificationsEnabledUseCase)
+    factoryOf(::EnableNotificationsUseCase)
+    factoryOf(::DeleteMyAccountUseCase)
     viewModelOf(::SignInViewModel)
     viewModelOf(::ProfileViewModel)
     viewModelOf(::TopBarAvatarViewModel)

@@ -80,11 +80,16 @@ fun NavGraph(navController: NavController = rememberNavController()) {
         }
 
         composable<Route.SignIn> {
-            SignInScreen(onSignedIn = { controller.navigateTopLevel(Route.CrewPicker) })
+            // After signin, RootNavViewModel resolves the next stage (NotificationPermission
+            // → CrewPicker → Main) and drives navigation — keep the local callback as a
+            // no-op so the two paths don't race to different destinations.
+            SignInScreen(onSignedIn = {})
         }
 
         composable<Route.NotificationPermission> {
-            NotificationPermissionScreen(onContinue = { controller.popBackStack() })
+            // Continue is a no-op: marking the prompt flag drives RootNavViewModel to
+            // emit NavigateTo(CrewPicker | Main), which navigateTopLevel handles.
+            NotificationPermissionScreen(onContinue = {})
         }
 
         composable<Route.CrewPicker> {

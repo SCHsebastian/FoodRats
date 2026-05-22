@@ -27,7 +27,14 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScorePicker
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsDivider
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRow
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRowTone
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSection
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSectionTone
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 internal fun moleculeStories(): List<CatalogEntry> = listOf(
@@ -41,6 +48,8 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.confirmdialog",  CatalogGroup.MOLECULES, "FrConfirmDialog",    "Affirmative/destructive confirmation dialog") { ConfirmDialogStory() },
     CatalogEntry("molecule.composerhero",   CatalogGroup.MOLECULES, "FrComposerHeroCard", "Photo hero with rounded clip + entry scale animation") { ComposerHeroCardStory() },
     CatalogEntry("molecule.avatarpicker",   CatalogGroup.MOLECULES, "FrAvatarPicker",     "Avatar preview + change-avatar button (initials fallback, busy state)") { AvatarPickerStory() },
+    CatalogEntry("molecule.settings-section", CatalogGroup.MOLECULES, "FrSettingsSection", "Grouped settings card with header + rounded surface") { SettingsSectionStory() },
+    CatalogEntry("molecule.settings-row",     CatalogGroup.MOLECULES, "FrSettingsRow",     "Settings row: icon + title + subtitle + trailing slot") { SettingsRowStory() },
 )
 
 @Composable
@@ -283,6 +292,77 @@ private fun AvatarPickerStory() {
                 changeLabel = "Change",
                 uploadingLabel = "Uploading…",
             )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        CatalogScene(label = "Neutral — drilldown + switch + value") {
+            FrSettingsSection(title = "Preferences") {
+                FrSettingsRow(title = "Theme", subtitle = "System default", icon = FrIcons.Settings, onClick = {})
+                FrSettingsDivider()
+                var checked by remember { mutableStateOf(true) }
+                FrSettingsRow(
+                    title = "Notifications",
+                    icon = FrIcons.Settings,
+                    trailing = { Switch(checked = checked, onCheckedChange = { checked = it }) },
+                )
+                FrSettingsDivider()
+                FrSettingsRow(title = "Language", icon = FrIcons.Settings, trailing = { Text("English") })
+            }
+        }
+        CatalogScene(label = "Danger — red border + tinted header") {
+            FrSettingsSection(title = "Danger Zone", tone = FrSettingsSectionTone.Danger) {
+                FrSettingsRow(title = "Sign out", icon = FrIcons.Back, onClick = {})
+                FrSettingsDivider()
+                FrSettingsRow(
+                    title = "Delete account",
+                    subtitle = "Permanent. Removes meals, ratings, memberships.",
+                    icon = FrIcons.Delete,
+                    tone = FrSettingsRowTone.Danger,
+                    onClick = {},
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsRowStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        CatalogScene(label = "Drilldown — chevron auto-appended") {
+            FrSettingsSection(title = "Drilldown rows") {
+                FrSettingsRow(title = "Theme", subtitle = "System default", icon = FrIcons.Settings, onClick = {})
+                FrSettingsDivider()
+                FrSettingsRow(title = "About", icon = FrIcons.Settings, onClick = {})
+            }
+        }
+        CatalogScene(label = "With trailing slot — value text") {
+            FrSettingsSection(title = "Value rows") {
+                FrSettingsRow(title = "Language", icon = FrIcons.Settings, trailing = { Text("Español") })
+                FrSettingsDivider()
+                FrSettingsRow(title = "Email", icon = FrIcons.Settings, trailing = { Text("seb@example.com") })
+            }
+        }
+        CatalogScene(label = "Danger tone + disabled") {
+            FrSettingsSection(title = "Danger rows") {
+                FrSettingsRow(
+                    title = "Delete account",
+                    icon = FrIcons.Delete,
+                    tone = FrSettingsRowTone.Danger,
+                    onClick = {},
+                )
+                FrSettingsDivider()
+                FrSettingsRow(
+                    title = "Delete account (disabled)",
+                    icon = FrIcons.Delete,
+                    tone = FrSettingsRowTone.Danger,
+                    enabled = false,
+                    onClick = {},
+                )
+            }
         }
     }
 }

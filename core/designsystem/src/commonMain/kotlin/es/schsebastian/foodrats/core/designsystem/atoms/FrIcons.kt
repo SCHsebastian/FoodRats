@@ -267,6 +267,54 @@ private val BarChartVector: ImageVector = materialIcon(name = "Filled.BarChart")
     }
 }
 
+// Vendored Warning glyph — material-icons-core has no Filled.Warning. Standard
+// MD "warning" filled triangle with exclamation mark cut out (EvenOdd).
+private val WarningVector: ImageVector = materialIcon(name = "Filled.Warning") {
+    materialPath(pathFillType = PathFillType.EvenOdd) {
+        moveTo(1f, 21f)
+        horizontalLineTo(23f)
+        lineTo(12f, 2f)
+        lineTo(1f, 21f)
+        close()
+        moveTo(13f, 18f)
+        horizontalLineToRelative(-2f)
+        verticalLineToRelative(-2f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(2f)
+        close()
+        moveTo(13f, 14f)
+        horizontalLineToRelative(-2f)
+        verticalLineToRelative(-4f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(4f)
+        close()
+    }
+}
+
+// Vendored Delete (trash can) glyph — material-icons-core has no Filled.Delete.
+private val DeleteVector: ImageVector = materialIcon(name = "Filled.Delete") {
+    materialPath {
+        moveTo(6f, 19f)
+        curveToRelative(0f, 1.1f, 0.9f, 2f, 2f, 2f)
+        horizontalLineToRelative(8f)
+        curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+        verticalLineTo(7f)
+        horizontalLineTo(6f)
+        verticalLineToRelative(12f)
+        close()
+        moveTo(19f, 4f)
+        horizontalLineToRelative(-3.5f)
+        lineToRelative(-1f, -1f)
+        horizontalLineToRelative(-5f)
+        lineToRelative(-1f, 1f)
+        horizontalLineTo(5f)
+        verticalLineToRelative(2f)
+        horizontalLineToRelative(14f)
+        verticalLineTo(4f)
+        close()
+    }
+}
+
 // Material `place` (location pin) glyph — vendored because material-icons-extended
 // has no KMP iOS artifact. Standard 24x24 teardrop with a circle hole.
 private val PlaceVector: ImageVector = materialIcon(name = "Filled.Place") {
@@ -300,6 +348,8 @@ object FrIcons {
     val Crown: ImageVector         = CrownVector
     val Flame: ImageVector         = FlameVector
     val Place: ImageVector         = PlaceVector
+    val Warning: ImageVector       = WarningVector
+    val Delete: ImageVector        = DeleteVector
     // ChevronLeft/Right are in material-icons-extended (no KMP iOS artifact); use
     // KeyboardArrowLeft/Right from material-icons-core automirrored as substitutes.
     val ChevronLeft: ImageVector   = Icons.AutoMirrored.Filled.KeyboardArrowLeft

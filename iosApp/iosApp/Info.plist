@@ -29,5 +29,21 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<!--
+	  Tells iOS the app supports English and Spanish. Required for the
+	  "Preferred Language" section to appear in Settings → FoodRats. The
+	  actual string resolution still flows through Compose Resources (which
+	  reads NSLocale.preferredLanguages), so when the user picks a language
+	  in iOS Settings the app re-launches with that locale applied.
+	-->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+	</array>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
 </dict>
 </plist>
