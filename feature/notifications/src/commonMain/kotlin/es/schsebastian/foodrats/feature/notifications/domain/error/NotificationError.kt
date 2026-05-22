@@ -12,5 +12,11 @@ sealed interface NotificationError {
     }
     sealed interface Schedule : NotificationError {
         data object Failed : Schedule
+        data object HasPostedCheckFailed : Schedule
+    }
+    sealed interface PayloadParse : NotificationError {
+        data object MissingKey : PayloadParse
+        data object UnknownKind : PayloadParse
+        data object MalformedFields : PayloadParse
     }
 }

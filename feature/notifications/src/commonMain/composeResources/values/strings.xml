@@ -13,4 +13,13 @@
     <string name="notifications_error_token_unavailable">Couldn\'t register this device.</string>
     <string name="notifications_error_token_persist">Couldn\'t save device info.</string>
     <string name="notifications_error_schedule_failed">Couldn\'t schedule the reminder.</string>
+    <string name="notifications_error_payload_parse">Couldn\'t read this notification.</string>
+    <string name="notifications_new_comment_title">%1$s commented on your %2$s</string>
+    <string name="notifications_new_comment_body">Tap to read</string>
+    <string name="notifications_new_meal_post_title">%1$s posted a meal</string>
+    <string name="notifications_new_meal_post_body">%1$s — tap to view</string>
+    <string name="notifications_weekly_digest_title">Your week in food</string>
+    <string name="notifications_weekly_digest_body">Tap to see the recap</string>
+    <string name="notifications_inactivity_title">Hungry?</string>
+    <string name="notifications_inactivity_body">You haven\'t posted a meal today. Snap one before dinner.</string>
 </resources>

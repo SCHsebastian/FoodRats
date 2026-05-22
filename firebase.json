@@ -2,5 +2,16 @@
   "firestore": { "rules": "firestore.rules" },
   "storage": [
     { "target": "default", "rules": "storage.rules" }
+  ],
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs20",
+      "predeploy": [
+        "pnpm --prefix \"$RESOURCE_DIR\" run lint",
+        "pnpm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
   ]
 }

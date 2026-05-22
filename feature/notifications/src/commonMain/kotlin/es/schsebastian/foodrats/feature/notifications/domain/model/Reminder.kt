@@ -8,4 +8,5 @@ data class Reminder(
     val deliverAt: Instant,
     val title: String,
     val body: String,
+    val payload: ReminderPayload = ReminderPayload.None,
 )
