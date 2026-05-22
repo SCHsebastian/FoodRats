@@ -31,7 +31,7 @@ class IosLocalReminderScheduler : LocalReminderScheduler {
             minute = MINUTE_LOCAL
         }
         val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(
-            dateMatching = components,
+            dateComponents = components,
             repeats = true,
         )
         val request = UNNotificationRequest.requestWithIdentifier(
