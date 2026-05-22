@@ -7,7 +7,7 @@ import { KEY_NEW_MEAL_POST, FALLBACK } from "../i18n/keys";
 export const onMealCreated = onDocumentCreated(
   {
     document: "crews/{crewId}/meals/{mealId}",
-    region: "us-central1",
+    region: "europe-west3",
   },
   async (event) => {
     const snap = event.data;
