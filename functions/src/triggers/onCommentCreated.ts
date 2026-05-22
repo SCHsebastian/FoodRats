@@ -7,7 +7,7 @@ import { KEY_NEW_COMMENT, FALLBACK } from "../i18n/keys";
 export const onCommentCreated = onDocumentCreated(
   {
     document: "crews/{crewId}/meals/{mealId}/comments/{commentId}",
-    region: "us-central1",
+    region: "europe-west3",
   },
   async (event) => {
     const snap = event.data;
