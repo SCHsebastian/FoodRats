@@ -1,11 +1,13 @@
 package es.schsebastian.foodrats.feature.meal.di
 
+import es.schsebastian.foodrats.core.domain.meal.HasPostedTodayPort
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.HasPostedTodayAdapter
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseCommentRepository
@@ -53,6 +55,12 @@ val mealModule = module {
             ds = get(),
             auth = get(),
             clock = get(),
+            dispatchers = get(),
+        )
+    }
+    single<HasPostedTodayPort> {
+        HasPostedTodayAdapter(
+            firestore = get(),
             dispatchers = get(),
         )
     }
