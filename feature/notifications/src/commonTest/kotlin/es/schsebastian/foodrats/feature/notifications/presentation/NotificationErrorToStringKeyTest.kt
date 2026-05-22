@@ -12,4 +12,8 @@ class NotificationErrorToStringKeyTest {
     @Test fun tokenUnavailable()        = assertEquals(NotificationStringKey.ErrorTokenUnavailable, NotificationError.Token.Unavailable.toStringKey())
     @Test fun tokenPersist()            = assertEquals(NotificationStringKey.ErrorTokenPersist, NotificationError.Token.PersistFailed.toStringKey())
     @Test fun scheduleFailed()          = assertEquals(NotificationStringKey.ErrorScheduleFailed, NotificationError.Schedule.Failed.toStringKey())
+    @Test fun scheduleHasPostedCheckFailed() = assertEquals(NotificationStringKey.ErrorScheduleFailed, NotificationError.Schedule.HasPostedCheckFailed.toStringKey())
+    @Test fun payloadParseMissingKey()       = assertEquals(NotificationStringKey.ErrorPayloadParse, NotificationError.PayloadParse.MissingKey.toStringKey())
+    @Test fun payloadParseUnknownKind()      = assertEquals(NotificationStringKey.ErrorPayloadParse, NotificationError.PayloadParse.UnknownKind.toStringKey())
+    @Test fun payloadParseMalformedFields()  = assertEquals(NotificationStringKey.ErrorPayloadParse, NotificationError.PayloadParse.MalformedFields.toStringKey())
 }

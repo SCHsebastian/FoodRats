@@ -6,7 +6,7 @@ import es.schsebastian.foodrats.core.domain.time.FixedClock
 import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationError
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
 import es.schsebastian.foodrats.feature.notifications.domain.repository.LocalReminderScheduler
-import es.schsebastian.foodrats.feature.notifications.domain.usecase.ScheduleStreakNudgeUseCase
+import es.schsebastian.foodrats.feature.notifications.domain.usecase.ScheduleDailyInactivityReminderUseCase
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
@@ -34,14 +34,13 @@ class StreakNotificationAdapterTest {
 
     /**
      * Compose Resources are not bundled in commonTest, so `getString(...)` throws.
-     * The adapter swallows that into `Result.failure(Unavailable)` — that is the
-     * documented behavior and the previous inline implementation in
-     * PublishMealViewModel. Asserting this lock the fallback in place.
+     * The adapter swallows that into `Result.failure(Unavailable)` — that is the documented
+     * behavior. Asserting this locks the fallback in place.
      */
     @Test fun returns_Unavailable_when_resources_missing_with_succeeding_scheduler() = runTest {
         val scheduler = RecordingScheduler(scheduleResult = Result.success(Unit))
         val adapter = StreakNotificationAdapter(
-            ScheduleStreakNudgeUseCase(scheduler, clock, zone),
+            ScheduleDailyInactivityReminderUseCase(scheduler, clock, zone),
         )
 
         assertEquals(
@@ -53,7 +52,7 @@ class StreakNotificationAdapterTest {
     @Test fun returns_Unavailable_when_resources_missing_with_failing_scheduler() = runTest {
         val scheduler = RecordingScheduler(scheduleResult = Result.failure(NotificationError.Schedule.Failed))
         val adapter = StreakNotificationAdapter(
-            ScheduleStreakNudgeUseCase(scheduler, clock, zone),
+            ScheduleDailyInactivityReminderUseCase(scheduler, clock, zone),
         )
 
         assertEquals(

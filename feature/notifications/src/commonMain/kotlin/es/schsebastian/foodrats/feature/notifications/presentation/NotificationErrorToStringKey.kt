@@ -4,10 +4,14 @@ import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationE
 import es.schsebastian.foodrats.feature.notifications.i18n.NotificationStringKey
 
 fun NotificationError.toStringKey(): NotificationStringKey = when (this) {
-    NotificationError.Permission.Denied        -> NotificationStringKey.ErrorDenied
-    NotificationError.Permission.DeniedForever -> NotificationStringKey.ErrorDeniedForever
-    NotificationError.Permission.Unavailable   -> NotificationStringKey.ErrorUnavailable
-    NotificationError.Token.Unavailable        -> NotificationStringKey.ErrorTokenUnavailable
-    NotificationError.Token.PersistFailed      -> NotificationStringKey.ErrorTokenPersist
-    NotificationError.Schedule.Failed          -> NotificationStringKey.ErrorScheduleFailed
+    NotificationError.Permission.Denied             -> NotificationStringKey.ErrorDenied
+    NotificationError.Permission.DeniedForever      -> NotificationStringKey.ErrorDeniedForever
+    NotificationError.Permission.Unavailable        -> NotificationStringKey.ErrorUnavailable
+    NotificationError.Token.Unavailable             -> NotificationStringKey.ErrorTokenUnavailable
+    NotificationError.Token.PersistFailed           -> NotificationStringKey.ErrorTokenPersist
+    NotificationError.Schedule.Failed               -> NotificationStringKey.ErrorScheduleFailed
+    NotificationError.Schedule.HasPostedCheckFailed -> NotificationStringKey.ErrorScheduleFailed
+    NotificationError.PayloadParse.MissingKey       -> NotificationStringKey.ErrorPayloadParse
+    NotificationError.PayloadParse.UnknownKind      -> NotificationStringKey.ErrorPayloadParse
+    NotificationError.PayloadParse.MalformedFields  -> NotificationStringKey.ErrorPayloadParse
 }

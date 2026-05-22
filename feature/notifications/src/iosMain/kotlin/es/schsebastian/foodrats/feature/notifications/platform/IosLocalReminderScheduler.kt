@@ -4,19 +4,21 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationError
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
 import es.schsebastian.foodrats.feature.notifications.domain.repository.LocalReminderScheduler
-import platform.Foundation.NSCalendar
-import platform.Foundation.NSCalendarUnitDay
-import platform.Foundation.NSCalendarUnitHour
-import platform.Foundation.NSCalendarUnitMinute
-import platform.Foundation.NSCalendarUnitMonth
-import platform.Foundation.NSCalendarUnitYear
-import platform.Foundation.NSDate
-import platform.Foundation.dateWithTimeIntervalSince1970
+import platform.Foundation.NSDateComponents
 import platform.UserNotifications.UNCalendarNotificationTrigger
 import platform.UserNotifications.UNMutableNotificationContent
 import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNUserNotificationCenter
 
+/**
+ * iOS scheduler: registers a repeating UNCalendarNotificationTrigger at 14:00 device-local.
+ * Reschedule with the same Reminder.id replaces the existing request (identifier-based).
+ *
+ * Note: unlike Android, the pre-fire `HasPostedTodayPort` check is NOT performed on iOS in v1.
+ * `UNCalendarNotificationTrigger` has no app-side hook between trigger firing and delivery; the
+ * notification is shown unconditionally. A follow-up could swap to silent background pushes for
+ * iOS, but that requires server involvement that we're avoiding for the daily reminder.
+ */
 class IosLocalReminderScheduler : LocalReminderScheduler {
 
     override suspend fun schedule(reminder: Reminder): Result<Unit, NotificationError.Schedule> {
@@ -24,22 +26,33 @@ class IosLocalReminderScheduler : LocalReminderScheduler {
             setTitle(reminder.title)
             setBody(reminder.body)
         }
-        val date = NSDate.dateWithTimeIntervalSince1970(reminder.deliverAt.toEpochMilliseconds() / 1000.0)
-        val units = NSCalendarUnitYear or NSCalendarUnitMonth or NSCalendarUnitDay or
-                    NSCalendarUnitHour or NSCalendarUnitMinute
-        val components = NSCalendar.currentCalendar.components(units, date)
-        val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(components, repeats = false)
+        val components = NSDateComponents().apply {
+            hour = HOUR_LOCAL
+            minute = MINUTE_LOCAL
+        }
+        val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(
+            dateMatching = components,
+            repeats = true,
+        )
         val request = UNNotificationRequest.requestWithIdentifier(
             identifier = reminder.id,
             content = content,
             trigger = trigger,
         )
-        UNUserNotificationCenter.currentNotificationCenter().addNotificationRequest(request) { /* error ignored */ }
+        UNUserNotificationCenter.currentNotificationCenter()
+            .removePendingNotificationRequestsWithIdentifiers(listOf(reminder.id))
+        UNUserNotificationCenter.currentNotificationCenter()
+            .addNotificationRequest(request) { /* error ignored */ }
         return Result.success(Unit)
     }
 
     override suspend fun cancel(reminderId: String) {
         UNUserNotificationCenter.currentNotificationCenter()
             .removePendingNotificationRequestsWithIdentifiers(listOf(reminderId))
+    }
+
+    private companion object {
+        const val HOUR_LOCAL = 14L
+        const val MINUTE_LOCAL = 0L
     }
 }
