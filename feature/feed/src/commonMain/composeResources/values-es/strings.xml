@@ -40,4 +40,11 @@
     <string name="feed_comments_error_unavailable">No se pudo publicar. Intenta de nuevo.</string>
     <string name="feed_comments_error_unauthorized">No tienes permiso para comentar</string>
     <string name="feed_deleted_author">Usuario eliminado</string>
+    <string name="feed_delete_meal_cta">Eliminar comida</string>
+    <string name="feed_delete_meal_confirm_title">¿Eliminar esta comida?</string>
+    <string name="feed_delete_meal_confirm_body">Esto no se puede deshacer.</string>
+    <string name="feed_delete_comment_cta">Eliminar comentario</string>
+    <string name="feed_delete_comment_confirm_title">¿Eliminar este comentario?</string>
+    <string name="feed_delete_confirm_cta">Eliminar</string>
+    <string name="feed_delete_cancel_cta">Cancelar</string>
 </resources>

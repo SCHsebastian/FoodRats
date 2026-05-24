@@ -11,4 +11,7 @@ fun CommentError.toStringKey(): StringKey = when (this) {
     CommentError.Write.Blank        -> FeedStringKey.CommentsErrorBlank
     CommentError.Write.TooLong      -> FeedStringKey.CommentsErrorTooLong
     CommentError.Write.Unavailable  -> FeedStringKey.CommentsErrorUnavailable
+    CommentError.Delete.NotAuthorOrOwner -> FeedStringKey.CommentsErrorUnauthorized
+    CommentError.Delete.NotFound         -> FeedStringKey.CommentsErrorUnavailable
+    CommentError.Delete.Unavailable      -> FeedStringKey.CommentsErrorUnavailable
 }

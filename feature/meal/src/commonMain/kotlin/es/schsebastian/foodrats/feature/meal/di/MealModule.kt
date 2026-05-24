@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.meal.di
 
 import es.schsebastian.foodrats.core.domain.meal.HasPostedTodayPort
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
+import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
@@ -50,6 +51,7 @@ val mealModule = module {
     }
     single<MealReadPort> { get<MealRepository>() }
     single<MealRatingPort> { get<MealRepository>() }
+    single<MealDeletePort> { get<MealRepository>() }
     single<MealCommentPort> {
         FirebaseCommentRepository(
             ds = get(),

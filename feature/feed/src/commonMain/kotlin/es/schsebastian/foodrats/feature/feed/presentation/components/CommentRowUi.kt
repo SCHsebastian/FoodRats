@@ -10,4 +10,5 @@ data class CommentRowUi(
     val relative: RelativeTimestamp,
     val loading: Boolean,
     val isDeleted: Boolean,
+    val canDelete: Boolean = false,
 )

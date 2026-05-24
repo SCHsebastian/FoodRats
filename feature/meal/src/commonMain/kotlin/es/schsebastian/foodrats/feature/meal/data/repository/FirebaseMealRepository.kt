@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
@@ -190,7 +191,23 @@ internal class FirebaseMealRepository(
         )
     }
 
-    override suspend fun delete(id: MealId): Result<Unit, MealError> = Result.success(Unit)
+    override suspend fun delete(
+        crewId: CrewId,
+        mealId: MealId,
+    ): Result<Unit, MealDeleteError> = withContext(dispatchers.io) {
+        runCatching {
+            firestore.deleteMeal(crewId, mealId.value)
+            Result.success(Unit) as Result<Unit, MealDeleteError>
+        }.getOrElse { t ->
+            val msg = t.message.orEmpty().lowercase()
+            val mapped = when {
+                "permission" in msg -> MealDeleteError.NotAuthorOrOwner
+                "not-found" in msg || "not found" in msg -> MealDeleteError.NotFound
+                else -> MealDeleteError.Unavailable
+            }
+            Result.failure(mapped)
+        }
+    }
 
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> =
         withContext(dispatchers.io) {

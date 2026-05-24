@@ -15,9 +15,16 @@ sealed interface CommentError {
         data object TooLong      : Write
         data object Unavailable  : Write
     }
+    sealed interface Delete : CommentError {
+        /** The caller is neither the comment's author nor the crew owner. */
+        data object NotAuthorOrOwner : Delete
+        data object NotFound         : Delete
+        data object Unavailable      : Delete
+    }
 }
 
 interface MealCommentPort {
     fun observe(crewId: CrewId, mealId: MealId): Flow<Result<List<MealComment>, CommentError.Read>>
     suspend fun post(crewId: CrewId, mealId: MealId, text: CommentText): Result<Unit, CommentError.Write>
+    suspend fun delete(crewId: CrewId, mealId: MealId, commentId: MealCommentId): Result<Unit, CommentError.Delete>
 }

@@ -40,4 +40,11 @@
     <string name="feed_comments_error_unavailable">Couldn\'t post. Try again.</string>
     <string name="feed_comments_error_unauthorized">You can\'t comment on this meal</string>
     <string name="feed_deleted_author">Deleted user</string>
+    <string name="feed_delete_meal_cta">Delete meal</string>
+    <string name="feed_delete_meal_confirm_title">Delete this meal?</string>
+    <string name="feed_delete_meal_confirm_body">This can\'t be undone.</string>
+    <string name="feed_delete_comment_cta">Delete comment</string>
+    <string name="feed_delete_comment_confirm_title">Delete this comment?</string>
+    <string name="feed_delete_confirm_cta">Delete</string>
+    <string name="feed_delete_cancel_cta">Cancel</string>
 </resources>
