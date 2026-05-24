@@ -2,6 +2,7 @@
 <resources>
     <string name="ingredient_select_title">Ingredients</string>
     <string name="ingredient_search_hint">Search ingredients</string>
+    <string name="ingredient_select_done">Done</string>
     <string name="ingredient_detected_section_title">Detected</string>
     <string name="ingredient_selection_full">Maximum 30 ingredients</string>
     <string name="ingredient_catalog_load_failed">Couldn\'t load the catalog</string>

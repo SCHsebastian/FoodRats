@@ -19,6 +19,7 @@ import foodrats.feature.ingredient.generated.resources.ingredient_category_veget
 import foodrats.feature.ingredient.generated.resources.ingredient_detected_section_title
 import foodrats.feature.ingredient.generated.resources.ingredient_retry_action
 import foodrats.feature.ingredient.generated.resources.ingredient_search_hint
+import foodrats.feature.ingredient.generated.resources.ingredient_select_done
 import foodrats.feature.ingredient.generated.resources.ingredient_select_title
 import foodrats.feature.ingredient.generated.resources.ingredient_selection_full
 import foodrats.feature.ingredient.generated.resources.ingredient_unknown
@@ -27,6 +28,7 @@ import org.jetbrains.compose.resources.StringResource
 enum class IngredientStringKey(override val resourceId: StringResource) : StringKey {
     SelectIngredientsTitle(Res.string.ingredient_select_title),
     SelectIngredientsSearchHint(Res.string.ingredient_search_hint),
+    SelectDone(Res.string.ingredient_select_done),
     DetectedSectionTitle(Res.string.ingredient_detected_section_title),
     SelectionFull(Res.string.ingredient_selection_full),
     CatalogLoadFailed(Res.string.ingredient_catalog_load_failed),
