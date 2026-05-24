@@ -63,6 +63,9 @@ kotlin {
             // If direct Firebase usage is added in this module, add the BOM here too:
             // implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
             implementation(libs.koin.android)
+            // On-device classifier runtime. Keep the version in sync with the iOS
+            // MediaPipeTasksVision cocoapod (plan T16).
+            implementation("com.google.mediapipe:tasks-vision:0.10.14")
         }
         iosMain.dependencies { }
     }
