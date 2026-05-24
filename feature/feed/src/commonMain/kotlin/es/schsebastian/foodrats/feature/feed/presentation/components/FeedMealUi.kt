@@ -26,6 +26,8 @@ data class FeedMealUi(
     val votes: List<RaterVoteUi>,
     val viewerRating: Int?,
     val canRate: Boolean,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
 )
 
 fun MealWithRatings.toFeedUi(viewerId: AccountId, today: MealDay): FeedMealUi {
@@ -50,5 +52,7 @@ fun MealWithRatings.toFeedUi(viewerId: AccountId, today: MealDay): FeedMealUi {
             .map { RaterVoteUi(it.raterDisplayName, it.raterAvatarUrl, it.score.value) },
         viewerRating = viewer?.score?.value,
         canRate = !isAuthor && viewer == null && windowOpen,
+        latitude = meal.coordinates?.latitude,
+        longitude = meal.coordinates?.longitude,
     )
 }

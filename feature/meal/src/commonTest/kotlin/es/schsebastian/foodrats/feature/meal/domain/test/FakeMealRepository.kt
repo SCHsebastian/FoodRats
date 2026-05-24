@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.meal.domain.test
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
@@ -63,7 +64,12 @@ class FakeMealRepository : MealRepository {
         )
     }
 
-    override suspend fun delete(id: MealId) = Result.success(Unit)
+    val deleteCalls = mutableListOf<Pair<CrewId, MealId>>()
+    var deleteResultOverride: Result<Unit, MealDeleteError>? = null
+    override suspend fun delete(crewId: CrewId, mealId: MealId): Result<Unit, MealDeleteError> {
+        deleteCalls += crewId to mealId
+        return deleteResultOverride ?: Result.success(Unit)
+    }
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {
         draftState.value = draft; return Result.success(Unit)
     }

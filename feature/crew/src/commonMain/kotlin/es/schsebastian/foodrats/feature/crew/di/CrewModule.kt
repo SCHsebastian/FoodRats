@@ -3,7 +3,11 @@ package es.schsebastian.foodrats.feature.crew.di
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
+import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.result.Result
+import kotlinx.coroutines.flow.map
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
@@ -38,6 +42,15 @@ val crewModule = module {
         object : CrewMembersPort {
             private val ds = get<CrewFirestoreDataSource>()
             override fun observeMembers(crewId: CrewId): Flow<List<CrewMemberView>> = ds.observeMembersRaw(crewId)
+        }
+    }
+    single<CrewOwnerPort> {
+        object : CrewOwnerPort {
+            private val ds = get<CrewFirestoreDataSource>()
+            override fun observeOwner(crewId: CrewId): Flow<AccountId?> =
+                ds.observeCrew(crewId).map { dto ->
+                    dto?.ownerId?.let { (AccountId.of(it) as? Result.Ok)?.value }
+                }
         }
     }
     single<CrewRepository> {

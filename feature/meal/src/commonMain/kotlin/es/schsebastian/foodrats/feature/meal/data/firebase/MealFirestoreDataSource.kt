@@ -81,6 +81,14 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
         }.toSet()
     }
 
+    /** Deletes a meal document. Subcollections (comments, ratings) are swept by the
+     *  onMealDeleted Cloud Function, since Firestore deletes do not cascade. */
+    suspend fun deleteMeal(crewId: CrewId, mealId: String) {
+        firestore.collection("crews").document(crewId.value)
+            .collection("meals").document(mealId)
+            .delete()
+    }
+
     /** Returns the MealDto for the given mealId, or null if not found. */
     suspend fun readById(crewId: CrewId, mealId: String): MealDto? {
         val snap = firestore.collection("crews").document(crewId.value)

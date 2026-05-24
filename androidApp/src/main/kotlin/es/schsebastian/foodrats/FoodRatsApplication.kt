@@ -16,6 +16,7 @@ import es.schsebastian.foodrats.core.data.telemetry.AndroidCrashReporter
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
+import es.schsebastian.foodrats.feature.feed.presentation.components.MapsApiKey
 import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.meal.di.mealAndroidModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsAndroidModule
@@ -50,6 +51,7 @@ class FoodRatsApplication : Application() {
                     androidAuthModule(),
                     androidCrashModule(),
                     androidLocationModule(),
+                    androidMapsModule(),
                 ),
             )
         }
@@ -74,6 +76,12 @@ class FoodRatsApplication : Application() {
     private fun androidLocationModule() = module {
         single { LocationPermissionLauncherHolder() }
         single<LocationProvider> { AndroidLocationProvider(androidContext(), get()) }
+    }
+
+    private fun androidMapsModule() = module {
+        // Google Static Maps key for the feed/detail location preview (Android only;
+        // iOS uses MapKit). Sourced from BuildConfig ← `googleMapsApiKey` Gradle property.
+        single { MapsApiKey(BuildConfig.MAPS_API_KEY) }
     }
 
     private fun androidAuthModule() = module {

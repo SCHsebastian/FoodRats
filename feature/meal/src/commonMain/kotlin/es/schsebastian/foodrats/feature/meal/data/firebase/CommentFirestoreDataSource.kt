@@ -23,4 +23,11 @@ class CommentFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .collection("comments")
             .add(dto)
     }
+
+    suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String) {
+        firestore.collection("crews").document(crewId.value)
+            .collection("meals").document(mealId.value)
+            .collection("comments").document(commentId)
+            .delete()
+    }
 }
