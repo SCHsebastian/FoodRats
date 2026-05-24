@@ -1,4 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Strings for :feature:ingredient will be added in Task 8 -->
+    <string name="ingredient_select_title">Ingredientes</string>
+    <string name="ingredient_search_hint">Buscar ingredientes</string>
+    <string name="ingredient_detected_section_title">Detectados</string>
+    <string name="ingredient_selection_full">Máximo 30 ingredientes</string>
+    <string name="ingredient_catalog_load_failed">No pudimos cargar el catálogo</string>
+    <string name="ingredient_catalog_empty">Catálogo no disponible</string>
+    <string name="ingredient_retry_action">Reintentar</string>
+    <string name="ingredient_unknown">Ingrediente desconocido</string>
+    <string name="ingredient_category_vegetable">Verduras</string>
+    <string name="ingredient_category_fruit">Frutas</string>
+    <string name="ingredient_category_meat">Carnes</string>
+    <string name="ingredient_category_fish">Pescados</string>
+    <string name="ingredient_category_dairy">Lácteos</string>
+    <string name="ingredient_category_grain">Granos</string>
+    <string name="ingredient_category_legume">Legumbres</string>
+    <string name="ingredient_category_sauce">Salsas</string>
+    <string name="ingredient_category_spice">Especias</string>
+    <string name="ingredient_category_sweet">Dulces</string>
+    <string name="ingredient_category_beverage">Bebidas</string>
+    <string name="ingredient_category_other">Otros</string>
 </resources>
