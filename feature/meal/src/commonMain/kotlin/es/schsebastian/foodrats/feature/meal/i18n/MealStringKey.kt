@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.meal.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.meal.generated.resources.Res
+import foodrats.feature.meal.generated.resources.meal_classifier_load_failed
+import foodrats.feature.meal.generated.resources.meal_classifier_no_detection
 import foodrats.feature.meal.generated.resources.meal_compose_add_location
 import foodrats.feature.meal.generated.resources.meal_compose_clear_location
 import foodrats.feature.meal.generated.resources.meal_compose_coordinates_format
@@ -24,6 +26,9 @@ import foodrats.feature.meal.generated.resources.meal_error_validation_descripti
 import foodrats.feature.meal.generated.resources.meal_error_validation_no_photo
 import foodrats.feature.meal.generated.resources.meal_error_validation_out_of_range
 import foodrats.feature.meal.generated.resources.meal_error_validation_too_long
+import foodrats.feature.meal.generated.resources.meal_ingredients_classifying
+import foodrats.feature.meal.generated.resources.meal_ingredients_row_add
+import foodrats.feature.meal.generated.resources.meal_ingredients_row_summary
 import foodrats.feature.meal.generated.resources.meal_publish_confirm_cta
 import foodrats.feature.meal.generated.resources.meal_publish_confirm_message
 import foodrats.feature.meal.generated.resources.meal_publish_confirm_title
@@ -49,6 +54,11 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     SlotBreakfast(Res.string.meal_slot_breakfast),
     SlotLunch(Res.string.meal_slot_lunch),
     SlotDinner(Res.string.meal_slot_dinner),
+    IngredientsClassifying(Res.string.meal_ingredients_classifying),
+    ClassifierBannerNoDetection(Res.string.meal_classifier_no_detection),
+    ClassifierBannerLoadFailed(Res.string.meal_classifier_load_failed),
+    IngredientsRowAdd(Res.string.meal_ingredients_row_add),
+    IngredientsRowSummary(Res.string.meal_ingredients_row_summary),
     MealErrorAlreadyPosted(Res.string.meal_error_already_posted),
     MealErrorNotToday(Res.string.meal_error_not_today),
     MealErrorPublishUnavailable(Res.string.meal_error_publish_unavailable),

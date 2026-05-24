@@ -3,6 +3,12 @@
     <string name="meal_compose_title">Compón tu plato</string>
     <string name="meal_publish_title">Revisa y publica</string>
 
+    <string name="meal_ingredients_classifying">Analizando ingredientes…</string>
+    <string name="meal_classifier_no_detection">No pudimos detectar ingredientes</string>
+    <string name="meal_classifier_load_failed">Detección de ingredientes no disponible</string>
+    <string name="meal_ingredients_row_add">Añadir ingredientes</string>
+    <string name="meal_ingredients_row_summary">%1$d ingredientes</string>
+
     <string name="meal_error_already_posted">Ya has publicado una comida hoy.</string>
     <string name="meal_error_not_today">Solo puedes publicar el borrador del día.</string>
     <string name="meal_error_publish_unavailable">No se ha podido publicar. Inténtalo otra vez.</string>
