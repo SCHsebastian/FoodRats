@@ -13,6 +13,7 @@ fun IngredientDto.toDomain(currentLang: String): Ingredient? {
         displayName = name,
         category = cat,
         iconKey = iconKey,
+        aliases = aliases,
     )
 }
 

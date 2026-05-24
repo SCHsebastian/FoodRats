@@ -15,4 +15,5 @@ data class Ingredient(
     val displayName: String,
     val category: IngredientCategory,
     val iconKey: String? = null,
+    val aliases: List<String> = emptyList(),
 )
