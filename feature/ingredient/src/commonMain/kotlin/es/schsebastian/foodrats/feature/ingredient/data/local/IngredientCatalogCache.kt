@@ -8,17 +8,22 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 
+interface CatalogCache {
+    fun observe(): Flow<List<IngredientDto>>
+    suspend fun save(catalog: List<IngredientDto>)
+}
+
 class IngredientCatalogCache(
     private val prefs: AppPreferences,
     private val json: Json = Json,
-) {
+) : CatalogCache {
     private val serializer = ListSerializer(IngredientDto.serializer())
 
-    fun observe(): Flow<List<IngredientDto>> = prefs.observe(Keys.IngredientCatalogJson).map { raw ->
+    override fun observe(): Flow<List<IngredientDto>> = prefs.observe(Keys.IngredientCatalogJson).map { raw ->
         raw?.let { json.decodeFromString(serializer, it) } ?: emptyList()
     }
 
-    suspend fun save(catalog: List<IngredientDto>) {
+    override suspend fun save(catalog: List<IngredientDto>) {
         prefs.set(Keys.IngredientCatalogJson, json.encodeToString(serializer, catalog))
     }
 }
