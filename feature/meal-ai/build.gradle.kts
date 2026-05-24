@@ -59,10 +59,9 @@ kotlin {
             }
         }
         androidMain.dependencies {
-            // TODO(scope = "feature:meal-ai"): add Firebase BOM once this module
-            // directly imports Firebase artifacts (e.g. Firestore for logging classifier
-            // results). Right now the module is a pure on-device adapter with no Firebase
-            // dependency of its own.
+            // JVM 17 required because Koin transitively links shared modules that touch Firebase.
+            // If direct Firebase usage is added in this module, add the BOM here too:
+            // implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
             implementation(libs.koin.android)
         }
         iosMain.dependencies { }
