@@ -11,7 +11,7 @@ Ingredient catalog and selection picker. The catalog is a read-only set of `Ingr
 
 - No client writes to the catalog. Firestore security rules allow reads only; seed data is managed via the `scripts/seed-ingredients.ts` admin script.
 - Catalog is cached in DataStore as a serialised snapshot; the Firestore listener updates the cache on change. Avoid re-fetching on every cold start.
-- JVM target **11** (no Firebase inline functions inlined here; GitLive KMP wrapper stays in `commonMain` without the BOM).
+- JVM target **17** (Firebase BOM applied in `androidMain.dependencies`; required by BOM 33.x inline functions).
 
 ## Test
 
