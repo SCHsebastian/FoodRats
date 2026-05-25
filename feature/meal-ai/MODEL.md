@@ -41,4 +41,25 @@ Either way, the **T26 seed `dishIngredientMap` keys must be the 101 canonical
 Food-101 class names**. Verify the chosen label ordering matches ST's training
 order against `…/food101/<variant>/<variant>_config.yaml` in the model zoo.
 
-This gap is expected to be closed alongside the T31 device smoke.
+This gap is expected to be closed alongside the T31 device smoke. It applies to
+**both platforms** identically — iOS reads the same `categoryName` (numeric index)
+through the Swift bridge — so resolving labels once (option 1, metadata injection)
+fixes Android and iOS together with no per-platform work.
+
+## iOS integration
+
+On Android the model is read from `files/food101.tflite` via Compose Resources /
+the MediaPipe `ImageClassifier` asset path. On iOS, MediaPipe Tasks Vision ships as
+a CocoaPod / XCFramework integrated in the Xcode project (not via Gradle), so:
+
+- A copy of the model lives at `iosApp/iosApp/food101.tflite` and **must be added to
+  the iosApp target's "Copy Bundle Resources"** so `Bundle.main.path(forResource:)`
+  resolves it. Keep it byte-identical to the `composeResources` copy.
+- Inference runs in Swift (`iosApp/iosApp/MediaPipeClassifierBridge.swift`) and is
+  bridged into Kotlin's `MediaPipeMealClassifier` (iosMain) through a lambda wired in
+  `ContentView.swift` → `MainViewController` → `mealAiIosModule(...)` — the same
+  convention used for GoogleSignIn and Crashlytics.
+- The `MediaPipeTasksVision` dependency must be added to the Xcode project (CocoaPods
+  `pod 'MediaPipeTasksVision'` or a vendored XCFramework — there is no official SPM
+  distribution). Keep its version in sync with the Android
+  `com.google.mediapipe:tasks-vision` artifact (currently `0.10.14`).

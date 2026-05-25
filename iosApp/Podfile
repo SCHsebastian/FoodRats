@@ -1,0 +1,18 @@
+# CocoaPods integration for the iOS app.
+#
+# MediaPipe Tasks Vision has no official Swift Package and ships as a *static* vendored xcframework
+# that bundles its own GTMSessionFetcher / gRPC / RE2. Firebase (SPM) bundles those same libraries,
+# so linking MediaPipe directly into the app duplicates symbols at the app-binary link.
+#
+# Fix: attach MediaPipe ONLY to the MealAiVision *dynamic framework* target, with NO use_frameworks!
+# here — that links MediaPipe's static binary INTO MealAiVision.framework, encapsulating its vendored
+# symbols inside that dylib. The app embeds MealAiVision.framework (set up by the target's "Embed in
+# Application"), so those symbols never reach the app-binary link where Firebase's live.
+#
+# (use_frameworks! on this target is what triggers CocoaPods' "transitive dependencies that include
+# statically linked binaries" rejection — so it is intentionally omitted.)
+platform :ios, '18.2'
+
+target 'MealAiVision' do
+  pod 'MediaPipeTasksVision', '~> 0.10.14'
+end

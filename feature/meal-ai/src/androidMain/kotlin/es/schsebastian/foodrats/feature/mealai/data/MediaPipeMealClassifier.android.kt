@@ -14,7 +14,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import kotlinx.coroutines.withContext
 
-internal actual class MediaPipeMealClassifier actual constructor(
+internal actual class MediaPipeMealClassifier(
     private val dispatchers: DispatcherProvider,
     private val crashReporter: CrashReporter,
 ) : MealClassifierPort {

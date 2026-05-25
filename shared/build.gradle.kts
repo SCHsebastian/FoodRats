@@ -61,6 +61,7 @@ kotlin {
             implementation(projects.feature.auth)
             implementation(projects.feature.crew)
             implementation(projects.feature.meal)
+            implementation(projects.feature.mealAi)
             implementation(projects.feature.feed)
             implementation(projects.feature.stats)
             implementation(projects.feature.notifications)

@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.data.di.shareIosModule
 import es.schsebastian.foodrats.feature.auth.di.authIosModule
 import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.meal.di.mealIosModule
+import es.schsebastian.foodrats.feature.mealai.di.mealAiIosModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
+import platform.Foundation.NSData
 import platform.UIKit.UIViewController
 
 /**
@@ -31,6 +33,12 @@ import platform.UIKit.UIViewController
  *
  * [crashRecordNonFatal] / [crashLog] bridge to CrashlyticsBridge — Firebase Crashlytics has no
  * KMP binding and is resolved via SPM in Xcode, so it must be called from Swift.
+ *
+ * [classifyPlate] bridges to MediaPipeClassifierBridge — MediaPipe Tasks Vision on iOS ships as a
+ * CocoaPod / XCFramework integrated in Xcode, so inference runs in Swift and is bridged into Kotlin.
+ * The completion is invoked with `(labels, errorCode)` — exactly one side is non-null; each label is
+ * a primitive `"<dishSlug>|<confidence>"` string (kept primitive so the boundary needs no exported
+ * `:core:domain` type in the ObjC header).
  */
 fun MainViewController(
     viewControllerProvider: () -> UIViewController,
@@ -41,6 +49,10 @@ fun MainViewController(
     googleSignOut: () -> Unit,
     crashRecordNonFatal: (domain: String, message: String) -> Unit,
     crashLog: (String) -> Unit,
+    classifyPlate: (
+        jpeg: NSData,
+        (labels: List<String>?, errorCode: String?) -> Unit,
+    ) -> Unit,
 ) = ComposeUIViewController(
     configure = {
         installImageLoader()
@@ -49,6 +61,7 @@ fun MainViewController(
                 appModules + listOf(
                     notificationsIosModule,
                     mealIosModule,
+                    mealAiIosModule(classifyPlate),
                     shareIosModule,
                     authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
                     crashIosModule(crashRecordNonFatal, crashLog),
