@@ -25,10 +25,14 @@ import foodrats.feature.stats.generated.resources.stats_hero_personal_streak_plu
 import foodrats.feature.stats.generated.resources.stats_hero_personal_streak_singular
 import foodrats.feature.stats.generated.resources.stats_hero_plates_today_plural
 import foodrats.feature.stats.generated.resources.stats_hero_plates_today_singular
+import foodrats.feature.stats.generated.resources.stats_member_top_ingredient_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_title
 import foodrats.feature.stats.generated.resources.stats_most_prolific_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_prolific_title
+import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_metric_format
+import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_title
+import foodrats.feature.stats.generated.resources.stats_top_ingredient_by_member_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_voters_plural
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_voters_singular
@@ -84,6 +88,11 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     RoastSectionTitle(Res.string.stats_roast_section_title),
     MostCriticizedTitle(Res.string.stats_most_criticized_title),
     MostCriticizedMetricFormat(Res.string.stats_most_criticized_metric_format),
+
+    MostUsedIngredientTitle(Res.string.stats_most_used_ingredient_title),
+    MostUsedIngredientMetricFormat(Res.string.stats_most_used_ingredient_metric_format),
+    TopIngredientByMemberTitle(Res.string.stats_top_ingredient_by_member_title),
+    MemberTopIngredientFormat(Res.string.stats_member_top_ingredient_format),
 
     CookAwardNeedsMoreSingular(Res.string.stats_cook_award_needs_more_singular),
     CookAwardNeedsMorePlural(Res.string.stats_cook_award_needs_more_plural),

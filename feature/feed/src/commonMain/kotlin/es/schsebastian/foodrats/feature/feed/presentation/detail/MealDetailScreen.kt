@@ -239,6 +239,19 @@ private fun MealDetailBody(
             )
         }
 
+        if (meal.ingredients.isNotEmpty()) {
+            FrText(
+                text = resolve(FeedStringKey.IngredientsHeading),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            meal.ingredients.forEach { ingredient ->
+                FrText(
+                    text = ingredient,
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+        }
+
         if (meal.averageScore != null && meal.ratingCount > 0) {
             val avgRounded = (kotlin.math.round(meal.averageScore * 10) / 10.0).toString()
             FrText(

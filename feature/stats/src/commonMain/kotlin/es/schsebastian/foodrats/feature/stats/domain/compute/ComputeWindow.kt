@@ -1,15 +1,23 @@
 package es.schsebastian.foodrats.feature.stats.domain.compute
 
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.core.domain.meal.mergedIngredientSlugs
+import es.schsebastian.foodrats.feature.stats.domain.model.IngredientUsage
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberCount
+import es.schsebastian.foodrats.feature.stats.domain.model.MemberIngredient
 import es.schsebastian.foodrats.feature.stats.domain.model.StatsWindow
 import es.schsebastian.foodrats.feature.stats.domain.model.WindowStats
 
 private const val COOK_AWARD_MIN_PLATES = 3
 
-fun computeWindow(meals: List<MealWithRatings>, window: StatsWindow): WindowStats {
+fun computeWindow(
+    meals: List<MealWithRatings>,
+    window: StatsWindow,
+    ingredientName: (IngredientSlug) -> String,
+): WindowStats {
     val total = meals.size
     val avg = if (window.days <= 0) 0.0 else total.toDouble() / window.days.toDouble()
 
@@ -70,6 +78,38 @@ fun computeWindow(meals: List<MealWithRatings>, window: StatsWindow): WindowStat
         else -> worstCook
     }
 
+    // Each ingredient counts at most once per meal (mergedIngredientSlugs is already deduped),
+    // so a count is "number of meals using it". Tie-break: count desc, then name asc.
+    val mostUsedIngredient = meals
+        .flatMap { it.meal.mergedIngredientSlugs() }
+        .groupingBy { it }
+        .eachCount()
+        .entries
+        .map { (slug, count) -> IngredientUsage(ingredientName(slug), count) }
+        .maxWithOrNull(
+            compareBy<IngredientUsage> { it.mealCount }
+                .thenByDescending { it.displayName },
+        )
+
+    val topByMember = byAuthor.entries
+        .mapNotNull { (id, list) ->
+            val top = list
+                .flatMap { it.meal.mergedIngredientSlugs() }
+                .groupingBy { it }
+                .eachCount()
+                .entries
+                .maxWithOrNull(
+                    compareBy<Map.Entry<IngredientSlug, Int>> { it.value }
+                        .thenByDescending { ingredientName(it.key) },
+                ) ?: return@mapNotNull null
+            val a = list.first().meal.author
+            MemberIngredient(id, a.displayName, a.avatarUrl, ingredientName(top.key), top.value)
+        }
+        .sortedWith(
+            compareByDescending<MemberIngredient> { it.mealCount }
+                .thenBy { it.ingredientName },
+        )
+
     return WindowStats(
         window = window,
         totalMeals = total,
@@ -79,6 +119,8 @@ fun computeWindow(meals: List<MealWithRatings>, window: StatsWindow): WindowStat
         mostProlific = mostProlific,
         bestCook = bestCook,
         mostCriticized = mostCriticized,
+        mostUsedIngredient = mostUsedIngredient,
+        topByMember = topByMember,
     )
 }
 

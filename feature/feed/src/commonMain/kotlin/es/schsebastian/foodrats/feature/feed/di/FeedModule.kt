@@ -20,7 +20,7 @@ val feedModule = module {
         MealDetailViewModel(
             mealId, dayIso,
             get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(),
+            get(), get(), get(), get(),
         )
     }
 }
