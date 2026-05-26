@@ -87,6 +87,15 @@ service cloud.firestore {
                       && request.resource.data.voterCount == request.resource.data.ratings.size()
                       && request.time.toMillis() - resource.data.publishedAtEpochMs < 172800000;
 
+        // Delete: the meal's author OR the crew owner may delete it. Author = self-service,
+        // owner = moderation. Orphaned subcollections (comments, deprecated ratings) are
+        // swept by the onMealDeleted Cloud Function since Firestore deletes don't cascade.
+        allow delete: if request.auth != null
+                      && (
+                        request.auth.uid == resource.data.authorId
+                        || request.auth.uid == get(/databases/$(database)/documents/crews/$(crewId)).data.ownerId
+                      );
+
         // DEPRECATED 2026-05-20 — superseded by the denormalized `ratings` map on the
         // meal document itself. New clients never write to this subcollection. The
         // rule is kept for one release so any stragglers fail visibly rather than
@@ -121,9 +130,30 @@ service cloud.firestore {
                         && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
                         && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000;
 
-          // No update, no delete — comments are immutable.
+          // No update — comments are immutable once posted.
+          // Delete: the comment's author OR the crew owner may delete it (self-service
+          // + moderation), mirroring the meal delete rule above.
+          allow delete: if request.auth != null
+                        && (
+                          request.auth.uid == resource.data.authorId
+                          || request.auth.uid == get(/databases/$(database)/documents/crews/$(crewId)).data.ownerId
+                        );
         }
       }
+    }
+
+    // Ingredient catalog + dish→ingredients map — public, immutable reference data.
+    // Read is open (`if true`) by design: the catalog is non-sensitive food vocabulary
+    // and may be fetched before auth. Clients never write — both collections are seeded
+    // and maintained only via the admin SDK (`functions/scripts/seed-catalog.ts`), which
+    // bypasses Security Rules. (meal-AI design §263-264)
+    match /ingredients/{slug} {
+      allow read:  if true;
+      allow write: if false;
+    }
+    match /dishIngredientMap/{dishSlug} {
+      allow read:  if true;
+      allow write: if false;
     }
 
     // Invite codes — doc ID is the code; existence = uniqueness

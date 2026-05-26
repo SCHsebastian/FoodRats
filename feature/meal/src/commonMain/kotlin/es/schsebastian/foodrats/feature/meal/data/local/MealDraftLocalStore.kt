@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.data.datastore.Keys
 import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -36,6 +37,9 @@ private data class MealDraftJson(
     val slot: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
+    val ingredients: List<String> = emptyList(),
+    val detectedIngredients: List<String> = emptyList(),
+    val classifierVersion: String? = null,
 )
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -72,6 +76,9 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             description = desc,
             slot = slot?.let(MealSlot::fromKey),
             coordinates = coords,
+            ingredients = ingredients.mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() },
+            detectedIngredients = detectedIngredients.mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() },
+            classifierVersion = classifierVersion,
         )
     }
 
@@ -89,6 +96,9 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             slot = d.slot?.key(),
             latitude = d.coordinates?.latitude,
             longitude = d.coordinates?.longitude,
+            ingredients = d.ingredients.map { it.value },
+            detectedIngredients = d.detectedIngredients.map { it.value },
+            classifierVersion = d.classifierVersion,
         )
     }
 }

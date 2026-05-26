@@ -37,6 +37,8 @@ import es.schsebastian.foodrats.feature.stats.domain.model.WindowStats
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrBestPlatePodium
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrCookAwardCard
+import es.schsebastian.foodrats.feature.stats.presentation.components.FrMemberIngredientRow
+import es.schsebastian.foodrats.feature.stats.presentation.components.FrMostUsedIngredientCard
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrMostVotedPlate
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrRoastCard
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrStatsTabRow
@@ -147,6 +149,14 @@ private fun TabBody(window: WindowStats) {
                 style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
             )
             FrRoastCard(award = it)
+        }
+        window.mostUsedIngredient?.let { FrMostUsedIngredientCard(usage = it) }
+        if (window.topByMember.isNotEmpty()) {
+            FrText(
+                text = resolve(StatsStringKey.TopIngredientByMemberTitle),
+                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+            )
+            window.topByMember.forEach { FrMemberIngredientRow(member = it) }
         }
     }
 }

@@ -3,8 +3,11 @@ package es.schsebastian.foodrats.feature.meal.data.repository
 import dev.gitlive.firebase.auth.FirebaseAuth
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.meal.DraftIngredients
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
@@ -37,6 +40,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -119,6 +123,7 @@ internal class FirebaseMealRepository(
     private companion object {
         const val STATS_WINDOW_DAYS = 30
         const val SHARE_STOP_TIMEOUT_MS = 5_000L
+        const val MAX_INGREDIENTS = 30
     }
 
     private fun currentAccountId(): AccountId? {
@@ -134,6 +139,11 @@ internal class FirebaseMealRepository(
                     ?: return@runCatching Result.failure(MealError.Validation.NoPhoto)
                 val slot = draft.slot
                     ?: return@runCatching Result.failure(MealError.Publish.NoSlotSelected)
+                if (draft.ingredients.size > MAX_INGREDIENTS ||
+                    draft.detectedIngredients.size > MAX_INGREDIENTS
+                ) {
+                    return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
+                }
                 val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
                 val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
                 val currentUser = auth.currentUser
@@ -151,6 +161,9 @@ internal class FirebaseMealRepository(
                     latitude = draft.coordinates?.latitude,
                     longitude = draft.coordinates?.longitude,
                     publishedAtEpochMs = clock.now().toEpochMilliseconds(),
+                    ingredients = draft.ingredients.map { it.value },
+                    detectedIngredients = draft.detectedIngredients.map { it.value },
+                    classifierVersion = draft.classifierVersion,
                 )
                 firestore.write(dto, mealId.value)
                 @Suppress("UNCHECKED_CAST")
@@ -190,7 +203,23 @@ internal class FirebaseMealRepository(
         )
     }
 
-    override suspend fun delete(id: MealId): Result<Unit, MealError> = Result.success(Unit)
+    override suspend fun delete(
+        crewId: CrewId,
+        mealId: MealId,
+    ): Result<Unit, MealDeleteError> = withContext(dispatchers.io) {
+        runCatching {
+            firestore.deleteMeal(crewId, mealId.value)
+            Result.success(Unit) as Result<Unit, MealDeleteError>
+        }.getOrElse { t ->
+            val msg = t.message.orEmpty().lowercase()
+            val mapped = when {
+                "permission" in msg -> MealDeleteError.NotAuthorOrOwner
+                "not-found" in msg || "not found" in msg -> MealDeleteError.NotFound
+                else -> MealDeleteError.Unavailable
+            }
+            Result.failure(mapped)
+        }
+    }
 
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> =
         withContext(dispatchers.io) {
@@ -203,6 +232,17 @@ internal class FirebaseMealRepository(
     override fun observeDraft(): Flow<MealDraft?> = drafts.observe()
 
     override suspend fun clearDraft() = drafts.clear()
+
+    override fun observeDraftIngredients(): Flow<DraftIngredients?> =
+        drafts.observe().map { draft ->
+            draft?.let { DraftIngredients(selected = it.ingredients, detected = it.detectedIngredients) }
+        }
+
+    /** Composes existing draft read + [saveDraft] — the single IO boundary lives in `saveDraft`. */
+    override suspend fun setIngredients(slugs: List<IngredientSlug>) {
+        val current = drafts.observe().first() ?: return
+        saveDraft(current.copy(ingredients = slugs))
+    }
 
     override fun observeFeed(
         crewId: CrewId,

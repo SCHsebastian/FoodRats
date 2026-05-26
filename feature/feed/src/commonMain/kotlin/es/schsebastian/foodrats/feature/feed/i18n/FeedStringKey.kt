@@ -15,12 +15,21 @@ import foodrats.feature.feed.generated.resources.feed_comments_relative_minutes
 import foodrats.feature.feed.generated.resources.feed_comments_send_cta
 import foodrats.feature.feed.generated.resources.feed_comments_title
 import foodrats.feature.feed.generated.resources.feed_deleted_author
+import foodrats.feature.feed.generated.resources.feed_delete_cancel_cta
+import foodrats.feature.feed.generated.resources.feed_delete_comment_confirm_title
+import foodrats.feature.feed.generated.resources.feed_delete_comment_cta
+import foodrats.feature.feed.generated.resources.feed_delete_confirm_cta
+import foodrats.feature.feed.generated.resources.feed_delete_meal_confirm_body
+import foodrats.feature.feed.generated.resources.feed_delete_meal_confirm_title
+import foodrats.feature.feed.generated.resources.feed_delete_meal_cta
 import foodrats.feature.feed.generated.resources.feed_average_heading
 import foodrats.feature.feed.generated.resources.feed_detail_back_cta
 import foodrats.feature.feed.generated.resources.feed_detail_not_found
 import foodrats.feature.feed.generated.resources.feed_detail_title
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
+import foodrats.feature.feed.generated.resources.feed_ingredient_separator
+import foodrats.feature.feed.generated.resources.feed_ingredients_heading
 import foodrats.feature.feed.generated.resources.feed_error_crew_not_found
 import foodrats.feature.feed.generated.resources.feed_error_not_signed_in
 import foodrats.feature.feed.generated.resources.feed_error_unauthorized
@@ -63,6 +72,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     RatingSummary(Res.string.feed_rating_summary),
     VoterScore(Res.string.feed_voter_score),
     VotesHeading(Res.string.feed_votes_heading),
+    IngredientsHeading(Res.string.feed_ingredients_heading),
+    IngredientSeparator(Res.string.feed_ingredient_separator),
     RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),
     RateErrorAlreadyRated(Res.string.feed_rate_error_already_rated),
     RateErrorWindowClosed(Res.string.feed_rate_error_window_closed),
@@ -85,4 +96,11 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     CommentsErrorUnavailable(Res.string.feed_comments_error_unavailable),
     CommentsErrorUnauthorized(Res.string.feed_comments_error_unauthorized),
     DeletedAuthor(Res.string.feed_deleted_author),
+    DeleteMealCta(Res.string.feed_delete_meal_cta),
+    DeleteMealConfirmTitle(Res.string.feed_delete_meal_confirm_title),
+    DeleteMealConfirmBody(Res.string.feed_delete_meal_confirm_body),
+    DeleteCommentCta(Res.string.feed_delete_comment_cta),
+    DeleteCommentConfirmTitle(Res.string.feed_delete_comment_confirm_title),
+    DeleteConfirmCta(Res.string.feed_delete_confirm_cta),
+    DeleteCancelCta(Res.string.feed_delete_cancel_cta),
 }

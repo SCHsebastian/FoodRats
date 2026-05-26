@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import es.schsebastian.foodrats.core.domain.meal.CommentError
+import es.schsebastian.foodrats.core.domain.meal.MealCommentId
+import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
@@ -22,6 +24,11 @@ data class MealDetailState(
     val commentInput: String = "",
     val isPostingComment: Boolean = false,
     val commentWriteError: CommentError.Write? = null,
+    val canDeleteMeal: Boolean = false,
+    val isDeletingMeal: Boolean = false,
+    val mealDeleted: Boolean = false,
+    val mealDeleteError: MealDeleteError? = null,
+    val commentDeleteError: CommentError.Delete? = null,
 ) : MviState
 
 sealed interface MealDetailIntent : MviIntent {
@@ -29,6 +36,8 @@ sealed interface MealDetailIntent : MviIntent {
     data object DismissError : MealDetailIntent
     data class CommentInputChanged(val value: String) : MealDetailIntent
     data object PostComment : MealDetailIntent
+    data object DeleteMeal : MealDetailIntent
+    data class DeleteComment(val id: MealCommentId) : MealDetailIntent
 }
 
 sealed interface MealDetailEffect : MviEffect

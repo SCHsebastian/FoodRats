@@ -54,6 +54,7 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.presentation.components.DailyEmoteBadge
+import es.schsebastian.foodrats.feature.meal.presentation.components.FrIngredientsRow
 import es.schsebastian.foodrats.feature.meal.presentation.components.LocationPickerRow
 import es.schsebastian.foodrats.feature.meal.presentation.components.SlotPicker
 import es.schsebastian.foodrats.feature.meal.presentation.components.decodeImageBitmap
@@ -69,7 +70,11 @@ import org.koin.compose.viewmodel.koinViewModel
  * back to the feed — they never see a "review" screen.
  */
 @Composable
-fun ComposePlateScreen(onPublishStarted: () -> Unit, vm: ComposePlateViewModel = koinViewModel()) {
+fun ComposePlateScreen(
+    onPublishStarted: () -> Unit,
+    onEditIngredients: () -> Unit,
+    vm: ComposePlateViewModel = koinViewModel(),
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     val today = remember { MealDay.today(SystemClock(), TimeZone.currentSystemDefault()) }
     val emote = remember(today) { DailyEmote.forDay(today) }
@@ -81,6 +86,12 @@ fun ComposePlateScreen(onPublishStarted: () -> Unit, vm: ComposePlateViewModel =
         vm.effects.collect {
             if (it is ComposePlateEffect.UploadEnqueued) onPublishStarted()
         }
+    }
+
+    // Kick off on-device classification when a plate arrives. The VM dedupes by
+    // photo content, so re-entry is a no-op and re-capture re-classifies.
+    LaunchedEffect(state.photoBytes) {
+        state.photoBytes?.let { vm.onPhotoCaptured(it) }
     }
 
     FrScreenScaffold {
@@ -156,6 +167,15 @@ fun ComposePlateScreen(onPublishStarted: () -> Unit, vm: ComposePlateViewModel =
                             modifier = Modifier.padding(top = Spacing.xs),
                         )
                     }
+                }
+
+                AnimatedFormItem(delay = Motion.medium + Motion.short) {
+                    FrIngredientsRow(
+                        classifying = state.classifying,
+                        count = state.draftIngredients.size,
+                        onTap = onEditIngredients,
+                        modifier = Modifier.padding(top = Spacing.md),
+                    )
                 }
 
                 AnimatedFormItem(delay = Motion.medium + Motion.quick) {

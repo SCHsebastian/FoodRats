@@ -4,6 +4,9 @@ import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -58,6 +61,12 @@ private class FakeRead(initial: List<MealWithRatings>, val err: MealReadError? =
     override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) = flow
 }
 
+private class FakeIngredientRead : IngredientReadPort {
+    override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = flowOf(emptyMap())
+    override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> = emptyList()
+    override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> = emptyList()
+}
+
 private class FixedClock(val instant: Instant) : Clock { override fun now() = instant }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -86,7 +95,7 @@ class ObserveStatsUseCaseTest {
     }
 
     @Test fun emits_NotSignedIn_when_no_session() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), FakeIngredientRead(), clock, zone)
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NotSignedIn), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -94,7 +103,7 @@ class ObserveStatsUseCaseTest {
     }
 
     @Test fun emits_NoActiveCrew_when_no_crew() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), FakeIngredientRead(), clock, zone)
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NoActiveCrew), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -107,6 +116,7 @@ class ObserveStatsUseCaseTest {
             FakeActive(crewId),
             FakeSession(Session(me, null)),
             FakeRead(listOf(mine)),
+            FakeIngredientRead(),
             clock,
             zone,
         )
@@ -129,6 +139,7 @@ class ObserveStatsUseCaseTest {
             FakeActive(crewId),
             FakeSession(Session(me, null)),
             FakeRead(listOf(mine)),
+            FakeIngredientRead(),
             clock,
             zone,
         )
@@ -153,6 +164,7 @@ class ObserveStatsUseCaseTest {
             FakeActive(crewId),
             FakeSession(Session(me, null)),
             FakeRead(listOf(mine)),
+            FakeIngredientRead(),
             clock,
             zone,
         )
@@ -171,6 +183,7 @@ class ObserveStatsUseCaseTest {
             FakeActive(crewId),
             FakeSession(Session(me, null)),
             FakeRead(emptyList(), MealReadError.Unauthorized),
+            FakeIngredientRead(),
             clock,
             zone,
         )

@@ -11,6 +11,7 @@ The rich-domain exemplar: `ImagePickerKMP` (launcher-style native camera + galle
 ## Local rules
 
 - New Meal-touching tests use `description = Description.EMPTY` (positional or named). Don't reintroduce `FoodTag` — it's deleted, along with the stats `TagVariety` leaderboard.
+- **AI classification is advisory and goes through `:core:domain` ports, never `:feature:meal-ai`.** `ComposePlateViewModel` classifies a captured plate via the meal-owned `ClassifyDraftPlateUseCase` (over `MealClassifierPort` + `IngredientReadPort`), stamps `UpdateMealDraftCommand.SetDetected`, and exposes `classifying`/`detectedIngredients`/`draftIngredients`/`classifierError` in state. A classifier failure surfaces a banner but must NOT touch `canContinue`. `onPhotoCaptured(bytes)` dedupes by `contentHashCode()` (re-entry no-op, re-capture overwrites). The picker is reached via `Route.SelectIngredients` (in `:feature:ingredient`); the composer edits the draft's ingredient set only through `MealDraftIngredientsPort`.
 - iOS: ImagePickerKMP `1.0.41` declares `material-icons-extended` in `commonMain`. If iOS linking breaks, add the `exclude(group = "org.jetbrains.compose.material", module = "material-icons-extended")` block in `build.gradle.kts`. ImagePickerKMP also references `CLLocation` unconditionally — link `CoreLocation.framework` in Xcode if the linker complains.
 - JVM target **17** (Firebase BOM).
 

@@ -28,4 +28,5 @@ object Keys {
      * pick it up.
      */
     val MealUploadPending    = StoreKey(booleanPreferencesKey("meal_upload_pending"))
+    val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
 }

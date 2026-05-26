@@ -25,6 +25,7 @@ dependencies {
     implementation(projects.feature.crew)
     implementation(projects.feature.feed)
     implementation(projects.feature.meal)
+    implementation(projects.feature.mealAi)
     implementation(projects.feature.notifications)
     implementation(projects.feature.stats)
     implementation(libs.androidx.activity.compose)
@@ -53,6 +54,7 @@ android {
         versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
         versionName = (project.findProperty("versionName") as String?) ?: "1.0"
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${project.findProperty("googleServerClientId") ?: ""}\"")
+        buildConfigField("String", "MAPS_API_KEY", "\"${project.findProperty("googleMapsApiKey") ?: ""}\"")
     }
     // Release signing reads the upload keystore from the environment. CI
     // materializes it from the ANDROID_KEYSTORE_BASE64 secret and exports

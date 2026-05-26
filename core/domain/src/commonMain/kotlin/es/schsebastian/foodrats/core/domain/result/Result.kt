@@ -20,6 +20,11 @@ inline fun <T, E, R> Result<T, E>.map(f: (T) -> R): Result<R, E> = when (this) {
     is Result.Err -> this
 }
 
+inline fun <T, E, R> Result<T, E>.flatMap(f: (T) -> Result<R, E>): Result<R, E> = when (this) {
+    is Result.Ok  -> f(value)
+    is Result.Err -> this
+}
+
 inline fun <T, E, E2> Result<T, E>.mapError(f: (E) -> E2): Result<T, E2> = when (this) {
     is Result.Ok  -> this
     is Result.Err -> Result.Err(f(error))

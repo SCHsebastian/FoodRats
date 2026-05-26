@@ -4,10 +4,15 @@ import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
+import es.schsebastian.foodrats.core.domain.meal.mergedIngredientSlugs
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
 import es.schsebastian.foodrats.core.domain.meal.MealComment
+import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -20,6 +25,8 @@ import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
@@ -44,10 +51,14 @@ class MealDetailViewModel(
     private val ratingPort: MealRatingPort,
     private val commentPort: MealCommentPort,
     private val accountReadPort: AccountReadPort,
+    private val ingredientRead: IngredientReadPort,
     private val activeCrew: ActiveCrewProvider,
     private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
+    private val deleteMeal: DeleteMealUseCase,
+    private val deleteComment: DeleteCommentUseCase,
+    private val crewOwner: CrewOwnerPort,
 ) : MviViewModel<MealDetailState, MealDetailIntent, MealDetailEffect>(MealDetailState()) {
 
     /** Deduped per-author flows: at most one active Firestore listener per unique authorId. */
@@ -60,20 +71,33 @@ class MealDetailViewModel(
         } else {
             val feedDay = FeedDay(MealDay(parsedDay, zone))
             viewModelScope.launch {
-                observeFeed(flowOf(feedDay)).collect { r ->
+                combine(
+                    observeFeed(flowOf(feedDay)),
+                    ingredientRead.observeCatalog(),
+                ) { r, catalog -> r to catalog }.collect { (r, catalog) ->
                     when (r) {
                         is Result.Ok -> {
                             val viewerId = session.current.first()?.accountId
+                            val ownerId = activeCrew.current.first()
+                                ?.let { crewOwner.observeOwner(it).first() }
                             val todayMealDay = MealDay.today(clock, zone)
-                            val match = if (viewerId == null) null
-                                        else r.value.firstOrNull { it.meal.id.value == mealId }
-                                            ?.toFeedUi(viewerId, todayMealDay)
+                            val matched = r.value.firstOrNull { it.meal.id.value == mealId }
+                            val nameFor = ingredientNameResolver(catalog)
+                            val match = if (viewerId == null || matched == null) null
+                                        else matched.toFeedUi(
+                                            viewerId,
+                                            todayMealDay,
+                                            ingredientNames = matched.meal.mergedIngredientSlugs().map(nameFor),
+                                        )
+                            val canDeleteMeal = match != null && viewerId != null &&
+                                (match.authorId == viewerId.value || ownerId == viewerId)
                             update {
                                 it.copy(
                                     isLoading = false,
                                     meal = match,
                                     notFound = match == null,
                                     error = null,
+                                    canDeleteMeal = canDeleteMeal,
                                 )
                             }
                         }
@@ -93,6 +117,8 @@ class MealDetailViewModel(
             update { it.copy(commentsLoading = false, commentReadError = CommentError.Read.Unavailable) }
             return@launch
         }
+        val viewerId = session.current.first()?.accountId
+        val ownerId = activeCrew.current.first()?.let { crewOwner.observeOwner(it).first() }
         val commentsFlow = activeCrew.current
             .flatMapLatest { crewId ->
                 if (crewId == null) flowOf<Result<List<MealComment>, CommentError.Read>>(
@@ -115,11 +141,11 @@ class MealDetailViewModel(
                         }
                     }
                     val joined: Flow<List<CommentRowUi>> = if (perAuthorFlows.isEmpty()) {
-                            flowOf(joinRows(r.value, emptyMap()))
+                            flowOf(joinRows(r.value, emptyMap(), viewerId, ownerId))
                         } else {
                             combine(perAuthorFlows) { snapshots ->
                                 val map = uniqueIds.zip(snapshots.toList()).toMap()
-                                joinRows(r.value, map)
+                                joinRows(r.value, map, viewerId, ownerId)
                             }
                         }
                     joined.collect { rows ->
@@ -135,10 +161,14 @@ class MealDetailViewModel(
     private fun joinRows(
         comments: List<MealComment>,
         authors: Map<AccountId, Account?>,
+        viewerId: AccountId?,
+        ownerId: AccountId?,
     ): List<CommentRowUi> = comments.map { c ->
         val account = authors[c.authorId]
         val resolved = authors.containsKey(c.authorId)
         val isDeleted = resolved && account == null
+        val canDelete = !isDeleted && viewerId != null &&
+            (c.authorId == viewerId || ownerId == viewerId)
         CommentRowUi(
             id = c.id,
             displayName = account?.displayName.orEmpty(),
@@ -147,18 +177,47 @@ class MealDetailViewModel(
             relative = c.createdAt.toRelative(clock.now()),
             loading = !resolved,
             isDeleted = isDeleted,
+            canDelete = canDelete,
         )
     }
 
     override suspend fun handle(intent: MealDetailIntent) = when (intent) {
         is MealDetailIntent.RateMeal               -> rateMeal(intent.score)
         MealDetailIntent.DismissError              -> update {
-            it.copy(error = null, rateError = null, commentWriteError = null)
+            it.copy(
+                error = null,
+                rateError = null,
+                commentWriteError = null,
+                mealDeleteError = null,
+                commentDeleteError = null,
+            )
         }
         is MealDetailIntent.CommentInputChanged    -> update {
             it.copy(commentInput = intent.value, commentWriteError = null)
         }
         MealDetailIntent.PostComment               -> postComment()
+        MealDetailIntent.DeleteMeal                -> deleteMealAction()
+        is MealDetailIntent.DeleteComment          -> deleteCommentAction(intent.id)
+    }
+
+    private suspend fun deleteMealAction() {
+        val crewId = activeCrew.current.first() ?: return
+        val parsedMealId = MealId.of(mealId).getOrElse { return }
+        update { it.copy(isDeletingMeal = true, mealDeleteError = null) }
+        val r = deleteMeal(crewId, parsedMealId)
+        update {
+            when (r) {
+                is Result.Ok  -> it.copy(isDeletingMeal = false, mealDeleted = true)
+                is Result.Err -> it.copy(isDeletingMeal = false, mealDeleteError = r.error)
+            }
+        }
+    }
+
+    private suspend fun deleteCommentAction(id: MealCommentId) {
+        val crewId = activeCrew.current.first() ?: return
+        val parsedMealId = MealId.of(mealId).getOrElse { return }
+        val r = deleteComment(crewId, parsedMealId, id)
+        if (r is Result.Err) update { it.copy(commentDeleteError = r.error) }
     }
 
     private suspend fun rateMeal(scoreRaw: Int) {

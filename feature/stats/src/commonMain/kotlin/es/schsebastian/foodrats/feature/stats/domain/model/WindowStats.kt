@@ -9,4 +9,6 @@ data class WindowStats(
     val mostProlific: MemberCount?,
     val bestCook: MemberAverage?,
     val mostCriticized: MemberAverage?,
+    val mostUsedIngredient: IngredientUsage? = null,
+    val topByMember: List<MemberIngredient> = emptyList(),
 )

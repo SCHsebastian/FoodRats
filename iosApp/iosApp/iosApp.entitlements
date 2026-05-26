@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Enables iOS Universal Links for https://foodrats.app/... Requires the hosted
+	     apple-app-site-association file (see deeplinks/README.md) AND that this file is
+	     wired into the Xcode target's CODE_SIGN_ENTITLEMENTS (Signing & Capabilities →
+	     Associated Domains). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:foodrats.app</string>
+	</array>
+</dict>
+</plist>

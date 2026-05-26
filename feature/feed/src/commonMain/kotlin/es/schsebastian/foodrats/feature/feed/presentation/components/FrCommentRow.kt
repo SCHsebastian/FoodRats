@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -28,6 +31,8 @@ fun FrCommentRow(
     modifier: Modifier = Modifier,
     loading: Boolean = false,
     isDeleted: Boolean = false,
+    canDelete: Boolean = false,
+    onDelete: () -> Unit = {},
 ) {
     val nameLabel = when {
         isDeleted -> resolve(FeedStringKey.DeletedAuthor)
@@ -53,11 +58,22 @@ fun FrCommentRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
             ) {
                 FrText(text = nameLabel, style = MaterialTheme.typography.labelLarge)
-                FrText(
-                    text = resolve(relative.key, relative.amount),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    FrText(
+                        text = resolve(relative.key, relative.amount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    if (canDelete) {
+                        IconButton(onClick = onDelete) {
+                            Icon(
+                                imageVector = FrIcons.Delete,
+                                contentDescription = resolve(FeedStringKey.DeleteCommentCta),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
             }
             Spacer(Modifier.height(2.dp))
             FrText(text = text, style = MaterialTheme.typography.bodyMedium)

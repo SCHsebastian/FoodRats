@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.compose.rememberNavController
 import es.schsebastian.foodrats.app.navigation.EventsEffect
 import es.schsebastian.foodrats.app.navigation.NavGraph
+import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.app.navigation.navigateTopLevel
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
@@ -22,11 +23,16 @@ fun FoodRatsApp() {
     EventsEffect(events = rootVm.effects) { eff ->
         FrLog.d(FrLog.Tags.RootNav) { "app: collected effect=$eff" }
         when (eff) {
-            is RootNavEffect.NavigateTo -> {
-                FrLog.d(FrLog.Tags.RootNav) {
-                    "app: navigateTopLevel(${eff.route::class.simpleName})"
-                }
+            is RootNavEffect.NavigateTopLevel -> {
+                FrLog.d(FrLog.Tags.RootNav) { "app: navigateTopLevel(${eff.route::class.simpleName})" }
                 rootController.navigateTopLevel(eff.route)
+            }
+            is RootNavEffect.NavigateDeepLink -> {
+                FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → Main + push ${eff.route::class.simpleName}" }
+                // Establish the authenticated base so Back from the deep-linked leaf lands on Feed,
+                // then push the leaf itself. No-op the push if the link already targets Main.
+                rootController.navigateTopLevel(Route.Main)
+                if (eff.route != Route.Main) rootController.navigate(eff.route)
             }
         }
     }

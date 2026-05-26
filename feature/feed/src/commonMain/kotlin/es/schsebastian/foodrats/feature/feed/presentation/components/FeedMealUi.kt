@@ -26,9 +26,17 @@ data class FeedMealUi(
     val votes: List<RaterVoteUi>,
     val viewerRating: Int?,
     val canRate: Boolean,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    /** Resolved, localized ingredient display names. Empty unless resolved by the caller. */
+    val ingredients: List<String> = emptyList(),
 )
 
-fun MealWithRatings.toFeedUi(viewerId: AccountId, today: MealDay): FeedMealUi {
+fun MealWithRatings.toFeedUi(
+    viewerId: AccountId,
+    today: MealDay,
+    ingredientNames: List<String> = emptyList(),
+): FeedMealUi {
     val viewer = ratingBy(viewerId)
     val isAuthor = meal.author.accountId == viewerId
     val daysSince = today.daysSince(meal.day)
@@ -50,5 +58,8 @@ fun MealWithRatings.toFeedUi(viewerId: AccountId, today: MealDay): FeedMealUi {
             .map { RaterVoteUi(it.raterDisplayName, it.raterAvatarUrl, it.score.value) },
         viewerRating = viewer?.score?.value,
         canRate = !isAuthor && viewer == null && windowOpen,
+        latitude = meal.coordinates?.latitude,
+        longitude = meal.coordinates?.longitude,
+        ingredients = ingredientNames,
     )
 }

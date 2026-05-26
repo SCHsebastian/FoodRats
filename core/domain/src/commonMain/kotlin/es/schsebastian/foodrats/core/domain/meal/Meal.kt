@@ -15,4 +15,15 @@ data class Meal(
     val description: Description,
     val publishedAt: Instant,
     val coordinates: Coordinates? = null,
+    val ingredients: List<IngredientSlug> = emptyList(),
+    val detectedIngredients: List<IngredientSlug> = emptyList(),
+    val classifierVersion: String? = null,
 )
+
+/**
+ * The ingredients to surface for a meal: user-confirmed first, then AI-detected ones not
+ * already confirmed, deduped (first occurrence wins). Shared by feed display and stats so
+ * both count/show the same set.
+ */
+fun Meal.mergedIngredientSlugs(): List<IngredientSlug> =
+    (ingredients + detectedIngredients).distinct()

@@ -4,6 +4,9 @@ import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -87,12 +90,17 @@ class StatsViewModelTest {
             override fun observeFeed(crewId: CrewId, day: MealDay) = error("unused")
             override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) = mealsFlow
         }
+        val ingredientRead = object : IngredientReadPort {
+            override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = MutableStateFlow(emptyMap())
+            override suspend fun findBySlugs(slugs: Set<IngredientSlug>) = emptyList<Ingredient>()
+            override suspend fun suggestForDish(dishSlug: String) = emptyList<IngredientSlug>()
+        }
         val uploadProgress = object : MealUploadProgressPort {
             override val status: MutableStateFlow<MealUploadStatus> =
                 MutableStateFlow(MealUploadStatus.Idle)
         }
         return StatsViewModel(
-            observeStats = ObserveStatsUseCase(active, session, read, clock, zone),
+            observeStats = ObserveStatsUseCase(active, session, read, ingredientRead, clock, zone),
             uploadProgress = uploadProgress,
         )
     }

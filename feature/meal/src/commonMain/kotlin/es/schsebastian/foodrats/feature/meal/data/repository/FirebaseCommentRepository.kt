@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealComment
+import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -60,6 +61,27 @@ internal class FirebaseCommentRepository(
             val msg = t.message.orEmpty().lowercase()
             val mapped = if ("permission-denied" in msg) CommentError.Write.Unauthorized
                          else CommentError.Write.Unavailable
+            Result.failure(mapped)
+        }
+    }
+
+    override suspend fun delete(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: MealCommentId,
+    ): Result<Unit, CommentError.Delete> = withContext(dispatchers.io) {
+        auth.currentUser
+            ?: return@withContext Result.failure(CommentError.Delete.NotAuthorOrOwner)
+        runCatching {
+            ds.delete(crewId, mealId, commentId.value)
+            Result.success(Unit) as Result<Unit, CommentError.Delete>
+        }.getOrElse { t ->
+            val msg = t.message.orEmpty().lowercase()
+            val mapped = when {
+                "permission" in msg -> CommentError.Delete.NotAuthorOrOwner
+                "not-found" in msg || "not found" in msg -> CommentError.Delete.NotFound
+                else -> CommentError.Delete.Unavailable
+            }
             Result.failure(mapped)
         }
     }

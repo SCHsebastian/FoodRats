@@ -7,7 +7,16 @@ import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
+import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
+import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
+import kotlinx.coroutines.flow.flowOf
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -45,6 +54,8 @@ class FakeMealCommentPort : MealCommentPort {
     override fun observe(crewId: CrewId, mealId: MealId): Flow<Result<List<MealComment>, CommentError.Read>> = flow
     override suspend fun post(crewId: CrewId, mealId: MealId, text: CommentText): Result<Unit, CommentError.Write> =
         Result.success(Unit)
+    override suspend fun delete(crewId: CrewId, mealId: MealId, commentId: MealCommentId): Result<Unit, CommentError.Delete> =
+        Result.success(Unit)
 
     fun emit(comments: List<MealComment>) {
         flow.value = Result.success(comments)
@@ -53,6 +64,21 @@ class FakeMealCommentPort : MealCommentPort {
     fun emitError(e: CommentError.Read) {
         flow.value = Result.failure(e)
     }
+}
+
+class FakeCrewOwnerPort(private val owner: AccountId? = null) : CrewOwnerPort {
+    override fun observeOwner(crewId: CrewId) = flowOf(owner)
+}
+
+class FakeMealDeletePort : MealDeletePort {
+    var result: Result<Unit, MealDeleteError> = Result.success(Unit)
+    override suspend fun delete(crewId: CrewId, mealId: MealId) = result
+}
+
+class FakeIngredientReadPort : IngredientReadPort {
+    override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = flowOf(emptyMap())
+    override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> = emptyList()
+    override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> = emptyList()
 }
 
 data class TestPorts(
@@ -86,10 +112,14 @@ class MealDetailCommentIdentityTest {
             ratingPort = FakeMealRatingPort(),
             commentPort = commentPort,
             accountReadPort = accountPort,
+            ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
             session = session,
             clock = FixedClock(),
             zone = zone,
+            deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
+            deleteComment = DeleteCommentUseCase(commentPort),
+            crewOwner = FakeCrewOwnerPort(),
         )
         return vm to TestPorts(commentPort, accountPort)
     }

@@ -18,6 +18,8 @@
     <string name="feed_rating_summary">%1$s ★ · %2$d</string>
     <string name="feed_voter_score">%1$s: %2$d ★</string>
     <string name="feed_votes_heading">Votes</string>
+    <string name="feed_ingredients_heading">Ingredients</string>
+    <string name="feed_ingredient_separator">,</string>
     <string name="feed_rate_error_cannot_rate_own_meal">You can\'t rate your own meal</string>
     <string name="feed_rate_error_already_rated">You\'ve already voted</string>
     <string name="feed_rate_error_window_closed">Voting is closed</string>
@@ -40,4 +42,11 @@
     <string name="feed_comments_error_unavailable">Couldn\'t post. Try again.</string>
     <string name="feed_comments_error_unauthorized">You can\'t comment on this meal</string>
     <string name="feed_deleted_author">Deleted user</string>
+    <string name="feed_delete_meal_cta">Delete meal</string>
+    <string name="feed_delete_meal_confirm_title">Delete this meal?</string>
+    <string name="feed_delete_meal_confirm_body">This can\'t be undone.</string>
+    <string name="feed_delete_comment_cta">Delete comment</string>
+    <string name="feed_delete_comment_confirm_title">Delete this comment?</string>
+    <string name="feed_delete_confirm_cta">Delete</string>
+    <string name="feed_delete_cancel_cta">Cancel</string>
 </resources>

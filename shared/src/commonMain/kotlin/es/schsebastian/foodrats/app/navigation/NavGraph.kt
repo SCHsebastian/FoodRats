@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -51,6 +52,7 @@ import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsS
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailScreen
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedScreen
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealScreen
+import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIngredientsScreen
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
@@ -88,7 +90,7 @@ fun NavGraph(navController: NavController = rememberNavController()) {
 
         composable<Route.NotificationPermission> {
             // Continue is a no-op: marking the prompt flag drives RootNavViewModel to
-            // emit NavigateTo(CrewPicker | Main), which navigateTopLevel handles.
+            // emit NavigateTopLevel(CrewPicker | Main), which navigateTopLevel handles.
             NotificationPermissionScreen(onContinue = {})
         }
 
@@ -134,7 +136,11 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                     // and watches the top progress bar do its work.
                     controller.popBackStack(route = Route.Main, inclusive = false)
                 },
+                onEditIngredients = { controller.navigate(Route.SelectIngredients) },
             )
+        }
+        composable<Route.SelectIngredients> {
+            SelectIngredientsScreen(onDone = { controller.popBackStack() })
         }
         composable<Route.MealDetail> { entry ->
             val args = entry.toRoute<Route.MealDetail>()
@@ -179,8 +185,7 @@ private fun MainScaffold(rootController: NavHostController) {
     val inner = rememberNavController()
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     val backStack by inner.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route
-    val isStats = currentRoute?.contains("Stats") == true
+    val isStats = backStack?.destination?.hasRoute<MainTab.Stats>() == true
     val titleKey = if (isStats) SharedStringKey.NavTabStats else SharedStringKey.NavTabFeed
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
     val topBarAvatar by topBarAvatarVm.state.collectAsState()

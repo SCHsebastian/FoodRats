@@ -1,6 +1,7 @@
 import SwiftUI
 import FirebaseCore
 import FirebaseCrashlytics
+import FoodRatsShared
 import GoogleSignIn
 
 @main
@@ -25,7 +26,10 @@ struct iOSApp: App {
         WindowGroup {
             ContentView()
                 .onOpenURL { url in
-                    _ = GIDSignIn.sharedInstance.handle(url)
+                    // GoogleSignIn claims its OAuth redirect first; anything else is a
+                    // custom-scheme deep link (foodrats://app/...) → forward to the shared bus.
+                    if GIDSignIn.sharedInstance.handle(url) { return }
+                    IosDeepLinkBridge.shared.receive(uri: url.absoluteString)
                 }
         }
     }
