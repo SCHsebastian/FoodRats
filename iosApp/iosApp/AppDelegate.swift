@@ -58,13 +58,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler([.banner, .sound, .badge])
     }
 
-    // Background tap → app foregrounded by the user. Forward so observers see the same payload.
+    // Notification tap → navigate. The server puts the canonical deep link under "link"; forward
+    // it to the shared DeepLinkBus, which RootNavViewModel parses + routes (a meal post / comment
+    // opens that meal). A reminder/streak push carries no link, so tapping just foregrounds the
+    // app on Feed — the desired "just open it" behaviour.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        forwardData(response.notification.request.content.userInfo)
+        if let link = response.notification.request.content.userInfo["link"] as? String {
+            IosDeepLinkBridge.shared.receive(uri: link)
+        }
         completionHandler()
     }
 

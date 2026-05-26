@@ -27,6 +27,22 @@ iOS:     onOpenURL / continue:userActivity → IosDeepLinkBridge.shared.receive(
                  RootNavViewModel collects → parseDeepLink(uri) → navigate now | stash until Ready
 ```
 
+## Notification taps reuse the same contract
+
+FCM pushes carry the canonical deep link in their `data.link` (built server-side by
+`functions/.../fcm/push.ts#mealDeepLink`, kept in sync with the table above). A **meal post** or
+**comment** push links to `foodrats://app/meal/{mealId}/{dayKey}`; a **reminder** (streak nudge,
+weekly digest) carries **no** link, so tapping just opens the app to Feed.
+
+```
+Android tap: tray notification → MainActivity gets data as intent extras → publishDeepLink reads "link" → DeepLinkBus
+             (local streak nudge: DailyInactivityWorker setContentIntent = launcher intent → opens Feed)
+iOS tap:     UNUserNotificationCenter didReceive → userInfo["link"] → IosDeepLinkBridge.receive(uri:) → DeepLinkBus
+```
+
+Because the link is a `Route.Protected` target, a tap on a cold-started/signed-out app is stashed
+and resumed after sign-in — same intercept-then-resume path as web links.
+
 ## Deploy steps (NOT code — must be done by a human)
 
 ### 1. Host the association files at the domain root, over HTTPS, no redirects

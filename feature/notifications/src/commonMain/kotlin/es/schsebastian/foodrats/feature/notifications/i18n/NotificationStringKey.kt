@@ -17,6 +17,7 @@ import foodrats.feature.notifications.generated.resources.notifications_new_meal
 import foodrats.feature.notifications.generated.resources.notifications_new_meal_post_title
 import foodrats.feature.notifications.generated.resources.notifications_permission_allow
 import foodrats.feature.notifications.generated.resources.notifications_permission_body
+import foodrats.feature.notifications.generated.resources.notifications_permission_save_failed
 import foodrats.feature.notifications.generated.resources.notifications_permission_settings
 import foodrats.feature.notifications.generated.resources.notifications_permission_skip
 import foodrats.feature.notifications.generated.resources.notifications_permission_title
@@ -32,6 +33,7 @@ enum class NotificationStringKey(override val resourceId: StringResource) : Stri
     PermissionAllow(Res.string.notifications_permission_allow),
     PermissionSkip(Res.string.notifications_permission_skip),
     PermissionSettings(Res.string.notifications_permission_settings),
+    PermissionSaveFailed(Res.string.notifications_permission_save_failed),
     StreakTitle(Res.string.notifications_streak_title),
     StreakBody(Res.string.notifications_streak_body),
     InactivityTitle(Res.string.notifications_inactivity_title),

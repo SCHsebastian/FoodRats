@@ -48,22 +48,36 @@ class MainActivity : ComponentActivity() {
         setContent { FoodRatsApp() }
     }
 
-    // Warm start: the activity is `singleTop`, so a new App Link reuses this instance.
+    // Warm start: the activity is `singleTop`, so a new App Link OR notification tap reuses this instance.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         publishDeepLink(intent)
     }
 
-    /** Forward only VIEW-action URLs (real deep links) — the LAUNCHER intent carries no data. */
+    /**
+     * Turn an incoming intent into a [DeepLinkBus] publish from either source:
+     *  - App Link / custom-scheme tap → the URL is the intent `data` on a VIEW action.
+     *  - FCM notification tap → a backgrounded notification-message launches us with the push
+     *    `data` payload as intent extras; the server puts the canonical deep link under `link`.
+     *
+     * A reminder/streak push carries no `link`, so nothing is published and the app simply opens
+     * to Feed (the authenticated landing) — exactly the desired "just open it" behaviour.
+     */
     private fun publishDeepLink(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_VIEW) return
-        intent.dataString?.let(deepLinkBus::publish)
+        if (intent == null) return
+        if (intent.action == Intent.ACTION_VIEW) intent.dataString?.let(deepLinkBus::publish)
+        intent.getStringExtra(FCM_LINK_EXTRA)?.let(deepLinkBus::publish)
     }
 
     override fun onDestroy() {
         launcherHolder.clear()
         locationLauncherHolder.clear()
         super.onDestroy()
+    }
+
+    private companion object {
+        // FCM data key carrying the canonical deep link (set server-side in functions/.../push.ts).
+        const val FCM_LINK_EXTRA = "link"
     }
 }

@@ -13,6 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -63,6 +64,12 @@ fun NotificationPermissionScreen(
                 variant = FrButtonVariant.Ghost,
                 modifier = Modifier.padding(top = Spacing.sm),
             )
+            state.error?.let { err ->
+                FrErrorBanner(
+                    text = resolve(err),
+                    modifier = Modifier.padding(top = Spacing.md),
+                )
+            }
         }
     }
 }

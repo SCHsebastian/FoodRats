@@ -1,7 +1,7 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
-import { sendToCrew } from "../fcm/push";
+import { sendToCrew, mealDeepLink } from "../fcm/push";
 import { KEY_NEW_MEAL_POST, FALLBACK } from "../i18n/keys";
 
 export const onMealCreated = onDocumentCreated(
@@ -18,6 +18,9 @@ export const onMealCreated = onDocumentCreated(
     const crewName = await readCrewName(crewId);
     const authorName: string = (meal.authorName as string) ?? "A crewmate";
     const dishName: string = (meal.dishName as string) ?? "a meal";
+    // The meal's day key (ISO date) is the second path segment of the meal deep link. Present on
+    // every meal written by the app; guard anyway so a malformed doc still sends a (linkless) push.
+    const dayKey = (meal.dayKey as string | undefined) ?? "";
 
     await sendToCrew(crewId, meal.authorId as string, {
       kind: "NewMealPost",
@@ -30,6 +33,9 @@ export const onMealCreated = onDocumentCreated(
         mealId,
         authorName,
         dishName,
+        // Tapping opens the specific meal. Omit when we can't build a valid link (no dayKey) —
+        // the app then just opens to Feed, which is the right "couldn't target" fallback.
+        ...(dayKey ? { dayKey, link: mealDeepLink(mealId, dayKey) } : {}),
       },
     });
   },
