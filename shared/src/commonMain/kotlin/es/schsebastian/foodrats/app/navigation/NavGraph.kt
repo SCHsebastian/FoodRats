@@ -5,17 +5,16 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -24,7 +23,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -40,6 +38,9 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBar
+import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarCapture
+import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarItem
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
@@ -228,61 +229,42 @@ private fun MainScaffold(rootController: NavHostController) {
             )
         },
         bottomBar = {
-            // primaryContainer tints the bar (including the area drawn behind the
-            // system navigation bar via the bar's default windowInsets handling),
-            // so the bottom of the screen matches the brand color on Android the
-            // same way it does on iOS.
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            // Floating navigation capsule (FrBottomBar) per the design system. The Box adds the
+            // system-navigation-bar inset + the float margin so the capsule clears the gesture pill;
+            // the Scaffold's containerColor (background) fills the margins around it.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             ) {
-                NavigationBarItem(
-                    modifier = Modifier.weight(1f),
-                    selected = !isStats,
-                    onClick = {
-                        inner.navigate(MainTab.Feed) {
-                            popUpTo<MainTab.Feed> { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(FrIcons.Home, contentDescription = resolve(SharedStringKey.NavTabFeed)) },
-                    label = { Text(resolve(SharedStringKey.NavTabFeed)) },
-                )
-                NavigationBarItem(
-                    modifier = Modifier.weight(1f),
-                    selected = false,
-                    onClick = { rootController.navigate(Route.CaptureMeal) },
-                    icon = {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = FrIcons.Camera,
-                                contentDescription = resolve(SharedStringKey.NavCaptureCta),
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        }
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = Color.Transparent,
+                FrBottomBar(
+                    tabs = listOf(
+                        FrBottomBarItem(
+                            icon = FrIcons.Home,
+                            label = resolve(SharedStringKey.NavTabFeed),
+                            contentDescription = resolve(SharedStringKey.NavTabFeed),
+                        ),
+                        FrBottomBarItem(
+                            icon = FrIcons.Stats,
+                            label = resolve(SharedStringKey.NavTabStats),
+                            contentDescription = resolve(SharedStringKey.NavTabStats),
+                        ),
                     ),
-                )
-                NavigationBarItem(
-                    modifier = Modifier.weight(1f),
-                    selected = isStats,
-                    onClick = {
-                        inner.navigate(MainTab.Stats) {
+                    selectedIndex = if (isStats) 1 else 0,
+                    onSelect = { index ->
+                        val target = if (index == 0) MainTab.Feed else MainTab.Stats
+                        inner.navigate(target) {
                             popUpTo<MainTab.Feed> { saveState = true }
                             launchSingleTop = true
                             restoreState = true
                         }
                     },
-                    icon = { Icon(FrIcons.Stats, contentDescription = resolve(SharedStringKey.NavTabStats)) },
-                    label = { Text(resolve(SharedStringKey.NavTabStats)) },
+                    capture = FrBottomBarCapture(
+                        icon = FrIcons.Camera,
+                        contentDescription = resolve(SharedStringKey.NavCaptureCta),
+                        onClick = { rootController.navigate(Route.CaptureMeal) },
+                    ),
                 )
             }
         },

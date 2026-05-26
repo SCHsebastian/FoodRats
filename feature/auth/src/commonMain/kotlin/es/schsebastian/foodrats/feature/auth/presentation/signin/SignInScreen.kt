@@ -19,10 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,10 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -217,35 +216,30 @@ private fun EmailPasswordForm(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        // Auth-specific use of OutlinedTextField directly: FrTextField in the design system
-        // doesn't expose keyboardOptions / visualTransformation yet, and adding them is its
-        // own design-system PR.
-        OutlinedTextField(
+        FrTextField(
             value = state.email,
             onValueChange = { onIntent(SignInIntent.UpdateEmail(it)) },
-            label = { Text(resolve(AuthStringKey.FieldEmail)) },
+            label = resolve(AuthStringKey.FieldEmail),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next,
             ),
-            singleLine = true,
             isError = state.emailError != null,
-            supportingText = state.emailError?.let { err -> { Text(resolve((err as AuthError).toStringKey())) } },
+            supportingText = state.emailError?.let { resolve((it as AuthError).toStringKey()) },
             enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        FrTextField(
             value = state.password,
             onValueChange = { onIntent(SignInIntent.UpdatePassword(it)) },
-            label = { Text(resolve(AuthStringKey.FieldPassword)) },
+            label = resolve(AuthStringKey.FieldPassword),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
             ),
-            singleLine = true,
             isError = state.passwordError != null,
-            supportingText = state.passwordError?.let { err -> { Text(resolve((err as AuthError).toStringKey())) } },
+            supportingText = state.passwordError?.let { resolve((it as AuthError).toStringKey()) },
             enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -272,7 +266,7 @@ private fun OrDivider() {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HorizontalDivider(
+        FrDivider(
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.outlineVariant,
         )
@@ -283,7 +277,7 @@ private fun OrDivider() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.width(Spacing.md))
-        HorizontalDivider(
+        FrDivider(
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.outlineVariant,
         )

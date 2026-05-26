@@ -20,6 +20,9 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarWithName
+import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBar
+import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarCapture
+import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarItem
 import es.schsebastian.foodrats.core.designsystem.molecules.FrComposerHeroCard
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
@@ -27,12 +30,14 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScorePicker
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSegmented
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsDivider
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRow
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRowTone
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSection
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSectionTone
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
+import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -50,7 +55,56 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.avatarpicker",   CatalogGroup.MOLECULES, "FrAvatarPicker",     "Avatar preview + change-avatar button (initials fallback, busy state)") { AvatarPickerStory() },
     CatalogEntry("molecule.settings-section", CatalogGroup.MOLECULES, "FrSettingsSection", "Grouped settings card with header + rounded surface") { SettingsSectionStory() },
     CatalogEntry("molecule.settings-row",     CatalogGroup.MOLECULES, "FrSettingsRow",     "Settings row: icon + title + subtitle + trailing slot") { SettingsRowStory() },
+    CatalogEntry("molecule.segmented",        CatalogGroup.MOLECULES, "FrSegmented",       "Single-select segmented pill row") { SegmentedStory() },
+    CatalogEntry("molecule.votebars",         CatalogGroup.MOLECULES, "FrVoteBars",        "Vote-distribution histogram (scores 1..10)") { VoteBarsStory() },
+    CatalogEntry("molecule.bottombar",        CatalogGroup.MOLECULES, "FrBottomBar",       "Floating nav capsule with ember capture") { BottomBarStory() },
 )
+
+@Composable
+private fun SegmentedStory() {
+    var selected by remember { mutableStateOf(0) }
+    CatalogScene(label = "Single-select pill row") {
+        FrSegmented(
+            options = listOf("Day", "Week", "Month"),
+            selectedIndex = selected,
+            onSelect = { selected = it },
+        )
+    }
+}
+
+@Composable
+private fun VoteBarsStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Distribution — hot scores (≥8) highlighted") {
+            FrVoteBars(votes = mapOf(6 to 1, 7 to 2, 8 to 4, 9 to 2, 10 to 1))
+        }
+        CatalogScene(label = "Sparse") {
+            FrVoteBars(votes = mapOf(3 to 1, 9 to 1))
+        }
+    }
+}
+
+@Composable
+private fun BottomBarStory() {
+    var tab by remember { mutableStateOf(0) }
+    val tabs = listOf(
+        FrBottomBarItem(FrIcons.Home, "Feed", "Feed"),
+        FrBottomBarItem(FrIcons.Stats, "Stats", "Stats"),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Two tabs + ember capture (attention ring)") {
+            FrBottomBar(
+                tabs = tabs,
+                selectedIndex = tab,
+                onSelect = { tab = it },
+                capture = FrBottomBarCapture(FrIcons.Camera, "Capture meal", onClick = {}, highlightRing = true),
+            )
+        }
+        CatalogScene(label = "Tabs only (no capture)") {
+            FrBottomBar(tabs = tabs, selectedIndex = tab, onSelect = { tab = it })
+        }
+    }
+}
 
 @Composable
 private fun AvatarWithNameStory() {

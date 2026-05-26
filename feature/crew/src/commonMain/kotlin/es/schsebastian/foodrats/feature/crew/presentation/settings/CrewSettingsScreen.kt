@@ -9,14 +9,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -252,21 +251,17 @@ fun CrewSettingsScreen(
     memberPendingRemoval?.let { pendingId ->
         val memberName = state.identities[pendingId]?.displayName
             ?: resolve(CrewStringKey.MemberDeleted)
-        AlertDialog(
-            onDismissRequest = { memberPendingRemoval = null },
-            title = { Text(resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName)) },
-            text = { Text(resolve(CrewStringKey.SettingsRemoveMemberConfirmBody, memberName)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(pendingId))
-                    memberPendingRemoval = null
-                }) { Text(resolve(CrewStringKey.SettingsRemoveMemberCta)) }
+        FrConfirmDialog(
+            title = resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName),
+            message = resolve(CrewStringKey.SettingsRemoveMemberConfirmBody, memberName),
+            confirmLabel = resolve(CrewStringKey.SettingsRemoveMemberCta),
+            dismissLabel = resolve(CrewStringKey.SettingsCancel),
+            onConfirm = {
+                vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(pendingId))
+                memberPendingRemoval = null
             },
-            dismissButton = {
-                TextButton(onClick = { memberPendingRemoval = null }) {
-                    Text(resolve(CrewStringKey.SettingsCancel))
-                }
-            },
+            onDismiss = { memberPendingRemoval = null },
+            destructive = true,
         )
     }
 }

@@ -1,9 +1,13 @@
 package es.schsebastian.foodrats.catalog.stories
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -21,11 +25,14 @@ import es.schsebastian.foodrats.catalog.registry.CatalogGroup
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrChip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFilterChip
+import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrGlassPill
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
@@ -33,6 +40,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
+import es.schsebastian.foodrats.core.designsystem.atoms.FrSparkline
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSpacer
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
@@ -60,6 +68,10 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.shimmerbox",    CatalogGroup.ATOMS, "FrShimmerBox",    "Skeleton with horizontal shimmer sweep") { ShimmerBoxStory() },
     CatalogEntry("atom.uploadprogress", CatalogGroup.ATOMS, "FrUploadProgressBar", "Top-of-screen indeterminate bar that slides in while uploads run") { UploadProgressBarStory() },
     CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — plate + ears at three sizes") { LogoStory() },
+    CatalogEntry("atom.card",          CatalogGroup.ATOMS, "FrCard",          "Rounded surface container — static or clickable with press lift") { CardStory() },
+    CatalogEntry("atom.sparkline",     CatalogGroup.ATOMS, "FrSparkline",     "Tiny inline trend chart for stat tiles") { SparklineStory() },
+    CatalogEntry("atom.flamebadge",    CatalogGroup.ATOMS, "FrFlameBadge",    "🔥 streak pill on the streakHot semantic color") { FlameBadgeStory() },
+    CatalogEntry("atom.glasspill",     CatalogGroup.ATOMS, "FrGlassPill",     "Translucent circular overlay for in-photo back / close") { GlassPillStory() },
 )
 
 @Composable
@@ -448,6 +460,81 @@ private fun ShimmerBoxStory() {
                 modifier = Modifier.size(48.dp),
                 shape = androidx.compose.foundation.shape.CircleShape,
             )
+        }
+    }
+}
+
+@Composable
+private fun CardStory() {
+    CatalogScene(label = "Static / clickable") {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            FrCard(modifier = Modifier.fillMaxWidth()) {
+                FrText("Static card", style = MaterialTheme.typography.titleMedium)
+                FrText("elevation-1, no press feedback", style = MaterialTheme.typography.bodySmall)
+            }
+            FrCard(modifier = Modifier.fillMaxWidth(), onClick = {}) {
+                FrText("Clickable card", style = MaterialTheme.typography.titleMedium)
+                FrText("press → scale 0.98 + lift to 4dp", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SparklineStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Rising trend") {
+            FrSparkline(data = listOf(7.4f, 8f, 8.6f, 7f, 9.2f, 8.5f, 9.2f), width = 140.dp, height = 40.dp)
+        }
+        CatalogScene(label = "Tinted (secondary)") {
+            FrSparkline(
+                data = listOf(3f, 5f, 4f, 6f, 5.5f, 7f),
+                color = MaterialTheme.colorScheme.secondary,
+                width = 140.dp,
+                height = 40.dp,
+            )
+        }
+        CatalogScene(label = "Single point → flat mid-line") {
+            FrSparkline(data = listOf(5f), width = 140.dp, height = 40.dp)
+        }
+    }
+}
+
+@Composable
+private fun FlameBadgeStory() {
+    CatalogScene(
+        label = "Streak lengths",
+        description = "Hidden entirely at 0 — the fourth pill below isn't drawn.",
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FrFlameBadge(days = 1)
+            FrFlameBadge(days = 7)
+            FrFlameBadge(days = 42)
+            FrFlameBadge(days = 0)
+        }
+    }
+}
+
+@Composable
+private fun GlassPillStory() {
+    CatalogScene(label = "Over a photo surface", padding = PaddingValues(0.dp)) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .size(width = 320.dp, height = 120.dp)
+                .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.TopStart,
+        ) {
+            Row(
+                modifier = Modifier.padding(Spacing.sm),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                FrGlassPill(icon = FrIcons.Back, onClick = {}, contentDescription = "Back")
+                FrGlassPill(icon = FrIcons.Close, onClick = {}, contentDescription = "Close")
+            }
         }
     }
 }

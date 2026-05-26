@@ -15,14 +15,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +41,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
@@ -136,21 +135,17 @@ fun MealDetailScreen(
     }
 
     if (showDeleteMealDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteMealDialog = false },
-            title = { Text(resolve(FeedStringKey.DeleteMealConfirmTitle)) },
-            text = { Text(resolve(FeedStringKey.DeleteMealConfirmBody)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    showDeleteMealDialog = false
-                    vm.onIntent(MealDetailIntent.DeleteMeal)
-                }) { Text(resolve(FeedStringKey.DeleteConfirmCta)) }
+        FrConfirmDialog(
+            title = resolve(FeedStringKey.DeleteMealConfirmTitle),
+            message = resolve(FeedStringKey.DeleteMealConfirmBody),
+            confirmLabel = resolve(FeedStringKey.DeleteConfirmCta),
+            dismissLabel = resolve(FeedStringKey.DeleteCancelCta),
+            onConfirm = {
+                showDeleteMealDialog = false
+                vm.onIntent(MealDetailIntent.DeleteMeal)
             },
-            dismissButton = {
-                TextButton(onClick = { showDeleteMealDialog = false }) {
-                    Text(resolve(FeedStringKey.DeleteCancelCta))
-                }
-            },
+            onDismiss = { showDeleteMealDialog = false },
+            destructive = true,
         )
     }
 }
@@ -358,20 +353,16 @@ private fun MealDetailBody(
         }
 
         pendingDeleteCommentId?.let { id ->
-            AlertDialog(
-                onDismissRequest = { pendingDeleteCommentId = null },
-                title = { Text(resolve(FeedStringKey.DeleteCommentConfirmTitle)) },
-                confirmButton = {
-                    TextButton(onClick = {
-                        pendingDeleteCommentId = null
-                        onIntent(MealDetailIntent.DeleteComment(id))
-                    }) { Text(resolve(FeedStringKey.DeleteConfirmCta)) }
+            FrConfirmDialog(
+                title = resolve(FeedStringKey.DeleteCommentConfirmTitle),
+                confirmLabel = resolve(FeedStringKey.DeleteConfirmCta),
+                dismissLabel = resolve(FeedStringKey.DeleteCancelCta),
+                onConfirm = {
+                    pendingDeleteCommentId = null
+                    onIntent(MealDetailIntent.DeleteComment(id))
                 },
-                dismissButton = {
-                    TextButton(onClick = { pendingDeleteCommentId = null }) {
-                        Text(resolve(FeedStringKey.DeleteCancelCta))
-                    }
-                },
+                onDismiss = { pendingDeleteCommentId = null },
+                destructive = true,
             )
         }
     }

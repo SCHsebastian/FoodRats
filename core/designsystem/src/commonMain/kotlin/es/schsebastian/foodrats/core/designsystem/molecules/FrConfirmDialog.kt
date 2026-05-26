@@ -7,7 +7,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
@@ -16,17 +18,20 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
  *
  * No domain types — pass primitive strings (resolve `StringKey`s at the call
  * site). Designed for "are you sure?" gates before irreversible flows
- * (publish a meal, leave a crew, sign out).
+ * (publish a meal, leave a crew, sign out). Set [destructive] for irreversible
+ * actions (delete account, delete meal, remove member) — the confirm action then
+ * renders in the `danger` semantic color.
  */
 @Composable
 fun FrConfirmDialog(
     title: String,
-    message: String,
     confirmLabel: String,
     dismissLabel: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    message: String? = null,
+    destructive: Boolean = false,
 ) {
     AlertDialog(
         modifier = modifier,
@@ -37,12 +42,14 @@ fun FrConfirmDialog(
                 style = MaterialTheme.typography.headlineSmall,
             )
         },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                FrText(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
+        text = message?.let { msg ->
+            {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    FrText(
+                        text = msg,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
             }
         },
         confirmButton = {
@@ -50,6 +57,7 @@ fun FrConfirmDialog(
                 FrText(
                     text = confirmLabel,
                     style = MaterialTheme.typography.labelLarge,
+                    color = if (destructive) LocalFrSemanticColors.current.danger else Color.Unspecified,
                 )
             }
         },
