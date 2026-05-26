@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.app.root.RootNavViewModel
 import es.schsebastian.foodrats.feature.auth.di.authModule
 import es.schsebastian.foodrats.feature.crew.di.crewModule
 import es.schsebastian.foodrats.feature.feed.di.feedModule
+import es.schsebastian.foodrats.feature.ingredient.di.ingredientModule
 import es.schsebastian.foodrats.feature.meal.di.mealModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsModule
 import es.schsebastian.foodrats.feature.stats.di.statsModule
@@ -24,4 +25,7 @@ val appModules: List<org.koin.core.module.Module> = listOf(
     feedModule,
     statsModule,
     notificationsModule,
+    // Catalog + picker (:feature:ingredient). The MealClassifierPort is bound per
+    // platform: mealAiAndroidModule (FoodRatsApplication) / mealAiIosModule (MainViewController).
+    ingredientModule,
 )
