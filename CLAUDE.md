@@ -155,6 +155,9 @@ These are the recent shifts in conventions or implementation that you should car
 
 ## Active tech debt (carry forward when touching the area)
 
+- **Most important 16-KB** APK androidApp-debug.apk is not compatible with 16 KB devices. Some libraries have LOAD segments not aligned at 16 KB boundaries:
+  lib/arm64-v8a/libmediapipe_tasks_vision_jni.so
+  Starting November 1st, 2025, all new apps and updates to existing apps submitted to Google Play and targeting Android 15+ devices must support 16 KB page sizes. For more information about compatibility with 16 KB devices, visit developer.android.com/16kb-page-size.
 - **Dev-crew hardcoding:** `feature/auth/.../FirebaseAuthRepository.signInWithGoogle()` stamps `Session.activeCrewId = CrewId("test-crew-1")` so meal publishing has a non-null crew. There's a `TODO(scope = "feature:crew")` — remove when the Crew picker becomes the primary post-signin destination.
 - **Coil 3 image loading is wired.** `FrFeedMealCard` uses `coil3.compose.AsyncImage`. The singleton `ImageLoader` is installed by `installFeedImageLoader()` in both `FoodRatsApplication.onCreate()` and `MainViewController()` (iOS), using `KtorNetworkFetcherFactory` over the per-platform Ktor engine (OkHttp on Android, Darwin on iOS).
 - **i18n for WorkManager:** `PublishMealViewModel` now resolves streak nudge title/body via `getString(NotificationStringKey.Streak{Title,Body}.resourceId)` (suspending Compose Resources API); the call is wrapped in try/catch so unit tests without bundled resources stay green.
