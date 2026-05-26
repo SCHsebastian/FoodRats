@@ -5,6 +5,7 @@
     <string name="notifications_permission_allow">Permitir notificaciones</string>
     <string name="notifications_permission_skip">Ahora no</string>
     <string name="notifications_permission_settings">Abrir ajustes</string>
+    <string name="notifications_permission_save_failed">No se ha podido guardar tu elección. Inténtalo de nuevo.</string>
     <string name="notifications_streak_title">No rompas la racha</string>
     <string name="notifications_streak_body">¡Publica tu comida antes de medianoche!</string>
     <string name="notifications_error_denied">Las notificaciones están desactivadas.</string>

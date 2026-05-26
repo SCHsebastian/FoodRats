@@ -6,6 +6,8 @@
     <string name="crew_picker_hero_subtitle">Comemos juntos, incluso a la distancia.</string>
     <string name="crew_picker_create_cta">Crear un grupo</string>
     <string name="crew_picker_join_cta">Unirme con código</string>
+    <string name="crew_picker_brand_name">FoodRats</string>
+    <string name="crew_picker_crew_button">%1$s (%2$d/8)</string>
     <string name="crew_create_name_label">Nombre del grupo</string>
     <string name="crew_create_submit">Crear</string>
     <string name="crew_join_code_label">Código de invitación</string>

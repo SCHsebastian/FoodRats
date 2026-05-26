@@ -1,7 +1,7 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
-import { sendToUid } from "../fcm/push";
+import { sendToUid, mealDeepLink } from "../fcm/push";
 import { KEY_NEW_COMMENT, FALLBACK } from "../i18n/keys";
 
 export const onCommentCreated = onDocumentCreated(
@@ -30,6 +30,8 @@ export const onCommentCreated = onDocumentCreated(
 
     const commenterName: string = (comment.authorName as string) ?? "Someone";
     const dishName: string = (meal.dishName as string) ?? "your meal";
+    // Tapping a comment notification opens the commented meal (same target as a meal-post push).
+    const dayKey = (meal.dayKey as string | undefined) ?? "";
 
     await sendToUid(meal.authorId as string, {
       kind: "NewComment",
@@ -42,6 +44,7 @@ export const onCommentCreated = onDocumentCreated(
         commentId,
         commenterName,
         dishName,
+        ...(dayKey ? { dayKey, link: mealDeepLink(mealId, dayKey) } : {}),
       },
     });
   },

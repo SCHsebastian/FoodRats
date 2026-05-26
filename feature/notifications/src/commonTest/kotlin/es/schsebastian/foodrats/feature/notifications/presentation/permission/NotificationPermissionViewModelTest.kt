@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.notifications.domain.model.NotificationPermission
 import es.schsebastian.foodrats.feature.notifications.domain.repository.NotificationPermissionGateway
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.RequestNotificationPermissionUseCase
+import es.schsebastian.foodrats.feature.notifications.i18n.NotificationStringKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +38,7 @@ class FakePrefs : NotificationsPreferencePort {
     override val prompted = _prompted.asStateFlow()
     var setCalledWith: Boolean? = null
     var markPromptedCalled = false
+    var markPromptedResult: Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
     override suspend fun set(enabled: Boolean): Result<Unit, NotificationsPreferenceError> {
         setCalledWith = enabled
         _enabled.value = enabled
@@ -44,8 +46,8 @@ class FakePrefs : NotificationsPreferencePort {
     }
     override suspend fun markPrompted(): Result<Unit, NotificationsPreferenceError> {
         markPromptedCalled = true
-        _prompted.value = true
-        return Result.success(Unit)
+        if (markPromptedResult is Result.Ok) _prompted.value = true
+        return markPromptedResult
     }
 }
 
@@ -98,5 +100,28 @@ class NotificationPermissionViewModelTest {
         val p = FakePrefs()
         NotificationPermissionViewModel(RequestNotificationPermissionUseCase(g), p)
         assertTrue(p.markPromptedCalled)
+    }
+
+    @Test fun skip_persist_failure_surfaces_retryable_error() = runTest {
+        val g = FakeGateway()
+        val p = FakePrefs().apply {
+            markPromptedResult = Result.failure(NotificationsPreferenceError.Persist.Unavailable)
+        }
+        val vm = NotificationPermissionViewModel(RequestNotificationPermissionUseCase(g), p)
+        vm.onIntent(NotificationPermissionIntent.Skip)
+        // The prompted flag never flipped, so the gate must NOT silently continue — instead it
+        // shows a retry-able error so the user isn't stranded.
+        assertTrue(p.markPromptedCalled)
+        assertEquals(NotificationStringKey.PermissionSaveFailed, vm.state.value.error)
+        assertEquals(false, p.prompted.value)
+    }
+
+    @Test fun successful_skip_clears_error() = runTest {
+        val g = FakeGateway()
+        val p = FakePrefs()
+        val vm = NotificationPermissionViewModel(RequestNotificationPermissionUseCase(g), p)
+        vm.onIntent(NotificationPermissionIntent.Skip)
+        assertEquals(null, vm.state.value.error)
+        assertTrue(p.prompted.value)
     }
 }
