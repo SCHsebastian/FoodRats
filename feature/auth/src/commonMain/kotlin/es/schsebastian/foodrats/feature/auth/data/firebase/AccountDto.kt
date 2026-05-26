@@ -10,4 +10,7 @@ data class AccountDto(
     val email: String? = null,
     val avatarUrl: String? = null,
     val createdAtEpochMs: Long? = null,
+    // Reserved data-consent fields (spec §13); default 0 / null = "no consent recorded".
+    val dataConsentVersion: Int = 0,
+    val dataConsentGrantedAtEpochMs: Long? = null,
 )

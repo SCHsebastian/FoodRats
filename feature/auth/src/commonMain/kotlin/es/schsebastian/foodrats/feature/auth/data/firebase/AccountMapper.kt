@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.core.domain.session.Session
+import kotlin.time.Instant
 
 fun AccountDto.toAccount(): Account? {
     val id = AccountId.of(id ?: return null).getOrElse { return null }
@@ -13,6 +14,8 @@ fun AccountDto.toAccount(): Account? {
         displayName = displayName ?: "",
         email = email,
         avatarUrl = avatarUrl,
+        dataConsentVersion = dataConsentVersion,
+        dataConsentGrantedAt = dataConsentGrantedAtEpochMs?.let { Instant.fromEpochMilliseconds(it) },
     )
 }
 
