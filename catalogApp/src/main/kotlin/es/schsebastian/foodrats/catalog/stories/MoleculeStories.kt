@@ -20,9 +20,6 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarWithName
-import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBar
-import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarCapture
-import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarItem
 import es.schsebastian.foodrats.core.designsystem.molecules.FrComposerHeroCard
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
@@ -57,7 +54,6 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.settings-row",     CatalogGroup.MOLECULES, "FrSettingsRow",     "Settings row: icon + title + subtitle + trailing slot") { SettingsRowStory() },
     CatalogEntry("molecule.segmented",        CatalogGroup.MOLECULES, "FrSegmented",       "Single-select segmented pill row") { SegmentedStory() },
     CatalogEntry("molecule.votebars",         CatalogGroup.MOLECULES, "FrVoteBars",        "Vote-distribution histogram (scores 1..10)") { VoteBarsStory() },
-    CatalogEntry("molecule.bottombar",        CatalogGroup.MOLECULES, "FrBottomBar",       "Floating nav capsule with ember capture") { BottomBarStory() },
 )
 
 @Composable
@@ -80,28 +76,6 @@ private fun VoteBarsStory() {
         }
         CatalogScene(label = "Sparse") {
             FrVoteBars(votes = mapOf(3 to 1, 9 to 1))
-        }
-    }
-}
-
-@Composable
-private fun BottomBarStory() {
-    var tab by remember { mutableStateOf(0) }
-    val tabs = listOf(
-        FrBottomBarItem(FrIcons.Home, "Feed", "Feed"),
-        FrBottomBarItem(FrIcons.Stats, "Stats", "Stats"),
-    )
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        CatalogScene(label = "Two tabs + ember capture (attention ring)") {
-            FrBottomBar(
-                tabs = tabs,
-                selectedIndex = tab,
-                onSelect = { tab = it },
-                capture = FrBottomBarCapture(FrIcons.Camera, "Capture meal", onClick = {}, highlightRing = true),
-            )
-        }
-        CatalogScene(label = "Tabs only (no capture)") {
-            FrBottomBar(tabs = tabs, selectedIndex = tab, onSelect = { tab = it })
         }
     }
 }

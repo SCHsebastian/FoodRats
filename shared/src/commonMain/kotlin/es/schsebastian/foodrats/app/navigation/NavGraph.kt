@@ -5,19 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -33,18 +24,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import es.schsebastian.foodrats.app.i18n.SharedStringKey
-import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
-import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
-import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBar
-import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarCapture
-import es.schsebastian.foodrats.core.designsystem.molecules.FrBottomBarItem
-import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
-import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
@@ -187,7 +170,6 @@ private fun MainScaffold(rootController: NavHostController) {
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     val backStack by inner.currentBackStackEntryAsState()
     val isStats = backStack?.destination?.hasRoute<MainTab.Stats>() == true
-    val titleKey = if (isStats) SharedStringKey.NavTabStats else SharedStringKey.NavTabFeed
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
     val topBarAvatar by topBarAvatarVm.state.collectAsState()
     Scaffold(
@@ -196,77 +178,36 @@ private fun MainScaffold(rootController: NavHostController) {
         // doesn't show through as warm-cream/white when edge-to-edge is on.
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(resolve(titleKey)) },
-                navigationIcon = {
-                    IconButton(onClick = { rootController.navigate(Route.Profile) }) {
-                        FrAvatar(
-                            initials = topBarAvatar.initials,
-                            imageUrl = topBarAvatar.avatarUrl,
-                            size = Sizes.avatarSm,
-                            contentDescription = resolve(SharedStringKey.NavProfileCta),
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-                actions = {
-                    activeCrew?.let { crewId ->
-                        IconButton(
-                            onClick = { rootController.navigate(Route.CrewSettings(crewId.value)) },
-                        ) {
-                            Icon(
-                                imageVector = FrIcons.Settings,
-                                contentDescription = resolve(SharedStringKey.NavSettingsCta),
-                            )
-                        }
-                    }
+            MainTopBar(
+                isStats = isStats,
+                avatarInitials = topBarAvatar.initials,
+                avatarUrl = topBarAvatar.avatarUrl,
+                showSettings = activeCrew != null,
+                onProfileClick = { rootController.navigate(Route.Profile) },
+                onSettingsClick = {
+                    activeCrew?.let { rootController.navigate(Route.CrewSettings(it.value)) }
                 },
             )
         },
         bottomBar = {
-            // Floating navigation capsule (FrBottomBar) per the design system. The Box adds the
-            // system-navigation-bar inset + the float margin so the capsule clears the gesture pill;
-            // the Scaffold's containerColor (background) fills the margins around it.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .windowInsetsPadding(WindowInsets.navigationBars)
-                    .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-            ) {
-                FrBottomBar(
-                    tabs = listOf(
-                        FrBottomBarItem(
-                            icon = FrIcons.Home,
-                            label = resolve(SharedStringKey.NavTabFeed),
-                            contentDescription = resolve(SharedStringKey.NavTabFeed),
-                        ),
-                        FrBottomBarItem(
-                            icon = FrIcons.Stats,
-                            label = resolve(SharedStringKey.NavTabStats),
-                            contentDescription = resolve(SharedStringKey.NavTabStats),
-                        ),
-                    ),
-                    selectedIndex = if (isStats) 1 else 0,
-                    onSelect = { index ->
-                        val target = if (index == 0) MainTab.Feed else MainTab.Stats
-                        inner.navigate(target) {
-                            popUpTo<MainTab.Feed> { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    capture = FrBottomBarCapture(
-                        icon = FrIcons.Camera,
-                        contentDescription = resolve(SharedStringKey.NavCaptureCta),
-                        onClick = { rootController.navigate(Route.CaptureMeal) },
-                    ),
-                )
-            }
+            MainBottomBar(
+                isStats = isStats,
+                onFeedClick = {
+                    inner.navigate(MainTab.Feed) {
+                        popUpTo<MainTab.Feed> { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onStatsClick = {
+                    inner.navigate(MainTab.Stats) {
+                        popUpTo<MainTab.Feed> { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onCaptureClick = { rootController.navigate(Route.CaptureMeal) },
+            )
         },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
