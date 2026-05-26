@@ -119,6 +119,6 @@ class IngredientRepositoryTest {
             override val io: CoroutineDispatcher = testDispatcher
             override val default: CoroutineDispatcher = testDispatcher
         }
-        return IngredientRepository(ds, cache, dispatchers, { "en" }, backgroundScope)
+        return IngredientRepository(ds, cache, dispatchers, flowOf("en"), backgroundScope)
     }
 }

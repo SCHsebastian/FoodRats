@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.ingredient.di
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
+import es.schsebastian.foodrats.feature.ingredient.data.deviceLanguageTag
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientDataSource
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientFirestoreDataSource
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientRepository
@@ -14,9 +15,7 @@ import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIng
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
@@ -38,18 +37,17 @@ val ingredientModule = module {
     single<IngredientDataSource> { IngredientFirestoreDataSource(get()) }
     single<CatalogCache> { IngredientCatalogCache(prefs = get(), json = get()) }
     single {
-        val appScope = get<CoroutineScope>(AppScope)
-        // Best-effort display language: the in-app override when set, else "en".
-        // The DTO mapper falls back to the "en" name when the chosen locale is absent.
-        val languageTag = get<LocalePort>().locale
-            .map { if (it == AppLocale.System) AppLocale.En.tag else it.tag }
-            .stateIn(appScope, SharingStarted.Eagerly, AppLocale.En.tag)
+        // Active display language: the explicit in-app override when set, else the
+        // device language (System). The DTO mapper falls back to "en" when the
+        // resolved language has no name for an ingredient.
+        val language = get<LocalePort>().locale
+            .map { locale -> if (locale == AppLocale.System) deviceLanguageTag() else locale.tag }
         IngredientRepository(
             datasource = get(),
             cache = get(),
             dispatchers = get(),
-            currentLang = { languageTag.value },
-            scope = appScope,
+            language = language,
+            scope = get(AppScope),
         )
     } bind IngredientReadPort::class
     factoryOf(::ObserveCatalogUseCase)
