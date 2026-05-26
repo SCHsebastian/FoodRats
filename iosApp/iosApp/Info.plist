@@ -24,6 +24,19 @@
 				<string>com.googleusercontent.apps.475840003160-2grnq2fqeplj74b81rqrddk5p9f46dts</string>
 			</array>
 		</dict>
+		<!-- Custom-scheme deep links: foodrats://app/... (fallback for Universal Links). Universal
+		     Links (https://foodrats.app/...) additionally need the Associated Domains entitlement +
+		     a hosted apple-app-site-association — see deeplinks/README.md. -->
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>es.schsebastian.foodrats.deeplink</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>foodrats</string>
+			</array>
+		</dict>
 	</array>
 	<key>UIBackgroundModes</key>
 	<array>

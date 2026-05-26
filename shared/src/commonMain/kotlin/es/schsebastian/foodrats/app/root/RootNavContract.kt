@@ -13,10 +13,24 @@ sealed interface RootStage {
     data object Ready : RootStage
 }
 
-data class RootNavState(val stage: RootStage = RootStage.Splash) : MviState
+/**
+ * @param stage current onboarding/auth stage; the single source of truth that drives top-level
+ *   navigation.
+ * @param pendingDeepLink a [Route.Protected] destination requested via a deep link while the user
+ *   was not yet [RootStage.Ready]. Held until the auth/crew/notification gates clear, then
+ *   navigated to (intercept-then-resume). Null when nothing is pending.
+ */
+data class RootNavState(
+    val stage: RootStage = RootStage.Splash,
+    val pendingDeepLink: Route? = null,
+) : MviState
 
 sealed interface RootNavIntent : MviIntent
 
 sealed interface RootNavEffect : MviEffect {
-    data class NavigateTo(val route: Route) : RootNavEffect
+    /** Replace the whole back stack with [route] — stage transitions, sign-out, expiry. */
+    data class NavigateTopLevel(val route: Route) : RootNavEffect
+
+    /** Land on the authenticated base ([Route.Main]) then push [route] — a deep link to a leaf. */
+    data class NavigateDeepLink(val route: Route) : RootNavEffect
 }

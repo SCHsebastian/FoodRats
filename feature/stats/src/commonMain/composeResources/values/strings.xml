@@ -48,6 +48,12 @@
     <string name="stats_most_criticized_title">Most criticized</string>
     <string name="stats_most_criticized_metric_format">%1$s ★ avg · ouch</string>
 
+    <!-- Ingredients -->
+    <string name="stats_most_used_ingredient_title">Most used ingredient</string>
+    <string name="stats_most_used_ingredient_metric_format">%1$s · %2$d meals</string>
+    <string name="stats_top_ingredient_by_member_title">Signature ingredient by cook</string>
+    <string name="stats_member_top_ingredient_format">%1$s · %2$d</string>
+
     <!-- Threshold hint -->
     <string name="stats_cook_award_needs_more_singular">%1$d more plate to qualify</string>
     <string name="stats_cook_award_needs_more_plural">%1$d more plates to qualify</string>

@@ -5,6 +5,9 @@ import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
+import es.schsebastian.foodrats.core.domain.meal.mergedIngredientSlugs
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
@@ -48,6 +51,7 @@ class MealDetailViewModel(
     private val ratingPort: MealRatingPort,
     private val commentPort: MealCommentPort,
     private val accountReadPort: AccountReadPort,
+    private val ingredientRead: IngredientReadPort,
     private val activeCrew: ActiveCrewProvider,
     private val session: SessionProvider,
     private val clock: Clock,
@@ -67,16 +71,24 @@ class MealDetailViewModel(
         } else {
             val feedDay = FeedDay(MealDay(parsedDay, zone))
             viewModelScope.launch {
-                observeFeed(flowOf(feedDay)).collect { r ->
+                combine(
+                    observeFeed(flowOf(feedDay)),
+                    ingredientRead.observeCatalog(),
+                ) { r, catalog -> r to catalog }.collect { (r, catalog) ->
                     when (r) {
                         is Result.Ok -> {
                             val viewerId = session.current.first()?.accountId
                             val ownerId = activeCrew.current.first()
                                 ?.let { crewOwner.observeOwner(it).first() }
                             val todayMealDay = MealDay.today(clock, zone)
-                            val match = if (viewerId == null) null
-                                        else r.value.firstOrNull { it.meal.id.value == mealId }
-                                            ?.toFeedUi(viewerId, todayMealDay)
+                            val matched = r.value.firstOrNull { it.meal.id.value == mealId }
+                            val nameFor = ingredientNameResolver(catalog)
+                            val match = if (viewerId == null || matched == null) null
+                                        else matched.toFeedUi(
+                                            viewerId,
+                                            todayMealDay,
+                                            ingredientNames = matched.meal.mergedIngredientSlugs().map(nameFor),
+                                        )
                             val canDeleteMeal = match != null && viewerId != null &&
                                 (match.authorId == viewerId.value || ownerId == viewerId)
                             update {

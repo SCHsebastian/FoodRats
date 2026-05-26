@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import FoodRatsShared
+import MealAiVision
 
 struct ComposeView: UIViewControllerRepresentable {
     func makeUIViewController(context: Self.Context) -> UIViewController {
@@ -26,6 +27,11 @@ struct ComposeView: UIViewControllerRepresentable {
             },
             crashLog: { message in
                 CrashlyticsBridge.log(message)
+            },
+            classifyPlate: { jpeg, completion in
+                MediaPipeClassifierBridge.classify(jpeg: jpeg as Data) { labels, errorCode in
+                    completion(labels, errorCode)
+                }
             }
         )
     }

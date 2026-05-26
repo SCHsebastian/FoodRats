@@ -28,6 +28,8 @@ import foodrats.feature.feed.generated.resources.feed_detail_not_found
 import foodrats.feature.feed.generated.resources.feed_detail_title
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
+import foodrats.feature.feed.generated.resources.feed_ingredient_separator
+import foodrats.feature.feed.generated.resources.feed_ingredients_heading
 import foodrats.feature.feed.generated.resources.feed_error_crew_not_found
 import foodrats.feature.feed.generated.resources.feed_error_not_signed_in
 import foodrats.feature.feed.generated.resources.feed_error_unauthorized
@@ -70,6 +72,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     RatingSummary(Res.string.feed_rating_summary),
     VoterScore(Res.string.feed_voter_score),
     VotesHeading(Res.string.feed_votes_heading),
+    IngredientsHeading(Res.string.feed_ingredients_heading),
+    IngredientSeparator(Res.string.feed_ingredient_separator),
     RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),
     RateErrorAlreadyRated(Res.string.feed_rate_error_already_rated),
     RateErrorWindowClosed(Res.string.feed_rate_error_window_closed),

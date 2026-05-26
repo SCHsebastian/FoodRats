@@ -7,6 +7,8 @@
   "scripts": {
     "build": "tsc",
     "lint": "eslint src --ext .ts",
+    "test": "vitest run",
+    "seed:catalog": "tsx scripts/seed-catalog.ts",
     "deploy": "firebase deploy --only functions --project foodrats-de4ec",
     "logs": "firebase functions:log --project foodrats-de4ec"
   },
@@ -22,6 +24,8 @@
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.0",
-    "typescript": "^5.5.4"
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.8"
   }
 }

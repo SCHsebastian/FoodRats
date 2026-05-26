@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.domain.compute
 
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.feature.stats.domain.model.StatsWindow
 import es.schsebastian.foodrats.feature.stats.domain.model.Tab
 import kotlinx.datetime.LocalDate
@@ -14,8 +15,11 @@ class ComputeWindowTest {
 
     private val window = StatsWindow(Tab.Week, LocalDate(2026, 5, 18), LocalDate(2026, 5, 24), 7)
 
+    /** Tests resolve a slug to its raw value; the real catalog substitutes a localized name. */
+    private val ingredientName: (IngredientSlug) -> String = { it.value }
+
     @Test fun empty_meals_yield_zero_totals_and_null_awards() {
-        val out = computeWindow(emptyList(), window)
+        val out = computeWindow(emptyList(), window, ingredientName)
         assertEquals(0, out.totalMeals)
         assertEquals(0.0, out.avgPerDay)
         assertNull(out.bestMeal)
@@ -31,7 +35,7 @@ class ComputeWindowTest {
             mealWithRatings("m2", "bob",   LocalDate(2026, 5, 20), ratings = listOf(5, 5, 5)),  // avg 5, more votes
             mealWithRatings("m3", "carl",  LocalDate(2026, 5, 21), ratings = listOf(4)),
         )
-        val out = computeWindow(meals, window)
+        val out = computeWindow(meals, window, ingredientName)
         assertEquals(mid("m2"), out.bestMeal?.mealId)
     }
 
@@ -41,7 +45,7 @@ class ComputeWindowTest {
             mealWithRatings("m2", "bob",   LocalDate(2026, 5, 20), ratings = listOf(3, 3, 3)),
             mealWithRatings("m3", "carl",  LocalDate(2026, 5, 21), ratings = listOf(5, 5)),
         )
-        val out = computeWindow(meals, window)
+        val out = computeWindow(meals, window, ingredientName)
         assertEquals(mid("m2"), out.mostVotedMeal?.mealId)
     }
 
@@ -51,7 +55,7 @@ class ComputeWindowTest {
             mealWithRatings("m2", "alice", LocalDate(2026, 5, 20)),
             mealWithRatings("m3", "bob",   LocalDate(2026, 5, 21)),
         )
-        val out = computeWindow(meals, window)
+        val out = computeWindow(meals, window, ingredientName)
         assertEquals(acct("alice"), out.mostProlific?.accountId)
         assertEquals(2, out.mostProlific?.mealCount)
     }
@@ -69,7 +73,7 @@ class ComputeWindowTest {
             // carl: 1 plate, avg 1 — excluded from cook awards
             mealWithRatings("m7", "carl", LocalDate(2026, 5, 19), ratings = listOf(1)),
         )
-        val out = computeWindow(meals, window)
+        val out = computeWindow(meals, window, ingredientName)
         assertEquals(acct("alice"), out.bestCook?.accountId)
         assertEquals(acct("bob"), out.mostCriticized?.accountId)
     }
@@ -81,14 +85,77 @@ class ComputeWindowTest {
             mealWithRatings("m3", "alice", LocalDate(2026, 5, 21), ratings = listOf(4)),
             mealWithRatings("m4", "bob",   LocalDate(2026, 5, 22), ratings = listOf(4)),
         )
-        val out = computeWindow(meals, window)
+        val out = computeWindow(meals, window, ingredientName)
         assertNotNull(out.bestCook)
         assertNull(out.mostCriticized)
     }
 
     @Test fun avg_per_day_uses_window_days_not_unique_days() {
         val meals = listOf(mealWithRatings("m1", "alice", LocalDate(2026, 5, 19), ratings = listOf(5)))
-        val out = computeWindow(meals, window)
+        val out = computeWindow(meals, window, ingredientName)
         assertTrue(abs(out.avgPerDay - (1.0 / 7.0)) < 1e-6)
+    }
+
+    @Test fun no_ingredients_yields_null_most_used_and_empty_per_member() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19)),
+            mealWithRatings("m2", "bob", LocalDate(2026, 5, 20)),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        assertNull(out.mostUsedIngredient)
+        assertTrue(out.topByMember.isEmpty())
+    }
+
+    @Test fun most_used_ingredient_counts_meals_using_it() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19), ingredients = listOf("egg", "rice")),
+            mealWithRatings("m2", "bob", LocalDate(2026, 5, 20), ingredients = listOf("egg", "bacon")),
+            mealWithRatings("m3", "carl", LocalDate(2026, 5, 21), ingredients = listOf("egg")),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        assertEquals("egg", out.mostUsedIngredient?.displayName)
+        assertEquals(3, out.mostUsedIngredient?.mealCount)
+    }
+
+    @Test fun most_used_ingredient_tie_breaks_on_name_ascending() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19), ingredients = listOf("rice")),
+            mealWithRatings("m2", "bob", LocalDate(2026, 5, 20), ingredients = listOf("apple")),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        assertEquals("apple", out.mostUsedIngredient?.displayName)
+        assertEquals(1, out.mostUsedIngredient?.mealCount)
+    }
+
+    @Test fun duplicate_slug_within_a_meal_counts_once() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19), ingredients = listOf("egg", "egg")),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        assertEquals(1, out.mostUsedIngredient?.mealCount)
+    }
+
+    @Test fun top_by_member_returns_each_authors_own_top_ingredient() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19), ingredients = listOf("egg")),
+            mealWithRatings("m2", "alice", LocalDate(2026, 5, 20), ingredients = listOf("egg", "rice")),
+            mealWithRatings("m3", "bob", LocalDate(2026, 5, 21), ingredients = listOf("bacon")),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        val alice = out.topByMember.first { it.accountId == acct("alice") }
+        val bob = out.topByMember.first { it.accountId == acct("bob") }
+        assertEquals("egg", alice.ingredientName)
+        assertEquals(2, alice.mealCount)
+        assertEquals("bacon", bob.ingredientName)
+        assertEquals(1, bob.mealCount)
+    }
+
+    @Test fun top_by_member_omits_authors_without_ingredients() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19), ingredients = listOf("egg")),
+            mealWithRatings("m2", "bob", LocalDate(2026, 5, 20)),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        assertEquals(listOf(acct("alice")), out.topByMember.map { it.accountId })
     }
 }

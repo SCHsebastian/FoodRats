@@ -19,6 +19,7 @@ import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.feed.presentation.components.MapsApiKey
 import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.meal.di.mealAndroidModule
+import es.schsebastian.foodrats.feature.mealai.di.mealAiAndroidModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsAndroidModule
 import es.schsebastian.foodrats.feature.notifications.platform.NotificationChannels
 import kotlinx.coroutines.CoroutineScope
@@ -47,6 +48,7 @@ class FoodRatsApplication : Application() {
                 appModules + listOf(
                     notificationsAndroidModule,
                     mealAndroidModule,
+                    mealAiAndroidModule,
                     androidShareModule(),
                     androidAuthModule(),
                     androidCrashModule(),

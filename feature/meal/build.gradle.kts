@@ -56,6 +56,9 @@ kotlin {
             implementation(libs.turbine)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
+            // In-memory DataStore harness for MealDraftLocalStore round-trip tests
+            // (AppPreferences wraps a real DataStore<Preferences>).
+            implementation(libs.androidx.datastore.preferences)
         }
         val androidHostTest by getting {
             dependencies {

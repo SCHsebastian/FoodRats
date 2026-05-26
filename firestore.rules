@@ -142,6 +142,20 @@ service cloud.firestore {
       }
     }
 
+    // Ingredient catalog + dish→ingredients map — public, immutable reference data.
+    // Read is open (`if true`) by design: the catalog is non-sensitive food vocabulary
+    // and may be fetched before auth. Clients never write — both collections are seeded
+    // and maintained only via the admin SDK (`functions/scripts/seed-catalog.ts`), which
+    // bypasses Security Rules. (meal-AI design §263-264)
+    match /ingredients/{slug} {
+      allow read:  if true;
+      allow write: if false;
+    }
+    match /dishIngredientMap/{dishSlug} {
+      allow read:  if true;
+      allow write: if false;
+    }
+
     // Invite codes — doc ID is the code; existence = uniqueness
     match /crewCodes/{code} {
       allow read:   if request.auth != null;

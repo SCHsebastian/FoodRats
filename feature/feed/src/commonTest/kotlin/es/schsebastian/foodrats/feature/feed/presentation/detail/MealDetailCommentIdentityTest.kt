@@ -8,6 +8,9 @@ import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -72,6 +75,12 @@ class FakeMealDeletePort : MealDeletePort {
     override suspend fun delete(crewId: CrewId, mealId: MealId) = result
 }
 
+class FakeIngredientReadPort : IngredientReadPort {
+    override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = flowOf(emptyMap())
+    override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> = emptyList()
+    override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> = emptyList()
+}
+
 data class TestPorts(
     val commentPort: FakeMealCommentPort,
     val accountPort: FakeAccountReadPort,
@@ -103,6 +112,7 @@ class MealDetailCommentIdentityTest {
             ratingPort = FakeMealRatingPort(),
             commentPort = commentPort,
             accountReadPort = accountPort,
+            ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
             session = session,
             clock = FixedClock(),
