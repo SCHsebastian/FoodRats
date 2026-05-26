@@ -17,6 +17,7 @@ sealed interface Route {
 
     @Serializable data object CaptureMeal : Route
     @Serializable data object ComposePlate : Route
+    @Serializable data object SelectIngredients : Route
 
     @Serializable data class MealDetail(val mealId: String, val dayIso: String) : Route
 }

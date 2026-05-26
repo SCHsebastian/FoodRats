@@ -51,6 +51,7 @@ import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsS
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailScreen
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedScreen
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealScreen
+import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIngredientsScreen
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
@@ -134,7 +135,11 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                     // and watches the top progress bar do its work.
                     controller.popBackStack(route = Route.Main, inclusive = false)
                 },
+                onEditIngredients = { controller.navigate(Route.SelectIngredients) },
             )
+        }
+        composable<Route.SelectIngredients> {
+            SelectIngredientsScreen(onDone = { controller.popBackStack() })
         }
         composable<Route.MealDetail> { entry ->
             val args = entry.toRoute<Route.MealDetail>()
