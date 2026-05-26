@@ -19,10 +19,29 @@
         tools:targetApi="33">
         <activity android:name=".MainActivity"
                   android:exported="true"
+                  android:launchMode="singleTop"
                   android:theme="@android:style/Theme.Material.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- Verified App Links: https://foodrats.app/... (autoVerify against the hosted
+                 /.well-known/assetlinks.json). See deeplinks/ for the contract + association files. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="https" android:host="foodrats.app"/>
+            </intent-filter>
+
+            <!-- Custom-scheme fallback: foodrats://app/... (host is "app" so the route
+                 discriminator stays in the path — see DeepLinks). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="foodrats" android:host="app"/>
             </intent-filter>
         </activity>
 

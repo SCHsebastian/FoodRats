@@ -29,7 +29,22 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // On iOS 13+ the .onOpenURL modifier in iOSApp.swift also handles this, but providing
     // this method is harmless and keeps older callers working.
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        return GIDSignIn.sharedInstance.handle(url)
+        if GIDSignIn.sharedInstance.handle(url) { return true }
+        IosDeepLinkBridge.shared.receive(uri: url.absoluteString)
+        return true
+    }
+
+    // Universal Links: iOS delivers https://foodrats.app/... taps as a browsing-web user activity.
+    // Forward the URL to the shared DeepLinkBus, which RootNavViewModel parses + routes.
+    func application(
+        _ application: UIApplication,
+        continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+    ) -> Bool {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL else { return false }
+        IosDeepLinkBridge.shared.receive(uri: url.absoluteString)
+        return true
     }
 
     // Foreground notification handling — show banner + sound and forward the data payload

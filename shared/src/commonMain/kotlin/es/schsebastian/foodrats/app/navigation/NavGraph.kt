@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -89,7 +90,7 @@ fun NavGraph(navController: NavController = rememberNavController()) {
 
         composable<Route.NotificationPermission> {
             // Continue is a no-op: marking the prompt flag drives RootNavViewModel to
-            // emit NavigateTo(CrewPicker | Main), which navigateTopLevel handles.
+            // emit NavigateTopLevel(CrewPicker | Main), which navigateTopLevel handles.
             NotificationPermissionScreen(onContinue = {})
         }
 
@@ -184,8 +185,7 @@ private fun MainScaffold(rootController: NavHostController) {
     val inner = rememberNavController()
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     val backStack by inner.currentBackStackEntryAsState()
-    val currentRoute = backStack?.destination?.route
-    val isStats = currentRoute?.contains("Stats") == true
+    val isStats = backStack?.destination?.hasRoute<MainTab.Stats>() == true
     val titleKey = if (isStats) SharedStringKey.NavTabStats else SharedStringKey.NavTabFeed
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
     val topBarAvatar by topBarAvatarVm.state.collectAsState()

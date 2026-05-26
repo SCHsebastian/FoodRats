@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.app.di
 
+import es.schsebastian.foodrats.app.navigation.DeepLinkBus
 import es.schsebastian.foodrats.app.root.RootNavViewModel
 import es.schsebastian.foodrats.feature.auth.di.authModule
 import es.schsebastian.foodrats.feature.crew.di.crewModule
@@ -12,6 +13,9 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
 private val rootNavModule = module {
+    // App-lifetime conduit for external URIs; published to by platform entry points
+    // (Android MainActivity, iOS IosDeepLinkBridge), consumed by RootNavViewModel.
+    single { DeepLinkBus() }
     viewModelOf(::RootNavViewModel)
 }
 

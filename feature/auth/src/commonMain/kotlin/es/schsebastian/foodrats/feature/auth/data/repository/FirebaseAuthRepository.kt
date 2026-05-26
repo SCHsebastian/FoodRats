@@ -19,12 +19,12 @@ import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.shareIn
 
 internal class FirebaseAuthRepository(
     private val googleClient: GoogleAuthClient,
@@ -45,8 +45,17 @@ internal class FirebaseAuthRepository(
     // id lives in DataStore (set by the Crew picker when the user picks/creates one).
     // Combine both so consumers see a complete Session and CaptureMealViewModel
     // doesn't error with CrewNotFound for signed-in users without an active crew.
-    // Shared as a hot StateFlow so all consumers share one Firebase Auth listener.
-    override val current: StateFlow<Session?> =
+    //
+    // Shared as a hot flow so all consumers share one Firebase Auth listener. Uses
+    // `shareIn(replay = 1)` rather than `stateIn(initialValue = null)` on purpose: a
+    // synthetic `null` initial value is a LIE during auth restoration — Firebase hasn't
+    // reported the persisted user yet (and `sessions()` only emits after a Firestore
+    // `ensureAccountDoc` round-trip). That premature null made RootNavViewModel read
+    // "signed out" and flash the SignIn screen before bouncing the user to the feed, and
+    // made `requireCurrent()` return NotSignedIn mid-restore. With `shareIn` the FIRST
+    // emitted value is authoritative; consumers that observe no value yet should treat it
+    // as "auth resolving" (the root nav keeps the Splash screen until then).
+    override val current: SharedFlow<Session?> =
         combine(firebase.sessions(), prefs.observe(Keys.ActiveCrewId)) { session, crewIdValue ->
             if (session == null) null
             else {
@@ -60,10 +69,10 @@ internal class FirebaseAuthRepository(
                 "repo.current emit account=${sess?.accountId?.value ?: "null"} " +
                     "crew=${sess?.activeCrewId?.value ?: "null"}"
             }
-        }.stateIn(
+        }.shareIn(
             scope = repoScope,
             started = SharingStarted.WhileSubscribed(stopTimeoutMillis = 5_000),
-            initialValue = null,
+            replay = 1,
         )
 
     override suspend fun requireCurrent(): Result<Session, SessionError> =
