@@ -83,6 +83,12 @@ fun ComposePlateScreen(onPublishStarted: () -> Unit, vm: ComposePlateViewModel =
         }
     }
 
+    // Kick off on-device classification when a plate arrives. The VM dedupes by
+    // photo content, so re-entry is a no-op and re-capture re-classifies.
+    LaunchedEffect(state.photoBytes) {
+        state.photoBytes?.let { vm.onPhotoCaptured(it) }
+    }
+
     FrScreenScaffold {
         FrFormLayout {
             Column(

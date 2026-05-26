@@ -18,6 +18,7 @@ import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseMealRepository
 import es.schsebastian.foodrats.feature.meal.data.upload.BackgroundMealUploadCoordinator
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
+import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.DiscardMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ObserveMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
@@ -72,6 +73,9 @@ val mealModule = module {
     factoryOf(::PublishMealUseCase)
     factoryOf(::DiscardMealDraftUseCase)
     factoryOf(::ObserveMealDraftUseCase)
+    // Resolves MealClassifierPort (bound by :feature:meal-ai) + IngredientReadPort
+    // (bound by :feature:ingredient) at app composition — see shared/ aggregator.
+    factoryOf(::ClassifyDraftPlateUseCase)
 
     // Single instance holds both read (status flow) and write (enqueue) sides
     // so Feed/Stats observe the same coordinator that the composer kicks off.
