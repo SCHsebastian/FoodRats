@@ -15,4 +15,7 @@ data class Meal(
     val description: Description,
     val publishedAt: Instant,
     val coordinates: Coordinates? = null,
+    val ingredients: List<IngredientSlug> = emptyList(),
+    val detectedIngredients: List<IngredientSlug> = emptyList(),
+    val classifierVersion: String? = null,
 )
