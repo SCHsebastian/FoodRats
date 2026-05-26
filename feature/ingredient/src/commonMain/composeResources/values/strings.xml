@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ingredient_select_title">Ingredients</string>
+    <string name="ingredient_search_hint">Search ingredients</string>
+    <string name="ingredient_select_done">Done</string>
+    <string name="ingredient_detected_section_title">Detected</string>
+    <string name="ingredient_selection_full">Maximum 30 ingredients</string>
+    <string name="ingredient_catalog_load_failed">Couldn\'t load the catalog</string>
+    <string name="ingredient_catalog_empty">Catalog not available</string>
+    <string name="ingredient_retry_action">Retry</string>
+    <string name="ingredient_unknown">Unknown ingredient</string>
+    <string name="ingredient_category_vegetable">Vegetables</string>
+    <string name="ingredient_category_fruit">Fruits</string>
+    <string name="ingredient_category_meat">Meat</string>
+    <string name="ingredient_category_fish">Fish</string>
+    <string name="ingredient_category_dairy">Dairy</string>
+    <string name="ingredient_category_grain">Grains</string>
+    <string name="ingredient_category_legume">Legumes</string>
+    <string name="ingredient_category_sauce">Sauces</string>
+    <string name="ingredient_category_spice">Spices</string>
+    <string name="ingredient_category_sweet">Sweets</string>
+    <string name="ingredient_category_beverage">Beverages</string>
+    <string name="ingredient_category_other">Other</string>
+</resources>

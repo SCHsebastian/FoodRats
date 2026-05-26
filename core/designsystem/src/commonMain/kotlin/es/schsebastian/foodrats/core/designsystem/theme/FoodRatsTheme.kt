@@ -12,10 +12,15 @@ fun FoodRatsTheme(
 ) {
     val colors = if (darkTheme) FoodRatsDarkColors else FoodRatsLightColors
     val semantic = if (darkTheme) FoodRatsDarkSemanticColors else FoodRatsLightSemanticColors
-    CompositionLocalProvider(LocalFrSemanticColors provides semantic) {
+    val fontFamily = rememberFrFontFamily()
+    val typography = rememberFoodRatsTypography(fontFamily)
+    CompositionLocalProvider(
+        LocalFrSemanticColors provides semantic,
+        LocalFrFontFamily provides fontFamily,
+    ) {
         MaterialTheme(
             colorScheme = colors,
-            typography = FoodRatsTypography,
+            typography = typography,
             shapes = FoodRatsShapes,
             content = content,
         )

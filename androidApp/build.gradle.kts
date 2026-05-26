@@ -25,6 +25,7 @@ dependencies {
     implementation(projects.feature.crew)
     implementation(projects.feature.feed)
     implementation(projects.feature.meal)
+    implementation(projects.feature.mealAi)
     implementation(projects.feature.notifications)
     implementation(projects.feature.stats)
     implementation(libs.androidx.activity.compose)

@@ -12,6 +12,7 @@ fun MealError.toStringKey(): MealStringKey = when (this) {
     MealError.Validation.Blank              -> MealStringKey.MealErrorValidationBlank
     MealError.Validation.TooLong            -> MealStringKey.MealErrorValidationTooLong
     MealError.Validation.DescriptionTooLong -> MealStringKey.MealErrorValidationDescriptionTooLong
+    MealError.Validation.TooManyIngredients -> MealStringKey.MealErrorValidationTooManyIngredients
     MealError.Validation.OutOfRange         -> MealStringKey.MealErrorValidationOutOfRange
     MealError.Validation.NoPhoto            -> MealStringKey.MealErrorValidationNoPhoto
     MealError.Read.Unauthorized           -> MealStringKey.MealErrorReadUnauthorized

@@ -1,0 +1,161 @@
+package es.schsebastian.foodrats.feature.meal.presentation.compose
+
+import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.location.Coordinates
+import es.schsebastian.foodrats.core.domain.location.LocationError
+import es.schsebastian.foodrats.core.domain.location.LocationProvider
+import es.schsebastian.foodrats.core.domain.meal.ClassifierError
+import es.schsebastian.foodrats.core.domain.meal.Description
+import es.schsebastian.foodrats.core.domain.meal.DishLabel
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
+import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
+import es.schsebastian.foodrats.core.domain.model.AccountId
+import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.time.Clock
+import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
+import es.schsebastian.foodrats.feature.meal.domain.model.Plate
+import es.schsebastian.foodrats.feature.meal.domain.test.FakeMealRepository
+import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
+import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.TimeZone
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.time.Instant
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ComposePlateViewModelTest {
+
+    @BeforeTest fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    @AfterTest fun tearDown() = Dispatchers.resetMain()
+
+    private val zone = TimeZone.UTC
+    private val clock = object : Clock { override fun now() = Instant.parse("2026-05-24T12:00:00Z") }
+    private val crew = (CrewId.of("crew-1") as Result.Ok).value
+    private val account = (AccountId.of("acc-1") as Result.Ok).value
+
+    private fun bytes(s: String) = s.encodeToByteArray()
+
+    private fun draftWithPhoto(label: String) = MealDraft(
+        crewId = crew,
+        authorId = account,
+        day = MealDay(LocalDate(2026, 5, 24), zone),
+        plate = Plate(bytes(label)),
+        dish = null,
+        description = Description.EMPTY,
+    )
+
+    private suspend fun vmWith(
+        repo: FakeMealRepository,
+        classifyResult: (ByteArray) -> Result<List<DishLabel>, ClassifierError>,
+        dishMap: Map<String, List<String>> = mapOf("pizza" to listOf("tomato", "cheese")),
+    ): ComposePlateViewModel = ComposePlateViewModel(
+        updateDraft = UpdateMealDraftUseCase(repo),
+        repository = repo,
+        activeCrew = FakeActiveCrew(crew),
+        uploadCoordinator = object : MealUploadCoordinator { override fun enqueueDraftUpload() {} },
+        locationProvider = object : LocationProvider {
+            override suspend fun current(): Result<Coordinates, LocationError> =
+                Result.failure(LocationError.Unavailable)
+        },
+        classifyPlate = ClassifyDraftPlateUseCase(FakeClassifier(classifyResult), FakeIngredients(dishMap)),
+        clock = clock,
+        zone = zone,
+    )
+
+    @Test fun on_photo_classified_populates_detected_and_draft() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onPhotoCaptured(bytes("plate"))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertFalse(st.classifying)
+            assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), st.detectedIngredients)
+            assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), st.draftIngredients)
+        }
+        // SetDetected persisted into the draft.
+        assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), repo.observeDraft().first()?.ingredients)
+    }
+
+    @Test fun classifier_failure_surfaces_error_and_keeps_canContinue() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.failure(ClassifierError.Run.InferenceFailed) })
+        // Make the form valid so canContinue is true before classification fails.
+        vm.onIntent(ComposePlateIntent.DishChanged("Pizza"))
+
+        vm.onPhotoCaptured(bytes("plate"))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertFalse(st.classifying)
+            assertEquals(ClassifierError.Run.InferenceFailed, st.classifierError)
+            assertTrue(st.canContinue, "classification is advisory — must not block publishing")
+        }
+    }
+
+    @Test fun re_capture_overwrites_manual_edits() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate-1")) }
+        val vm = vmWith(
+            repo,
+            classifyResult = { jpeg ->
+                when (jpeg.decodeToString()) {
+                    "plate-1" -> Result.success(listOf(DishLabel("pizza", 0.9f)))
+                    else -> Result.success(listOf(DishLabel("salad", 0.9f)))
+                }
+            },
+            dishMap = mapOf("pizza" to listOf("tomato"), "salad" to listOf("lettuce", "olive")),
+        )
+
+        vm.onPhotoCaptured(bytes("plate-1"))
+        // User trims the selection in the picker (writes through the draft port).
+        repo.setIngredients(listOf(IngredientSlug("only-one")))
+        // Re-capture a different plate.
+        vm.onPhotoCaptured(bytes("plate-2"))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertEquals(listOf(IngredientSlug("lettuce"), IngredientSlug("olive")), st.detectedIngredients)
+            assertEquals(st.detectedIngredients, st.draftIngredients)
+        }
+    }
+
+    private class FakeActiveCrew(crew: CrewId) : ActiveCrewProvider {
+        override val current: Flow<CrewId?> = MutableStateFlow(crew)
+        override suspend fun set(crewId: CrewId) {}
+        override suspend fun clear() {}
+    }
+
+    private class FakeClassifier(
+        private val result: (ByteArray) -> Result<List<DishLabel>, ClassifierError>,
+    ) : MealClassifierPort {
+        override suspend fun classify(jpeg: ByteArray) = result(jpeg)
+    }
+
+    private class FakeIngredients(private val dishMap: Map<String, List<String>>) : IngredientReadPort {
+        override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = MutableStateFlow(emptyMap())
+        override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> = emptyList()
+        override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> =
+            dishMap[dishSlug].orEmpty().map { IngredientSlug(it) }
+    }
+}

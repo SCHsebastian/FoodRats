@@ -6,6 +6,8 @@
     <string name="crew_picker_hero_subtitle">Eat together, even apart.</string>
     <string name="crew_picker_create_cta">Create a crew</string>
     <string name="crew_picker_join_cta">Join with code</string>
+    <string name="crew_picker_brand_name">FoodRats</string>
+    <string name="crew_picker_crew_button">%1$s (%2$d/8)</string>
     <string name="crew_create_name_label">Crew name</string>
     <string name="crew_create_submit">Create</string>
     <string name="crew_join_code_label">Invite code</string>

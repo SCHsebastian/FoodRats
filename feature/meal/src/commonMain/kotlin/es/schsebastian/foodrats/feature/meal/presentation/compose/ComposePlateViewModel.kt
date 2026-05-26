@@ -15,6 +15,7 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
+import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftCommand
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
 import kotlinx.coroutines.flow.first
@@ -30,9 +31,15 @@ class ComposePlateViewModel(
     private val activeCrew: ActiveCrewProvider,
     private val uploadCoordinator: MealUploadCoordinator,
     private val locationProvider: LocationProvider,
+    private val classifyPlate: ClassifyDraftPlateUseCase,
     private val clock: Clock,
     private val zone: TimeZone,
 ) : MviViewModel<ComposePlateState, ComposePlateIntent, ComposePlateEffect>(ComposePlateState()) {
+
+    // Content fingerprint of the last photo we kicked a classification off for.
+    // Guards against re-classifying the same plate on every draft re-emission /
+    // screen re-entry while still re-running when the user re-captures.
+    private var lastClassifiedFingerprint: Int? = null
 
     init {
         viewModelScope.launch { loadTakenSlots() }
@@ -41,6 +48,8 @@ class ComposePlateViewModel(
                 it.copy(
                     photoBytes = draft?.plate?.photoBytes,
                     coordinates = draft?.coordinates,
+                    draftIngredients = draft?.ingredients ?: emptyList(),
+                    detectedIngredients = draft?.detectedIngredients ?: emptyList(),
                     canContinue = computeCanContinue(
                         dish = it.dish,
                         descriptionTooLong = it.descriptionTooLong,
@@ -51,6 +60,37 @@ class ComposePlateViewModel(
                 )
             }
         }.launchIn(viewModelScope)
+    }
+
+    /**
+     * Runs on-device classification for a freshly captured plate. Idempotent per
+     * photo content: a repeat call with the same bytes (screen re-entry) is a
+     * no-op, but a different photo (re-capture) re-classifies and overwrites any
+     * prior detection + manual edits via [UpdateMealDraftCommand.SetDetected].
+     *
+     * Classification is advisory — failures surface a banner but never block
+     * publishing, so `canContinue` is untouched here.
+     */
+    fun onPhotoCaptured(bytes: ByteArray) {
+        val fingerprint = bytes.contentHashCode()
+        if (fingerprint == lastClassifiedFingerprint) return
+        lastClassifiedFingerprint = fingerprint
+        update { it.copy(classifying = true, classifierError = null) }
+        viewModelScope.launch {
+            when (val r = classifyPlate(bytes)) {
+                is Result.Ok -> {
+                    updateDraft(UpdateMealDraftCommand.SetDetected(r.value.ingredients, r.value.version))
+                    update {
+                        it.copy(
+                            classifying = false,
+                            detectedIngredients = r.value.ingredients,
+                            draftIngredients = r.value.ingredients,
+                        )
+                    }
+                }
+                is Result.Err -> update { it.copy(classifying = false, classifierError = r.error) }
+            }
+        }
     }
 
     private suspend fun loadTakenSlots() {

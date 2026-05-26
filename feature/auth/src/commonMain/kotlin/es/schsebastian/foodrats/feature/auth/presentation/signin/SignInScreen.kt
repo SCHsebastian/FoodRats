@@ -29,6 +29,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -58,59 +62,90 @@ fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) 
         vm.effects.collect { if (it is SignInEffect.SignedIn) onSignedIn() }
     }
     FrScreenScaffold {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(Spacing.xl))
-            HeroBadge()
-            Spacer(Modifier.height(Spacing.lg))
-            FrText(
-                text = resolve(AuthStringKey.SignInTitle),
-                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            FrText(
-                text = resolve(AuthStringKey.SignInSubtitle),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Spacer(Modifier.height(Spacing.lg))
-            FeatureHighlights()
-
-            Spacer(Modifier.height(Spacing.lg))
-            EmailPasswordForm(state = state, onIntent = vm::onIntent)
-
-            Spacer(Modifier.height(Spacing.md))
-            OrDivider()
-            Spacer(Modifier.height(Spacing.md))
-            FrButton(
-                label = resolve(AuthStringKey.ContinueWithGoogle),
-                onClick = { vm.onIntent(SignInIntent.ContinueWithGoogle) },
-                variant = FrButtonVariant.Secondary,
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            )
-
-            Spacer(Modifier.height(Spacing.sm))
-            ToggleModeLink(state.mode, onClick = { vm.onIntent(SignInIntent.ToggleMode) })
-
-            state.error?.let { err ->
+        // Subtle ember + olive radial washes — the design-system "worked example" for
+        // landing/sign-in accents. Drawn on a fixed parent so they don't scroll with the form.
+        Box(modifier = Modifier.fillMaxSize().signInBackdrop()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(Spacing.xl))
+                HeroBadge()
+                Spacer(Modifier.height(Spacing.lg))
+                FrText(
+                    text = resolve(AuthStringKey.SignInTitle),
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
+                )
                 Spacer(Modifier.height(Spacing.sm))
-                FrErrorBanner(text = resolve(err.toStringKey()))
-            }
+                FrText(
+                    text = resolve(AuthStringKey.SignInSubtitle),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
-            Spacer(Modifier.weight(1f, fill = false))
-            Spacer(Modifier.height(Spacing.lg))
-            FrText(
-                text = resolve(AuthStringKey.Footer),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                Spacer(Modifier.height(Spacing.lg))
+                FeatureHighlights()
+
+                Spacer(Modifier.height(Spacing.lg))
+                EmailPasswordForm(state = state, onIntent = vm::onIntent)
+
+                Spacer(Modifier.height(Spacing.md))
+                OrDivider()
+                Spacer(Modifier.height(Spacing.md))
+                FrButton(
+                    label = resolve(AuthStringKey.ContinueWithGoogle),
+                    onClick = { vm.onIntent(SignInIntent.ContinueWithGoogle) },
+                    variant = FrButtonVariant.Secondary,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                )
+
+                Spacer(Modifier.height(Spacing.sm))
+                ToggleModeLink(state.mode, onClick = { vm.onIntent(SignInIntent.ToggleMode) })
+
+                state.error?.let { err ->
+                    Spacer(Modifier.height(Spacing.sm))
+                    FrErrorBanner(text = resolve(err.toStringKey()))
+                }
+
+                Spacer(Modifier.weight(1f, fill = false))
+                Spacer(Modifier.height(Spacing.lg))
+                FrText(
+                    text = resolve(AuthStringKey.Footer),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Two soft radial gradients — ember from the top-trailing corner, olive from the bottom-leading
+ * corner, each at 8% opacity over the concrete surface. Density-independent: the gradients are
+ * rebuilt against the actual draw size and painted behind content.
+ */
+@Composable
+private fun Modifier.signInBackdrop(): Modifier {
+    val ember = MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f)
+    val olive = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+    return this.drawWithCache {
+        val emberWash = Brush.radialGradient(
+            colors = listOf(ember, Color.Transparent),
+            center = Offset(size.width, 0f),
+            radius = size.maxDimension * 0.7f,
+        )
+        val oliveWash = Brush.radialGradient(
+            colors = listOf(olive, Color.Transparent),
+            center = Offset(0f, size.height),
+            radius = size.maxDimension * 0.7f,
+        )
+        onDrawBehind {
+            drawRect(emberWash)
+            drawRect(oliveWash)
         }
     }
 }

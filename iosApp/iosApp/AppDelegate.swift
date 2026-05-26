@@ -29,7 +29,22 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     // On iOS 13+ the .onOpenURL modifier in iOSApp.swift also handles this, but providing
     // this method is harmless and keeps older callers working.
     func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
-        return GIDSignIn.sharedInstance.handle(url)
+        if GIDSignIn.sharedInstance.handle(url) { return true }
+        IosDeepLinkBridge.shared.receive(uri: url.absoluteString)
+        return true
+    }
+
+    // Universal Links: iOS delivers https://foodrats.app/... taps as a browsing-web user activity.
+    // Forward the URL to the shared DeepLinkBus, which RootNavViewModel parses + routes.
+    func application(
+        _ application: UIApplication,
+        continue userActivity: NSUserActivity,
+        restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+    ) -> Bool {
+        guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+              let url = userActivity.webpageURL else { return false }
+        IosDeepLinkBridge.shared.receive(uri: url.absoluteString)
+        return true
     }
 
     // Foreground notification handling — show banner + sound and forward the data payload
@@ -43,13 +58,18 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         completionHandler([.banner, .sound, .badge])
     }
 
-    // Background tap → app foregrounded by the user. Forward so observers see the same payload.
+    // Notification tap → navigate. The server puts the canonical deep link under "link"; forward
+    // it to the shared DeepLinkBus, which RootNavViewModel parses + routes (a meal post / comment
+    // opens that meal). A reminder/streak push carries no link, so tapping just foregrounds the
+    // app on Feed — the desired "just open it" behaviour.
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
-        forwardData(response.notification.request.content.userInfo)
+        if let link = response.notification.request.content.userInfo["link"] as? String {
+            IosDeepLinkBridge.shared.receive(uri: link)
+        }
         completionHandler()
     }
 

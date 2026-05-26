@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		6A80A6382FC45E9000D71083 /* MealAiVision.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6A80A6302FC45E9000D71083 /* MealAiVision.framework */; };
+		6A80A6392FC45E9000D71083 /* MealAiVision.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 6A80A6302FC45E9000D71083 /* MealAiVision.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		6AC0CA7100000000000000A1 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6AC0CA7100000000000000A2 /* CoreLocation.framework */; };
 		6ADB0E062FBB800300BCF21E /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E052FBB800300BCF21E /* FirebaseAnalytics */; };
 		6ADB0E082FBB800300BCF21E /* FirebaseAnalyticsCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E072FBB800300BCF21E /* FirebaseAnalyticsCore */; };
 		6ADB0E0A2FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E092FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport */; };
@@ -18,12 +21,40 @@
 		6ADB0E162FBB800300BCF21E /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E152FBB800300BCF21E /* FirebaseStorage */; };
 		6ADB0E192FBB805800BCF21E /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E182FBB805800BCF21E /* GoogleSignIn */; };
 		6ADB0E1B2FBB805800BCF21E /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 6ADB0E1A2FBB805800BCF21E /* GoogleSignInSwift */; };
-		6AC0CA7100000000000000A1 /* CoreLocation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6AC0CA7100000000000000A2 /* CoreLocation.framework */; };
+		77542A95B36F163D6548083D /* libPods-MealAiVision.a in Frameworks */ = {isa = PBXBuildFile; fileRef = DAD561004B3C6829202F5EF8 /* libPods-MealAiVision.a */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6A80A6362FC45E9000D71083 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 639BDF8EC17A836721998E94 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6A80A62F2FC45E9000D71083;
+			remoteInfo = MealAiVision;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		6A80A63A2FC45E9000D71083 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				6A80A6392FC45E9000D71083 /* MealAiVision.framework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2250B356FD973D8CF8F13981 /* FoodRats.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FoodRats.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6A80A6302FC45E9000D71083 /* MealAiVision.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MealAiVision.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6AC0CA7100000000000000A2 /* CoreLocation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreLocation.framework; path = System/Library/Frameworks/CoreLocation.framework; sourceTree = SDKROOT; };
+		CF22B23EE642ED3DA453E004 /* Pods-MealAiVision.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MealAiVision.release.xcconfig"; path = "Target Support Files/Pods-MealAiVision/Pods-MealAiVision.release.xcconfig"; sourceTree = "<group>"; };
+		DAD561004B3C6829202F5EF8 /* libPods-MealAiVision.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-MealAiVision.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		E49AB1A9725C79AC87065BB0 /* Pods-MealAiVision.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-MealAiVision.debug.xcconfig"; path = "Target Support Files/Pods-MealAiVision/Pods-MealAiVision.debug.xcconfig"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -37,8 +68,17 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		6A80A6312FC45E9000D71083 /* MealAiVision */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = MealAiVision;
+			sourceTree = "<group>";
+		};
 		9C81C07F6F3274ED9DBEED23 /* Configuration */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = Configuration;
 			sourceTree = "<group>";
 		};
@@ -53,6 +93,14 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6A80A62D2FC45E9000D71083 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				77542A95B36F163D6548083D /* libPods-MealAiVision.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		FAC6F3380C4E39D1DF455F88 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -64,6 +112,7 @@
 				6ADB0E082FBB800300BCF21E /* FirebaseAnalyticsCore in Frameworks */,
 				6ADB0E192FBB805800BCF21E /* GoogleSignIn in Frameworks */,
 				6ADB0E102FBB800300BCF21E /* FirebaseCrashlytics in Frameworks */,
+				6A80A6382FC45E9000D71083 /* MealAiVision.framework in Frameworks */,
 				6ADB0E0A2FBB800300BCF21E /* FirebaseAnalyticsIdentitySupport in Frameworks */,
 				6ADB0E0C2FBB800300BCF21E /* FirebaseAuth in Frameworks */,
 				6ADB0E122FBB800300BCF21E /* FirebaseFirestore in Frameworks */,
@@ -79,6 +128,7 @@
 			isa = PBXGroup;
 			children = (
 				2250B356FD973D8CF8F13981 /* FoodRats.app */,
+				6A80A6302FC45E9000D71083 /* MealAiVision.framework */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -88,8 +138,10 @@
 			children = (
 				9C81C07F6F3274ED9DBEED23 /* Configuration */,
 				EA0799DCD3E76EAFB883865E /* iosApp */,
+				6A80A6312FC45E9000D71083 /* MealAiVision */,
 				6AC0CA7100000000000000A3 /* Frameworks */,
 				06DAED8608A94379F832D5E0 /* Products */,
+				C598369B9FBBC3E0D2D6DFFC /* Pods */,
 			);
 			sourceTree = "<group>";
 		};
@@ -97,13 +149,55 @@
 			isa = PBXGroup;
 			children = (
 				6AC0CA7100000000000000A2 /* CoreLocation.framework */,
+				DAD561004B3C6829202F5EF8 /* libPods-MealAiVision.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		C598369B9FBBC3E0D2D6DFFC /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				E49AB1A9725C79AC87065BB0 /* Pods-MealAiVision.debug.xcconfig */,
+				CF22B23EE642ED3DA453E004 /* Pods-MealAiVision.release.xcconfig */,
+			);
+			path = Pods;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
+/* Begin PBXHeadersBuildPhase section */
+		6A80A62B2FC45E9000D71083 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
 /* Begin PBXNativeTarget section */
+		6A80A62F2FC45E9000D71083 /* MealAiVision */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 6A80A63D2FC45E9000D71083 /* Build configuration list for PBXNativeTarget "MealAiVision" */;
+			buildPhases = (
+				DF0439CDF7C2B434BA42AAFA /* [CP] Check Pods Manifest.lock */,
+				6A80A62B2FC45E9000D71083 /* Headers */,
+				6A80A62C2FC45E9000D71083 /* Sources */,
+				6A80A62D2FC45E9000D71083 /* Frameworks */,
+				6A80A62E2FC45E9000D71083 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				6A80A6312FC45E9000D71083 /* MealAiVision */,
+			);
+			name = MealAiVision;
+			productName = MealAiVision;
+			productReference = 6A80A6302FC45E9000D71083 /* MealAiVision.framework */;
+			productType = "com.apple.product-type.framework";
+		};
 		E66734FA6FEB43BC7BA06321 /* iosApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 025C375830AC40B89846B9A4 /* Build configuration list for PBXNativeTarget "iosApp" */;
@@ -113,10 +207,12 @@
 				FAC6F3380C4E39D1DF455F88 /* Frameworks */,
 				4E52E66F22C13DD0D96A32C3 /* Resources */,
 				6AE5B06C2FBE4EB800D35EF3 /* Run Script */,
+				6A80A63A2FC45E9000D71083 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				6A80A6372FC45E9000D71083 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				EA0799DCD3E76EAFB883865E /* iosApp */,
@@ -146,9 +242,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1620;
+				LastSwiftUpdateCheck = 2640;
 				LastUpgradeCheck = 1620;
 				TargetAttributes = {
+					6A80A62F2FC45E9000D71083 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
 					E66734FA6FEB43BC7BA06321 = {
 						CreatedOnToolsVersion = 16.2;
 					};
@@ -173,12 +272,20 @@
 			projectRoot = "";
 			targets = (
 				E66734FA6FEB43BC7BA06321 /* iosApp */,
+				6A80A62F2FC45E9000D71083 /* MealAiVision */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		4E52E66F22C13DD0D96A32C3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6A80A62E2FC45E9000D71083 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -227,6 +334,28 @@
 			shellPath = /bin/sh;
 			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\n\n# Resolve JAVA_HOME for Xcode's stripped PATH.\nfind_java() {\n  # 1. JAVA_HOME already set\n  if [ -n \"$JAVA_HOME\" ] && [ -x \"$JAVA_HOME/bin/java\" ]; then return; fi\n  # 2. java_home helper (any version)\n  for v in 21 17 11; do\n    if H=$(/usr/libexec/java_home -v $v 2>/dev/null) && [ -n \"$H\" ]; then\n      export JAVA_HOME=\"$H\"; return\n    fi\n  done\n  if H=$(/usr/libexec/java_home 2>/dev/null) && [ -n \"$H\" ]; then\n    export JAVA_HOME=\"$H\"; return\n  fi\n  # 3. Common app-bundle JDKs\n  for P in \\\n    \"/Applications/Android Studio.app/Contents/jbr/Contents/Home\" \\\n    \"/Applications/Android Studio Preview.app/Contents/jbr/Contents/Home\" \\\n    \"$HOME/Applications/Android Studio.app/Contents/jbr/Contents/Home\" \\\n    \"/Applications/IntelliJ IDEA.app/Contents/jbr/Contents/Home\" \\\n    \"/Applications/IntelliJ IDEA CE.app/Contents/jbr/Contents/Home\" \\\n    \"$HOME/Applications/IntelliJ IDEA.app/Contents/jbr/Contents/Home\" \\\n    \"$HOME/Applications/IntelliJ IDEA CE.app/Contents/jbr/Contents/Home\"; do\n    if [ -x \"$P/bin/java\" ]; then export JAVA_HOME=\"$P\"; return; fi\n  done\n  # 4. JetBrains Toolbox installs\n  for D in \"$HOME/Library/Application Support/JetBrains/Toolbox/apps\"/*/*/*\"/Android Studio.app/Contents/jbr/Contents/Home\" \\\n           \"$HOME/Library/Application Support/JetBrains/Toolbox/apps\"/*/*/*\"/IntelliJ IDEA.app/Contents/jbr/Contents/Home\"; do\n    if [ -x \"$D/bin/java\" ]; then export JAVA_HOME=\"$D\"; return; fi\n  done\n  # 5. Gradle-provisioned (foojay) JDKs in ~/.gradle/jdks\n  for D in \"$HOME\"/.gradle/jdks/*/Contents/Home \"$HOME\"/.gradle/jdks/*; do\n    if [ -x \"$D/bin/java\" ]; then export JAVA_HOME=\"$D\"; return; fi\n  done\n  # 6. Homebrew openjdk\n  for P in /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \\\n           /opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \\\n           /opt/homebrew/opt/openjdk/libexec/openjdk.jdk/Contents/Home \\\n           /usr/local/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home \\\n           /usr/local/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home \\\n           /usr/local/opt/openjdk/libexec/openjdk.jdk/Contents/Home; do\n    if [ -x \"$P/bin/java\" ]; then export JAVA_HOME=\"$P\"; return; fi\n  done\n  # 7. Generic search under /Library/Java/JavaVirtualMachines\n  for D in /Library/Java/JavaVirtualMachines/*/Contents/Home; do\n    if [ -x \"$D/bin/java\" ]; then export JAVA_HOME=\"$D\"; return; fi\n  done\n}\nfind_java\nif [ -z \"$JAVA_HOME\" ] || [ ! -x \"$JAVA_HOME/bin/java\" ]; then\n  echo \"error: Could not locate a Java runtime. Install JDK (brew install openjdk@21) or Android Studio.\" >&2\n  echo \"Searched: java_home, /Applications, ~/Applications, JetBrains Toolbox, ~/.gradle/jdks, Homebrew openjdk, /Library/Java/JavaVirtualMachines.\" >&2\n  exit 1\nfi\nexport PATH=\"$JAVA_HOME/bin:$PATH\"\necho \"Using JAVA_HOME=$JAVA_HOME\"\n\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
+		DF0439CDF7C2B434BA42AAFA /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-MealAiVision-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -237,7 +366,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		6A80A62C2FC45E9000D71083 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		6A80A6372FC45E9000D71083 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6A80A62F2FC45E9000D71083 /* MealAiVision */;
+			targetProxy = 6A80A6362FC45E9000D71083 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		6119F1DF34798A36AFEC750B /* Debug */ = {
@@ -304,6 +448,90 @@
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
+		};
+		6A80A63B2FC45E9000D71083 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = E49AB1A9725C79AC87065BB0 /* Pods-MealAiVision.debug.xcconfig */;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2AH7L26L78;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = es.schsebastian.MealAiVision;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		6A80A63C2FC45E9000D71083 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = CF22B23EE642ED3DA453E004 /* Pods-MealAiVision.release.xcconfig */;
+			buildSettings = {
+				BUILD_LIBRARY_FOR_DISTRIBUTION = YES;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 2AH7L26L78;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.4;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
+				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
+				PRODUCT_BUNDLE_IDENTIFIER = es.schsebastian.MealAiVision;
+				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_INSTALL_MODULE = YES;
+				SWIFT_INSTALL_OBJC_HEADER = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
 		};
 		E14201947ECFFC8041B3C21C /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -429,6 +657,15 @@
 			buildConfigurations = (
 				E892EDFF8578E40749B711F6 /* Debug */,
 				E14201947ECFFC8041B3C21C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		6A80A63D2FC45E9000D71083 /* Build configuration list for PBXNativeTarget "MealAiVision" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6A80A63B2FC45E9000D71083 /* Debug */,
+				6A80A63C2FC45E9000D71083 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

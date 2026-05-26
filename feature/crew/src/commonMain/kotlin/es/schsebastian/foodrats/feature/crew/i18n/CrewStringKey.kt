@@ -23,7 +23,9 @@ import foodrats.feature.crew.generated.resources.crew_error_unknown
 import foodrats.feature.crew.generated.resources.crew_join_code_label
 import foodrats.feature.crew.generated.resources.crew_join_submit
 import foodrats.feature.crew.generated.resources.crew_member_deleted
+import foodrats.feature.crew.generated.resources.crew_picker_brand_name
 import foodrats.feature.crew.generated.resources.crew_picker_create_cta
+import foodrats.feature.crew.generated.resources.crew_picker_crew_button
 import foodrats.feature.crew.generated.resources.crew_picker_empty_headline
 import foodrats.feature.crew.generated.resources.crew_picker_empty_subtext
 import foodrats.feature.crew.generated.resources.crew_picker_hero_subtitle
@@ -60,6 +62,8 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     PickerHeroSubtitle(Res.string.crew_picker_hero_subtitle),
     PickerCreateCta(Res.string.crew_picker_create_cta),
     PickerJoinCta(Res.string.crew_picker_join_cta),
+    PickerBrandName(Res.string.crew_picker_brand_name),
+    PickerCrewButton(Res.string.crew_picker_crew_button),
     CreateNameLabel(Res.string.crew_create_name_label),
     CreateSubmit(Res.string.crew_create_submit),
     JoinCodeLabel(Res.string.crew_join_code_label),

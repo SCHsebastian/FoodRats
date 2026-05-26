@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.meal.domain.test
 
+import es.schsebastian.foodrats.core.domain.meal.DraftIngredients
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -18,6 +20,7 @@ import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlin.time.Instant
 
 class FakeMealRepository : MealRepository {
@@ -75,6 +78,12 @@ class FakeMealRepository : MealRepository {
     }
     override fun observeDraft(): Flow<MealDraft?> = draftState
     override suspend fun clearDraft() { draftState.value = null }
+
+    override fun observeDraftIngredients(): Flow<DraftIngredients?> =
+        draftState.map { d -> d?.let { DraftIngredients(it.ingredients, it.detectedIngredients) } }
+    override suspend fun setIngredients(slugs: List<IngredientSlug>) {
+        draftState.value = draftState.value?.copy(ingredients = slugs)
+    }
 
     override fun observeFeed(crewId: CrewId, day: MealDay) =
         flowOf(Result.success<List<MealWithRatings>>(emptyList()) as Result<List<MealWithRatings>, MealReadError>)

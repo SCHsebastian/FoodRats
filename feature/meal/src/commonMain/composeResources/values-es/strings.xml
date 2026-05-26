@@ -3,6 +3,12 @@
     <string name="meal_compose_title">Compón tu plato</string>
     <string name="meal_publish_title">Revisa y publica</string>
 
+    <string name="meal_ingredients_classifying">Analizando ingredientes…</string>
+    <string name="meal_classifier_no_detection">No pudimos detectar ingredientes</string>
+    <string name="meal_classifier_load_failed">Detección de ingredientes no disponible</string>
+    <string name="meal_ingredients_row_add">Añadir ingredientes</string>
+    <string name="meal_ingredients_row_summary">%1$d ingredientes</string>
+
     <string name="meal_error_already_posted">Ya has publicado una comida hoy.</string>
     <string name="meal_error_not_today">Solo puedes publicar el borrador del día.</string>
     <string name="meal_error_publish_unavailable">No se ha podido publicar. Inténtalo otra vez.</string>
@@ -12,6 +18,7 @@
     <string name="meal_error_validation_out_of_range">La puntuación debe estar entre 1 y 10.</string>
     <string name="meal_error_validation_no_photo">Saca una foto primero.</string>
     <string name="meal_error_validation_description_too_long">La descripción es demasiado larga (máx. %1$d caracteres).</string>
+    <string name="meal_error_validation_too_many_ingredients">Demasiados ingredientes (máx. 30).</string>
     <string name="meal_compose_description_placeholder">¿Qué comiste? (opcional)</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
     <string name="meal_error_read_unauthorized">No tienes acceso a este grupo.</string>

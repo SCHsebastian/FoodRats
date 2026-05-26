@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.meal.domain.usecase
 import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
@@ -13,4 +14,17 @@ sealed interface UpdateMealDraftCommand {
     data class SetSlot(val slot: MealSlot) : UpdateMealDraftCommand
     /** Pass `null` to clear an attached coordinate pair. */
     data class SetCoordinates(val coordinates: Coordinates?) : UpdateMealDraftCommand
+
+    /**
+     * Records a fresh classifier run: seeds both the detected set and the
+     * (user-editable) selected set, overwriting any prior manual edits, and
+     * stamps the classifier version. Issued once per captured photo.
+     */
+    data class SetDetected(
+        val detected: List<IngredientSlug>,
+        val version: String,
+    ) : UpdateMealDraftCommand
+
+    /** Records the user's edited selection; leaves the detected set untouched. */
+    data class SetIngredients(val ingredients: List<IngredientSlug>) : UpdateMealDraftCommand
 }

@@ -1,10 +1,14 @@
 package es.schsebastian.foodrats.feature.stats.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -36,6 +40,7 @@ class ObserveStatsUseCase(
     private val activeCrew: ActiveCrewProvider,
     private val session: SessionProvider,
     private val mealRead: MealReadPort,
+    private val ingredientRead: IngredientReadPort,
     private val clock: Clock,
     private val zone: TimeZone,
 ) {
@@ -72,10 +77,13 @@ class ObserveStatsUseCase(
                                     }
                                 }
                             }
-                        combine(current, historic) { c, h ->
+                        val catalog: Flow<Map<IngredientSlug, Ingredient>> = ingredientRead.observeCatalog()
+                        combine(current, historic, catalog) { c, h, cat ->
                             when (c) {
                                 is Result.Err -> Result.failure(c.error.toStatsError())
-                                is Result.Ok  -> Result.success(compose(c.value, h, today, sess.accountId))
+                                is Result.Ok  -> Result.success(
+                                    compose(c.value, h, today, sess.accountId, ingredientNameResolver(cat)),
+                                )
                             }
                         }
                     }
@@ -87,6 +95,7 @@ class ObserveStatsUseCase(
         historicMeals: List<MealWithRatings>?,
         today: LocalDate,
         accountId: AccountId,
+        nameFor: (IngredientSlug) -> String,
     ): StatsSnapshot {
         val weekFrom = startOfIsoWeek(today)
         val monthFrom = startOfMonth(today)
@@ -102,9 +111,9 @@ class ObserveStatsUseCase(
         val monthMeals = currentMeals.filter { it.meal.day.date in monthWindow.from..monthWindow.to }
         return StatsSnapshot(
             hero = computeHeroStats(currentMeals, accountId, today),
-            week = computeWindow(weekMeals, weekWindow),
-            month = computeWindow(monthMeals, monthWindow),
-            historic = historicMeals?.let { computeWindow(it, historicWindow) },
+            week = computeWindow(weekMeals, weekWindow, nameFor),
+            month = computeWindow(monthMeals, monthWindow, nameFor),
+            historic = historicMeals?.let { computeWindow(it, historicWindow, nameFor) },
         )
     }
 }

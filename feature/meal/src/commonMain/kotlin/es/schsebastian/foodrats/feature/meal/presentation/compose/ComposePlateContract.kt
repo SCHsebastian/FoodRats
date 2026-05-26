@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import es.schsebastian.foodrats.core.domain.location.Coordinates
+import es.schsebastian.foodrats.core.domain.meal.ClassifierError
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
@@ -19,6 +21,11 @@ data class ComposePlateState(
     val locating: Boolean = false,
     val showConfirm: Boolean = false,
     val canContinue: Boolean = false,
+    // On-device classification is advisory: it never gates `canContinue`.
+    val classifying: Boolean = false,
+    val draftIngredients: List<IngredientSlug> = emptyList(),
+    val detectedIngredients: List<IngredientSlug> = emptyList(),
+    val classifierError: ClassifierError? = null,
 ) : MviState {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -33,6 +40,10 @@ data class ComposePlateState(
             locating == other.locating &&
             showConfirm == other.showConfirm &&
             canContinue == other.canContinue &&
+            classifying == other.classifying &&
+            draftIngredients == other.draftIngredients &&
+            detectedIngredients == other.detectedIngredients &&
+            classifierError == other.classifierError &&
             (photoBytes?.contentEquals(other.photoBytes) ?: (other.photoBytes == null))
     }
 
@@ -47,6 +58,10 @@ data class ComposePlateState(
         result = 31 * result + locating.hashCode()
         result = 31 * result + showConfirm.hashCode()
         result = 31 * result + canContinue.hashCode()
+        result = 31 * result + classifying.hashCode()
+        result = 31 * result + draftIngredients.hashCode()
+        result = 31 * result + detectedIngredients.hashCode()
+        result = 31 * result + (classifierError?.hashCode() ?: 0)
         result = 31 * result + (photoBytes?.contentHashCode() ?: 0)
         return result
     }

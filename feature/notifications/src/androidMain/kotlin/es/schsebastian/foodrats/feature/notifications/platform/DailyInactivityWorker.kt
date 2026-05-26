@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.feature.notifications.platform
 
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
 import androidx.work.CoroutineWorker
@@ -54,10 +56,31 @@ class DailyInactivityWorker(
             .setContentText(body)
             .setSmallIcon(applicationContext.applicationInfo.icon)
             .setAutoCancel(true)
+            .setContentIntent(openAppIntent())
             .build()
         applicationContext.getSystemService<NotificationManager>()
             ?.notify(NOTIF_ID, notif)
         return Result.success()
+    }
+
+    /**
+     * A streak nudge is "just a reminder" — tapping it should open the app, which lands on Feed
+     * (the authenticated start destination). We launch via the package's launcher intent rather
+     * than a deep link, so there's no URL contract to keep in sync and no cross-module dependency
+     * on `:androidApp`'s MainActivity. Returns null if the launcher intent can't be resolved
+     * (then the notification is simply non-tappable, as before).
+     */
+    private fun openAppIntent(): PendingIntent? {
+        val launch = applicationContext.packageManager
+            .getLaunchIntentForPackage(applicationContext.packageName)
+            ?.apply { flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP }
+            ?: return null
+        return PendingIntent.getActivity(
+            applicationContext,
+            NOTIF_ID,
+            launch,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
     }
 
     companion object {
