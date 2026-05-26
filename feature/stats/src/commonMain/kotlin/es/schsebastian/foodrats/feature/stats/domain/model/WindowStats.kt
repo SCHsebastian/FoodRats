@@ -11,4 +11,6 @@ data class WindowStats(
     val mostCriticized: MemberAverage?,
     val mostUsedIngredient: IngredientUsage? = null,
     val topByMember: List<MemberIngredient> = emptyList(),
+    /** Meals-per-day across the window, oldest → newest with zero-filled gaps. Drives the trend sparkline. */
+    val dailyMeals: List<Int> = emptyList(),
 )

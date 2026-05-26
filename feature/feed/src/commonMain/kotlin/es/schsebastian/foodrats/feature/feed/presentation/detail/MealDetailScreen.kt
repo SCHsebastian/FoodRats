@@ -46,6 +46,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
+import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -263,6 +264,10 @@ private fun MealDetailBody(
             FrText(
                 text = resolve(FeedStringKey.VotesHeading),
                 style = MaterialTheme.typography.titleSmall,
+            )
+            FrVoteBars(
+                votes = meal.votes.groupingBy { it.score.coerceIn(1, 10) }.eachCount(),
+                modifier = Modifier.fillMaxWidth(),
             )
             meal.votes.forEach { v ->
                 FrText(text = resolve(FeedStringKey.VoterScore, v.raterName, v.score))

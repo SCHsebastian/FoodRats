@@ -27,6 +27,17 @@ class ComputeWindowTest {
         assertNull(out.mostProlific)
         assertNull(out.bestCook)
         assertNull(out.mostCriticized)
+        assertEquals(emptyList<Int>(), out.dailyMeals)
+    }
+
+    @Test fun daily_meals_series_is_chronological_with_zero_filled_gaps() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19)),
+            mealWithRatings("m2", "bob",   LocalDate(2026, 5, 19)),
+            mealWithRatings("m3", "carl",  LocalDate(2026, 5, 21)),
+        )
+        // 5/19 → 2 meals, 5/20 → 0 (zero-filled gap), 5/21 → 1
+        assertEquals(listOf(2, 0, 1), computeWindow(meals, window, ingredientName).dailyMeals)
     }
 
     @Test fun best_meal_picks_highest_score_then_rating_count() {
