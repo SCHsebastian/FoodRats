@@ -244,12 +244,10 @@ private fun MealDetailBody(
                 text = resolve(FeedStringKey.IngredientsHeading),
                 style = MaterialTheme.typography.titleSmall,
             )
-            meal.ingredients.forEach { ingredient ->
-                FrText(
-                    text = ingredient,
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            }
+            FrText(
+                text = meal.ingredients.joinToString(resolve(FeedStringKey.IngredientSeparator)),
+                style = MaterialTheme.typography.bodyMedium,
+            )
         }
 
         if (meal.averageScore != null && meal.ratingCount > 0) {

@@ -19,6 +19,7 @@
     <string name="feed_voter_score">%1$s: %2$d ★</string>
     <string name="feed_votes_heading">Votos</string>
     <string name="feed_ingredients_heading">Ingredientes</string>
+    <string name="feed_ingredient_separator">", "</string>
     <string name="feed_rate_error_cannot_rate_own_meal">No puedes puntuar tu propio plato</string>
     <string name="feed_rate_error_already_rated">Ya votaste</string>
     <string name="feed_rate_error_window_closed">Ya pasó la ventana de voto</string>

@@ -67,9 +67,10 @@ fun FrFeedMealCard(
             }
             if (ui.ingredients.isNotEmpty()) {
                 FrText(text = resolve(FeedStringKey.IngredientsHeading), modifier = Modifier.padding(top = Spacing.sm))
-                ui.ingredients.forEach { ingredient ->
-                    FrText(text = ingredient, modifier = Modifier.padding(top = Spacing.xs))
-                }
+                FrText(
+                    text = ui.ingredients.joinToString(resolve(FeedStringKey.IngredientSeparator)),
+                    modifier = Modifier.padding(top = Spacing.xs),
+                )
             }
             if (ui.votes.isNotEmpty()) {
                 FrText(text = resolve(FeedStringKey.VotesHeading), modifier = Modifier.padding(top = Spacing.sm))
