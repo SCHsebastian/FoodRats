@@ -245,7 +245,7 @@ private fun MealDetailBody(
                 style = MaterialTheme.typography.titleSmall,
             )
             FrText(
-                text = meal.ingredients.joinToString(resolve(FeedStringKey.IngredientSeparator)),
+                text = meal.ingredients.joinToString("${resolve(FeedStringKey.IngredientSeparator)} "),
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
