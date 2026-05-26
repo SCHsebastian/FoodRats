@@ -36,6 +36,10 @@ class MealErrorToStringKeyTest {
             MealStringKey.MealErrorValidationDescriptionTooLong,
             (MealError.Validation.DescriptionTooLong as MealError).toStringKey(),
         )
+        assertEquals(
+            MealStringKey.MealErrorValidationTooManyIngredients,
+            (MealError.Validation.TooManyIngredients as MealError).toStringKey(),
+        )
     }
     @Test fun maps_all_read_errors() {
         assertEquals(MealStringKey.MealErrorReadUnauthorized, (MealError.Read.Unauthorized as MealError).toStringKey())

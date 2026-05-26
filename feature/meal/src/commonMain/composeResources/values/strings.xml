@@ -18,6 +18,7 @@
     <string name="meal_error_validation_out_of_range">Score must be between 1 and 10.</string>
     <string name="meal_error_validation_no_photo">Snap a photo first.</string>
     <string name="meal_error_validation_description_too_long">Description is too long (max %1$d characters).</string>
+    <string name="meal_error_validation_too_many_ingredients">Too many ingredients (max 30).</string>
     <string name="meal_compose_description_placeholder">What did you eat? (optional)</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
     <string name="meal_error_read_unauthorized">You don\'t have access to this crew.</string>

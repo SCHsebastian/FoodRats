@@ -158,6 +158,7 @@ private fun MealError.uploadErrorKey(): String = when (this) {
     MealError.Validation.NoPhoto         -> "meal.error.noPhoto"
     MealError.Validation.TooLong         -> "meal.error.tooLong"
     MealError.Validation.DescriptionTooLong -> "meal.error.descriptionTooLong"
+    MealError.Validation.TooManyIngredients -> "meal.error.tooManyIngredients"
     MealError.Validation.OutOfRange      -> "meal.error.outOfRange"
     MealError.Read.Unauthorized          -> "meal.error.readUnauthorized"
     MealError.Read.CrewNotFound          -> "meal.error.readCrewNotFound"

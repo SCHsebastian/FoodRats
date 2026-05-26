@@ -26,6 +26,7 @@ import foodrats.feature.meal.generated.resources.meal_error_validation_descripti
 import foodrats.feature.meal.generated.resources.meal_error_validation_no_photo
 import foodrats.feature.meal.generated.resources.meal_error_validation_out_of_range
 import foodrats.feature.meal.generated.resources.meal_error_validation_too_long
+import foodrats.feature.meal.generated.resources.meal_error_validation_too_many_ingredients
 import foodrats.feature.meal.generated.resources.meal_ingredients_classifying
 import foodrats.feature.meal.generated.resources.meal_ingredients_row_add
 import foodrats.feature.meal.generated.resources.meal_ingredients_row_summary
@@ -67,6 +68,7 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     MealErrorValidationBlank(Res.string.meal_error_validation_blank),
     MealErrorValidationTooLong(Res.string.meal_error_validation_too_long),
     MealErrorValidationDescriptionTooLong(Res.string.meal_error_validation_description_too_long),
+    MealErrorValidationTooManyIngredients(Res.string.meal_error_validation_too_many_ingredients),
     MealErrorValidationOutOfRange(Res.string.meal_error_validation_out_of_range),
     MealErrorValidationNoPhoto(Res.string.meal_error_validation_no_photo),
     MealErrorReadUnauthorized(Res.string.meal_error_read_unauthorized),
