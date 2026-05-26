@@ -16,35 +16,61 @@ reorganized the repo. The `mobilenetv1_a050_224_fft` variant above is the direct
 equivalent (a050 = alpha 0.5). Fetched via the Git-LFS media endpoint:
 `https://media.githubusercontent.com/media/STMicroelectronics/stm32ai-modelzoo/main/<path>`.
 
-## ⚠️ Known gap — no embedded labels/metadata
+## Embedded labels + normalization metadata (resolved 2026-05-26)
 
-This `.tflite` ships **without TFLite Model Metadata and without an associated
-label map**. Consequences:
+The shipped `.tflite` now carries **TFLite Model Metadata**: a 101-entry label map
+(`labels.txt`, `TENSOR_AXIS_LABELS` on the output tensor) and input
+`NormalizationOptions(mean=127.5, std=127.5)`. So MediaPipe `Category.categoryName()`
+returns the dish slug directly (e.g. `"lasagna"`), and `ClassifyDraftPlateUseCase`
+calls `IngredientReadPort.suggestForDish("lasagna")` → matches the T26 seed map. No
+app-side code change was needed, and Android + iOS are fixed together (they load the
+same byte-identical model).
 
-- MediaPipe `ImageClassifier` loads and runs it, but `Category.categoryName()`
-  returns the **numeric class index** (`"0"`…`"100"`), not a dish name.
-- `ClassifyPlateUseCase` therefore calls `IngredientReadPort.suggestForDish("37")`
-  rather than `suggestForDish("lasagna")` — so the dish→ingredient seed map
-  (T26) will not match until labels are resolved.
+> Correction to the prior note: a metadata-*less* MediaPipe model does **not** put the
+> index in `categoryName()` — that field is empty (`""`); the int is in `Category.index()`,
+> and even that isn't guaranteed to be populated without metadata. Embedding the label
+> map is the supported fix, which is why it was chosen over in-code index→slug mapping.
 
-**Before the classifier produces usable dish slugs, do ONE of:**
+### Label source & ordering (authoritative)
 
-1. **Inject metadata** into the `.tflite` with the canonical Food-101 label list
-   (alphabetical: `apple_pie`, `baby_back_ribs`, … `waffles`) using the MediaPipe
-   Metadata Writer / `tflite-support`, then re-bundle. `categoryName()` then
-   returns the dish slug directly. (Preferred — keeps the use case unchanged.)
-2. **Map index → slug in code:** bundle a `food101_labels.txt` (same canonical
-   order) and translate `DishLabel.dishSlug` (the index) to the label in the
-   data layer before it reaches `ClassifyPlateUseCase`.
+The 101 labels and their **order** come from ST's own training config
+(`mobilenetv1_a050_224_fft_config.yaml`, `dataset.class_names`) — NOT the generic
+Food-101 `classes.txt`, because the model's output indices follow ST's order. The
+list is checked into `feature/meal-ai/food101_labels.txt` (one slug per line, ST
+order) and is **set-equal** to the T26 `dishIngredientMap` keys (verified). That file
+is the source-of-truth artifact; it lives at the module root (not in
+`composeResources/files/`) so it is not redundantly bundled — the labels already ride
+inside the `.tflite`.
 
-Either way, the **T26 seed `dishIngredientMap` keys must be the 101 canonical
-Food-101 class names**. Verify the chosen label ordering matches ST's training
-order against `…/food101/<variant>/<variant>_config.yaml` in the model zoo.
+### Re-injecting (if the model is ever replaced)
 
-This gap is expected to be closed alongside the T31 device smoke. It applies to
-**both platforms** identically — iOS reads the same `categoryName` (numeric index)
-through the Swift bridge — so resolving labels once (option 1, metadata injection)
-fixes Android and iOS together with no per-platform work.
+Model facts confirmed for this variant: input tensor `UINT8 [1,224,224,3]`,
+quant `scale=1/127.5, zero_point=127` (so raw uint8 [0,255] dequantizes to ≈[-1,1],
+matching ST's `scale 1/127.5, offset -1` preprocessing → `mean=std=127.5`); output
+`FLOAT32 [1,101]`.
+
+```python
+# pip install mediapipe   (macOS arm64 wheel omits the native _pywrap_metadata_version;
+# stub it — it only stamps an informational min-parser-version)
+import sys, types
+for p in ("mediapipe.tasks.cc","mediapipe.tasks.cc.metadata","mediapipe.tasks.cc.metadata.python"):
+    sys.modules[p] = types.ModuleType(p)
+_pw = types.ModuleType("mediapipe.tasks.cc.metadata.python._pywrap_metadata_version")
+_pw.GetMinimumMetadataParserVersion = lambda _b: "1.0.0"
+sys.modules["mediapipe.tasks.cc.metadata.python._pywrap_metadata_version"] = _pw
+sys.modules["mediapipe.tasks.cc.metadata.python"]._pywrap_metadata_version = _pw
+from mediapipe.tasks.python.metadata.metadata_writers import image_classifier, metadata_writer
+labels = [l.strip() for l in open("food101_labels.txt") if l.strip()]
+w = image_classifier.MetadataWriter.create(
+    bytearray(open("food101.tflite","rb").read()),
+    input_norm_mean=[127.5], input_norm_std=[127.5],
+    labels=metadata_writer.Labels().add(labels))
+out, _ = w.populate()
+open("food101.tflite","wb").write(out)   # then copy byte-identical to iosApp/iosApp/
+```
+
+Keep the `composeResources/files/food101.tflite` and `iosApp/iosApp/food101.tflite`
+copies byte-identical (same sha256).
 
 ## iOS integration
 
