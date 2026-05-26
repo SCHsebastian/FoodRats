@@ -123,6 +123,7 @@ internal class FirebaseMealRepository(
     private companion object {
         const val STATS_WINDOW_DAYS = 30
         const val SHARE_STOP_TIMEOUT_MS = 5_000L
+        const val MAX_INGREDIENTS = 30
     }
 
     private fun currentAccountId(): AccountId? {
@@ -138,6 +139,11 @@ internal class FirebaseMealRepository(
                     ?: return@runCatching Result.failure(MealError.Validation.NoPhoto)
                 val slot = draft.slot
                     ?: return@runCatching Result.failure(MealError.Publish.NoSlotSelected)
+                if (draft.ingredients.size > MAX_INGREDIENTS ||
+                    draft.detectedIngredients.size > MAX_INGREDIENTS
+                ) {
+                    return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
+                }
                 val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
                 val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
                 val currentUser = auth.currentUser
@@ -155,6 +161,9 @@ internal class FirebaseMealRepository(
                     latitude = draft.coordinates?.latitude,
                     longitude = draft.coordinates?.longitude,
                     publishedAtEpochMs = clock.now().toEpochMilliseconds(),
+                    ingredients = draft.ingredients.map { it.value },
+                    detectedIngredients = draft.detectedIngredients.map { it.value },
+                    classifierVersion = draft.classifierVersion,
                 )
                 firestore.write(dto, mealId.value)
                 @Suppress("UNCHECKED_CAST")
