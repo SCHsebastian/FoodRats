@@ -47,6 +47,10 @@ feature/
   feed/           Day window of meals for the active crew (reads via MealReadPort)
   stats/          Client-side streaks/leaderboards over last 30 days (reads MealReadPort)
   notifications/  Permission rationale, FCM token registration, streak-nudge WorkManager job
+  meal-ai/        On-device food classifier — MediaPipe Tasks Vision over a Food-101 .tflite;
+                  implements MealClassifierPort (Android actual + Swift-bridged iOS actual)
+  ingredient/     Server-side ingredient catalog (Firestore) + the SelectIngredients picker;
+                  implements IngredientReadPort + reads/writes the draft via MealDraftIngredientsPort
 ```
 
 `enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")` is on — refer to projects as `projects.core.domain`, never `project(":core:domain")`. New modules must be registered in `settings.gradle.kts`.
@@ -106,9 +110,15 @@ Authoritative design: `docs/specs/2026-05-20-cicd-store-release-pipeline-design.
 - **CI needs no secrets and is fork-safe.** `host-tests` runs only the 8 host-test tasks — none of those modules apply the `googleServices`/`firebaseCrashlytics` plugin, so no `google-services.json` is required. `release-smoke` builds the minified release AAB after synthesizing a placeholder `google-services.json` inline and disabling Crashlytics upload. **Do not reintroduce a "materialize Firebase secret or `exit 1`" step into the test job** — that was the original bug that made every CI run fail when the secret wasn't set, for modules that never needed it.
 - **Fastlane lives in `fastlane/`** (`Appfile`, `Matchfile`, `Fastfile`) pinned by the root `Gemfile`; lanes `android beta/release`, `ios beta/release`. Android lanes only upload (Gradle builds the AAB first); iOS lanes build via `gym` (which triggers the KMP framework Gradle task — the self-hosted Mac needs a JDK).
 
-## Recent decisions (2026-05-19 → 2026-05-21)
+## Recent decisions (2026-05-19 → 2026-05-26)
 
 These are the recent shifts in conventions or implementation that you should carry forward when touching the area. Each entry: **what** changed, **why** it changed, **how** to apply it.
+
+### Meal AI ingredient classification — Phase 4 done, NOT yet wired/runnable (2026-05-26, branch `feat/meal-ai-ingredient-classification`)
+
+- **What.** On-device food classification: capture a plate → MediaPipe classifies a dish → maps to default ingredient slugs from a Firestore catalog → user confirms/edits in a picker before publish. Two new modules (`:feature:meal-ai`, `:feature:ingredient`) talk to `:feature:meal` only through `:core:domain` ports (`MealClassifierPort`, `IngredientReadPort`, `MealDraftIngredientsPort`). `Meal`/`MealDraft`/`MealDto` now carry `ingredients` + `detectedIngredients` (both `List<IngredientSlug>`) + `classifierVersion: String?` (cap 30, `MealError.Validation.TooManyIngredients`). Spec: `docs/specs/2026-05-24-meal-ai-ingredient-classification-design.md`.
+- **Why.** Lowers the friction of describing a meal and seeds structured ingredient data for future stats, without coupling the composer to the classifier/catalog implementations (the Firebase→own-server swap stays clean).
+- **How.** `:feature:meal` must **never** import `:feature:meal-ai` or `:feature:ingredient` (cross-feature ban). The composer classifies via a **meal-owned** `ClassifyDraftPlateUseCase` over the two `:core:domain` ports — *not* meal-ai's `ClassifyPlateUseCase` (the plan's T24 said to inject that; it's wrong — spec §7.3/§408 is authoritative). Classification is **advisory**: failures show a banner, never gate `canContinue`/publish. The VM dedupes by photo `contentHashCode()` (re-entry no-op, re-capture overwrites). **Status: code-complete through Phase 4 (T18–T25) and `assembleDebug` is green, but the feature does NOT run yet** — `:feature:ingredient` has no Koin module and `:feature:meal-ai` only has an iOS one, so `MealClassifierPort`/`IngredientReadPort`/`SelectIngredientsViewModel` are unbound (crashes on navigate). That wiring is T30; the seed catalog (T26) + Firestore rules deploy (T28) are also outstanding. See `docs/superpowers/plans/2026-05-24-meal-ai-ingredient-classification.md`.
 
 ### Description replaces tags on `Meal` (2026-05-21)
 
@@ -155,6 +165,7 @@ These are the recent shifts in conventions or implementation that you should car
 
 ## Active tech debt (carry forward when touching the area)
 
+- **Meal AI not wired (blocks the feature running) — T30.** `:feature:ingredient` has no Koin module and `:feature:meal-ai` only ships `mealAiIosModule` (iOS). To make the AI flow run: create `ingredientModule` (binds `IngredientReadPort`→`IngredientRepository` + datasource/cache/use-cases/`SelectIngredientsViewModel`; `IngredientRepository` takes a `CoroutineScope`) and an Android `MediaPipeMealClassifier` binding (needs `Context`+`init()`), then load both (+ the iOS module) into `shared/app/di/AppModule.kt#appModules` and the platform modules. `shared` already depends on both modules and `mealModule` already declares `factoryOf(::ClassifyDraftPlateUseCase)`; until the ports are bound, navigating to ComposePlate/SelectIngredients crashes (compiles fine). Also outstanding: T26 seed catalog JSON (Firestore `ingredients` + `dishIngredientMap`, keys = 101 canonical Food-101 class names) and T28 rules deploy.
 - **Most important 16-KB** APK androidApp-debug.apk is not compatible with 16 KB devices. Some libraries have LOAD segments not aligned at 16 KB boundaries:
   lib/arm64-v8a/libmediapipe_tasks_vision_jni.so
   Starting November 1st, 2025, all new apps and updates to existing apps submitted to Google Play and targeting Android 15+ devices must support 16 KB page sizes. For more information about compatibility with 16 KB devices, visit developer.android.com/16kb-page-size.
