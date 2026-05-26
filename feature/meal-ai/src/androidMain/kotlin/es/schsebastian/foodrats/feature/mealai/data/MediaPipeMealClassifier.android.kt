@@ -12,33 +12,52 @@ import es.schsebastian.foodrats.core.domain.meal.DishLabel
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
+import foodrats.feature.meal_ai.generated.resources.Res
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.nio.ByteBuffer
 
 internal actual class MediaPipeMealClassifier(
+    private val context: Context,
     private val dispatchers: DispatcherProvider,
     private val crashReporter: CrashReporter,
 ) : MealClassifierPort {
 
+    private val loadLock = Mutex()
     private var cached: ImageClassifier? = null
 
-    /** One-shot lifecycle hook called from `FoodRatsApplication.onCreate()` (wired in T30). */
-    fun init(context: Context) {
-        if (cached != null) return
-        try {
-            val base = BaseOptions.builder().setModelAssetPath("files/food101.tflite").build()
+    /**
+     * Lazily builds the classifier on first use. The model ships through Compose
+     * Resources (`composeResources/files/food101.tflite`), not the raw `assets/` root,
+     * so it must be read via [Res.readBytes] and handed to MediaPipe as a direct
+     * `ByteBuffer` — `setModelAssetPath("files/…")` resolves against the AssetManager
+     * root, where the file does not exist, and a missing model makes the native graph
+     * SIGSEGV instead of throwing. Reading is suspending, so this runs on the IO
+     * dispatcher inside [classify], never on the main thread during composition.
+     */
+    private suspend fun classifier(): ImageClassifier? = loadLock.withLock {
+        cached ?: try {
+            val model = Res.readBytes("files/food101.tflite")
+            val buffer = ByteBuffer.allocateDirect(model.size).apply {
+                put(model)
+                rewind()
+            }
+            val base = BaseOptions.builder().setModelAssetBuffer(buffer).build()
             val options = ImageClassifierOptions.builder()
                 .setBaseOptions(base)
                 .setMaxResults(5)
                 .build()
-            cached = ImageClassifier.createFromOptions(context, options)
+            ImageClassifier.createFromOptions(context, options).also { cached = it }
         } catch (t: Throwable) {
             crashReporter.recordNonFatal(t, "mealai-load")
+            null
         }
     }
 
     override suspend fun classify(jpeg: ByteArray): Result<List<DishLabel>, ClassifierError> =
         withContext(dispatchers.io) {
-            val classifier = cached
+            val classifier = classifier()
                 ?: return@withContext Result.Err(ClassifierError.Load.ModelMissing)
             val bmp = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
                 ?: return@withContext Result.Err(ClassifierError.Run.DecodeFailed)

@@ -11,14 +11,18 @@ import org.koin.dsl.module
  * constructs the classifier differently, mirroring `mealAiIosModule` and the
  * per-platform `CrashReporter`.
  *
- * The MediaPipe `ImageClassifier` is loaded lazily on first resolution: `init(Context)`
- * runs inside the binding, so by the time the composer asks the port to classify, the
- * model is ready. No `Application.onCreate` hook is required (and `MediaPipeMealClassifier`
- * is `internal`, so the app module couldn't reach it anyway).
+ * The MediaPipe `ImageClassifier` is built lazily on the first `classify()` call (on the
+ * IO dispatcher, reading the model through Compose Resources) — not at injection time, so
+ * resolving the port never blocks or crashes the composition that triggers it. No
+ * `Application.onCreate` hook is required (and `MediaPipeMealClassifier` is `internal`, so
+ * the app module couldn't reach it anyway).
  */
 val mealAiAndroidModule = module {
     single<MealClassifierPort> {
-        MediaPipeMealClassifier(dispatchers = get(), crashReporter = get())
-            .apply { init(androidContext()) }
+        MediaPipeMealClassifier(
+            context = androidContext(),
+            dispatchers = get(),
+            crashReporter = get(),
+        )
     }
 }
