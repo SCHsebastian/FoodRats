@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -189,6 +190,54 @@ class MealDetailCommentIdentityTest {
             assertEquals("Old", expectMostRecentItem().commentRows.single().displayName)
             ports.accountPort.set(accountId("user-1"), Account(accountId("user-1"), "h", "New", null, null))
             assertEquals("New", awaitItem().commentRows.single().displayName)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun shows_only_user_confirmed_ingredients_not_ai_detected() = runTest {
+        val day = MealDay(kotlinx.datetime.LocalDate.parse("2026-05-20"), zone)
+        val meal = es.schsebastian.foodrats.core.domain.meal.Meal(
+            id = (MealId.of("meal-1") as Result.Ok).value,
+            author = es.schsebastian.foodrats.core.domain.meal.MealAuthor(
+                (AccountId.of("u-author") as Result.Ok).value, "Author", null,
+            ),
+            crewId = crew,
+            day = day,
+            slot = es.schsebastian.foodrats.core.domain.meal.MealSlot.Lunch,
+            photoUrl = "https://x/p.jpg",
+            dish = (es.schsebastian.foodrats.core.domain.meal.DishName.of("Pasta") as Result.Ok).value,
+            description = es.schsebastian.foodrats.core.domain.meal.Description.EMPTY,
+            publishedAt = Instant.parse("2026-05-20T10:00:00Z"),
+            ingredients = listOf(IngredientSlug("egg")),
+            detectedIngredients = listOf(IngredientSlug("bacon")),
+        )
+        val readPort = FakeMealReadPort(
+            perDay = mapOf((crew to day.toKey()) to listOf(
+                es.schsebastian.foodrats.core.domain.meal.MealWithRatings(meal, emptyList()),
+            )),
+        )
+        val commentPort = FakeMealCommentPort()
+        val active = FakeActiveCrewProvider(initial = crew)
+        val session = FakeSessionProvider(Session(viewerId, crew))
+        val vm = MealDetailViewModel(
+            mealId = "meal-1",
+            dayIso = "2026-05-20",
+            observeFeed = ObserveFeedUseCase(active, readPort),
+            ratingPort = FakeMealRatingPort(),
+            commentPort = commentPort,
+            accountReadPort = FakeAccountReadPort(),
+            ingredientRead = FakeIngredientReadPort(),
+            activeCrew = active,
+            session = session,
+            clock = FixedClock(),
+            zone = zone,
+            deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
+            deleteComment = DeleteCommentUseCase(commentPort),
+            crewOwner = FakeCrewOwnerPort(),
+        )
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(listOf("Egg"), s.meal?.ingredients)
             cancelAndIgnoreRemainingEvents()
         }
     }

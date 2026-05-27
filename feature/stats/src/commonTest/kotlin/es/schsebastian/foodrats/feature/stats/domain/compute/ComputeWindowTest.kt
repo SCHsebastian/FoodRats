@@ -161,6 +161,23 @@ class ComputeWindowTest {
         assertEquals(1, bob.mealCount)
     }
 
+    @Test fun ai_detected_ingredients_are_excluded_from_stats() {
+        // Only user-confirmed ingredients count; AI-detected-but-unconfirmed ones must not.
+        val meals = listOf(
+            mealWithRatings(
+                "m1", "alice", LocalDate(2026, 5, 19),
+                ingredients = listOf("egg"),
+                detectedIngredients = listOf("bacon"),
+            ),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        assertEquals("egg", out.mostUsedIngredient?.displayName)
+        assertEquals(1, out.mostUsedIngredient?.mealCount)
+        val alice = out.topByMember.first { it.accountId == acct("alice") }
+        assertEquals("egg", alice.ingredientName)
+        assertEquals(listOf("egg"), out.topByMember.map { it.ingredientName })
+    }
+
     @Test fun top_by_member_omits_authors_without_ingredients() {
         val meals = listOf(
             mealWithRatings("m1", "alice", LocalDate(2026, 5, 19), ingredients = listOf("egg")),

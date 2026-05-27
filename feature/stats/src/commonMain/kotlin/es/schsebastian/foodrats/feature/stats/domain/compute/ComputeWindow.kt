@@ -2,7 +2,6 @@ package es.schsebastian.foodrats.feature.stats.domain.compute
 
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
-import es.schsebastian.foodrats.core.domain.meal.mergedIngredientSlugs
 import es.schsebastian.foodrats.feature.stats.domain.model.IngredientUsage
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
@@ -78,10 +77,11 @@ fun computeWindow(
         else -> worstCook
     }
 
-    // Each ingredient counts at most once per meal (mergedIngredientSlugs is already deduped),
-    // so a count is "number of meals using it". Tie-break: count desc, then name asc.
+    // Only user-confirmed ingredients count (AI-detected-but-unconfirmed ones are excluded).
+    // Each ingredient counts at most once per meal, so a count is "number of meals using it".
+    // Tie-break: count desc, then name asc.
     val mostUsedIngredient = meals
-        .flatMap { it.meal.mergedIngredientSlugs() }
+        .flatMap { it.meal.ingredients.distinct() }
         .groupingBy { it }
         .eachCount()
         .entries
@@ -94,7 +94,7 @@ fun computeWindow(
     val topByMember = byAuthor.entries
         .mapNotNull { (id, list) ->
             val top = list
-                .flatMap { it.meal.mergedIngredientSlugs() }
+                .flatMap { it.meal.ingredients.distinct() }
                 .groupingBy { it }
                 .eachCount()
                 .entries
