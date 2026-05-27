@@ -32,6 +32,7 @@ internal fun mealWithRatings(
     zone: TimeZone = TimeZone.UTC,
     crewId: CrewId = crew(),
     ingredients: List<String> = emptyList(),
+    detectedIngredients: List<String> = emptyList(),
 ): MealWithRatings {
     val meal = Meal(
         id = mid(id),
@@ -44,6 +45,7 @@ internal fun mealWithRatings(
         description = Description.EMPTY,
         publishedAt = Instant.fromEpochMilliseconds(0L),
         ingredients = ingredients.map { IngredientSlug(it) },
+        detectedIngredients = detectedIngredients.map { IngredientSlug(it) },
     )
     val mealRatings = ratings.mapIndexed { i, s ->
         MealRating(

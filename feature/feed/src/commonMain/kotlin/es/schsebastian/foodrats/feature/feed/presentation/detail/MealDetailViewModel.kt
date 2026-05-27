@@ -7,7 +7,6 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
-import es.schsebastian.foodrats.core.domain.meal.mergedIngredientSlugs
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
@@ -87,7 +86,7 @@ class MealDetailViewModel(
                                         else matched.toFeedUi(
                                             viewerId,
                                             todayMealDay,
-                                            ingredientNames = matched.meal.mergedIngredientSlugs().map(nameFor),
+                                            ingredientNames = matched.meal.ingredients.map(nameFor),
                                         )
                             val canDeleteMeal = match != null && viewerId != null &&
                                 (match.authorId == viewerId.value || ownerId == viewerId)
