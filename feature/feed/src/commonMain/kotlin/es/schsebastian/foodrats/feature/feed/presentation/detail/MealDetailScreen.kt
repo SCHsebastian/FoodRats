@@ -1,6 +1,14 @@
 package es.schsebastian.foodrats.feature.feed.presentation.detail
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.VectorConverter
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,12 +33,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -52,6 +67,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -64,6 +80,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrCommentRow
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrLocationMap
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
+import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -220,20 +237,54 @@ private fun PhotoHero(
     onDelete: () -> Unit,
 ) {
     val semantic = LocalFrSemanticColors.current
+    // Pinch-to-zoom that snaps back on release. Two-finger only, so single-finger drags still
+    // scroll the detail page; on the last finger up the scale + pan spring back to rest.
+    val scale = remember { Animatable(1f) }
+    val offset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
+    val scope = rememberCoroutineScope()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f),
+            .aspectRatio(1f)
+            .clipToBounds(),
     ) {
-        if (meal.photoUrl.isNotBlank()) {
-            AsyncImage(
-                model = meal.photoUrl,
-                contentDescription = meal.dishName,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
-        } else {
-            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        awaitFirstDown(requireUnconsumed = false)
+                        do {
+                            val event = awaitPointerEvent()
+                            if (event.changes.count { it.pressed } >= 2) {
+                                val zoom = event.calculateZoom()
+                                val pan = event.calculatePan()
+                                scope.launch { scale.snapTo((scale.value * zoom).coerceIn(1f, 4f)) }
+                                scope.launch { offset.snapTo(offset.value + pan) }
+                                event.changes.forEach { if (it.positionChanged()) it.consume() }
+                            }
+                        } while (event.changes.any { it.pressed })
+                        scope.launch { scale.animateTo(1f, spring()) }
+                        scope.launch { offset.animateTo(Offset.Zero, spring()) }
+                    }
+                }
+                .graphicsLayer {
+                    scaleX = scale.value
+                    scaleY = scale.value
+                    translationX = offset.value.x
+                    translationY = offset.value.y
+                },
+        ) {
+            if (meal.photoUrl.isNotBlank()) {
+                AsyncImage(
+                    model = meal.photoUrl,
+                    contentDescription = meal.dishName,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else {
+                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
+            }
         }
         // Top dim — keeps the back/delete pills legible.
         Box(
@@ -349,9 +400,31 @@ private fun ScoreStoryCard(meal: FeedMealUi) {
 
 @Composable
 private fun RatingSection(meal: FeedMealUi, pendingRate: Boolean, onIntent: (MealDetailIntent) -> Unit) {
+    val celebration = LocalFrSemanticColors.current.celebration
+    // Captured while still on the picker stage; stays null until the viewer votes this session.
+    val initialRating = remember { meal.viewerRating }
     when {
-        meal.viewerRating != null -> Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            SectionEyebrow(resolve(FeedStringKey.YourVote, meal.viewerRating))
+        meal.viewerRating != null -> {
+            val justVoted = initialRating == null
+            val pop = remember { Animatable(1f) }
+            LaunchedEffect(Unit) {
+                if (justVoted) {
+                    pop.snapTo(0.7f)
+                    pop.animateTo(1f, animationSpec = tween(Motion.medium, easing = Motion.Emphasized))
+                }
+            }
+            Row(
+                modifier = Modifier.graphicsLayer {
+                    scaleX = pop.value
+                    scaleY = pop.value
+                    transformOrigin = TransformOrigin(0f, 0.5f)
+                },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                FrIcon(image = FrIcons.Star, tint = celebration, modifier = Modifier.size(Sizes.iconSm))
+                SectionEyebrow(resolve(FeedStringKey.YourVote, meal.viewerRating))
+            }
         }
         meal.canRate -> Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             SectionEyebrow(resolve(FeedStringKey.RateThisMeal))

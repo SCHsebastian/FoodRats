@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.materialPath
 import androidx.compose.material3.MaterialTheme
@@ -554,6 +555,7 @@ object FrIcons {
     val Home: ImageVector          = Icons.Filled.Home
     val Stats: ImageVector         = BarChartVector
     val Crown: ImageVector         = CrownVector
+    val Star: ImageVector          = Icons.Filled.Star
     val Flame: ImageVector         = FlameVector
     val Place: ImageVector         = PlaceVector
     val Comment: ImageVector       = CommentVector

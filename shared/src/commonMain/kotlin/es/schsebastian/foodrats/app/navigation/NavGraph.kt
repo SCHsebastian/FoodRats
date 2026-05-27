@@ -38,6 +38,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedScreen
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealScreen
 import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIngredientsScreen
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
+import es.schsebastian.foodrats.feature.meal.presentation.nudge.CaptureNudgeViewModel
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
 import org.koin.compose.koinInject
@@ -172,6 +173,8 @@ private fun MainScaffold(rootController: NavHostController) {
     val isStats = backStack?.destination?.hasRoute<MainTab.Stats>() == true
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
     val topBarAvatar by topBarAvatarVm.state.collectAsState()
+    val captureNudgeVm: CaptureNudgeViewModel = koinViewModel()
+    val captureNudge by captureNudgeVm.state.collectAsState()
     Scaffold(
         // Make the Scaffold's own surface match the bottom bar tint so the area
         // behind the Android system navigation bar (3-button or gesture pill)
@@ -192,6 +195,7 @@ private fun MainScaffold(rootController: NavHostController) {
         bottomBar = {
             MainBottomBar(
                 isStats = isStats,
+                hasPostedToday = captureNudge.hasPostedToday,
                 onFeedClick = {
                     inner.navigate(MainTab.Feed) {
                         popUpTo<MainTab.Feed> { saveState = true }
