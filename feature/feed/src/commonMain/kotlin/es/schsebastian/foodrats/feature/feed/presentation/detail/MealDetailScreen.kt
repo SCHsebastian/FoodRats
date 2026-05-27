@@ -311,9 +311,8 @@ private fun MealDetailBody(
             }
             state.commentRows.isEmpty() && state.commentReadError == null -> {
                 FrEmptyState(
-                    icon = FrIcons.Settings,
+                    icon = FrIcons.Comment,
                     headline = resolve(FeedStringKey.CommentsEmpty),
-                    subtext = "",
                 )
             }
             state.commentReadError != null -> {

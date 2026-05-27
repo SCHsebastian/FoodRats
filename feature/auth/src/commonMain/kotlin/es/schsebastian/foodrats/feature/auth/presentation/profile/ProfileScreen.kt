@@ -12,8 +12,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -24,6 +22,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarPicker
@@ -260,10 +259,9 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
                 resolve(AuthStringKey.ProfileNotificationsSubtitleOff),
             icon = FrIcons.Settings,
             trailing = {
-                Switch(
+                FrSwitch(
                     checked = state.notificationsEnabled,
                     onCheckedChange = { vm.onIntent(ProfileIntent.NotificationsToggled(it)) },
-                    colors = SwitchDefaults.colors(),
                 )
             },
         )

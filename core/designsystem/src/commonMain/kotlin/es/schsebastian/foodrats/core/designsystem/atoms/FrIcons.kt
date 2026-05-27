@@ -315,6 +315,58 @@ private val DeleteVector: ImageVector = materialIcon(name = "Filled.Delete") {
     }
 }
 
+// Vendored ChatBubble glyph — material-icons-core has no Filled.ChatBubble. Standard
+// MD "chat_bubble" filled rounded-rectangle speech bubble with a tail at bottom-left.
+private val CommentVector: ImageVector = materialIcon(name = "Filled.Comment") {
+    materialPath {
+        moveTo(20f, 2f)
+        horizontalLineTo(4f)
+        curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+        verticalLineToRelative(18f)
+        lineToRelative(4f, -4f)
+        horizontalLineToRelative(14f)
+        curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+        verticalLineTo(4f)
+        curveToRelative(0f, -1.1f, -0.9f, -2f, -2f, -2f)
+        close()
+    }
+}
+
+// Vendored Group (people) glyph — material-icons-core has no Filled.Group. Standard
+// MD "group" filled glyph: two overlapping head+shoulders silhouettes. Used as the
+// crew/membership mark (e.g. the "no active crew" empty state).
+private val GroupVector: ImageVector = materialIcon(name = "Filled.Group") {
+    materialPath {
+        moveTo(16f, 11f)
+        curveToRelative(1.66f, 0f, 2.99f, -1.34f, 2.99f, -3f)
+        reflectiveCurveTo(17.66f, 5f, 16f, 5f)
+        curveToRelative(-1.66f, 0f, -3f, 1.34f, -3f, 3f)
+        reflectiveCurveToRelative(1.34f, 3f, 3f, 3f)
+        close()
+        moveTo(8f, 11f)
+        curveToRelative(1.66f, 0f, 2.99f, -1.34f, 2.99f, -3f)
+        reflectiveCurveTo(9.66f, 5f, 8f, 5f)
+        curveTo(6.34f, 5f, 5f, 6.34f, 5f, 8f)
+        reflectiveCurveToRelative(1.34f, 3f, 3f, 3f)
+        close()
+        moveTo(8f, 13f)
+        curveToRelative(-2.33f, 0f, -7f, 1.17f, -7f, 3.5f)
+        verticalLineTo(19f)
+        horizontalLineToRelative(14f)
+        verticalLineToRelative(-2.5f)
+        curveToRelative(0f, -2.33f, -4.67f, -3.5f, -7f, -3.5f)
+        close()
+        moveTo(16f, 13f)
+        curveToRelative(-0.29f, 0f, -0.62f, 0.02f, -0.97f, 0.05f)
+        curveToRelative(1.16f, 0.84f, 1.97f, 1.97f, 1.97f, 3.45f)
+        verticalLineTo(19f)
+        horizontalLineToRelative(6f)
+        verticalLineToRelative(-2.5f)
+        curveToRelative(0f, -2.33f, -4.67f, -3.5f, -7f, -3.5f)
+        close()
+    }
+}
+
 // Material `place` (location pin) glyph — vendored because material-icons-extended
 // has no KMP iOS artifact. Standard 24x24 teardrop with a circle hole.
 private val PlaceVector: ImageVector = materialIcon(name = "Filled.Place") {
@@ -348,6 +400,8 @@ object FrIcons {
     val Crown: ImageVector         = CrownVector
     val Flame: ImageVector         = FlameVector
     val Place: ImageVector         = PlaceVector
+    val Comment: ImageVector       = CommentVector
+    val Group: ImageVector         = GroupVector
     val Warning: ImageVector       = WarningVector
     val Delete: ImageVector        = DeleteVector
     // ChevronLeft/Right are in material-icons-extended (no KMP iOS artifact); use
@@ -374,6 +428,10 @@ private fun FrIconsPreview() {
         "ChevronLeft"   to FrIcons.ChevronLeft,
         "ChevronRight"  to FrIcons.ChevronRight,
         "Place"         to FrIcons.Place,
+        "Comment"       to FrIcons.Comment,
+        "Group"         to FrIcons.Group,
+        "Delete"        to FrIcons.Delete,
+        "Warning"       to FrIcons.Warning,
     )
     FrPreviewLightDark {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

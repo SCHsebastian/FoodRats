@@ -57,7 +57,7 @@ fun FeedScreen(
                         state.error is FeedError.Session.NoActiveCrew -> {
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 FrEmptyState(
-                                    icon = FrIcons.Settings,
+                                    icon = FrIcons.Group,
                                     headline = resolve(FeedStringKey.NoActiveCrewHeadline),
                                     subtext = resolve(FeedStringKey.NoActiveCrewSubtext),
                                     cta = {

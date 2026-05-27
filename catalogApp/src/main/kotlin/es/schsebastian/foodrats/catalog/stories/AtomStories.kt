@@ -42,6 +42,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSparkline
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSpacer
+import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
@@ -72,7 +73,23 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.sparkline",     CatalogGroup.ATOMS, "FrSparkline",     "Tiny inline trend chart for stat tiles") { SparklineStory() },
     CatalogEntry("atom.flamebadge",    CatalogGroup.ATOMS, "FrFlameBadge",    "🔥 streak pill on the streakHot semantic color") { FlameBadgeStory() },
     CatalogEntry("atom.glasspill",     CatalogGroup.ATOMS, "FrGlassPill",     "Translucent circular overlay for in-photo back / close") { GlassPillStory() },
+    CatalogEntry("atom.switch",        CatalogGroup.ATOMS, "FrSwitch",        "Brand-colored toggle — on / off / disabled") { SwitchStory() },
 )
+
+@Composable
+private fun SwitchStory() {
+    var on by remember { mutableStateOf(true) }
+    CatalogScene(label = "Interactive · on / off / disabled") {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FrSwitch(checked = on, onCheckedChange = { on = it })
+            FrSwitch(checked = false, onCheckedChange = {})
+            FrSwitch(checked = true, onCheckedChange = {}, enabled = false)
+        }
+    }
+}
 
 @Composable
 private fun AvatarStory() {
