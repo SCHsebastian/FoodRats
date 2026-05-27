@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="notifications_permission_title">Stay in the loop</string>
-    <string name="notifications_permission_body">We\'ll only nudge you when your streak is about to break.</string>
+    <string name="notifications_permission_body">We'll only nudge you when your streak is about to break.</string>
     <string name="notifications_permission_allow">Allow notifications</string>
     <string name="notifications_permission_skip">Not now</string>
     <string name="notifications_permission_settings">Open settings</string>
-    <string name="notifications_permission_save_failed">Couldn\'t save your choice. Try again.</string>
-    <string name="notifications_streak_title">Don\'t break the streak</string>
+    <string name="notifications_permission_save_failed">Couldn't save your choice. Try again.</string>
+    <string name="notifications_streak_title">Don't break the streak</string>
     <string name="notifications_streak_body">Post your meal before midnight!</string>
     <string name="notifications_error_denied">Notifications are off.</string>
     <string name="notifications_error_denied_forever">Notifications are off. Turn them on in Settings.</string>
-    <string name="notifications_error_unavailable">Couldn\'t access notification settings.</string>
-    <string name="notifications_error_token_unavailable">Couldn\'t register this device.</string>
-    <string name="notifications_error_token_persist">Couldn\'t save device info.</string>
-    <string name="notifications_error_schedule_failed">Couldn\'t schedule the reminder.</string>
-    <string name="notifications_error_payload_parse">Couldn\'t read this notification.</string>
+    <string name="notifications_error_unavailable">Couldn't access notification settings.</string>
+    <string name="notifications_error_token_unavailable">Couldn't register this device.</string>
+    <string name="notifications_error_token_persist">Couldn't save device info.</string>
+    <string name="notifications_error_schedule_failed">Couldn't schedule the reminder.</string>
+    <string name="notifications_error_payload_parse">Couldn't read this notification.</string>
     <string name="notifications_new_comment_title">%1$s commented on your %2$s</string>
     <string name="notifications_new_comment_body">Tap to read</string>
     <string name="notifications_new_meal_post_title">%1$s posted a meal</string>
@@ -22,5 +22,5 @@
     <string name="notifications_weekly_digest_title">Your week in food</string>
     <string name="notifications_weekly_digest_body">Tap to see the recap</string>
     <string name="notifications_inactivity_title">Hungry?</string>
-    <string name="notifications_inactivity_body">You haven\'t posted a meal today. Snap one before dinner.</string>
+    <string name="notifications_inactivity_body">You haven't posted a meal today. Snap one before dinner.</string>
 </resources>

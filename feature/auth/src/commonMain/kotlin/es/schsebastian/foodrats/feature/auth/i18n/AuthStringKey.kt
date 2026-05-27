@@ -73,6 +73,7 @@ import foodrats.feature.auth.generated.resources.auth_profile_theme_option_syste
 import foodrats.feature.auth.generated.resources.auth_profile_theme_persist_failed
 import foodrats.feature.auth.generated.resources.auth_profile_theme_picker_title
 import foodrats.feature.auth.generated.resources.auth_profile_theme_row
+import foodrats.feature.auth.generated.resources.auth_profile_back_cta
 import foodrats.feature.auth.generated.resources.auth_profile_title
 import foodrats.feature.auth.generated.resources.auth_signin_continue_google
 import foodrats.feature.auth.generated.resources.auth_signin_footer
@@ -112,6 +113,7 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ErrorEmailInUse(Res.string.auth_error_email_in_use),
     ErrorWrongCredentials(Res.string.auth_error_wrong_credentials),
     ProfileTitle(Res.string.auth_profile_title),
+    ProfileBackCta(Res.string.auth_profile_back_cta),
     ProfileIdentitySection(Res.string.auth_profile_identity_section),
     ProfilePreferencesSection(Res.string.auth_profile_preferences_section),
     ProfileDangerZoneSection(Res.string.auth_profile_danger_zone_section),

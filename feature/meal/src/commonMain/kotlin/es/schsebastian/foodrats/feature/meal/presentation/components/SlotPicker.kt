@@ -6,8 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrFilterChip
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -26,12 +25,11 @@ fun SlotPicker(
     ) {
         MealSlot.entries.forEach { slot ->
             val isTaken = slot in taken
-            FrButton(
+            FrFilterChip(
                 label = resolve(slot.toStringKey()),
+                selected = slot == selected,
                 onClick = { onSelect(slot) },
-                variant = if (slot == selected) FrButtonVariant.Primary else FrButtonVariant.Secondary,
                 enabled = !isTaken,
-                modifier = Modifier.weight(1f),
             )
         }
     }

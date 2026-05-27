@@ -45,7 +45,6 @@ fun CaptureMealScreen(
                 onCancelled()
             }
             is ImagePickerResult.Error -> {
-                println("[CaptureMealScreen] picker error: ${r.exception.message}")
                 picker.reset()
                 onCancelled()
             }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,9 +39,14 @@ fun NotificationPermissionScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            FrText(text = resolve(NotificationStringKey.PermissionTitle))
+            FrText(
+                text = resolve(NotificationStringKey.PermissionTitle),
+                style = MaterialTheme.typography.headlineSmall,
+            )
             FrText(
                 text = resolve(NotificationStringKey.PermissionBody),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Spacing.md),
             )
             if (state.current == NotificationPermission.DeniedForever) {

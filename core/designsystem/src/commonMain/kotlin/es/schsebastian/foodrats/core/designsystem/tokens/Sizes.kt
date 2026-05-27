@@ -10,6 +10,10 @@ object Sizes {
     val shutter         = 72.dp
     val streakBadge     = 56.dp
     val mealCardImage   = 220.dp
+
+    // Square thumbnail on the feed list row (FrFeedMealRow); pairs with the
+    // bottom-end FrScoreBadge overlay.
+    val feedRowThumbnail = 76.dp
     val bottomBarHeight = 80.dp
     val touchTarget     = 48.dp
 

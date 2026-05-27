@@ -93,6 +93,17 @@ object FrTextStyles {
             fontFeatureSettings = "tnum",
         )
 
+    /** 48sp extrabold tabular numerals — for the hero score on meal detail / podium. */
+    val statNumberLarge: TextStyle
+        @Composable get() = TextStyle(
+            fontFamily = LocalFrFontFamily.current,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 48.sp,
+            lineHeight = 48.sp,
+            letterSpacing = (-1).sp,
+            fontFeatureSettings = "tnum",
+        )
+
     /** 14sp semibold tabular numerals — for inline metric counts. */
     val statNumberSmall: TextStyle
         @Composable get() = TextStyle(

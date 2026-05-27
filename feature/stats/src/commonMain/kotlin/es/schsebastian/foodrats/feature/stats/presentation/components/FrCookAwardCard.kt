@@ -15,6 +15,7 @@ import androidx.compose.ui.draw.clip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -32,9 +33,10 @@ fun FrCookAwardCard(
     variant: CookAwardVariant = CookAwardVariant.BestCook,
     modifier: Modifier = Modifier,
 ) {
+    val semantic = LocalFrSemanticColors.current
     val (background, onBackground) = when (variant) {
-        CookAwardVariant.BestCook    -> MaterialTheme.colorScheme.primary to MaterialTheme.colorScheme.onPrimary
-        CookAwardVariant.MostProlific -> MaterialTheme.colorScheme.tertiary to MaterialTheme.colorScheme.onTertiary
+        CookAwardVariant.BestCook     -> semantic.celebration to semantic.onCelebration
+        CookAwardVariant.MostProlific -> semantic.info to semantic.onInfo
     }
     Row(
         modifier = modifier
@@ -86,8 +88,9 @@ fun FrCookAwardCard(
     award: MemberCount,
     modifier: Modifier = Modifier,
 ) {
-    val background = MaterialTheme.colorScheme.tertiary
-    val onBackground = MaterialTheme.colorScheme.onTertiary
+    val semantic = LocalFrSemanticColors.current
+    val background = semantic.info
+    val onBackground = semantic.onInfo
     Row(
         modifier = modifier
             .fillMaxWidth()

@@ -43,7 +43,11 @@ import foodrats.feature.crew.generated.resources.crew_settings_delete_cta
 import foodrats.feature.crew.generated.resources.crew_settings_delete_title
 import foodrats.feature.crew.generated.resources.crew_settings_invite_code
 import foodrats.feature.crew.generated.resources.crew_settings_leave_cta
+import foodrats.feature.crew.generated.resources.crew_settings_members_count
 import foodrats.feature.crew.generated.resources.crew_settings_members_section
+import foodrats.feature.crew.generated.resources.crew_settings_owner_badge
+import foodrats.feature.crew.generated.resources.crew_settings_role_member
+import foodrats.feature.crew.generated.resources.crew_settings_role_owner
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_body
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_title
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_cta
@@ -71,6 +75,10 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsTitle(Res.string.crew_settings_title),
     SettingsBackCta(Res.string.crew_settings_back_cta),
     SettingsMembersSection(Res.string.crew_settings_members_section),
+    SettingsOwnerBadge(Res.string.crew_settings_owner_badge),
+    SettingsMembersCount(Res.string.crew_settings_members_count),
+    SettingsRoleOwner(Res.string.crew_settings_role_owner),
+    SettingsRoleMember(Res.string.crew_settings_role_member),
     SettingsShareCode(Res.string.crew_settings_share_code),
     SettingsLeaveCta(Res.string.crew_settings_leave_cta),
     SettingsCrewSection(Res.string.crew_settings_crew_section),

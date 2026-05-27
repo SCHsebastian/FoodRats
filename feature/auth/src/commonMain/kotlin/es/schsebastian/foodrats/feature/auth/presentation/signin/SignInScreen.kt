@@ -31,7 +31,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -47,6 +46,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
@@ -76,7 +76,7 @@ fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) 
                 Spacer(Modifier.height(Spacing.lg))
                 FrText(
                     text = resolve(AuthStringKey.SignInTitle),
-                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
+                    style = MaterialTheme.typography.displaySmall,
                 )
                 Spacer(Modifier.height(Spacing.sm))
                 FrText(
@@ -154,7 +154,7 @@ private fun HeroBadge() {
     Box(
         modifier = Modifier
             .size(96.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(Radius.xl))
             .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center,
     ) {

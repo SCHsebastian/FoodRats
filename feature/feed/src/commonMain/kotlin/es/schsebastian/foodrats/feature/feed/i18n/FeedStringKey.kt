@@ -37,9 +37,17 @@ import foodrats.feature.feed.generated.resources.feed_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_next_day
 import foodrats.feature.feed.generated.resources.feed_no_active_crew_headline
 import foodrats.feature.feed.generated.resources.feed_no_active_crew_subtext
+import foodrats.feature.feed.generated.resources.feed_pick_crew_cta
 import foodrats.feature.feed.generated.resources.feed_no_votes_yet
+import foodrats.feature.feed.generated.resources.feed_plates_count
 import foodrats.feature.feed.generated.resources.feed_prev_day
 import foodrats.feature.feed.generated.resources.feed_rating_summary
+import foodrats.feature.feed.generated.resources.feed_rating_summary_votes
+import foodrats.feature.feed.generated.resources.feed_slot_breakfast
+import foodrats.feature.feed.generated.resources.feed_slot_dinner
+import foodrats.feature.feed.generated.resources.feed_slot_lunch
+import foodrats.feature.feed.generated.resources.feed_time_of_day
+import foodrats.feature.feed.generated.resources.feed_yesterday
 import foodrats.feature.feed.generated.resources.feed_voter_score
 import foodrats.feature.feed.generated.resources.feed_rate_error_already_rated
 import foodrats.feature.feed.generated.resources.feed_rate_error_cannot_rate_own_meal
@@ -50,6 +58,10 @@ import foodrats.feature.feed.generated.resources.feed_rate_error_window_closed
 import foodrats.feature.feed.generated.resources.feed_rate_this_meal
 import foodrats.feature.feed.generated.resources.feed_title
 import foodrats.feature.feed.generated.resources.feed_votes_heading
+import foodrats.feature.feed.generated.resources.feed_voters_label
+import foodrats.feature.feed.generated.resources.feed_voter_score_compact
+import foodrats.feature.feed.generated.resources.feed_crew_score_label
+import foodrats.feature.feed.generated.resources.feed_location_label
 import foodrats.feature.feed.generated.resources.feed_your_vote
 import org.jetbrains.compose.resources.StringResource
 
@@ -61,6 +73,14 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     NextDay(Res.string.feed_next_day),
     NoActiveCrewHeadline(Res.string.feed_no_active_crew_headline),
     NoActiveCrewSubtext(Res.string.feed_no_active_crew_subtext),
+    PickCrewCta(Res.string.feed_pick_crew_cta),
+    Yesterday(Res.string.feed_yesterday),
+    PlatesCount(Res.string.feed_plates_count),
+    TimeOfDay(Res.string.feed_time_of_day),
+    RatingSummaryVotes(Res.string.feed_rating_summary_votes),
+    SlotBreakfast(Res.string.feed_slot_breakfast),
+    SlotLunch(Res.string.feed_slot_lunch),
+    SlotDinner(Res.string.feed_slot_dinner),
     ErrorNotSignedIn(Res.string.feed_error_not_signed_in),
     ErrorUnauthorized(Res.string.feed_error_unauthorized),
     ErrorCrewNotFound(Res.string.feed_error_crew_not_found),
@@ -72,6 +92,10 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     RatingSummary(Res.string.feed_rating_summary),
     VoterScore(Res.string.feed_voter_score),
     VotesHeading(Res.string.feed_votes_heading),
+    VotersLabel(Res.string.feed_voters_label),
+    VoterScoreCompact(Res.string.feed_voter_score_compact),
+    CrewScoreLabel(Res.string.feed_crew_score_label),
+    LocationLabel(Res.string.feed_location_label),
     IngredientsHeading(Res.string.feed_ingredients_heading),
     IngredientSeparator(Res.string.feed_ingredient_separator),
     RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),

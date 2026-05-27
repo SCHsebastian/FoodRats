@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="meal_compose_title">Compón tu plato</string>
+    <string name="meal_compose_dish_label">Plato</string>
     <string name="meal_publish_title">Revisa y publica</string>
 
     <string name="meal_ingredients_classifying">Analizando ingredientes…</string>

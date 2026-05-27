@@ -9,18 +9,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
@@ -91,19 +90,21 @@ fun ProfileScreen(
     FrScreenScaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(resolve(AuthStringKey.ProfileTitle)) },
+                title = {
+                    FrText(
+                        text = resolve(AuthStringKey.ProfileTitle),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = FrIcons.Back,
-                            contentDescription = null,
-                        )
-                    }
+                    FrIconButton(
+                        icon = FrIcons.Back,
+                        onClick = onBack,
+                        contentDescription = resolve(AuthStringKey.ProfileBackCta),
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = Color.Transparent,
                 ),
             )
         },
@@ -208,7 +209,7 @@ private fun GeneralSection(
             FrSettingsRow(
                 title = resolve(AuthStringKey.ProfileSignedInAsLabel),
                 subtitle = email,
-                icon = FrIcons.Settings,
+                icon = FrIcons.Person,
             )
         }
     }
@@ -221,7 +222,7 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
         FrSettingsRow(
             title = resolve(AuthStringKey.ProfileThemeRow),
             subtitle = resolveThemeLabel(state.themeMode),
-            icon = FrIcons.Settings,
+            icon = FrIcons.Theme,
             onClick = { vm.onIntent(ProfileIntent.ThemePickerOpen) },
         )
         state.themeError?.let {
@@ -237,7 +238,7 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
         FrSettingsRow(
             title = resolve(AuthStringKey.ProfileLanguageRow),
             subtitle = resolveLocaleLabel(state.locale),
-            icon = FrIcons.Settings,
+            icon = FrIcons.Language,
             onClick = {
                 if (opensSystemSettingsForLanguage) openAppLanguageSettings()
                 else vm.onIntent(ProfileIntent.LocalePickerOpen)
@@ -257,7 +258,7 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
                 resolve(AuthStringKey.ProfileNotificationsSubtitleOn)
             else
                 resolve(AuthStringKey.ProfileNotificationsSubtitleOff),
-            icon = FrIcons.Settings,
+            icon = FrIcons.Notifications,
             trailing = {
                 FrSwitch(
                     checked = state.notificationsEnabled,
@@ -291,7 +292,7 @@ private fun DangerZoneSection(state: ProfileState, vm: ProfileViewModel) {
     ) {
         FrSettingsRow(
             title = resolve(AuthStringKey.ProfileSignOutCta),
-            icon = FrIcons.Back,
+            icon = FrIcons.Logout,
             enabled = !state.isSigningOut,
             onClick = { vm.onIntent(ProfileIntent.SignOut) },
         )

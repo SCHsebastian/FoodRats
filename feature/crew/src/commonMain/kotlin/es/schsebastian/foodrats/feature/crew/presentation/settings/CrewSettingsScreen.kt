@@ -1,21 +1,22 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,22 +24,37 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.data.share.ShareController
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
@@ -75,166 +91,105 @@ fun CrewSettingsScreen(
     FrScreenScaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text(resolve(CrewStringKey.SettingsTitle)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            imageVector = FrIcons.Back,
-                            contentDescription = resolve(CrewStringKey.SettingsBackCta),
+                title = {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        SectionEyebrow(resolve(CrewStringKey.SettingsTitle))
+                        FrText(
+                            text = state.crew?.name.orEmpty(),
+                            style = MaterialTheme.typography.titleMedium,
                         )
                     }
                 },
+                navigationIcon = {
+                    FrIconButton(
+                        icon = FrIcons.Back,
+                        onClick = onBack,
+                        contentDescription = resolve(CrewStringKey.SettingsBackCta),
+                    )
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = Color.Transparent,
                 ),
             )
         },
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(Spacing.lg),
-        ) {
-            state.crew?.let { crew ->
-                // Section: Crew
+        val crew = state.crew
+        when {
+            crew == null && state.error != null -> Box(
+                modifier = Modifier.fillMaxSize().padding(Spacing.lg),
+            ) { FrErrorBanner(text = resolve(state.error!!.toStringKey())) }
+
+            crew == null -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center,
+            ) { FrProgressIndicator() }
+
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg),
+                contentPadding = PaddingValues(vertical = Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            ) {
                 item {
-                    FrText(
-                        text = resolve(CrewStringKey.SettingsCrewSection),
-                        style = MaterialTheme.typography.titleMedium,
+                    CrewHeroCard(
+                        crew = crew,
+                        onCopy = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
+                        onShare = { share.shareText(crew.code.value) },
                     )
-                    Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Crew name field + save
-                item {
-                    FrTextField(
-                        value = state.editingCrewName,
-                        onValueChange = { vm.onIntent(CrewSettingsIntent.CrewNameChanged(it)) },
-                        label = resolve(CrewStringKey.SettingsCrewNameLabel),
-                        enabled = state.isOwner && !state.isSavingCrewName,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.sm))
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsSave),
-                        onClick = { vm.onIntent(CrewSettingsIntent.SaveCrewName) },
-                        enabled = state.isOwner &&
-                            state.editingCrewName.isNotBlank() &&
-                            state.editingCrewName != crew.name &&
-                            !state.isSavingCrewName,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.md))
-                }
-
-                // Invite code + share + copy
-                item {
-                    FrText(text = resolve(CrewStringKey.SettingsInviteCode))
-                    Spacer(Modifier.height(Spacing.xs))
-                    FrText(
-                        text = crew.code.value,
-                        style = MaterialTheme.typography.bodyLarge,
-                    )
-                    Spacer(Modifier.height(Spacing.sm))
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        FrButton(
-                            label = resolve(CrewStringKey.SettingsShare),
-                            onClick = { share.shareText(crew.code.value) },
-                            modifier = Modifier.weight(1f),
-                        )
-                        FrButton(
-                            label = resolve(CrewStringKey.SettingsCopyCta),
-                            onClick = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
-                            variant = FrButtonVariant.Secondary,
-                            modifier = Modifier.weight(1f),
-                        )
+                if (state.isOwner) {
+                    item {
+                        FrCard(modifier = Modifier.fillMaxWidth()) {
+                            FrTextField(
+                                value = state.editingCrewName,
+                                onValueChange = { vm.onIntent(CrewSettingsIntent.CrewNameChanged(it)) },
+                                label = resolve(CrewStringKey.SettingsCrewNameLabel),
+                                enabled = !state.isSavingCrewName,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                            FrButton(
+                                label = resolve(CrewStringKey.SettingsSave),
+                                onClick = { vm.onIntent(CrewSettingsIntent.SaveCrewName) },
+                                enabled = state.editingCrewName.isNotBlank() &&
+                                    state.editingCrewName != crew.name &&
+                                    !state.isSavingCrewName,
+                                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(Spacing.md))
                 }
 
-                // Members section
                 item {
-                    FrText(
-                        text = resolve(CrewStringKey.SettingsMembersSection),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(Spacing.sm))
-                }
-                items(crew.members, key = { it.accountId.value }) { m ->
-                    val canRemove = state.isOwner && m.accountId != state.myAccountId
-                    FrCrewMemberRow(
-                        account = state.identities[m.accountId],
-                        trailing = if (canRemove) {
-                            {
-                                IconButton(onClick = { memberPendingRemoval = m.accountId }) {
-                                    Icon(
-                                        imageVector = FrIcons.Close,
-                                        contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
-                                    )
-                                }
-                            }
-                        } else null,
+                    MembersCard(
+                        crew = crew,
+                        isOwner = state.isOwner,
+                        myAccountId = state.myAccountId,
+                        identities = state.identities,
+                        onRemove = { memberPendingRemoval = it },
                     )
                 }
 
-                item { Spacer(Modifier.height(Spacing.lg)) }
-
-                // Section: Actions
                 item {
-                    FrText(
-                        text = resolve(CrewStringKey.SettingsActionsSection),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Spacer(Modifier.height(Spacing.md))
                     FrButton(
                         label = resolve(CrewStringKey.SettingsSwitchCrew),
                         onClick = { vm.onIntent(CrewSettingsIntent.SwitchCrew) },
                         variant = FrButtonVariant.Secondary,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Spacer(Modifier.height(Spacing.sm))
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsLeaveCta),
-                        onClick = { vm.onIntent(CrewSettingsIntent.Leave) },
-                        variant = FrButtonVariant.Secondary,
-                        enabled = !state.isLeaving,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(Modifier.height(Spacing.lg))
                 }
 
-                // Section: Danger zone (owner only)
-                if (state.isOwner) {
-                    item {
-                        FrText(
-                            text = resolve(CrewStringKey.SettingsDangerSection),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                        Spacer(Modifier.height(Spacing.md))
-                        FrButton(
-                            label = resolve(CrewStringKey.SettingsDeleteCta),
-                            onClick = { vm.onIntent(CrewSettingsIntent.RequestDelete) },
-                            enabled = !state.isDeleting,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(Modifier.height(Spacing.lg))
-                    }
-                }
-            }
-
-            // Error banner
-            state.error?.let { err ->
                 item {
-                    FrErrorBanner(
-                        text = resolve(err.toStringKey()),
-                        modifier = Modifier.padding(top = Spacing.md),
+                    DangerZoneCard(
+                        isOwner = state.isOwner,
+                        leaveEnabled = !state.isLeaving,
+                        deleteEnabled = !state.isDeleting,
+                        onLeave = { vm.onIntent(CrewSettingsIntent.Leave) },
+                        onDelete = { vm.onIntent(CrewSettingsIntent.RequestDelete) },
                     )
+                }
+
+                state.error?.let { err ->
+                    item { FrErrorBanner(text = resolve(err.toStringKey())) }
                 }
             }
         }
@@ -264,4 +219,183 @@ fun CrewSettingsScreen(
             destructive = true,
         )
     }
+}
+
+/** Centered crew identity: name, member count, and the invite-code chip + Share. */
+@Composable
+private fun CrewHeroCard(
+    crew: Crew,
+    onCopy: () -> Unit,
+    onShare: () -> Unit,
+) {
+    FrCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            FrText(text = crew.name, style = MaterialTheme.typography.headlineSmall)
+            FrText(
+                text = resolve(CrewStringKey.SettingsMembersCount, crew.size),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // Tap-to-copy invite code chip — mono + letter-spaced.
+                Surface(
+                    onClick = onCopy,
+                    shape = RoundedCornerShape(Radius.md),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Box(
+                        modifier = Modifier.padding(vertical = Spacing.md, horizontal = Spacing.md),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        FrText(
+                            text = crew.code.value,
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontFamily = FontFamily.Monospace,
+                                letterSpacing = 2.sp,
+                            ),
+                        )
+                    }
+                }
+                FrButton(
+                    label = resolve(CrewStringKey.SettingsShare),
+                    onClick = onShare,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/** Members list rendered as token-divided rows inside a single card. */
+@Composable
+private fun MembersCard(
+    crew: Crew,
+    isOwner: Boolean,
+    myAccountId: AccountId?,
+    identities: Map<AccountId, es.schsebastian.foodrats.core.domain.account.Account?>,
+    onRemove: (AccountId) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            SectionEyebrow(resolve(CrewStringKey.SettingsMembersSection))
+            if (isOwner) {
+                FrText(
+                    text = resolve(CrewStringKey.SettingsOwnerBadge),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+        FrCard(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
+        ) {
+            crew.members.forEachIndexed { index, m ->
+                val isMemberOwner = m.accountId == crew.ownerId
+                val canRemove = isOwner && m.accountId != myAccountId
+                FrCrewMemberRow(
+                    account = identities[m.accountId],
+                    subtitle = resolve(
+                        if (isMemberOwner) CrewStringKey.SettingsRoleOwner else CrewStringKey.SettingsRoleMember,
+                    ),
+                    trailing = if (canRemove) {
+                        {
+                            FrIconButton(
+                                icon = FrIcons.Close,
+                                onClick = { onRemove(m.accountId) },
+                                contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
+                            )
+                        }
+                    } else null,
+                )
+                if (index < crew.members.lastIndex) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
+        }
+    }
+}
+
+/** Leave / Delete as full-width destructive rows inside one card. */
+@Composable
+private fun DangerZoneCard(
+    isOwner: Boolean,
+    leaveEnabled: Boolean,
+    deleteEnabled: Boolean,
+    onLeave: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(resolve(CrewStringKey.SettingsDangerSection))
+        FrCard(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(0.dp),
+        ) {
+            DangerActionRow(
+                icon = FrIcons.Logout,
+                label = resolve(CrewStringKey.SettingsLeaveCta),
+                enabled = leaveEnabled,
+                onClick = onLeave,
+            )
+            if (isOwner) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                DangerActionRow(
+                    icon = FrIcons.Delete,
+                    label = resolve(CrewStringKey.SettingsDeleteCta),
+                    enabled = deleteEnabled,
+                    onClick = onDelete,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DangerActionRow(
+    icon: ImageVector,
+    label: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val semantic = LocalFrSemanticColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = Spacing.md, vertical = Spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        FrIcon(image = icon, tint = semantic.danger, modifier = Modifier.size(Sizes.iconMd))
+        FrText(
+            text = label,
+            style = MaterialTheme.typography.titleMedium,
+            color = semantic.danger,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun SectionEyebrow(text: String, modifier: Modifier = Modifier) {
+    FrText(
+        text = text.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = modifier,
+    )
 }

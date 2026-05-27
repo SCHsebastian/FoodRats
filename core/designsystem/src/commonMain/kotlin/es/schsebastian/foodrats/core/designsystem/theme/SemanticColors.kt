@@ -28,6 +28,10 @@ data class FrSemanticColors(
     val onCelebration: Color,
     val streakHot: Color,
     val onStreakHot: Color,
+    /** Black scrim for the protection gradient under white-on-photo text. Theme-independent. */
+    val scrim: Color,
+    /** Foreground (white) for text/icons that sit on a photo or [scrim]. Theme-independent. */
+    val onScrim: Color,
 )
 
 internal val FoodRatsLightSemanticColors = FrSemanticColors(
@@ -43,6 +47,8 @@ internal val FoodRatsLightSemanticColors = FrSemanticColors(
     onCelebration = Color(0xFFFFFFFF),
     streakHot     = Color(0xFFD45A14),   // forge orange
     onStreakHot   = Color(0xFFFFFFFF),
+    scrim         = Color(0xFF000000),
+    onScrim       = Color(0xFFFFFFFF),
 )
 
 internal val FoodRatsDarkSemanticColors = FrSemanticColors(
@@ -58,6 +64,8 @@ internal val FoodRatsDarkSemanticColors = FrSemanticColors(
     onCelebration = Color(0xFF3B1D00),
     streakHot     = Color(0xFFFB923C),   // forge ember
     onStreakHot   = Color(0xFF3A1A00),
+    scrim         = Color(0xFF000000),
+    onScrim       = Color(0xFFFFFFFF),
 )
 
 val LocalFrSemanticColors = staticCompositionLocalOf { FoodRatsLightSemanticColors }

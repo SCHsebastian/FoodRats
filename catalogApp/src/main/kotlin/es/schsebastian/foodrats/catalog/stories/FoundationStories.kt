@@ -170,6 +170,7 @@ private fun SemanticRolesGrid() {
             Triple("info", s.info, s.onInfo),
             Triple("celebration", s.celebration, s.onCelebration),
             Triple("streakHot", s.streakHot, s.onStreakHot),
+            Triple("scrim", s.scrim, s.onScrim),
         ),
     )
 }

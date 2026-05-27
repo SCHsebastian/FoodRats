@@ -43,6 +43,7 @@ iosApp/Pods/
 # Xcode build output written outside the normal DerivedData path.
 iosApp/build-device/
 iosApp/build-cli/
+iosApp/build-sim/
 
 # Claude Code local state (settings, worktrees, transcripts).
 .claude/
