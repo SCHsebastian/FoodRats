@@ -6,25 +6,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -35,15 +24,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import es.schsebastian.foodrats.app.i18n.SharedStringKey
-import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
-import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
-import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
-import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
@@ -54,6 +38,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedScreen
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealScreen
 import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIngredientsScreen
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
+import es.schsebastian.foodrats.feature.meal.presentation.nudge.CaptureNudgeViewModel
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
 import org.koin.compose.koinInject
@@ -186,105 +171,47 @@ private fun MainScaffold(rootController: NavHostController) {
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     val backStack by inner.currentBackStackEntryAsState()
     val isStats = backStack?.destination?.hasRoute<MainTab.Stats>() == true
-    val titleKey = if (isStats) SharedStringKey.NavTabStats else SharedStringKey.NavTabFeed
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
     val topBarAvatar by topBarAvatarVm.state.collectAsState()
+    val captureNudgeVm: CaptureNudgeViewModel = koinViewModel()
+    val captureNudge by captureNudgeVm.state.collectAsState()
     Scaffold(
         // Make the Scaffold's own surface match the bottom bar tint so the area
         // behind the Android system navigation bar (3-button or gesture pill)
         // doesn't show through as warm-cream/white when edge-to-edge is on.
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text(resolve(titleKey)) },
-                navigationIcon = {
-                    IconButton(onClick = { rootController.navigate(Route.Profile) }) {
-                        FrAvatar(
-                            initials = topBarAvatar.initials,
-                            imageUrl = topBarAvatar.avatarUrl,
-                            size = Sizes.avatarSm,
-                            contentDescription = resolve(SharedStringKey.NavProfileCta),
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-                actions = {
-                    activeCrew?.let { crewId ->
-                        IconButton(
-                            onClick = { rootController.navigate(Route.CrewSettings(crewId.value)) },
-                        ) {
-                            Icon(
-                                imageVector = FrIcons.Settings,
-                                contentDescription = resolve(SharedStringKey.NavSettingsCta),
-                            )
-                        }
-                    }
+            MainTopBar(
+                isStats = isStats,
+                avatarInitials = topBarAvatar.initials,
+                avatarUrl = topBarAvatar.avatarUrl,
+                showSettings = activeCrew != null,
+                onProfileClick = { rootController.navigate(Route.Profile) },
+                onSettingsClick = {
+                    activeCrew?.let { rootController.navigate(Route.CrewSettings(it.value)) }
                 },
             )
         },
         bottomBar = {
-            // primaryContainer tints the bar (including the area drawn behind the
-            // system navigation bar via the bar's default windowInsets handling),
-            // so the bottom of the screen matches the brand color on Android the
-            // same way it does on iOS.
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-            ) {
-                NavigationBarItem(
-                    modifier = Modifier.weight(1f),
-                    selected = !isStats,
-                    onClick = {
-                        inner.navigate(MainTab.Feed) {
-                            popUpTo<MainTab.Feed> { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(FrIcons.Home, contentDescription = resolve(SharedStringKey.NavTabFeed)) },
-                    label = { Text(resolve(SharedStringKey.NavTabFeed)) },
-                )
-                NavigationBarItem(
-                    modifier = Modifier.weight(1f),
-                    selected = false,
-                    onClick = { rootController.navigate(Route.CaptureMeal) },
-                    icon = {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .background(MaterialTheme.colorScheme.primary, CircleShape),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = FrIcons.Camera,
-                                contentDescription = resolve(SharedStringKey.NavCaptureCta),
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        }
-                    },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = Color.Transparent,
-                    ),
-                )
-                NavigationBarItem(
-                    modifier = Modifier.weight(1f),
-                    selected = isStats,
-                    onClick = {
-                        inner.navigate(MainTab.Stats) {
-                            popUpTo<MainTab.Feed> { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    },
-                    icon = { Icon(FrIcons.Stats, contentDescription = resolve(SharedStringKey.NavTabStats)) },
-                    label = { Text(resolve(SharedStringKey.NavTabStats)) },
-                )
-            }
+            MainBottomBar(
+                isStats = isStats,
+                hasPostedToday = captureNudge.hasPostedToday,
+                onFeedClick = {
+                    inner.navigate(MainTab.Feed) {
+                        popUpTo<MainTab.Feed> { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onStatsClick = {
+                    inner.navigate(MainTab.Stats) {
+                        popUpTo<MainTab.Feed> { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
+                onCaptureClick = { rootController.navigate(Route.CaptureMeal) },
+            )
         },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {

@@ -1,12 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -24,12 +18,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
@@ -113,15 +105,12 @@ fun ComposePlateScreen(
                         if (bytes != null) {
                             val img = remember(bytes) { decodeImageBitmap(bytes) }
                             if (img != null) {
-                                val pulse = remember { Animatable(0.96f) }
-                                LaunchedEffect(bytes) { pulse.animateTo(1f, tween(Motion.medium)) }
                                 Image(
                                     bitmap = img,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .scale(pulse.value)
                                         .clip(RoundedCornerShape(Radius.md)),
                                 )
                             }
@@ -139,7 +128,7 @@ fun ComposePlateScreen(
 
                 AnimatedFormItem(delay = Motion.short + Motion.quick) {
                     FrLabeledTextField(
-                        label = resolve(MealStringKey.ComposeTitle),
+                        label = resolve(MealStringKey.ComposeDishLabel),
                         value = state.dish,
                         onValueChange = { vm.onIntent(ComposePlateIntent.DishChanged(it)) },
                         isError = state.error is MealError.Validation &&
@@ -161,7 +150,7 @@ fun ComposePlateScreen(
                         FrText(
                             text = resolve(
                                 MealStringKey.ComposeDescriptionCounter,
-                                state.descriptionInput.trim().length,
+                                state.descriptionInput.length,
                                 Description.MAX_LEN,
                             ),
                             modifier = Modifier.padding(top = Spacing.xs),
@@ -199,9 +188,14 @@ fun ComposePlateScreen(
                     state.error?.let { FrErrorBanner(text = resolve(it.toStringKey())) }
                 }
 
-                AnimatedContinueButton(
-                    enabled = state.canContinue,
+                FrButton(
+                    label = resolve(CommonStringKey.Continue),
                     onClick = { vm.onIntent(ComposePlateIntent.RequestConfirm) },
+                    variant = FrButtonVariant.Primary,
+                    enabled = state.canContinue,
+                    modifier = Modifier
+                        .padding(top = Spacing.md, bottom = Spacing.lg)
+                        .fillMaxWidth(),
                 )
             }
         }
@@ -248,40 +242,4 @@ private fun AnimatedFormItem(
     ) {
         Box(modifier = Modifier.fillMaxWidth()) { content() }
     }
-}
-
-/**
- * Primary CTA that subtly breathes once enabled, so the user sees the form
- * cross the validity threshold.
- */
-@Composable
-private fun AnimatedContinueButton(enabled: Boolean, onClick: () -> Unit) {
-    val targetScale = if (enabled) 1f else 0.97f
-    val baseScale by animateFloatAsState(
-        targetValue = targetScale,
-        animationSpec = tween(durationMillis = 220),
-        label = "continueScale",
-    )
-    val breath by if (enabled) {
-        val transition = rememberInfiniteTransition(label = "continueBreath")
-        transition.animateFloat(
-            initialValue = 1f,
-            targetValue = 1.02f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 1400),
-                repeatMode = RepeatMode.Reverse,
-            ),
-            label = "breath",
-        )
-    } else remember { mutableStateOf(1f) }
-    FrButton(
-        label = resolve(CommonStringKey.Continue),
-        onClick = onClick,
-        variant = FrButtonVariant.Primary,
-        enabled = enabled,
-        modifier = Modifier
-            .padding(top = Spacing.md, bottom = Spacing.lg)
-            .fillMaxWidth()
-            .scale(baseScale * breath),
-    )
 }

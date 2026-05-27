@@ -27,6 +27,17 @@ class ComputeWindowTest {
         assertNull(out.mostProlific)
         assertNull(out.bestCook)
         assertNull(out.mostCriticized)
+        assertEquals(emptyList<Int>(), out.dailyMeals)
+    }
+
+    @Test fun daily_meals_series_is_chronological_with_zero_filled_gaps() {
+        val meals = listOf(
+            mealWithRatings("m1", "alice", LocalDate(2026, 5, 19)),
+            mealWithRatings("m2", "bob",   LocalDate(2026, 5, 19)),
+            mealWithRatings("m3", "carl",  LocalDate(2026, 5, 21)),
+        )
+        // 5/19 → 2 meals, 5/20 → 0 (zero-filled gap), 5/21 → 1
+        assertEquals(listOf(2, 0, 1), computeWindow(meals, window, ingredientName).dailyMeals)
     }
 
     @Test fun best_meal_picks_highest_score_then_rating_count() {
@@ -148,6 +159,23 @@ class ComputeWindowTest {
         assertEquals(2, alice.mealCount)
         assertEquals("bacon", bob.ingredientName)
         assertEquals(1, bob.mealCount)
+    }
+
+    @Test fun ai_detected_ingredients_are_excluded_from_stats() {
+        // Only user-confirmed ingredients count; AI-detected-but-unconfirmed ones must not.
+        val meals = listOf(
+            mealWithRatings(
+                "m1", "alice", LocalDate(2026, 5, 19),
+                ingredients = listOf("egg"),
+                detectedIngredients = listOf("bacon"),
+            ),
+        )
+        val out = computeWindow(meals, window, ingredientName)
+        assertEquals("egg", out.mostUsedIngredient?.displayName)
+        assertEquals(1, out.mostUsedIngredient?.mealCount)
+        val alice = out.topByMember.first { it.accountId == acct("alice") }
+        assertEquals("egg", alice.ingredientName)
+        assertEquals(listOf("egg"), out.topByMember.map { it.ingredientName })
     }
 
     @Test fun top_by_member_omits_authors_without_ingredients() {

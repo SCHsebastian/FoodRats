@@ -1,18 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="meal_compose_title">Compose your plate</string>
+    <string name="meal_compose_dish_label">Dish</string>
     <string name="meal_publish_title">Review and publish</string>
 
     <string name="meal_ingredients_classifying">Analyzing ingredients…</string>
-    <string name="meal_classifier_no_detection">Couldn\'t detect ingredients</string>
+    <string name="meal_classifier_no_detection">Couldn't detect ingredients</string>
     <string name="meal_classifier_load_failed">Ingredient detection unavailable</string>
     <string name="meal_ingredients_row_add">Add ingredients</string>
     <string name="meal_ingredients_row_summary">%1$d ingredients</string>
 
     <string name="meal_error_already_posted">You already posted a meal today.</string>
     <string name="meal_error_not_today">Drafts can only be published the day they were started.</string>
-    <string name="meal_error_publish_unavailable">Couldn\'t publish. Try again.</string>
-    <string name="meal_error_photo_upload_failed">Couldn\'t upload your photo. Try again.</string>
+    <string name="meal_error_publish_unavailable">Couldn't publish. Try again.</string>
+    <string name="meal_error_photo_upload_failed">Couldn't upload your photo. Try again.</string>
     <string name="meal_error_validation_blank">Tell us what you ate.</string>
     <string name="meal_error_validation_too_long">Keep the dish name short.</string>
     <string name="meal_error_validation_out_of_range">Score must be between 1 and 10.</string>
@@ -21,7 +22,7 @@
     <string name="meal_error_validation_too_many_ingredients">Too many ingredients (max 30).</string>
     <string name="meal_compose_description_placeholder">What did you eat? (optional)</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
-    <string name="meal_error_read_unauthorized">You don\'t have access to this crew.</string>
+    <string name="meal_error_read_unauthorized">You don't have access to this crew.</string>
     <string name="meal_error_read_crew_not_found">Crew not found.</string>
     <string name="meal_error_read_not_found">Meal not found.</string>
     <string name="meal_slot_breakfast">Breakfast</string>
@@ -36,7 +37,7 @@
 
     <string name="meal_error_location_permission">Location permission denied. You can enable it from system settings.</string>
     <string name="meal_error_location_unavailable">Location services are off or no fix is available.</string>
-    <string name="meal_error_location_timeout">Couldn\'t get your location in time. Try again.</string>
+    <string name="meal_error_location_timeout">Couldn't get your location in time. Try again.</string>
 
     <string name="meal_publish_confirm_title">Publish this meal?</string>
     <string name="meal_publish_confirm_message">Your photo and details will be shared with the crew. The upload runs in the background — you can keep using the app.</string>

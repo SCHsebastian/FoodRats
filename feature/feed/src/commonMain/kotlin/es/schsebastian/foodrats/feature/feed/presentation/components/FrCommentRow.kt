@@ -8,14 +8,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -65,17 +63,15 @@ fun FrCommentRow(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     if (canDelete) {
-                        IconButton(onClick = onDelete) {
-                            Icon(
-                                imageVector = FrIcons.Delete,
-                                contentDescription = resolve(FeedStringKey.DeleteCommentCta),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                        FrIconButton(
+                            icon = FrIcons.Delete,
+                            onClick = onDelete,
+                            contentDescription = resolve(FeedStringKey.DeleteCommentCta),
+                        )
                     }
                 }
             }
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(Spacing.xxs))
             FrText(text = text, style = MaterialTheme.typography.bodyMedium)
         }
     }

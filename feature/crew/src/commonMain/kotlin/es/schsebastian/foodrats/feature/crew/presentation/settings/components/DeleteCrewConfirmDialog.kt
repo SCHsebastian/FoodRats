@@ -1,9 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings.components
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 
@@ -13,19 +11,13 @@ fun DeleteCrewConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text(resolve(CrewStringKey.SettingsDeleteConfirm))
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(resolve(CrewStringKey.SettingsCancel))
-            }
-        },
-        title = { Text(resolve(CrewStringKey.SettingsDeleteTitle)) },
-        text = { Text(resolve(CrewStringKey.SettingsDeleteBody, crewName)) },
+    FrConfirmDialog(
+        title = resolve(CrewStringKey.SettingsDeleteTitle),
+        message = resolve(CrewStringKey.SettingsDeleteBody, crewName),
+        confirmLabel = resolve(CrewStringKey.SettingsDeleteConfirm),
+        dismissLabel = resolve(CrewStringKey.SettingsCancel),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+        destructive = true,
     )
 }

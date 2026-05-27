@@ -17,11 +17,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -43,8 +45,18 @@ fun FrStreakHeroCard(
         modifier = modifier
             .fillMaxWidth()
             .height(120.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(semantic.streakHot),
+            .clip(RoundedCornerShape(Radius.lg))
+            // The streak hero is the design system's single sanctioned gradient — forge-orange
+            // through ember (secondary) to rust (tertiary). Everything else stays flat-semantic.
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        semantic.streakHot,
+                        MaterialTheme.colorScheme.secondary,
+                        MaterialTheme.colorScheme.tertiary,
+                    ),
+                ),
+            ),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),

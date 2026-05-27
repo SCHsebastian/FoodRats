@@ -3,32 +3,33 @@ package es.schsebastian.foodrats.feature.stats.presentation.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
-import es.schsebastian.foodrats.core.designsystem.atoms.FrText
-import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.WindowStats
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 import kotlin.math.round
 
+/**
+ * Window summary as a 2-column tile grid: total plates (with a meals-per-day trend sparkline)
+ * and average plates per day. Only tiles backed by [WindowStats] data are surfaced — trend
+ * deltas, avg-score and show-up-rate tiles from the mock need cross-window computation that
+ * does not exist yet, so they are intentionally omitted.
+ */
 @Composable
 fun FrWindowSummaryCard(
     window: WindowStats,
     modifier: Modifier = Modifier,
 ) {
+    val semantic = LocalFrSemanticColors.current
     val total by animateIntAsState(
         targetValue = window.totalMeals,
         animationSpec = tween(700),
@@ -40,37 +41,24 @@ fun FrWindowSummaryCard(
         label = "avg-${window.window.tab}",
     )
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(Spacing.md),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            FrText(
-                text = total.toString(),
-                style = FrTextStyles.statNumber,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            FrText(
-                text = resolve(StatsStringKey.SummaryTotalPlatesLabel),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            FrText(
-                text = formatOneDecimal(avg),
-                style = FrTextStyles.statNumber,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            FrText(
-                text = resolve(StatsStringKey.SummaryAvgPerDayLabel),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        FrStatTile(
+            icon = FrIcons.Camera,
+            value = total.toString(),
+            label = resolve(StatsStringKey.SummaryTotalPlatesLabel),
+            tint = MaterialTheme.colorScheme.primary,
+            spark = window.dailyMeals.takeIf { it.size >= 2 }?.map { it.toFloat() },
+            modifier = Modifier.weight(1f),
+        )
+        FrStatTile(
+            icon = FrIcons.Stats,
+            value = formatOneDecimal(avg),
+            label = resolve(StatsStringKey.SummaryAvgPerDayLabel),
+            tint = semantic.celebration,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 

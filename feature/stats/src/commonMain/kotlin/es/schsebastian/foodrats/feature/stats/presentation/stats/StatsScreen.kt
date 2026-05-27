@@ -30,6 +30,8 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.Tab
@@ -88,6 +90,14 @@ private fun StatsContent(
         contentPadding = PaddingValues(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
+        // Tab-root header. The crew-name title from the mock needs a cross-context crew read
+        // that stats (a MealReadPort consumer) doesn't have, so only the section title shows.
+        item {
+            FrText(
+                text = resolve(StatsStringKey.Title),
+                style = androidx.compose.material3.MaterialTheme.typography.headlineMedium,
+            )
+        }
         item { FrStreakHeroCard(hero = snap.hero) }
         item { FrTodayStripe(hero = snap.hero) }
         stickyHeader {
@@ -168,15 +178,15 @@ private fun HistoricLoading() {
     ) {
         FrShimmerBox(
             modifier = Modifier.fillMaxWidth().height(80.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(Radius.lg),
         )
         FrShimmerBox(
             modifier = Modifier.fillMaxWidth().aspectRatio(1.6f),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(Radius.lg),
         )
         FrShimmerBox(
             modifier = Modifier.fillMaxWidth().height(80.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(Radius.md),
         )
     }
 }
@@ -189,19 +199,19 @@ private fun LoadingSkeleton() {
     ) {
         FrShimmerBox(
             modifier = Modifier.fillMaxWidth().height(120.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(Radius.lg),
         )
         FrShimmerBox(
             modifier = Modifier.fillMaxWidth().height(40.dp),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(Radius.lg),
         )
         FrShimmerBox(
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().height(Sizes.touchTarget),
+            shape = RoundedCornerShape(Radius.sm),
         )
         FrShimmerBox(
             modifier = Modifier.fillMaxWidth().aspectRatio(1.6f),
-            shape = RoundedCornerShape(20.dp),
+            shape = RoundedCornerShape(Radius.lg),
         )
     }
 }

@@ -18,8 +18,8 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 fun FrEmptyState(
     icon: ImageVector,
     headline: String,
-    subtext: String,
     modifier: Modifier = Modifier,
+    subtext: String? = null,
     cta: @Composable (() -> Unit)? = null,
 ) {
     Column(
@@ -28,7 +28,9 @@ fun FrEmptyState(
     ) {
         FrIcon(image = icon)
         FrText(text = headline, modifier = Modifier.padding(top = Spacing.md))
-        FrText(text = subtext, modifier = Modifier.padding(top = Spacing.xs))
+        if (!subtext.isNullOrBlank()) {
+            FrText(text = subtext, modifier = Modifier.padding(top = Spacing.xs))
+        }
         cta?.let {
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.padding(top = Spacing.md))
             it()

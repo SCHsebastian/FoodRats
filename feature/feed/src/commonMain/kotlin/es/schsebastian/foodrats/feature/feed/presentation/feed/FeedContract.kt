@@ -7,9 +7,12 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviState
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
+import kotlinx.datetime.LocalDate
 
 data class FeedState(
     val day: FeedDay? = null,
+    /** Local "today" in the feed's zone; lets the day header label as Today/Yesterday. */
+    val today: LocalDate? = null,
     val meals: List<FeedMealUi> = emptyList(),
     val isLoading: Boolean = true,
     val error: FeedError? = null,

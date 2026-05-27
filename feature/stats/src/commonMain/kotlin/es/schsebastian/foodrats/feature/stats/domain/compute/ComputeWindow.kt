@@ -2,7 +2,6 @@ package es.schsebastian.foodrats.feature.stats.domain.compute
 
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
-import es.schsebastian.foodrats.core.domain.meal.mergedIngredientSlugs
 import es.schsebastian.foodrats.feature.stats.domain.model.IngredientUsage
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
@@ -78,10 +77,11 @@ fun computeWindow(
         else -> worstCook
     }
 
-    // Each ingredient counts at most once per meal (mergedIngredientSlugs is already deduped),
-    // so a count is "number of meals using it". Tie-break: count desc, then name asc.
+    // Only user-confirmed ingredients count (AI-detected-but-unconfirmed ones are excluded).
+    // Each ingredient counts at most once per meal, so a count is "number of meals using it".
+    // Tie-break: count desc, then name asc.
     val mostUsedIngredient = meals
-        .flatMap { it.meal.mergedIngredientSlugs() }
+        .flatMap { it.meal.ingredients.distinct() }
         .groupingBy { it }
         .eachCount()
         .entries
@@ -94,7 +94,7 @@ fun computeWindow(
     val topByMember = byAuthor.entries
         .mapNotNull { (id, list) ->
             val top = list
-                .flatMap { it.meal.mergedIngredientSlugs() }
+                .flatMap { it.meal.ingredients.distinct() }
                 .groupingBy { it }
                 .eachCount()
                 .entries
@@ -110,6 +110,18 @@ fun computeWindow(
                 .thenBy { it.ingredientName },
         )
 
+    // Meals-per-day across the active span (earliest → latest meal day), gaps zero-filled, so the
+    // trend sparkline reads chronologically without a Clock dependency.
+    val dailyMeals: List<Int> = if (meals.isEmpty()) {
+        emptyList()
+    } else {
+        val earliestDay = meals.minBy { it.meal.day.date }.meal.day
+        val span = meals.maxOf { it.meal.day.daysSince(earliestDay) }
+        val buckets = IntArray(span + 1)
+        meals.forEach { buckets[it.meal.day.daysSince(earliestDay)]++ }
+        buckets.toList()
+    }
+
     return WindowStats(
         window = window,
         totalMeals = total,
@@ -121,6 +133,7 @@ fun computeWindow(
         mostCriticized = mostCriticized,
         mostUsedIngredient = mostUsedIngredient,
         topByMember = topByMember,
+        dailyMeals = dailyMeals,
     )
 }
 

@@ -5,7 +5,7 @@
     <string name="ingredient_select_done">Done</string>
     <string name="ingredient_detected_section_title">Detected</string>
     <string name="ingredient_selection_full">Maximum 30 ingredients</string>
-    <string name="ingredient_catalog_load_failed">Couldn\'t load the catalog</string>
+    <string name="ingredient_catalog_load_failed">Couldn't load the catalog</string>
     <string name="ingredient_catalog_empty">Catalog not available</string>
     <string name="ingredient_retry_action">Retry</string>
     <string name="ingredient_unknown">Unknown ingredient</string>

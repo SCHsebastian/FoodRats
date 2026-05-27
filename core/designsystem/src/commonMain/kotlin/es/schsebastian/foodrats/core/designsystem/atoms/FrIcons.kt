@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.materialPath
 import androidx.compose.material3.MaterialTheme
@@ -315,6 +316,58 @@ private val DeleteVector: ImageVector = materialIcon(name = "Filled.Delete") {
     }
 }
 
+// Vendored ChatBubble glyph — material-icons-core has no Filled.ChatBubble. Standard
+// MD "chat_bubble" filled rounded-rectangle speech bubble with a tail at bottom-left.
+private val CommentVector: ImageVector = materialIcon(name = "Filled.Comment") {
+    materialPath {
+        moveTo(20f, 2f)
+        horizontalLineTo(4f)
+        curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+        verticalLineToRelative(18f)
+        lineToRelative(4f, -4f)
+        horizontalLineToRelative(14f)
+        curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+        verticalLineTo(4f)
+        curveToRelative(0f, -1.1f, -0.9f, -2f, -2f, -2f)
+        close()
+    }
+}
+
+// Vendored Group (people) glyph — material-icons-core has no Filled.Group. Standard
+// MD "group" filled glyph: two overlapping head+shoulders silhouettes. Used as the
+// crew/membership mark (e.g. the "no active crew" empty state).
+private val GroupVector: ImageVector = materialIcon(name = "Filled.Group") {
+    materialPath {
+        moveTo(16f, 11f)
+        curveToRelative(1.66f, 0f, 2.99f, -1.34f, 2.99f, -3f)
+        reflectiveCurveTo(17.66f, 5f, 16f, 5f)
+        curveToRelative(-1.66f, 0f, -3f, 1.34f, -3f, 3f)
+        reflectiveCurveToRelative(1.34f, 3f, 3f, 3f)
+        close()
+        moveTo(8f, 11f)
+        curveToRelative(1.66f, 0f, 2.99f, -1.34f, 2.99f, -3f)
+        reflectiveCurveTo(9.66f, 5f, 8f, 5f)
+        curveTo(6.34f, 5f, 5f, 6.34f, 5f, 8f)
+        reflectiveCurveToRelative(1.34f, 3f, 3f, 3f)
+        close()
+        moveTo(8f, 13f)
+        curveToRelative(-2.33f, 0f, -7f, 1.17f, -7f, 3.5f)
+        verticalLineTo(19f)
+        horizontalLineToRelative(14f)
+        verticalLineToRelative(-2.5f)
+        curveToRelative(0f, -2.33f, -4.67f, -3.5f, -7f, -3.5f)
+        close()
+        moveTo(16f, 13f)
+        curveToRelative(-0.29f, 0f, -0.62f, 0.02f, -0.97f, 0.05f)
+        curveToRelative(1.16f, 0.84f, 1.97f, 1.97f, 1.97f, 3.45f)
+        verticalLineTo(19f)
+        horizontalLineToRelative(6f)
+        verticalLineToRelative(-2.5f)
+        curveToRelative(0f, -2.33f, -4.67f, -3.5f, -7f, -3.5f)
+        close()
+    }
+}
+
 // Material `place` (location pin) glyph — vendored because material-icons-extended
 // has no KMP iOS artifact. Standard 24x24 teardrop with a circle hole.
 private val PlaceVector: ImageVector = materialIcon(name = "Filled.Place") {
@@ -334,6 +387,162 @@ private val PlaceVector: ImageVector = materialIcon(name = "Filled.Place") {
     }
 }
 
+// Vendored Person glyph — material-icons-core has no Filled.Person. Standard MD
+// "person" filled glyph: head circle over a shoulders arc. Used for the account row.
+private val PersonVector: ImageVector = materialIcon(name = "Filled.Person") {
+    materialPath {
+        moveTo(12f, 12f)
+        curveToRelative(2.21f, 0f, 4f, -1.79f, 4f, -4f)
+        reflectiveCurveToRelative(-1.79f, -4f, -4f, -4f)
+        reflectiveCurveToRelative(-4f, 1.79f, -4f, 4f)
+        reflectiveCurveToRelative(1.79f, 4f, 4f, 4f)
+        close()
+        moveTo(12f, 14f)
+        curveToRelative(-2.67f, 0f, -8f, 1.34f, -8f, 4f)
+        verticalLineToRelative(2f)
+        horizontalLineToRelative(16f)
+        verticalLineToRelative(-2f)
+        curveToRelative(0f, -2.66f, -5.33f, -4f, -8f, -4f)
+        close()
+    }
+}
+
+// Vendored DarkMode (crescent moon) glyph — used for the theme row.
+private val DarkModeVector: ImageVector = materialIcon(name = "Filled.DarkMode") {
+    materialPath {
+        moveTo(12f, 3f)
+        curveToRelative(-4.97f, 0f, -9f, 4.03f, -9f, 9f)
+        reflectiveCurveToRelative(4.03f, 9f, 9f, 9f)
+        reflectiveCurveToRelative(9f, -4.03f, 9f, -9f)
+        curveToRelative(0f, -0.46f, -0.04f, -0.92f, -0.1f, -1.36f)
+        curveToRelative(-0.98f, 1.37f, -2.58f, 2.26f, -4.4f, 2.26f)
+        curveToRelative(-2.98f, 0f, -5.4f, -2.42f, -5.4f, -5.4f)
+        curveToRelative(0f, -1.81f, 0.89f, -3.42f, 2.26f, -4.4f)
+        curveTo(12.92f, 3.04f, 12.46f, 3f, 12f, 3f)
+        close()
+    }
+}
+
+// Vendored Language (globe) glyph — used for the language row.
+private val LanguageVector: ImageVector = materialIcon(name = "Filled.Language") {
+    materialPath(pathFillType = PathFillType.EvenOdd) {
+        moveTo(11.99f, 2f)
+        curveTo(6.47f, 2f, 2f, 6.48f, 2f, 12f)
+        reflectiveCurveToRelative(4.47f, 10f, 9.99f, 10f)
+        curveTo(17.52f, 22f, 22f, 17.52f, 22f, 12f)
+        reflectiveCurveTo(17.52f, 2f, 11.99f, 2f)
+        close()
+        moveTo(18.92f, 8f)
+        horizontalLineToRelative(-2.95f)
+        curveToRelative(-0.32f, -1.25f, -0.78f, -2.45f, -1.38f, -3.56f)
+        curveToRelative(1.84f, 0.63f, 3.37f, 1.91f, 4.33f, 3.56f)
+        close()
+        moveTo(12f, 4.04f)
+        curveToRelative(0.83f, 1.2f, 1.48f, 2.53f, 1.91f, 3.96f)
+        horizontalLineToRelative(-3.82f)
+        curveToRelative(0.43f, -1.43f, 1.08f, -2.76f, 1.91f, -3.96f)
+        close()
+        moveTo(4.26f, 14f)
+        curveTo(4.1f, 13.36f, 4f, 12.69f, 4f, 12f)
+        reflectiveCurveToRelative(0.1f, -1.36f, 0.26f, -2f)
+        horizontalLineToRelative(3.38f)
+        curveToRelative(-0.08f, 0.66f, -0.14f, 1.32f, -0.14f, 2f)
+        curveToRelative(0f, 0.68f, 0.06f, 1.34f, 0.14f, 2f)
+        horizontalLineTo(4.26f)
+        close()
+        moveTo(5.08f, 16f)
+        horizontalLineToRelative(2.95f)
+        curveToRelative(0.32f, 1.25f, 0.78f, 2.45f, 1.38f, 3.56f)
+        curveToRelative(-1.84f, -0.63f, -3.37f, -1.9f, -4.33f, -3.56f)
+        close()
+        moveTo(8.03f, 8f)
+        horizontalLineTo(5.08f)
+        curveToRelative(0.96f, -1.66f, 2.49f, -2.93f, 4.33f, -3.56f)
+        curveTo(8.81f, 5.55f, 8.35f, 6.75f, 8.03f, 8f)
+        close()
+        moveTo(12f, 19.96f)
+        curveToRelative(-0.83f, -1.2f, -1.48f, -2.53f, -1.91f, -3.96f)
+        horizontalLineToRelative(3.82f)
+        curveToRelative(-0.43f, 1.43f, -1.08f, 2.76f, -1.91f, 3.96f)
+        close()
+        moveTo(14.34f, 14f)
+        horizontalLineTo(9.66f)
+        curveToRelative(-0.09f, -0.66f, -0.16f, -1.32f, -0.16f, -2f)
+        curveToRelative(0f, -0.68f, 0.07f, -1.35f, 0.16f, -2f)
+        horizontalLineToRelative(4.68f)
+        curveToRelative(0.09f, 0.65f, 0.16f, 1.32f, 0.16f, 2f)
+        curveToRelative(0f, 0.68f, -0.07f, 1.34f, -0.16f, 2f)
+        close()
+        moveTo(14.59f, 19.56f)
+        curveToRelative(0.6f, -1.11f, 1.06f, -2.31f, 1.38f, -3.56f)
+        horizontalLineToRelative(2.95f)
+        curveToRelative(-0.96f, 1.65f, -2.49f, 2.93f, -4.33f, 3.56f)
+        close()
+        moveTo(16.36f, 14f)
+        curveToRelative(0.08f, -0.66f, 0.14f, -1.32f, 0.14f, -2f)
+        curveToRelative(0f, -0.68f, -0.06f, -1.34f, -0.14f, -2f)
+        horizontalLineToRelative(3.38f)
+        curveToRelative(0.16f, 0.64f, 0.26f, 1.31f, 0.26f, 2f)
+        reflectiveCurveToRelative(-0.1f, 1.36f, -0.26f, 2f)
+        horizontalLineToRelative(-3.38f)
+        close()
+    }
+}
+
+// Vendored Notifications (bell) glyph — used for the notifications row.
+private val NotificationsVector: ImageVector = materialIcon(name = "Filled.Notifications") {
+    materialPath {
+        moveTo(12f, 22f)
+        curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+        horizontalLineToRelative(-4f)
+        curveToRelative(0f, 1.1f, 0.89f, 2f, 2f, 2f)
+        close()
+        moveTo(18f, 16f)
+        verticalLineToRelative(-5f)
+        curveToRelative(0f, -3.07f, -1.64f, -5.64f, -4.5f, -6.32f)
+        verticalLineTo(4f)
+        curveToRelative(0f, -0.83f, -0.67f, -1.5f, -1.5f, -1.5f)
+        reflectiveCurveToRelative(-1.5f, 0.67f, -1.5f, 1.5f)
+        verticalLineToRelative(0.68f)
+        curveTo(7.63f, 5.36f, 6f, 7.92f, 6f, 11f)
+        verticalLineToRelative(5f)
+        lineToRelative(-2f, 2f)
+        verticalLineToRelative(1f)
+        horizontalLineToRelative(16f)
+        verticalLineToRelative(-1f)
+        lineToRelative(-2f, -2f)
+        close()
+    }
+}
+
+// Vendored Logout glyph — used for the sign-out row (Back arrow was semantically wrong).
+private val LogoutVector: ImageVector = materialIcon(name = "Filled.Logout") {
+    materialPath {
+        moveTo(17f, 7f)
+        lineToRelative(-1.41f, 1.41f)
+        lineTo(18.17f, 11f)
+        horizontalLineTo(8f)
+        verticalLineToRelative(2f)
+        horizontalLineToRelative(10.17f)
+        lineToRelative(-2.58f, 2.58f)
+        lineTo(17f, 17f)
+        lineToRelative(5f, -5f)
+        close()
+        moveTo(4f, 5f)
+        horizontalLineToRelative(8f)
+        verticalLineTo(3f)
+        horizontalLineTo(4f)
+        curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+        verticalLineToRelative(14f)
+        curveToRelative(0f, 1.1f, 0.9f, 2f, 2f, 2f)
+        horizontalLineToRelative(8f)
+        verticalLineToRelative(-2f)
+        horizontalLineTo(4f)
+        verticalLineTo(5f)
+        close()
+    }
+}
+
 object FrIcons {
     val Back: ImageVector          = Icons.Filled.ArrowBack
     val Camera: ImageVector        = PhotoCameraVector
@@ -346,10 +555,19 @@ object FrIcons {
     val Home: ImageVector          = Icons.Filled.Home
     val Stats: ImageVector         = BarChartVector
     val Crown: ImageVector         = CrownVector
+    val Star: ImageVector          = Icons.Filled.Star
     val Flame: ImageVector         = FlameVector
     val Place: ImageVector         = PlaceVector
+    val Comment: ImageVector       = CommentVector
+    val Group: ImageVector         = GroupVector
     val Warning: ImageVector       = WarningVector
     val Delete: ImageVector        = DeleteVector
+    // Profile / settings rows.
+    val Person: ImageVector        = PersonVector
+    val Theme: ImageVector         = DarkModeVector
+    val Language: ImageVector      = LanguageVector
+    val Notifications: ImageVector = NotificationsVector
+    val Logout: ImageVector        = LogoutVector
     // ChevronLeft/Right are in material-icons-extended (no KMP iOS artifact); use
     // KeyboardArrowLeft/Right from material-icons-core automirrored as substitutes.
     val ChevronLeft: ImageVector   = Icons.AutoMirrored.Filled.KeyboardArrowLeft
@@ -374,6 +592,15 @@ private fun FrIconsPreview() {
         "ChevronLeft"   to FrIcons.ChevronLeft,
         "ChevronRight"  to FrIcons.ChevronRight,
         "Place"         to FrIcons.Place,
+        "Comment"       to FrIcons.Comment,
+        "Group"         to FrIcons.Group,
+        "Delete"        to FrIcons.Delete,
+        "Warning"       to FrIcons.Warning,
+        "Person"        to FrIcons.Person,
+        "Theme"         to FrIcons.Theme,
+        "Language"      to FrIcons.Language,
+        "Notifications" to FrIcons.Notifications,
+        "Logout"        to FrIcons.Logout,
     )
     FrPreviewLightDark {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -37,9 +39,14 @@ fun NotificationPermissionScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            FrText(text = resolve(NotificationStringKey.PermissionTitle))
+            FrText(
+                text = resolve(NotificationStringKey.PermissionTitle),
+                style = MaterialTheme.typography.headlineSmall,
+            )
             FrText(
                 text = resolve(NotificationStringKey.PermissionBody),
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = Spacing.md),
             )
             if (state.current == NotificationPermission.DeniedForever) {
@@ -63,6 +70,12 @@ fun NotificationPermissionScreen(
                 variant = FrButtonVariant.Ghost,
                 modifier = Modifier.padding(top = Spacing.sm),
             )
+            state.error?.let { err ->
+                FrErrorBanner(
+                    text = resolve(err),
+                    modifier = Modifier.padding(top = Spacing.md),
+                )
+            }
         }
     }
 }

@@ -63,7 +63,7 @@
     <string name="stats_empty_subtext">Post a meal to get the numbers rolling.</string>
     <string name="stats_error_no_active_crew">Pick a crew to see its stats.</string>
     <string name="stats_error_not_signed_in">You need to sign in.</string>
-    <string name="stats_error_unauthorized">You aren\'t a member of this crew.</string>
+    <string name="stats_error_unauthorized">You aren't a member of this crew.</string>
     <string name="stats_error_crew_not_found">Crew not found.</string>
-    <string name="stats_error_unavailable">Couldn\'t load stats. Try again.</string>
+    <string name="stats_error_unavailable">Couldn't load stats. Try again.</string>
 </resources>

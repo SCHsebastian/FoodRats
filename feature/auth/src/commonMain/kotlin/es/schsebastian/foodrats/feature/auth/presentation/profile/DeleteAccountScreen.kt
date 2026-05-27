@@ -11,9 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,8 +24,10 @@ import androidx.compose.ui.Modifier
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
@@ -145,7 +145,7 @@ internal fun DeleteAccountScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
-                    CircularProgressIndicator(modifier = Modifier.size(Sizes.iconSm))
+                    FrProgressIndicator(modifier = Modifier.size(Sizes.iconSm))
                     FrText(
                         text = resolve(AuthStringKey.DeleteAccountInFlight),
                         style = MaterialTheme.typography.bodySmall,
@@ -156,24 +156,14 @@ internal fun DeleteAccountScreen(
     }
 
     if (state.deleteDialogOpen) {
-        AlertDialog(
-            onDismissRequest = onDialogDismiss,
-            title = { Text(resolve(AuthStringKey.DeleteAccountDialogTitle)) },
-            text = { Text(resolve(AuthStringKey.DeleteAccountDialogBody)) },
-            confirmButton = {
-                FrButton(
-                    label = resolve(AuthStringKey.DeleteAccountDialogConfirm),
-                    onClick = onDialogConfirm,
-                    variant = FrButtonVariant.Danger,
-                )
-            },
-            dismissButton = {
-                FrButton(
-                    label = resolve(AuthStringKey.DeleteAccountDialogCancel),
-                    onClick = onDialogDismiss,
-                    variant = FrButtonVariant.Ghost,
-                )
-            },
+        FrConfirmDialog(
+            title = resolve(AuthStringKey.DeleteAccountDialogTitle),
+            message = resolve(AuthStringKey.DeleteAccountDialogBody),
+            confirmLabel = resolve(AuthStringKey.DeleteAccountDialogConfirm),
+            dismissLabel = resolve(AuthStringKey.DeleteAccountDialogCancel),
+            onConfirm = onDialogConfirm,
+            onDismiss = onDialogDismiss,
+            destructive = true,
         )
     }
 }

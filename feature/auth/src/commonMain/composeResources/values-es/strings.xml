@@ -26,6 +26,7 @@
     <string name="auth_error_email_in_use">Ese email ya está en uso.</string>
     <string name="auth_error_wrong_credentials">Email o contraseña incorrectos.</string>
     <string name="auth_profile_title">Ajustes</string>
+    <string name="auth_profile_back_cta">Atrás</string>
     <string name="auth_profile_identity_section">General</string>
     <string name="auth_profile_preferences_section">Preferencias</string>
     <string name="auth_profile_danger_zone_section">Zona peligrosa</string>

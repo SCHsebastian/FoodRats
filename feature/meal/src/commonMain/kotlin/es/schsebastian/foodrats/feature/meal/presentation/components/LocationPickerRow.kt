@@ -26,10 +26,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
@@ -121,7 +122,7 @@ private fun Pill(
     } else 0f
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(Radius.pill))
             .background(background)
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
@@ -131,7 +132,7 @@ private fun Pill(
         FrIcon(
             image = iconOverride ?: FrIcons.Place,
             contentDescription = null,
-            modifier = Modifier.size(18.dp).alpha(iconAlpha).rotate(rotation),
+            modifier = Modifier.size(Sizes.iconSm).alpha(iconAlpha).rotate(rotation),
         )
         FrText(text = label)
     }

@@ -37,6 +37,7 @@ class FeedViewModel(
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
     FeedState(
         day = FeedDay.today(clock.now().toLocalDateTime(zone).date, zone),
+        today = clock.now().toLocalDateTime(zone).date,
         canGoPrev = true,
     ),
 ) {

@@ -1,7 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.presentation.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,10 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
@@ -32,9 +31,8 @@ fun FrRoastCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .border(1.dp, semantic.warning.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.md))
+            .background(semantic.warning)
             .padding(Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -50,12 +48,12 @@ fun FrRoastCard(
             FrText(
                 text = resolve(StatsStringKey.MostCriticizedTitle),
                 style = MaterialTheme.typography.labelMedium,
-                color = semantic.warning,
+                color = semantic.onWarning.copy(alpha = 0.85f),
             )
             FrText(
                 text = award.displayName,
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = semantic.onWarning,
             )
             FrText(
                 text = resolve(
@@ -63,7 +61,7 @@ fun FrRoastCard(
                     formatScore(award.averageScore.toFloat()),
                 ),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = semantic.onWarning.copy(alpha = 0.9f),
             )
         }
     }

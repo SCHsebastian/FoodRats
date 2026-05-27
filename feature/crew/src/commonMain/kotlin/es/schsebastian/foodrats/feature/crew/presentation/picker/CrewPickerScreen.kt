@@ -56,7 +56,7 @@ fun CrewPickerScreen(
                 // === Hero ===
                 FrLogo(size = 96.dp)
                 FrText(
-                    text = "FoodRats",
+                    text = resolve(CrewStringKey.PickerBrandName),
                     style = MaterialTheme.typography.headlineSmall,
                 )
                 FrText(
@@ -75,7 +75,7 @@ fun CrewPickerScreen(
                     ) {
                         state.crews.forEach { crew ->
                             FrButton(
-                                label = "${crew.name} (${crew.size}/8)",
+                                label = resolve(CrewStringKey.PickerCrewButton, crew.name, crew.size),
                                 onClick = { vm.onIntent(CrewPickerIntent.PickCrew(crew.id)) },
                                 variant = FrButtonVariant.Secondary,
                                 modifier = Modifier.fillMaxWidth(),

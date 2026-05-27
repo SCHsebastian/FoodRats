@@ -14,9 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
@@ -30,7 +31,7 @@ fun FrMostVotedPlate(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.md))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -40,8 +41,8 @@ fun FrMostVotedPlate(
             model = award.photoUrl,
             contentDescription = null,
             modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(12.dp)),
+                .size(Sizes.avatarLg)
+                .clip(RoundedCornerShape(Radius.sm)),
             contentScale = ContentScale.Crop,
         )
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {

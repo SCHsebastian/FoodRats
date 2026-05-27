@@ -19,18 +19,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -38,12 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
@@ -58,59 +61,90 @@ fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) 
         vm.effects.collect { if (it is SignInEffect.SignedIn) onSignedIn() }
     }
     FrScreenScaffold {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(Spacing.xl))
-            HeroBadge()
-            Spacer(Modifier.height(Spacing.lg))
-            FrText(
-                text = resolve(AuthStringKey.SignInTitle),
-                style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Black),
-            )
-            Spacer(Modifier.height(Spacing.sm))
-            FrText(
-                text = resolve(AuthStringKey.SignInSubtitle),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Spacer(Modifier.height(Spacing.lg))
-            FeatureHighlights()
-
-            Spacer(Modifier.height(Spacing.lg))
-            EmailPasswordForm(state = state, onIntent = vm::onIntent)
-
-            Spacer(Modifier.height(Spacing.md))
-            OrDivider()
-            Spacer(Modifier.height(Spacing.md))
-            FrButton(
-                label = resolve(AuthStringKey.ContinueWithGoogle),
-                onClick = { vm.onIntent(SignInIntent.ContinueWithGoogle) },
-                variant = FrButtonVariant.Secondary,
-                enabled = !state.isLoading,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-            )
-
-            Spacer(Modifier.height(Spacing.sm))
-            ToggleModeLink(state.mode, onClick = { vm.onIntent(SignInIntent.ToggleMode) })
-
-            state.error?.let { err ->
+        // Subtle ember + olive radial washes — the design-system "worked example" for
+        // landing/sign-in accents. Drawn on a fixed parent so they don't scroll with the form.
+        Box(modifier = Modifier.fillMaxSize().signInBackdrop()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Spacer(Modifier.height(Spacing.xl))
+                HeroBadge()
+                Spacer(Modifier.height(Spacing.lg))
+                FrText(
+                    text = resolve(AuthStringKey.SignInTitle),
+                    style = MaterialTheme.typography.displaySmall,
+                )
                 Spacer(Modifier.height(Spacing.sm))
-                FrErrorBanner(text = resolve(err.toStringKey()))
-            }
+                FrText(
+                    text = resolve(AuthStringKey.SignInSubtitle),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
 
-            Spacer(Modifier.weight(1f, fill = false))
-            Spacer(Modifier.height(Spacing.lg))
-            FrText(
-                text = resolve(AuthStringKey.Footer),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+                Spacer(Modifier.height(Spacing.lg))
+                FeatureHighlights()
+
+                Spacer(Modifier.height(Spacing.lg))
+                EmailPasswordForm(state = state, onIntent = vm::onIntent)
+
+                Spacer(Modifier.height(Spacing.md))
+                OrDivider()
+                Spacer(Modifier.height(Spacing.md))
+                FrButton(
+                    label = resolve(AuthStringKey.ContinueWithGoogle),
+                    onClick = { vm.onIntent(SignInIntent.ContinueWithGoogle) },
+                    variant = FrButtonVariant.Secondary,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                )
+
+                Spacer(Modifier.height(Spacing.sm))
+                ToggleModeLink(state.mode, onClick = { vm.onIntent(SignInIntent.ToggleMode) })
+
+                state.error?.let { err ->
+                    Spacer(Modifier.height(Spacing.sm))
+                    FrErrorBanner(text = resolve(err.toStringKey()))
+                }
+
+                Spacer(Modifier.weight(1f, fill = false))
+                Spacer(Modifier.height(Spacing.lg))
+                FrText(
+                    text = resolve(AuthStringKey.Footer),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Two soft radial gradients — ember from the top-trailing corner, olive from the bottom-leading
+ * corner, each at 8% opacity over the concrete surface. Density-independent: the gradients are
+ * rebuilt against the actual draw size and painted behind content.
+ */
+@Composable
+private fun Modifier.signInBackdrop(): Modifier {
+    val ember = MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f)
+    val olive = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+    return this.drawWithCache {
+        val emberWash = Brush.radialGradient(
+            colors = listOf(ember, Color.Transparent),
+            center = Offset(size.width, 0f),
+            radius = size.maxDimension * 0.7f,
+        )
+        val oliveWash = Brush.radialGradient(
+            colors = listOf(olive, Color.Transparent),
+            center = Offset(0f, size.height),
+            radius = size.maxDimension * 0.7f,
+        )
+        onDrawBehind {
+            drawRect(emberWash)
+            drawRect(oliveWash)
         }
     }
 }
@@ -120,7 +154,7 @@ private fun HeroBadge() {
     Box(
         modifier = Modifier
             .size(96.dp)
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(Radius.xl))
             .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center,
     ) {
@@ -182,35 +216,30 @@ private fun EmailPasswordForm(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        // Auth-specific use of OutlinedTextField directly: FrTextField in the design system
-        // doesn't expose keyboardOptions / visualTransformation yet, and adding them is its
-        // own design-system PR.
-        OutlinedTextField(
+        FrTextField(
             value = state.email,
             onValueChange = { onIntent(SignInIntent.UpdateEmail(it)) },
-            label = { Text(resolve(AuthStringKey.FieldEmail)) },
+            label = resolve(AuthStringKey.FieldEmail),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email,
                 imeAction = ImeAction.Next,
             ),
-            singleLine = true,
             isError = state.emailError != null,
-            supportingText = state.emailError?.let { err -> { Text(resolve((err as AuthError).toStringKey())) } },
+            supportingText = state.emailError?.let { resolve((it as AuthError).toStringKey()) },
             enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
+        FrTextField(
             value = state.password,
             onValueChange = { onIntent(SignInIntent.UpdatePassword(it)) },
-            label = { Text(resolve(AuthStringKey.FieldPassword)) },
+            label = resolve(AuthStringKey.FieldPassword),
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
             ),
-            singleLine = true,
             isError = state.passwordError != null,
-            supportingText = state.passwordError?.let { err -> { Text(resolve((err as AuthError).toStringKey())) } },
+            supportingText = state.passwordError?.let { resolve((it as AuthError).toStringKey()) },
             enabled = !state.isLoading,
             modifier = Modifier.fillMaxWidth(),
         )
@@ -237,7 +266,7 @@ private fun OrDivider() {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        HorizontalDivider(
+        FrDivider(
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.outlineVariant,
         )
@@ -248,7 +277,7 @@ private fun OrDivider() {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.width(Spacing.md))
-        HorizontalDivider(
+        FrDivider(
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.outlineVariant,
         )
