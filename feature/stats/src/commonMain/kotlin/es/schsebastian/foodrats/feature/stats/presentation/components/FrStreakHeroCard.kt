@@ -22,6 +22,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -43,7 +44,7 @@ fun FrStreakHeroCard(
         modifier = modifier
             .fillMaxWidth()
             .height(120.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(Radius.lg))
             .background(semantic.streakHot),
     ) {
         Row(

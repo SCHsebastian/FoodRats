@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSparkline
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.WindowStats
@@ -43,7 +44,7 @@ fun FrWindowSummaryCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(Radius.lg))
             .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(Spacing.md),
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),

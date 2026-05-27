@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
@@ -47,7 +48,7 @@ fun DailyEmoteBadge(emote: String, modifier: Modifier = Modifier) {
     FrText(
         text = emote,
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(Radius.pill))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .padding(horizontal = Spacing.md, vertical = Spacing.xs)
             .scale(scale)

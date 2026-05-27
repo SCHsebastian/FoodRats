@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
@@ -121,7 +122,7 @@ private fun Pill(
     } else 0f
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(Radius.pill))
             .background(background)
             .clickable(onClick = onClick)
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),

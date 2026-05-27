@@ -12,10 +12,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
@@ -39,7 +39,7 @@ fun FrCookAwardCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.md))
             .background(background)
             .padding(Spacing.md),
         verticalAlignment = Alignment.CenterVertically,
@@ -91,7 +91,7 @@ fun FrCookAwardCard(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(Radius.md))
             .background(background)
             .padding(Spacing.md),
         verticalAlignment = Alignment.CenterVertically,

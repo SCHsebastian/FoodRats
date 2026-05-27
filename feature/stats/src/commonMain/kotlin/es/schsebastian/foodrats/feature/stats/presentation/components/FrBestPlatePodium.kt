@@ -21,11 +21,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
@@ -46,7 +46,7 @@ fun FrBestPlatePodium(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1.6f)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(Radius.lg))
             .background(MaterialTheme.colorScheme.surfaceVariant),
     ) {
         AsyncImage(
