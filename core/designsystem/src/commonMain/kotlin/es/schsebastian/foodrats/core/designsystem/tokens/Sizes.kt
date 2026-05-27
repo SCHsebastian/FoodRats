@@ -25,6 +25,10 @@ object Sizes {
     // share the same footprint. Pairs with FrTextStyles.statNumberSmall.
     val scoreBadge      = 32.dp
 
+    // Star-shaped score badge overlaid on the feed thumbnail; a touch larger than
+    // scoreBadge so the centered numeral stays legible inside the star's silhouette.
+    val scoreStar       = 40.dp
+
     // Per-segment cell for the FrScorePicker (visual). The tap target stays
     // 48dp via Modifier.minimumInteractiveComponentSize.
     val scoreCell       = 40.dp

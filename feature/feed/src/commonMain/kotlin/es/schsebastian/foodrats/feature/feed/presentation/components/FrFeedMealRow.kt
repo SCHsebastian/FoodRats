@@ -19,12 +19,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
-import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
@@ -82,20 +86,13 @@ fun FrFeedMealRow(
                 }
                 if (avg != null && avgRounded != null && ui.ratingCount > 0) {
                     val rounded = round(avg).toInt().coerceIn(1, 10)
-                    // Surface-coloured ring + slight outset lifts the badge clear of the photo.
-                    Box(
+                    StarScoreBadge(
+                        score = rounded,
+                        contentDescription = resolve(FeedStringKey.RatingSummary, avgRounded, ui.ratingCount),
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .offset(x = Spacing.xs, y = Spacing.xs)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surface)
-                            .padding(Spacing.xxs),
-                    ) {
-                        FrScoreBadge(
-                            score = rounded,
-                            contentDescription = resolve(FeedStringKey.RatingSummary, avgRounded, ui.ratingCount),
-                        )
-                    }
+                            .offset(x = Spacing.xs, y = Spacing.xs),
+                    )
                 }
             }
 
@@ -178,6 +175,44 @@ fun FrFeedMealRow(
                 }
             }
         }
+    }
+}
+
+/**
+ * Star-shaped score badge overlaid on the feed thumbnail (replaces the old circular badge):
+ * a celebration-tinted star with the rounded score centred on it, backed by a surface-coloured
+ * star halo so it reads on any photo.
+ */
+@Composable
+private fun StarScoreBadge(
+    score: Int,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    val semantic = LocalFrSemanticColors.current
+    Box(
+        modifier = modifier
+            .size(Sizes.scoreStar)
+            .semantics(mergeDescendants = true) { this.contentDescription = contentDescription },
+        contentAlignment = Alignment.Center,
+    ) {
+        FrIcon(
+            image = FrIcons.Star,
+            tint = MaterialTheme.colorScheme.surface,
+            modifier = Modifier.size(Sizes.scoreStar),
+        )
+        FrIcon(
+            image = FrIcons.Star,
+            tint = semantic.celebration,
+            modifier = Modifier.size(Sizes.scoreStar - Spacing.xs),
+        )
+        FrText(
+            text = score.toString(),
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = semantic.onCelebration,
+            // Nudge up to the star's optical centre — the lower points pull weight down.
+            modifier = Modifier.offset(y = -Spacing.xxs),
+        )
     }
 }
 
