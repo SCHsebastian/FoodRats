@@ -9,6 +9,10 @@ object Sizes {
     val iconLg          = 32.dp
     val shutter         = 72.dp
     val streakBadge     = 56.dp
+
+    // Raised ember capture button in the floating bottom-bar capsule; pokes above the
+    // capsule's top edge by Spacing.lg. Larger than touchTarget so it reads as the primary action.
+    val captureButton   = 56.dp
     val mealCardImage   = 220.dp
 
     // Square thumbnail on the feed list row (FrFeedMealRow); pairs with the

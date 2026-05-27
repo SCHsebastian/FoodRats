@@ -27,6 +27,7 @@ import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCas
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealViewModel
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateViewModel
+import es.schsebastian.foodrats.feature.meal.presentation.nudge.CaptureNudgeViewModel
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModelOf
@@ -99,4 +100,5 @@ val mealModule = module {
 
     viewModelOf(::CaptureMealViewModel)
     viewModelOf(::ComposePlateViewModel)
+    viewModelOf(::CaptureNudgeViewModel)
 }

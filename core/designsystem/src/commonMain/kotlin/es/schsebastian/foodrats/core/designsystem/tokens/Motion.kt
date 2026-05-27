@@ -18,6 +18,9 @@ object Motion {
     const val medium = 320
     const val long = 480
 
+    /** One cycle of a slow, looping attention pulse (e.g. the capture nudge ring). */
+    const val pulse = 1800
+
     /** Default standard easing used for most enter/exit transitions. */
     val Standard: Easing = FastOutSlowInEasing
 
