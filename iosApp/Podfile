@@ -14,5 +14,8 @@
 platform :ios, '18.2'
 
 target 'MealAiVision' do
-  pod 'MediaPipeTasksVision', '~> 0.10.14'
+  # Exact-pinned to match the Android catalog (libs.versions.mediapipeTasksVision).
+  # 0.10.35 ships 16-KB-page-aligned binaries; keep both platforms in lockstep.
+  # After changing this version, run `pod install` (in iosApp/) to refresh Podfile.lock.
+  pod 'MediaPipeTasksVision', '0.10.35'
 end
