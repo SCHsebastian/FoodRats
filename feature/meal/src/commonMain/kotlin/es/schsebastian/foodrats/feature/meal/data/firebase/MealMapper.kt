@@ -44,8 +44,9 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             description = desc,
             publishedAt = Instant.fromEpochMilliseconds(publishedAtEpochMs ?: 0L),
             coordinates = coords,
+            // A published Meal carries only the user-confirmed ingredients; the raw
+            // detection was never persisted, so `detectedIngredients` stays empty here.
             ingredients = ingredients.toSlugs(),
-            detectedIngredients = detectedIngredients.toSlugs(),
             classifierVersion = classifierVersion,
         )
     )
@@ -71,7 +72,6 @@ fun MealDto.Companion.from(meal: Meal): MealDto = MealDto(
     longitude = meal.coordinates?.longitude,
     publishedAtEpochMs = meal.publishedAt.toEpochMilliseconds(),
     ingredients = meal.ingredients.map { it.value },
-    detectedIngredients = meal.detectedIngredients.map { it.value },
     classifierVersion = meal.classifierVersion,
 )
 

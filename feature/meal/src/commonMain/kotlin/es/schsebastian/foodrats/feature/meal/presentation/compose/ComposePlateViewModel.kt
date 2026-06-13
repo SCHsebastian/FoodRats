@@ -79,12 +79,14 @@ class ComposePlateViewModel(
         viewModelScope.launch {
             when (val r = classifyPlate(bytes)) {
                 is Result.Ok -> {
+                    // Detected ≠ confirmed: stamp ONLY the detected set. The confirmed
+                    // `draftIngredients` stays driven by observeDraft and remains empty
+                    // until the user confirms in the picker — detections are just its seed.
                     updateDraft(UpdateMealDraftCommand.SetDetected(r.value.ingredients, r.value.version))
                     update {
                         it.copy(
                             classifying = false,
                             detectedIngredients = r.value.ingredients,
-                            draftIngredients = r.value.ingredients,
                         )
                     }
                 }

@@ -139,9 +139,7 @@ internal class FirebaseMealRepository(
                     ?: return@runCatching Result.failure(MealError.Validation.NoPhoto)
                 val slot = draft.slot
                     ?: return@runCatching Result.failure(MealError.Publish.NoSlotSelected)
-                if (draft.ingredients.size > MAX_INGREDIENTS ||
-                    draft.detectedIngredients.size > MAX_INGREDIENTS
-                ) {
+                if (draft.ingredients.size > MAX_INGREDIENTS) {
                     return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
                 }
                 val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
@@ -161,8 +159,10 @@ internal class FirebaseMealRepository(
                     latitude = draft.coordinates?.latitude,
                     longitude = draft.coordinates?.longitude,
                     publishedAtEpochMs = clock.now().toEpochMilliseconds(),
+                    // Only the user-confirmed ingredients are persisted. The raw
+                    // classifier detection (`draft.detectedIngredients`) is a compose-time
+                    // picker seed and is intentionally NOT written to the Meal.
                     ingredients = draft.ingredients.map { it.value },
-                    detectedIngredients = draft.detectedIngredients.map { it.value },
                     classifierVersion = draft.classifierVersion,
                 )
                 firestore.write(dto, mealId.value)

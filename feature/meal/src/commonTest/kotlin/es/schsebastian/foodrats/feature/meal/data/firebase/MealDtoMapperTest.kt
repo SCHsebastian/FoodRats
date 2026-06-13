@@ -38,16 +38,26 @@ class MealDtoMapperTest {
         publishedAtEpochMs = 1_731_000_000_000,
     )
 
-    @Test fun round_trips_all_new_fields() {
+    @Test fun round_trips_confirmed_ingredients_and_version() {
         val meal = baseMeal().copy(
             ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!),
-            detectedIngredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!),
             classifierVersion = "food101-v1",
         )
         val back = (MealDto.from(meal).toDomain() as Result.Ok).value
         assertEquals(meal.ingredients, back.ingredients)
-        assertEquals(meal.detectedIngredients, back.detectedIngredients)
         assertEquals("food101-v1", back.classifierVersion)
+    }
+
+    @Test fun detected_ingredients_are_not_persisted() {
+        // The raw classifier detection is a compose-time picker seed only; it must
+        // never survive the DTO round-trip onto a published Meal.
+        val meal = baseMeal().copy(
+            ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!),
+            detectedIngredients = listOf(IngredientSlug.of("cheese").getOrNull()!!, IngredientSlug.of("bacon").getOrNull()!!),
+        )
+        val back = (MealDto.from(meal).toDomain() as Result.Ok).value
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), back.ingredients)
+        assertTrue(back.detectedIngredients.isEmpty())
     }
 
     @Test fun preserves_unknown_slugs() {

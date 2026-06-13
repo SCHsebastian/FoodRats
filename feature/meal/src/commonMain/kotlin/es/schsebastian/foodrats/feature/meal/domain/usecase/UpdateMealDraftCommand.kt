@@ -16,9 +16,11 @@ sealed interface UpdateMealDraftCommand {
     data class SetCoordinates(val coordinates: Coordinates?) : UpdateMealDraftCommand
 
     /**
-     * Records a fresh classifier run: seeds both the detected set and the
-     * (user-editable) selected set, overwriting any prior manual edits, and
-     * stamps the classifier version. Issued once per captured photo.
+     * Records a fresh classifier run: overwrites the detected set and stamps the
+     * classifier version. Issued once per captured photo. Does NOT touch the
+     * user-confirmed `ingredients` list — the detected set is only the ingredient
+     * picker's initial selection; confirmation is the user's explicit act,
+     * recorded by [SetIngredients].
      */
     data class SetDetected(
         val detected: List<IngredientSlug>,

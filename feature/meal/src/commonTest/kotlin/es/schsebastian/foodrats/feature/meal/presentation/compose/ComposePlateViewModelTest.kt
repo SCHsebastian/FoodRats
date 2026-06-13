@@ -83,7 +83,7 @@ class ComposePlateViewModelTest {
         zone = zone,
     )
 
-    @Test fun on_photo_classified_populates_detected_and_draft() = runTest {
+    @Test fun on_photo_classified_seeds_detected_only_not_confirmed() = runTest {
         val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
         val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
 
@@ -93,10 +93,13 @@ class ComposePlateViewModelTest {
             val st = expectMostRecentItem()
             assertFalse(st.classifying)
             assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), st.detectedIngredients)
-            assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), st.draftIngredients)
+            // Detected ≠ confirmed: classification must NOT populate the confirmed list.
+            assertEquals(emptyList(), st.draftIngredients)
         }
-        // SetDetected persisted into the draft.
-        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), repo.observeDraft().first()?.ingredients)
+        // SetDetected stamps the detected set only; the user-confirmed `ingredients` stays empty.
+        val draft = repo.observeDraft().first()!!
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), draft.detectedIngredients)
+        assertEquals(emptyList(), draft.ingredients)
     }
 
     @Test fun classifier_failure_surfaces_error_and_keeps_canContinue() = runTest {
@@ -136,8 +139,10 @@ class ComposePlateViewModelTest {
 
         vm.state.test {
             val st = expectMostRecentItem()
+            // Re-capture overwrites the detected seed...
             assertEquals(listOf(IngredientSlug.of("lettuce").getOrNull()!!, IngredientSlug.of("olive").getOrNull()!!), st.detectedIngredients)
-            assertEquals(st.detectedIngredients, st.draftIngredients)
+            // ...but the user's confirmed selection is left untouched (detected ≠ confirmed).
+            assertEquals(listOf(IngredientSlug.of("only-one").getOrNull()!!), st.draftIngredients)
         }
     }
 

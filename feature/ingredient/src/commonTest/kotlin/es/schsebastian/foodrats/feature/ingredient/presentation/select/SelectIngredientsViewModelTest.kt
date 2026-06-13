@@ -79,6 +79,38 @@ class SelectIngredientsViewModelTest {
         }
     }
 
+    @Test fun first_load_seeds_selection_from_detections_when_nothing_confirmed() = runTest {
+        // No confirmed selection yet → the picker pre-checks the detections so
+        // confirmation is a real action. The detected set is still exposed as detected.
+        val port = FakeDraftPort(
+            DraftIngredients(
+                selected = emptyList(),
+                detected = listOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!),
+            ),
+        )
+        val vm = SelectIngredientsViewModel(catalogUseCase((1..3).map { veg("ing_$it") }), port)
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertEquals(setOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!), st.selected)
+            assertEquals(setOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!), st.detected)
+        }
+    }
+
+    @Test fun reentering_with_a_confirmed_selection_does_not_get_clobbered_by_detections() = runTest {
+        // The user previously confirmed only ing_1 (a subset of the detections).
+        // Re-entering the picker must keep that selection, never re-seed from detected.
+        val port = FakeDraftPort(
+            DraftIngredients(
+                selected = listOf(IngredientSlug.of("ing_1").getOrNull()!!),
+                detected = listOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!, IngredientSlug.of("ing_3").getOrNull()!!),
+            ),
+        )
+        val vm = SelectIngredientsViewModel(catalogUseCase((1..3).map { veg("ing_$it") }), port)
+        vm.state.test {
+            assertEquals(setOf(IngredientSlug.of("ing_1").getOrNull()!!), expectMostRecentItem().selected)
+        }
+    }
+
     private fun veg(slug: String) = Ingredient(IngredientSlug.of(slug).getOrNull()!!, slug, IngredientCategory.Vegetable)
 
     private fun catalogUseCase(catalog: List<Ingredient>) = ObserveCatalogUseCase(

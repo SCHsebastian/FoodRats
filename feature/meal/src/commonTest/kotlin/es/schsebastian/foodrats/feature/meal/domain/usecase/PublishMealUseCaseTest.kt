@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.meal.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -139,5 +141,43 @@ class PublishMealUseCaseTest {
         val result = useCase(draft)
 
         assertEquals(Result.failure(MealError.Publish.NoSlotSelected), result)
+    }
+
+    @Test
+    fun publishes_no_ingredients_when_user_confirms_none_despite_detections() = runTest {
+        // Detected ≠ confirmed: AI found ingredients but the user confirmed nothing,
+        // so the published meal must record NO ingredients (never the detections).
+        val clock = FixedClock(Instant.parse("2026-05-16T12:00:00Z"))
+        val today = MealDay.today(clock, zone)
+        val draft = draftForDay(today).copy(
+            detectedIngredients = listOf(IngredientSlug.of("bacon").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!),
+            ingredients = emptyList(),
+        )
+        val repo = FakeMealRepository()
+        val useCase = PublishMealUseCase(repo, clock, zone)
+
+        val result = useCase(draft)
+
+        assertTrue(result is Result.Ok)
+        assertEquals(emptyList(), repo.publishedDrafts.single().ingredients)
+    }
+
+    @Test
+    fun publishes_exactly_the_confirmed_subset_not_the_union_with_detections() = runTest {
+        // The user confirmed a subset of the detections; the published meal records
+        // exactly that subset — not the union of confirmed + detected.
+        val clock = FixedClock(Instant.parse("2026-05-16T12:00:00Z"))
+        val today = MealDay.today(clock, zone)
+        val draft = draftForDay(today).copy(
+            detectedIngredients = listOf(IngredientSlug.of("bacon").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!, IngredientSlug.of("egg").getOrNull()!!),
+            ingredients = listOf(IngredientSlug.of("egg").getOrNull()!!),
+        )
+        val repo = FakeMealRepository()
+        val useCase = PublishMealUseCase(repo, clock, zone)
+
+        val result = useCase(draft)
+
+        assertTrue(result is Result.Ok)
+        assertEquals(listOf(IngredientSlug.of("egg").getOrNull()!!), repo.publishedDrafts.single().ingredients)
     }
 }

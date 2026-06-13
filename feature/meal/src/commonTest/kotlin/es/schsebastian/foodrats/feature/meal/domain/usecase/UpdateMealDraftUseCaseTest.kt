@@ -35,12 +35,14 @@ class UpdateMealDraftUseCaseTest {
         return UpdateMealDraftUseCase(repo) to repo
     }
 
-    @Test fun setDetected_writes_all_three_fields() = runTest {
+    @Test fun setDetected_seeds_detected_and_version_only_never_confirmed() = runTest {
+        // Detected ≠ confirmed: a classifier run must NOT stamp the user-confirmed
+        // `ingredients` list (that's SetIngredients' job). It only seeds `detectedIngredients`.
         val (update, repo) = setup(baseDraft())
         update(UpdateMealDraftCommand.SetDetected(listOf(IngredientSlug.of("tomato").getOrNull()!!), "food101-v1"))
         val updated = repo.observeDraft().first()!!
         assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), updated.detectedIngredients)
-        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), updated.ingredients)
+        assertEquals(emptyList(), updated.ingredients)
         assertEquals("food101-v1", updated.classifierVersion)
     }
 
