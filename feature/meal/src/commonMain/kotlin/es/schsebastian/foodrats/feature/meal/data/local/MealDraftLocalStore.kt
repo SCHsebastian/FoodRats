@@ -12,6 +12,7 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import kotlin.io.encoding.Base64
@@ -76,8 +77,8 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             description = desc,
             slot = slot?.let(MealSlot::fromKey),
             coordinates = coords,
-            ingredients = ingredients.mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() },
-            detectedIngredients = detectedIngredients.mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() },
+            ingredients = ingredients.mapNotNull { IngredientSlug.of(it).getOrNull() },
+            detectedIngredients = detectedIngredients.mapNotNull { IngredientSlug.of(it).getOrNull() },
             classifierVersion = classifierVersion,
         )
     }

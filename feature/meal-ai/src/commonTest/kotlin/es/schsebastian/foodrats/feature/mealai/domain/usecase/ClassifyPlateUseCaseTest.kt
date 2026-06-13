@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.DishLabel
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlinx.coroutines.flow.flowOf
@@ -16,10 +17,10 @@ import kotlin.test.assertTrue
 class ClassifyPlateUseCaseTest {
     @Test fun returns_slugs_for_top_dish_above_threshold() = runTest {
         val classifier = FakeClassifier(Result.Ok(listOf(DishLabel("lasagna", 0.85f))))
-        val port = FakeReadPort(suggestions = mapOf("lasagna" to listOf(IngredientSlug("pasta"))))
+        val port = FakeReadPort(suggestions = mapOf("lasagna" to listOf(IngredientSlug.of("pasta").getOrNull()!!)))
         val result = ClassifyPlateUseCase(classifier, port)(ByteArray(0))
         assertTrue(result is Result.Ok)
-        assertEquals(listOf(IngredientSlug("pasta")), result.value.slugs)
+        assertEquals(listOf(IngredientSlug.of("pasta").getOrNull()!!), result.value.slugs)
         assertEquals("lasagna", result.value.dishSlug)
     }
 

@@ -1,12 +1,26 @@
 package es.schsebastian.foodrats.core.domain.meal
 
+import es.schsebastian.foodrats.core.domain.result.Result
 import kotlin.jvm.JvmInline
 
 @JvmInline
-value class IngredientSlug(val value: String) {
-    init {
-        require(value.isNotBlank()) { "IngredientSlug cannot be blank" }
-        require(value.length <= 64) { "IngredientSlug too long: ${value.length}" }
+value class IngredientSlug internal constructor(val value: String) {
+    companion object {
+        const val MAX_LEN = 64
+
+        /**
+         * Validating factory — the only public way to build an [IngredientSlug].
+         * Blank → [MealValueObjectError.IngredientSlugBlank]; over [MAX_LEN] chars →
+         * [MealValueObjectError.IngredientSlugTooLong]. Mirrors [DishName.of].
+         */
+        fun of(raw: String): Result<IngredientSlug, MealValueObjectError> {
+            val trimmed = raw.trim()
+            return when {
+                trimmed.isEmpty()        -> Result.failure(MealValueObjectError.IngredientSlugBlank)
+                trimmed.length > MAX_LEN -> Result.failure(MealValueObjectError.IngredientSlugTooLong)
+                else                     -> Result.success(IngredientSlug(trimmed))
+            }
+        }
     }
 }
 

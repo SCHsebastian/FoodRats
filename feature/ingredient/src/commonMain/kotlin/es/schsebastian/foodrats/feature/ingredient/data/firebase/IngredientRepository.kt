@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.feature.ingredient.data.local.CatalogCache
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -49,7 +50,7 @@ class IngredientRepository(
     override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> =
         withContext(dispatchers.io) {
             datasource.loadDishMap(dishSlug)?.defaultIngredients
-                ?.mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() }
+                ?.mapNotNull { IngredientSlug.of(it).getOrNull() }
                 ?: emptyList()
         }
 }

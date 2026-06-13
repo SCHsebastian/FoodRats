@@ -3,13 +3,14 @@ package es.schsebastian.foodrats.feature.ingredient.data.firebase
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 
 fun IngredientDto.toDomain(currentLang: String): Ingredient? {
     if (slug.isBlank()) return null
     val name = names[currentLang] ?: names["en"] ?: return null
     val cat = categoryFromString(category)
     return Ingredient(
-        slug = runCatching { IngredientSlug(slug) }.getOrNull() ?: return null,
+        slug = IngredientSlug.of(slug).getOrNull() ?: return null,
         displayName = name,
         category = cat,
         iconKey = iconKey,

@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDraftIngredientsPort
 import es.schsebastian.foodrats.feature.ingredient.domain.usecase.ObserveCatalogUseCase
 import kotlinx.coroutines.Dispatchers
@@ -31,20 +32,20 @@ class SelectIngredientsViewModelTest {
 
     @Test fun cap_blocks_31st_selection() = runTest {
         val vm = vmWith((1..40).map { veg("ing_$it") })
-        repeat(30) { i -> vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug("ing_${i + 1}"))) }
-        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug("ing_31")))
+        repeat(30) { i -> vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug.of("ing_${i + 1}").getOrNull()!!)) }
+        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug.of("ing_31").getOrNull()!!))
         vm.state.test {
             val st = expectMostRecentItem()
             assertEquals(30, st.selected.size)
             assertTrue(st.capReached)
-            assertFalse(IngredientSlug("ing_31") in st.selected)
+            assertFalse(IngredientSlug.of("ing_31").getOrNull()!! in st.selected)
         }
     }
 
     @Test fun toggle_off_works_at_cap() = runTest {
         val vm = vmWith((1..40).map { veg("ing_$it") })
-        repeat(30) { i -> vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug("ing_${i + 1}"))) }
-        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug("ing_1")))
+        repeat(30) { i -> vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug.of("ing_${i + 1}").getOrNull()!!)) }
+        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug.of("ing_1").getOrNull()!!))
         vm.state.test {
             assertEquals(29, expectMostRecentItem().selected.size)
         }
@@ -53,32 +54,32 @@ class SelectIngredientsViewModelTest {
     @Test fun confirm_writes_selected_to_port_and_navigates_back() = runTest {
         val port = FakeDraftPort()
         val vm = SelectIngredientsViewModel(catalogUseCase((1..3).map { veg("ing_$it") }), port)
-        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug("ing_1")))
-        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug("ing_2")))
+        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug.of("ing_1").getOrNull()!!))
+        vm.onIntent(SelectIngredientsIntent.Toggle(IngredientSlug.of("ing_2").getOrNull()!!))
         vm.effects.test {
             vm.onIntent(SelectIngredientsIntent.ConfirmAndExit)
             assertEquals(SelectIngredientsEffect.NavigateBack, awaitItem())
         }
-        assertEquals(listOf(IngredientSlug("ing_1"), IngredientSlug("ing_2")), port.saved)
+        assertEquals(listOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!), port.saved)
     }
 
     @Test fun loads_detected_and_selected_from_port() = runTest {
         val port = FakeDraftPort(
             DraftIngredients(
-                selected = listOf(IngredientSlug("ing_1")),
-                detected = listOf(IngredientSlug("ing_1"), IngredientSlug("ing_2")),
+                selected = listOf(IngredientSlug.of("ing_1").getOrNull()!!),
+                detected = listOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!),
             ),
         )
         val vm = SelectIngredientsViewModel(catalogUseCase((1..3).map { veg("ing_$it") }), port)
         vm.state.test {
             val st = expectMostRecentItem()
-            assertEquals(setOf(IngredientSlug("ing_1")), st.selected)
-            assertEquals(setOf(IngredientSlug("ing_1"), IngredientSlug("ing_2")), st.detected)
+            assertEquals(setOf(IngredientSlug.of("ing_1").getOrNull()!!), st.selected)
+            assertEquals(setOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!), st.detected)
             assertFalse(st.loading)
         }
     }
 
-    private fun veg(slug: String) = Ingredient(IngredientSlug(slug), slug, IngredientCategory.Vegetable)
+    private fun veg(slug: String) = Ingredient(IngredientSlug.of(slug).getOrNull()!!, slug, IngredientCategory.Vegetable)
 
     private fun catalogUseCase(catalog: List<Ingredient>) = ObserveCatalogUseCase(
         object : IngredientReadPort {

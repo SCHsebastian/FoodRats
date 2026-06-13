@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.meal.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -36,22 +37,22 @@ class UpdateMealDraftUseCaseTest {
 
     @Test fun setDetected_writes_all_three_fields() = runTest {
         val (update, repo) = setup(baseDraft())
-        update(UpdateMealDraftCommand.SetDetected(listOf(IngredientSlug("tomato")), "food101-v1"))
+        update(UpdateMealDraftCommand.SetDetected(listOf(IngredientSlug.of("tomato").getOrNull()!!), "food101-v1"))
         val updated = repo.observeDraft().first()!!
-        assertEquals(listOf(IngredientSlug("tomato")), updated.detectedIngredients)
-        assertEquals(listOf(IngredientSlug("tomato")), updated.ingredients)
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), updated.detectedIngredients)
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), updated.ingredients)
         assertEquals("food101-v1", updated.classifierVersion)
     }
 
     @Test fun setIngredients_does_not_touch_detected() = runTest {
         val initial = baseDraft().copy(
-            detectedIngredients = listOf(IngredientSlug("a")),
-            ingredients = listOf(IngredientSlug("a")),
+            detectedIngredients = listOf(IngredientSlug.of("a").getOrNull()!!),
+            ingredients = listOf(IngredientSlug.of("a").getOrNull()!!),
         )
         val (update, repo) = setup(initial)
-        update(UpdateMealDraftCommand.SetIngredients(listOf(IngredientSlug("a"), IngredientSlug("b"))))
+        update(UpdateMealDraftCommand.SetIngredients(listOf(IngredientSlug.of("a").getOrNull()!!, IngredientSlug.of("b").getOrNull()!!)))
         val updated = repo.observeDraft().first()!!
-        assertEquals(listOf(IngredientSlug("a")), updated.detectedIngredients)
-        assertEquals(listOf(IngredientSlug("a"), IngredientSlug("b")), updated.ingredients)
+        assertEquals(listOf(IngredientSlug.of("a").getOrNull()!!), updated.detectedIngredients)
+        assertEquals(listOf(IngredientSlug.of("a").getOrNull()!!, IngredientSlug.of("b").getOrNull()!!), updated.ingredients)
     }
 }
