@@ -30,6 +30,7 @@
     <string name="feed_voter_score_compact">%1$d ★</string>
     <string name="feed_crew_score_label">Crew score</string>
     <string name="feed_location_label">Location</string>
+    <string name="feed_location_map_cta">Open location in maps</string>
     <string name="feed_ingredients_heading">Ingredients</string>
     <string name="feed_ingredient_separator">,</string>
     <string name="feed_rate_error_cannot_rate_own_meal">You can't rate your own meal</string>

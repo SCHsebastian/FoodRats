@@ -30,6 +30,7 @@
     <string name="feed_voter_score_compact">%1$d ★</string>
     <string name="feed_crew_score_label">Puntuación de la cuadrilla</string>
     <string name="feed_location_label">Ubicación</string>
+    <string name="feed_location_map_cta">Abrir ubicación en mapas</string>
     <string name="feed_ingredients_heading">Ingredientes</string>
     <string name="feed_ingredient_separator">,</string>
     <string name="feed_rate_error_cannot_rate_own_meal">No puedes puntuar tu propio plato</string>

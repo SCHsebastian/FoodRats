@@ -32,6 +32,9 @@
     <string name="stats_summary_total_plates_label">Plates</string>
     <string name="stats_summary_avg_per_day_label">Per day</string>
 
+    <!-- Plate photo (accessibility content description) -->
+    <string name="stats_plate_photo_format">Photo of %1$s</string>
+
     <!-- Best plate -->
     <string name="stats_best_plate_title">Top plate</string>
     <string name="stats_best_plate_score_format">%1$s ★</string>
