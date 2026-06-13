@@ -12,7 +12,9 @@ fun AccountDto.toAccount(): Account? {
         id = id,
         handle = handle ?: "",
         displayName = displayName ?: "",
-        email = email,
+        // Email no longer lives on the public account doc (PII; see AccountDto).
+        // It is owned by Firebase Auth; surface it from there if ever displayed.
+        email = null,
         avatarUrl = avatarUrl,
         dataConsentVersion = dataConsentVersion,
         dataConsentGrantedAt = dataConsentGrantedAtEpochMs?.let { Instant.fromEpochMilliseconds(it) },

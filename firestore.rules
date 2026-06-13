@@ -2,12 +2,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Identity / account profiles
+    // Identity / account profiles — PUBLIC display fields only (handle,
+    // displayName, avatarUrl). Readable by any authenticated user: a member must
+    // be able to render crew-mates' names + avatars in the feed, comments and the
+    // member list, and identity is resolved by reading the top-level account doc
+    // (AccountReadPort) rather than a per-crew denormalized copy. This mirrors the
+    // soft-token posture already in effect for /crews and /crewCodes (knowing the
+    // random id is the capability to read it).
+    //
+    // PII (email) is deliberately NOT stored on this doc — it lives only in
+    // Firebase Auth and, if ever surfaced again, under the owner-only /private
+    // subcollection below. (Was previously gated by a logically-inverted
+    // `exists(/crews/$(uid)) == false` predicate that evaluated true for nearly
+    // every read — a meaningless guard. See docs/reviews/2026-06-13-aaa-architecture-review.md §5.13.)
+    //
+    // Hardening backlog: scope reads to crew-mates via a `crewIds` reverse index
+    // + `hasAny()` (requires maintaining the index atomically on join/leave).
     match /accounts/{uid} {
-      allow read:  if request.auth != null && (request.auth.uid == uid ||
-                      // any crew you're in can read your profile
-                      exists(/databases/$(database)/documents/crews/$(uid)) == false);
+      allow read:  if request.auth != null;
       allow write: if request.auth != null && request.auth.uid == uid;
+
+      // Owner-only private data (PII, consent, anything that must never be
+      // crew-visible). Reads are denied to everyone but the owner.
+      match /private/{doc} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
 
       match /devices/{token} {
         allow read, write: if request.auth != null && request.auth.uid == uid;
@@ -68,7 +87,19 @@ service cloud.firestore {
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
                       && request.resource.data.slot in ["breakfast", "lunch", "dinner"]
                       && mealId == crewId + "_" + request.auth.uid + "_" + request.resource.data.dayKey + "_" + request.resource.data.slot
-                      && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId));
+                      && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId))
+                      // A meal MUST be created with zero rating aggregates. Without this
+                      // the author could publish with ratingSum:9999 / voterCount:9 and win
+                      // the server-attested weekly Best Cook / Best Meal digest. The vote
+                      // path (update rule below) is the only way these may grow, recomputed
+                      // from the `ratings` map. Tolerate absent fields (kotlinx-serialization
+                      // may omit defaults on the create write).
+                      && (!('ratingSum' in request.resource.data) || request.resource.data.ratingSum == 0)
+                      && (!('voterCount' in request.resource.data) || request.resource.data.voterCount == 0)
+                      && (!('ratings' in request.resource.data) || request.resource.data.ratings.size() == 0)
+                      // No back/forward-dating into a different digest window.
+                      && (!('publishedAtEpochMs' in request.resource.data)
+                          || request.resource.data.publishedAtEpochMs <= request.time.toMillis() + 300000);
         // Rating-write update: a voter (not the author) may add their own entry to the
         // `ratings` map. The diff must be limited to the three denormalized rating fields,
         // the voter can only touch their own key in the map, and the cached sum/count

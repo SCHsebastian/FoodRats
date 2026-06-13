@@ -1,0 +1,8 @@
+# Build-script approvals (pnpm 11 reads these here, not from package.json). These
+# deps ship prebuilt platform binaries as optional deps, so the tests pass even if
+# the scripts don't run — approving just silences the ERR_PNPM_IGNORED_BUILDS gate.
+allowBuilds:
+  "@firebase/util": true
+  esbuild: true
+  protobufjs: true
+  re2: true

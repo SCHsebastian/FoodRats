@@ -4,7 +4,7 @@ import { logger } from "firebase-functions/v2";
 import { DateTime } from "luxon";
 import { sendToCrew } from "../fcm/push";
 import { KEY_WEEKLY_DIGEST, FALLBACK } from "../i18n/keys";
-import { computeAwards, MealInput, Awards } from "../stats/computeWindow";
+import { computeAwards, ratingAggregatesFrom, MealInput, Awards } from "../stats/computeWindow";
 
 export const weeklyDigest = onSchedule(
   {
@@ -34,12 +34,15 @@ export const weeklyDigest = onSchedule(
 
       const meals: MealInput[] = mealsSnap.docs.map((d) => {
         const data = d.data();
+        // Recompute from the per-rater `ratings` map — never trust the client-writable
+        // `ratingSum`/`voterCount` fields (un-boundable on the vote update path).
+        const { ratingSum, voterCount } = ratingAggregatesFrom(data.ratings);
         return {
           authorId: (data.authorId as string) ?? "",
           authorName: (data.authorName as string) ?? "Someone",
           dishName: (data.dishName as string) ?? "a meal",
-          ratingSum: (data.ratingSum as number) ?? 0,
-          voterCount: (data.voterCount as number) ?? 0,
+          ratingSum,
+          voterCount,
           publishedAtEpochMs: (data.publishedAtEpochMs as number) ?? 0,
         };
       });
