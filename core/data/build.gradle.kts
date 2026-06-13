@@ -23,10 +23,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.androidx.datastore.preferences)
-            implementation(libs.firebase.common)
-            implementation(libs.firebase.auth)
-            implementation(libs.firebase.firestore)
-            implementation(libs.firebase.storage)
+            implementation(libs.bundles.firebase.gitlive)
             implementation(libs.koin.core)
             implementation(libs.okio)
             implementation(libs.coil.core)
@@ -41,10 +38,10 @@ kotlin {
         androidMain.dependencies {
             // PreferenceDataStoreFactory (JVM/Android) is provided by datastore-preferences artifact
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
-            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+            implementation(project.dependencies.platform(libs.firebase.bom))
             // Crashlytics has no GitLive KMP binding — AndroidCrashReporter (androidMain) wraps the
             // native SDK directly. Version pinned by the BOM above.
-            implementation("com.google.firebase:firebase-crashlytics")
+            implementation(libs.firebase.crashlytics)
             // Ktor engine for Coil's KtorNetworkFetcherFactory on Android.
             implementation(libs.ktor.client.okhttp)
             // ActivityResultLauncher + ActivityResultContracts for LocationPermissionLauncherHolder.

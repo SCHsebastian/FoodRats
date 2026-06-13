@@ -40,17 +40,12 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             // Firebase BOM — pins versions for all com.google.firebase:* artifacts that
             // dev.gitlive KMP wrappers pull in transitively on Android.
-            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+            implementation(project.dependencies.platform(libs.firebase.bom))
         }
         commonMain.dependencies {
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
+            // compose(5) + koin(3) + lifecycle(2)
+            implementation(libs.bundles.feature.ui)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
 
             // Module graph
             implementation(projects.core.domain)
@@ -67,18 +62,12 @@ kotlin {
             implementation(projects.feature.stats)
             implementation(projects.feature.notifications)
 
-            // DI + navigation
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
+            // Navigation + serialization
             implementation(libs.nav.compose)
             implementation(libs.kotlinx.serialization.json)
 
             // Firebase (GitLive KMP bindings)
-            implementation(libs.firebase.common)
-            implementation(libs.firebase.auth)
-            implementation(libs.firebase.firestore)
-            implementation(libs.firebase.storage)
+            implementation(libs.bundles.firebase.gitlive)
 
             // Shared utilities transitively needed by Koin modules
             implementation(libs.kotlinx.datetime)
