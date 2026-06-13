@@ -111,6 +111,7 @@ fun FrFeedMealRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
+                    // decorative — the adjacent author-name label carries the identity for screen readers.
                     FrAvatar(
                         initials = ui.authorName,
                         imageUrl = ui.authorAvatarUrl,

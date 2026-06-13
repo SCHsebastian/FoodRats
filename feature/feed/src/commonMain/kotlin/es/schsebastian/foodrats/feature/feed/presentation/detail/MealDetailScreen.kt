@@ -47,6 +47,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
@@ -327,13 +331,18 @@ private fun LocationSection(meal: FeedMealUi) {
     if (lat == null || lon == null) return
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         SectionEyebrow(resolve(FeedStringKey.LocationLabel))
+        val mapLabel = resolve(FeedStringKey.LocationMapCta)
         FrLocationMap(
             latitude = lat,
             longitude = lon,
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(2.5f)
-                .clip(RoundedCornerShape(Radius.md)),
+                .clip(RoundedCornerShape(Radius.md))
+                .semantics {
+                    contentDescription = mapLabel
+                    role = Role.Button
+                },
         )
     }
 }
@@ -345,6 +354,7 @@ private fun AuthorRow(meal: FeedMealUi) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
+        // decorative — the adjacent author-name label carries the identity for screen readers.
         FrAvatar(initials = meal.authorName, imageUrl = meal.authorAvatarUrl)
         Column(modifier = Modifier.weight(1f)) {
             FrText(text = meal.authorName, style = MaterialTheme.typography.titleMedium)
@@ -462,6 +472,7 @@ private fun VotersCard(meal: FeedMealUi) {
                             )
                         }
                     }
+                    // decorative — the adjacent rater-name label carries the identity for screen readers.
                     FrAvatar(initials = v.raterName, imageUrl = v.raterAvatarUrl, size = Sizes.avatarSm)
                     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                         FrText(text = v.raterName, style = MaterialTheme.typography.bodyMedium)

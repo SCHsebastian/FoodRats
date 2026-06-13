@@ -36,6 +36,7 @@ import foodrats.feature.stats.generated.resources.stats_top_ingredient_by_member
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_voters_plural
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_voters_singular
+import foodrats.feature.stats.generated.resources.stats_plate_photo_format
 import foodrats.feature.stats.generated.resources.stats_roast_section_title
 import foodrats.feature.stats.generated.resources.stats_summary_avg_per_day_label
 import foodrats.feature.stats.generated.resources.stats_summary_total_plates_label
@@ -70,6 +71,8 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
 
     SummaryTotalPlatesLabel(Res.string.stats_summary_total_plates_label),
     SummaryAvgPerDayLabel(Res.string.stats_summary_avg_per_day_label),
+
+    PlatePhotoFormat(Res.string.stats_plate_photo_format),
 
     BestPlateTitle(Res.string.stats_best_plate_title),
     BestPlateScoreFormat(Res.string.stats_best_plate_score_format),

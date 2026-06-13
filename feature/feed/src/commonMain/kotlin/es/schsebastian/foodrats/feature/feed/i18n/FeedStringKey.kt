@@ -62,6 +62,7 @@ import foodrats.feature.feed.generated.resources.feed_voters_label
 import foodrats.feature.feed.generated.resources.feed_voter_score_compact
 import foodrats.feature.feed.generated.resources.feed_crew_score_label
 import foodrats.feature.feed.generated.resources.feed_location_label
+import foodrats.feature.feed.generated.resources.feed_location_map_cta
 import foodrats.feature.feed.generated.resources.feed_your_vote
 import org.jetbrains.compose.resources.StringResource
 
@@ -96,6 +97,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     VoterScoreCompact(Res.string.feed_voter_score_compact),
     CrewScoreLabel(Res.string.feed_crew_score_label),
     LocationLabel(Res.string.feed_location_label),
+    LocationMapCta(Res.string.feed_location_map_cta),
     IngredientsHeading(Res.string.feed_ingredients_heading),
     IngredientSeparator(Res.string.feed_ingredient_separator),
     RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),

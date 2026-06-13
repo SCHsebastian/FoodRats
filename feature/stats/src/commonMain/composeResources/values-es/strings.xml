@@ -22,6 +22,8 @@
     <string name="stats_summary_total_plates_label">Platos</string>
     <string name="stats_summary_avg_per_day_label">Por día</string>
 
+    <string name="stats_plate_photo_format">Foto de %1$s</string>
+
     <string name="stats_best_plate_title">Mejor plato</string>
     <string name="stats_best_plate_score_format">%1$s ★</string>
     <string name="stats_best_plate_author_format">de %1$s</string>

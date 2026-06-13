@@ -39,7 +39,7 @@ fun FrMostVotedPlate(
     ) {
         AsyncImage(
             model = award.photoUrl,
-            contentDescription = null,
+            contentDescription = resolve(StatsStringKey.PlatePhotoFormat, award.dish.value),
             modifier = Modifier
                 .size(Sizes.avatarLg)
                 .clip(RoundedCornerShape(Radius.sm)),
