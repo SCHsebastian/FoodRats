@@ -37,6 +37,12 @@ roborazzi = "1.40.0"
 androidxWork = "2.10.0"
 androidxLifecycleProcess = "2.9.0"
 coil = "3.4.0"
+# MediaPipe Tasks Vision — on-device food classifier (:feature:meal-ai).
+# 0.10.35 ships 16-KB-page-aligned native .so (libmediapipe_tasks_vision_jni.so),
+# required for Play submissions targeting Android 15+ since 2025-11-01. Earlier pins
+# (e.g. 0.10.14) emit 4-KB-aligned LOAD segments and are rejected by Play.
+# Keep in lockstep with the iOS MediaPipeTasksVision cocoapod pin in iosApp/Podfile.
+mediapipeTasksVision = "0.10.35"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -117,6 +123,9 @@ androidx-lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", 
 coil-core          = { module = "io.coil-kt.coil3:coil",               version.ref = "coil" }
 coil-compose       = { module = "io.coil-kt.coil3:coil-compose",       version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
+
+# MediaPipe Tasks Vision (Android). 16-KB-aligned .so — see version note above.
+mediapipe-tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "mediapipeTasksVision" }
 
 [bundles]
 # NB: dashed bundle names nest in the generated accessor, exactly like libraries —
