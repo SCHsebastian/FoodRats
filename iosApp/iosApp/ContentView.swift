@@ -32,6 +32,9 @@ struct ComposeView: UIViewControllerRepresentable {
                 MediaPipeClassifierBridge.classify(jpeg: jpeg as Data) { labels, errorCode in
                     completion(labels, errorCode)
                 }
+            },
+            share: { text in
+                ShareBridge.shareText(text)
             }
         )
     }
