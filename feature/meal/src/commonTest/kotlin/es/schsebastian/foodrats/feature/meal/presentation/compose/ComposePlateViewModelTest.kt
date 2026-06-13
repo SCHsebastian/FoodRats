@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.meal.DishLabel
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
@@ -91,11 +92,11 @@ class ComposePlateViewModelTest {
         vm.state.test {
             val st = expectMostRecentItem()
             assertFalse(st.classifying)
-            assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), st.detectedIngredients)
-            assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), st.draftIngredients)
+            assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), st.detectedIngredients)
+            assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), st.draftIngredients)
         }
         // SetDetected persisted into the draft.
-        assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), repo.observeDraft().first()?.ingredients)
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), repo.observeDraft().first()?.ingredients)
     }
 
     @Test fun classifier_failure_surfaces_error_and_keeps_canContinue() = runTest {
@@ -129,13 +130,13 @@ class ComposePlateViewModelTest {
 
         vm.onPhotoCaptured(bytes("plate-1"))
         // User trims the selection in the picker (writes through the draft port).
-        repo.setIngredients(listOf(IngredientSlug("only-one")))
+        repo.setIngredients(listOf(IngredientSlug.of("only-one").getOrNull()!!))
         // Re-capture a different plate.
         vm.onPhotoCaptured(bytes("plate-2"))
 
         vm.state.test {
             val st = expectMostRecentItem()
-            assertEquals(listOf(IngredientSlug("lettuce"), IngredientSlug("olive")), st.detectedIngredients)
+            assertEquals(listOf(IngredientSlug.of("lettuce").getOrNull()!!, IngredientSlug.of("olive").getOrNull()!!), st.detectedIngredients)
             assertEquals(st.detectedIngredients, st.draftIngredients)
         }
     }
@@ -156,6 +157,6 @@ class ComposePlateViewModelTest {
         override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = MutableStateFlow(emptyMap())
         override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> = emptyList()
         override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> =
-            dishMap[dishSlug].orEmpty().map { IngredientSlug(it) }
+            dishMap[dishSlug].orEmpty().map { IngredientSlug.of(it).getOrNull()!! }
     }
 }

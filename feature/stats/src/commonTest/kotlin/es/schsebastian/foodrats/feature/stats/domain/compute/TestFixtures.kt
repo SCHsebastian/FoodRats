@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.stats.domain.compute
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -44,8 +45,8 @@ internal fun mealWithRatings(
         dish = dish(),
         description = Description.EMPTY,
         publishedAt = Instant.fromEpochMilliseconds(0L),
-        ingredients = ingredients.map { IngredientSlug(it) },
-        detectedIngredients = detectedIngredients.map { IngredientSlug(it) },
+        ingredients = ingredients.map { IngredientSlug.of(it).getOrNull()!! },
+        detectedIngredients = detectedIngredients.map { IngredientSlug.of(it).getOrNull()!! },
     )
     val mealRatings = ratings.mapIndexed { i, s ->
         MealRating(

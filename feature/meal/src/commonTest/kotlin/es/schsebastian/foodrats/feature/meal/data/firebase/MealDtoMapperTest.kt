@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.meal.data.firebase
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -39,8 +40,8 @@ class MealDtoMapperTest {
 
     @Test fun round_trips_all_new_fields() {
         val meal = baseMeal().copy(
-            ingredients = listOf(IngredientSlug("tomato"), IngredientSlug("pasta")),
-            detectedIngredients = listOf(IngredientSlug("tomato"), IngredientSlug("cheese")),
+            ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!),
+            detectedIngredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!),
             classifierVersion = "food101-v1",
         )
         val back = (MealDto.from(meal).toDomain() as Result.Ok).value

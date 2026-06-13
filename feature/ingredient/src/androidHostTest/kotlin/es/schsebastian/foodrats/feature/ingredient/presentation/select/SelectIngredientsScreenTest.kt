@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDraftIngredientsPort
 import es.schsebastian.foodrats.feature.ingredient.domain.usecase.ObserveCatalogUseCase
 import kotlinx.coroutines.Dispatchers
@@ -37,8 +38,8 @@ class SelectIngredientsScreenTest {
     @Before fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
     @After fun tearDown() = Dispatchers.resetMain()
 
-    private val tomato = Ingredient(IngredientSlug("tomato"), "Tomato", IngredientCategory.Vegetable)
-    private val onion = Ingredient(IngredientSlug("onion"), "Onion", IngredientCategory.Vegetable)
+    private val tomato = Ingredient(IngredientSlug.of("tomato").getOrNull()!!, "Tomato", IngredientCategory.Vegetable)
+    private val onion = Ingredient(IngredientSlug.of("onion").getOrNull()!!, "Onion", IngredientCategory.Vegetable)
 
     @Test
     fun renders_default_expanded_vegetables_and_confirm_writes_selection() {

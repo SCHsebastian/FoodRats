@@ -3,16 +3,17 @@ package es.schsebastian.foodrats.feature.ingredient.domain.usecase
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SearchIngredientsUseCaseTest {
     private val tomato = Ingredient(
-        IngredientSlug("tomato"), "Tomate", IngredientCategory.Vegetable, null,
+        IngredientSlug.of("tomato").getOrNull()!!, "Tomate", IngredientCategory.Vegetable, null,
         aliases = listOf("cherry tomato"),
     )
     private val onion = Ingredient(
-        IngredientSlug("onion"), "Cebolla", IngredientCategory.Vegetable,
+        IngredientSlug.of("onion").getOrNull()!!, "Cebolla", IngredientCategory.Vegetable,
     )
     private val uc = SearchIngredientsUseCase()
 

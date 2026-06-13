@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
@@ -209,8 +210,8 @@ class MealDetailCommentIdentityTest {
             dish = (es.schsebastian.foodrats.core.domain.meal.DishName.of("Pasta") as Result.Ok).value,
             description = es.schsebastian.foodrats.core.domain.meal.Description.EMPTY,
             publishedAt = Instant.parse("2026-05-20T10:00:00Z"),
-            ingredients = listOf(IngredientSlug("egg")),
-            detectedIngredients = listOf(IngredientSlug("bacon")),
+            ingredients = listOf(IngredientSlug.of("egg").getOrNull()!!),
+            detectedIngredients = listOf(IngredientSlug.of("bacon").getOrNull()!!),
         )
         val readPort = FakeMealReadPort(
             perDay = mapOf((crew to day.toKey()) to listOf(

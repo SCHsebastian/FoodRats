@@ -13,6 +13,7 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
@@ -76,7 +77,7 @@ fun MealDto.Companion.from(meal: Meal): MealDto = MealDto(
 
 /** Drops blanks and any slug that fails [IngredientSlug]'s invariants; unknown-but-valid slugs survive. */
 private fun List<String>.toSlugs(): List<IngredientSlug> =
-    mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() }
+    mapNotNull { IngredientSlug.of(it).getOrNull() }
 
 private fun parseCoordinates(lat: Double?, lon: Double?): Coordinates? {
     if (lat == null || lon == null) return null

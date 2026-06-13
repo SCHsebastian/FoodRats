@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -40,16 +41,16 @@ class MealDraftLocalStoreTest {
             plate = null,
             dish = null,
             description = Description.EMPTY,
-            ingredients = listOf(IngredientSlug("tomato"), IngredientSlug("pasta")),
-            detectedIngredients = listOf(IngredientSlug("tomato"), IngredientSlug("cheese")),
+            ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!),
+            detectedIngredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!),
             classifierVersion = "food101-v1",
         )
 
         store.save(draft)
         val restored = store.observe().first()!!
 
-        assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("pasta")), restored.ingredients)
-        assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), restored.detectedIngredients)
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!), restored.ingredients)
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), restored.detectedIngredients)
         assertEquals("food101-v1", restored.classifierVersion)
     }
 }
