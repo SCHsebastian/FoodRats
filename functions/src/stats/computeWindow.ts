@@ -17,6 +17,32 @@ export interface Awards {
 
 const MIN_PLATES_FOR_COOK = 3;
 
+/**
+ * Derive `{ ratingSum, voterCount }` from the AUTHORITATIVE per-rater `ratings`
+ * map rather than trusting the denormalized `ratingSum`/`voterCount` fields on the
+ * meal doc. Security rules can bound those fields on create (must be zero) but
+ * CANNOT verify them on a vote `update` — rules can't sum a map — so a voter could
+ * otherwise stamp `ratingSum: 9999` and win the server-attested weekly awards.
+ * Recomputing here makes the denormalized fields irrelevant to award outcomes.
+ * Out-of-range / malformed entries are ignored (rules already cap scores 1..5).
+ */
+export function ratingAggregatesFrom(ratings: unknown): {
+  ratingSum: number;
+  voterCount: number;
+} {
+  if (!ratings || typeof ratings !== "object") return { ratingSum: 0, voterCount: 0 };
+  let ratingSum = 0;
+  let voterCount = 0;
+  for (const entry of Object.values(ratings as Record<string, { score?: unknown }>)) {
+    const score = entry?.score;
+    if (typeof score === "number" && Number.isInteger(score) && score >= 1 && score <= 5) {
+      ratingSum += score;
+      voterCount += 1;
+    }
+  }
+  return { ratingSum, voterCount };
+}
+
 export function computeAwards(meals: MealInput[]): Awards {
   if (meals.length === 0) {
     return {
