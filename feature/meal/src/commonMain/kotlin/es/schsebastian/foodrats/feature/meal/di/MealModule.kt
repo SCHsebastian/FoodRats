@@ -9,10 +9,14 @@ import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.HasPostedTodayAdapter
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseCommentRepository
+import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
@@ -39,15 +43,21 @@ val mealModule = module {
     singleOf(::PlateStorageDataSource)
     singleOf(::MealDraftLocalStore)
     singleOf(::MealErrorMapper)
+    // The repository depends on data-layer ports, not the concrete Firebase data sources
+    // (so its publish/rate/delete orchestration is fakeable in commonTest and the
+    // Firebase→own-server swap re-binds these three lines, not the repository).
+    single<MealFirestore> { get<MealFirestoreDataSource>() }
+    single<PlateStorage> { get<PlateStorageDataSource>() }
+    single<MealAuthorIdentity> { FirebaseAuthorIdentity(auth = get()) }
     single<MealRepository> {
         FirebaseMealRepository(
-            firestore = get(),
-            storage = get(),
+            firestore = get<MealFirestore>(),
+            storage = get<PlateStorage>(),
             drafts = get(),
             dispatchers = get(),
             errorMapper = get(),
             clock = get(),
-            auth = get(),
+            authorIdentity = get<MealAuthorIdentity>(),
             zone = get(),
             accountRead = get<AccountReadPort>(),
         )

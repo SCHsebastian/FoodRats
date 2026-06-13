@@ -5,7 +5,7 @@ import dev.gitlive.firebase.storage.storageMetadata
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
-class PlateStorageDataSource(private val storage: FirebaseStorage) {
+class PlateStorageDataSource(private val storage: FirebaseStorage) : PlateStorage {
 
     /**
      * Uploads a Plate's photo bytes to Firebase Storage and returns the download URL.
@@ -20,7 +20,7 @@ class PlateStorageDataSource(private val storage: FirebaseStorage) {
      * - Android actual: `typealias Data = ByteArray`
      * - iOS actual: wrapper `class Data(val data: NSData)` — bridged via [toStorageData].
      */
-    suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
+    override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
         val ref = storage.reference("crews/${crewId.value}/meals/${mealId}.jpg")
         ref.putData(
             data = plate.photoBytes.toStorageData(),
