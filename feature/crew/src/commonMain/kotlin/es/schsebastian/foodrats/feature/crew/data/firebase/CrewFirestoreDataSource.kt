@@ -31,7 +31,7 @@ class CrewFirestoreDataSource(
     private val codeGenerator: CrewCodeGenerator,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
-) {
+) : CrewDataSource {
 
     // CoroutineExceptionHandler is mandatory here: any uncaught exception inside the
     // `shareIn` upstream (e.g. Firestore PERMISSION_DENIED after sign-out token revoke)
@@ -59,7 +59,7 @@ class CrewFirestoreDataSource(
      * as receiver (not a parameter). `tx.get(ref)` is a suspend call inside the lambda.
      * `tx.set(ref, dto)` / `tx.delete(ref)` are synchronous.
      */
-    suspend fun createCrew(
+    override suspend fun createCrew(
         name: String,
         founder: AccountId,
         founderDisplayName: String,
@@ -96,7 +96,7 @@ class CrewFirestoreDataSource(
         throw CodeCollisionExhaustedException
     }
 
-    suspend fun joinByCode(
+    override suspend fun joinByCode(
         code: CrewCode,
         joiner: AccountId,
         joinerDisplayName: String,
@@ -124,7 +124,7 @@ class CrewFirestoreDataSource(
         }
     }
 
-    suspend fun leave(crewId: CrewId, leaver: AccountId) {
+    override suspend fun leave(crewId: CrewId, leaver: AccountId) {
         val crewRef = crewsCol.document(crewId.value)
         firestore.runTransaction {
             val crewSnap = get(crewRef)
@@ -143,12 +143,12 @@ class CrewFirestoreDataSource(
         }
     }
 
-    fun observeMyCrews(accountId: AccountId): Flow<List<CrewDto>> =
+    override fun observeMyCrews(accountId: AccountId): Flow<List<CrewDto>> =
         crewsCol.where { "memberIds" contains accountId.value }
             .snapshots
             .map { snap -> snap.documents.map { it.data<CrewDto>() } }
 
-    fun observeCrew(crewId: CrewId): Flow<CrewDto?> = flow {
+    override fun observeCrew(crewId: CrewId): Flow<CrewDto?> = flow {
         val shared = crewSharedFlowsLock.withLock {
             crewSharedFlows.getOrPut(crewId.value) {
                 crewsCol.document(crewId.value).snapshots
@@ -169,12 +169,12 @@ class CrewFirestoreDataSource(
     }
 
     /** Single-shot read of a crew; returns null on not-found or error. */
-    suspend fun fetchOnce(crewId: CrewId): Crew? =
+    override suspend fun fetchOnce(crewId: CrewId): Crew? =
         observeCrew(crewId)
             .map { dto -> if (dto == null) null else (dto.toDomain() as? Result.Ok)?.value }
             .first()
 
-    suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> =
+    override suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
                 crewsCol.document(crewId.value).update("name" to newName)
@@ -182,7 +182,7 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
-    suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> =
+    override suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
                 firestore.batch().apply {

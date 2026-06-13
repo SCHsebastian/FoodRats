@@ -8,8 +8,8 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
-import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotFoundException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotMemberException
@@ -25,7 +25,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
 internal class FirebaseCrewRepository(
-    private val firestore: CrewFirestoreDataSource,
+    private val dataSource: CrewDataSource,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
     private val clock: Clock,
@@ -37,7 +37,7 @@ internal class FirebaseCrewRepository(
         founderDisplayName: String,
     ): Result<Crew, CrewError> = withContext(dispatchers.io) {
         runCatching {
-            firestore.createCrew(name, founder, founderDisplayName, clock.now().toEpochMilliseconds())
+            dataSource.createCrew(name, founder, founderDisplayName, clock.now().toEpochMilliseconds())
                 .toDomain()
         }.fold(
             onSuccess = { it },
@@ -58,7 +58,7 @@ internal class FirebaseCrewRepository(
         joinerDisplayName: String,
     ): Result<Crew, CrewError> = withContext(dispatchers.io) {
         runCatching {
-            firestore.joinByCode(code, joiner, joinerDisplayName, clock.now().toEpochMilliseconds())
+            dataSource.joinByCode(code, joiner, joinerDisplayName, clock.now().toEpochMilliseconds())
                 .toDomain()
         }.fold(
             onSuccess = { it },
@@ -78,7 +78,7 @@ internal class FirebaseCrewRepository(
 
     override suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
-            runCatching { firestore.leave(crewId, leaver) }.fold(
+            runCatching { dataSource.leave(crewId, leaver) }.fold(
                 onSuccess = { Result.success(Unit) },
                 onFailure = { t ->
                     Result.failure(
@@ -93,7 +93,7 @@ internal class FirebaseCrewRepository(
         }
 
     override fun observeMyCrews(accountId: AccountId): Flow<Result<List<Crew>, CrewError>> =
-        firestore.observeMyCrews(accountId)
+        dataSource.observeMyCrews(accountId)
             .map<List<es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto>, Result<List<Crew>, CrewError>> { dtos ->
                 Result.success(dtos.mapNotNull { (it.toDomain() as? Result.Ok)?.value })
             }
@@ -101,7 +101,7 @@ internal class FirebaseCrewRepository(
             .flowOn(dispatchers.io)
 
     override fun observeCrew(crewId: CrewId): Flow<Result<Crew, CrewError>> =
-        firestore.observeCrew(crewId)
+        dataSource.observeCrew(crewId)
             .map { dto ->
                 if (dto == null) Result.failure(CrewError.Membership.NotFound)
                 else dto.toDomain()
@@ -110,14 +110,14 @@ internal class FirebaseCrewRepository(
             .flowOn(dispatchers.io)
 
     override suspend fun renameCrew(crewId: CrewId, requestedBy: AccountId, newName: String): Result<Unit, CrewError> {
-        val crew = firestore.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
-        return firestore.renameCrew(crewId, newName)
+        return dataSource.renameCrew(crewId, newName)
     }
 
     override suspend fun deleteCrew(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError> {
-        val crew = firestore.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
-        return firestore.deleteCrew(crewId, crew.code)
+        return dataSource.deleteCrew(crewId, crew.code)
     }
 }
