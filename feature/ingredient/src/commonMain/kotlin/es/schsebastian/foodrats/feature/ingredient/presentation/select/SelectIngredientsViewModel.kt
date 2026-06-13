@@ -29,7 +29,13 @@ class SelectIngredientsViewModel(
         }
         viewModelScope.launch {
             val draft = draftIngredients.observeDraftIngredients().first() ?: return@launch
-            update { it.copy(detected = draft.detected.toSet(), selected = draft.selected.toSet()) }
+            // First-load seed: when the user hasn't confirmed anything yet, pre-check
+            // the classifier's detections so confirmation is a real, visible action.
+            // An already-confirmed selection (re-entering the picker mid-edit) wins —
+            // never clobber it with the detected set.
+            val initialSelection =
+                if (draft.selected.isEmpty()) draft.detected else draft.selected
+            update { it.copy(detected = draft.detected.toSet(), selected = initialSelection.toSet()) }
         }
     }
 

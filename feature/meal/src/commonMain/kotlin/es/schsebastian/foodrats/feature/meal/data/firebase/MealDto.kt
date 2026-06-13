@@ -25,10 +25,11 @@ data class MealDto(
     val ratingSum: Int = 0,
     // Cached count `ratings.size`; written together with `ratings`.
     val voterCount: Int = 0,
-    // User-confirmed ingredient slugs and the classifier's raw detection, plus the
-    // model version that produced the detection. Empty/null when no AI run happened.
+    // ONLY the user-confirmed ingredient slugs are persisted, plus the model version
+    // that produced the seed detection. The raw classifier detection itself is a
+    // compose-time picker seed (lives only on the in-memory MealDraft) and is never
+    // written to the published Meal — so a meal records only food the user attested.
     val ingredients: List<String> = emptyList(),
-    val detectedIngredients: List<String> = emptyList(),
     val classifierVersion: String? = null,
 ) {
     companion object

@@ -18,8 +18,11 @@ class UpdateMealDraftUseCase(private val repository: MealRepository) {
             is UpdateMealDraftCommand.SetSlot        -> current.copy(slot = command.slot)
             is UpdateMealDraftCommand.SetCoordinates -> current.copy(coordinates = command.coordinates)
             is UpdateMealDraftCommand.SetDetected    -> current.copy(
+                // Detected ≠ confirmed: the classifier output seeds ONLY the detected
+                // set (which the picker reads as its initial selection). The
+                // user-confirmed `ingredients` list is written exclusively by
+                // SetIngredients, so unattested detections never reach the published Meal.
                 detectedIngredients = command.detected,
-                ingredients = command.detected,
                 classifierVersion = command.version,
             )
             is UpdateMealDraftCommand.SetIngredients -> current.copy(ingredients = command.ingredients)
