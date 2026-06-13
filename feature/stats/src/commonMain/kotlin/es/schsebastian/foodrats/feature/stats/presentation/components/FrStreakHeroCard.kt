@@ -27,7 +27,9 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.stats.domain.model.HeroStats
+import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 
 @Composable
@@ -76,20 +78,16 @@ fun FrStreakHeroCard(
                         style = MaterialTheme.typography.titleLarge,
                     )
                 } else {
-                    val key = if (hero.personalStreak.days == 1)
-                        StatsStringKey.HeroPersonalStreakSingular
-                    else StatsStringKey.HeroPersonalStreakPlural
                     FrText(
-                        text = resolve(key, animated),
+                        // Plural selection keys off the real streak length, but the
+                        // displayed number is the animated counter tweening up to it.
+                        text = resolvePlural(StatsPluralKey.HeroPersonalStreak, hero.personalStreak.days, animated),
                         color = semantic.onStreakHot,
                         style = FrTextStyles.statNumber,
                     )
                 }
-                val crewKey = if (hero.crewStreak.days == 1)
-                    StatsStringKey.HeroCrewStreakSingular
-                else StatsStringKey.HeroCrewStreakPlural
                 FrText(
-                    text = resolve(crewKey, hero.crewStreak.days),
+                    text = resolvePlural(StatsPluralKey.HeroCrewStreak, hero.crewStreak.days),
                     color = semantic.onStreakHot,
                     style = MaterialTheme.typography.bodyMedium,
                 )

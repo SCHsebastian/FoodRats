@@ -10,6 +10,8 @@ import es.schsebastian.foodrats.feature.notifications.domain.model.ReminderPaylo
 import kotlin.time.Clock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 
@@ -17,7 +19,8 @@ class FoodRatsFirebaseMessagingService : FirebaseMessagingService() {
 
     private val bus: NotificationBus by inject()
     private val mapper: PushPayloadMapper by inject()
-    private val scope = CoroutineScope(Dispatchers.Default)
+    // SupervisorJob isolates one publish failure from the others; cancelled in onDestroy.
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onNewToken(token: String) {
         // Token registration is observed reactively via AndroidFcmTokenProvider; no-op here.
@@ -35,5 +38,10 @@ class FoodRatsFirebaseMessagingService : FirebaseMessagingService() {
             )
             bus.publish(reminder)
         }
+    }
+
+    override fun onDestroy() {
+        scope.cancel()
+        super.onDestroy()
     }
 }

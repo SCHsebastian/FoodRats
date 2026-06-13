@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.meal.data.upload
 
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.Keys
+import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
@@ -13,7 +14,6 @@ import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -44,6 +44,7 @@ class BackgroundMealUploadCoordinator(
     private val streakNotifications: StreakNotificationPort,
     private val prefs: AppPreferences,
     private val scheduler: MealUploadScheduler,
+    private val dispatchers: DispatcherProvider,
 ) : MealUploadCoordinator, MealUploadProgressPort {
 
     private val _status = MutableStateFlow<MealUploadStatus>(MealUploadStatus.Idle)
@@ -51,7 +52,7 @@ class BackgroundMealUploadCoordinator(
 
     private val scope: CoroutineScope = CoroutineScope(
         SupervisorJob() +
-            Dispatchers.Default +
+            dispatchers.default +
             CoroutineExceptionHandler { _, t ->
                 FrLog.w("MealUpload", t) { "upload scope uncaught: ${t.message}" }
                 _status.value = MealUploadStatus.Failed(errorKey = ERROR_UNKNOWN)

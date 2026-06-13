@@ -20,7 +20,9 @@ import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.stats.domain.model.HeroStats
+import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 
 @Composable
@@ -38,11 +40,8 @@ fun FrTodayStripe(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        val key = if (hero.platesToday == 1)
-            StatsStringKey.HeroPlatesTodaySingular
-        else StatsStringKey.HeroPlatesTodayPlural
         FrText(
-            text = resolve(key, hero.platesToday),
+            text = resolvePlural(StatsPluralKey.HeroPlatesToday, hero.platesToday),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f, fill = true),

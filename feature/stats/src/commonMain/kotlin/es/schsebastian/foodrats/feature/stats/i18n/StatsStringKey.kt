@@ -17,14 +17,8 @@ import foodrats.feature.stats.generated.resources.stats_error_no_active_crew
 import foodrats.feature.stats.generated.resources.stats_error_not_signed_in
 import foodrats.feature.stats.generated.resources.stats_error_unauthorized
 import foodrats.feature.stats.generated.resources.stats_error_unavailable
-import foodrats.feature.stats.generated.resources.stats_hero_crew_streak_plural
-import foodrats.feature.stats.generated.resources.stats_hero_crew_streak_singular
 import foodrats.feature.stats.generated.resources.stats_hero_i_posted_today
 import foodrats.feature.stats.generated.resources.stats_hero_no_streak
-import foodrats.feature.stats.generated.resources.stats_hero_personal_streak_plural
-import foodrats.feature.stats.generated.resources.stats_hero_personal_streak_singular
-import foodrats.feature.stats.generated.resources.stats_hero_plates_today_plural
-import foodrats.feature.stats.generated.resources.stats_hero_plates_today_singular
 import foodrats.feature.stats.generated.resources.stats_member_top_ingredient_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_title
@@ -34,8 +28,6 @@ import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_met
 import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_title
 import foodrats.feature.stats.generated.resources.stats_top_ingredient_by_member_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_title
-import foodrats.feature.stats.generated.resources.stats_most_voted_plate_voters_plural
-import foodrats.feature.stats.generated.resources.stats_most_voted_plate_voters_singular
 import foodrats.feature.stats.generated.resources.stats_roast_section_title
 import foodrats.feature.stats.generated.resources.stats_summary_avg_per_day_label
 import foodrats.feature.stats.generated.resources.stats_summary_total_plates_label
@@ -55,12 +47,6 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     TabMonth(Res.string.stats_tab_month),
     TabHistoric(Res.string.stats_tab_historic),
 
-    HeroPersonalStreakSingular(Res.string.stats_hero_personal_streak_singular),
-    HeroPersonalStreakPlural(Res.string.stats_hero_personal_streak_plural),
-    HeroCrewStreakSingular(Res.string.stats_hero_crew_streak_singular),
-    HeroCrewStreakPlural(Res.string.stats_hero_crew_streak_plural),
-    HeroPlatesTodaySingular(Res.string.stats_hero_plates_today_singular),
-    HeroPlatesTodayPlural(Res.string.stats_hero_plates_today_plural),
     HeroIPostedToday(Res.string.stats_hero_i_posted_today),
     HeroNoStreak(Res.string.stats_hero_no_streak),
 
@@ -76,8 +62,6 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     BestPlateAuthorFormat(Res.string.stats_best_plate_author_format),
 
     MostVotedPlateTitle(Res.string.stats_most_voted_plate_title),
-    MostVotedPlateVotersSingular(Res.string.stats_most_voted_plate_voters_singular),
-    MostVotedPlateVotersPlural(Res.string.stats_most_voted_plate_voters_plural),
 
     CooksSectionTitle(Res.string.stats_cooks_section_title),
     BestCookTitle(Res.string.stats_best_cook_title),

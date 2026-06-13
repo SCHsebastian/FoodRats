@@ -103,6 +103,7 @@ val mealModule = module {
             streakNotifications = get(),
             prefs = get(),
             scheduler = get(),
+            dispatchers = get(),
         )
     }
     single<MealUploadCoordinator> { get<BackgroundMealUploadCoordinator>() }
