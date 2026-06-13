@@ -31,7 +31,6 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowU
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -126,35 +125,49 @@ class MealDetailViewModel(
                 else commentPort.observe(crewId, parsedMealId)
             }
 
-        commentsFlow.collect { r ->
-            when (r) {
-                is Result.Err -> update {
-                    it.copy(commentsLoading = false, commentReadError = r.error)
-                }
-                is Result.Ok -> {
-                    val uniqueIds = r.value.map { it.authorId }.toSet()
-                    val perAuthorFlows = uniqueIds.map { id ->
-                        authorFlows.getOrPut(id) {
-                            accountReadPort.observe(id)
-                                .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+        // flatMapLatest so each new comment batch supersedes the previous identity-join
+        // and feeds a single terminal collect. A nested `collect` inside the outer
+        // collector (the old shape) suspended the outer collector forever on the first
+        // batch, freezing the comment stream — new comments never arrived.
+        commentsFlow
+            .flatMapLatest { r ->
+                when (r) {
+                    is Result.Err -> flowOf(CommentRowsResult.Err(r.error))
+                    is Result.Ok -> {
+                        val uniqueIds = r.value.map { it.authorId }.toSet()
+                        val perAuthorFlows = uniqueIds.map { id ->
+                            authorFlows.getOrPut(id) {
+                                accountReadPort.observe(id)
+                                    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+                            }
                         }
-                    }
-                    val joined: Flow<List<CommentRowUi>> = if (perAuthorFlows.isEmpty()) {
-                            flowOf(joinRows(r.value, emptyMap(), viewerId, ownerId))
+                        if (perAuthorFlows.isEmpty()) {
+                            flowOf(CommentRowsResult.Ok(joinRows(r.value, emptyMap(), viewerId, ownerId)))
                         } else {
                             combine(perAuthorFlows) { snapshots ->
                                 val map = uniqueIds.zip(snapshots.toList()).toMap()
-                                joinRows(r.value, map, viewerId, ownerId)
+                                CommentRowsResult.Ok(joinRows(r.value, map, viewerId, ownerId))
                             }
-                        }
-                    joined.collect { rows ->
-                        update {
-                            it.copy(commentRows = rows, commentsLoading = false, commentReadError = null)
                         }
                     }
                 }
             }
-        }
+            .collect { result ->
+                when (result) {
+                    is CommentRowsResult.Err -> update {
+                        it.copy(commentsLoading = false, commentReadError = result.error)
+                    }
+                    is CommentRowsResult.Ok -> update {
+                        it.copy(commentRows = result.rows, commentsLoading = false, commentReadError = null)
+                    }
+                }
+            }
+    }
+
+    /** Internal carrier so the identity-join flatMapLatest can propagate either rows or a read error. */
+    private sealed interface CommentRowsResult {
+        data class Ok(val rows: List<CommentRowUi>) : CommentRowsResult
+        data class Err(val error: CommentError.Read) : CommentRowsResult
     }
 
     private fun joinRows(

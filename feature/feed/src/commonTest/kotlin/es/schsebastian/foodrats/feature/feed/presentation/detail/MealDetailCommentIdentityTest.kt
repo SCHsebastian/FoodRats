@@ -244,6 +244,33 @@ class MealDetailCommentIdentityTest {
         }
     }
 
+    @Test fun second_comment_batch_updates_state_does_not_freeze() = runTest {
+        // Regression: the old code started a nested terminal `collect` inside the
+        // outer comment collector, which suspended the outer collector forever after
+        // the first batch — so a SECOND batch never reached state. flatMapLatest fixes it.
+        val (vm, ports) = newSut()
+        ports.accountPort.set(accountId("user-1"), Account(accountId("user-1"), "h", "Sebas", null, null))
+        ports.accountPort.set(accountId("user-2"), Account(accountId("user-2"), "h", "Lia", null, null))
+        ports.commentPort.emit(listOf(commentFrom("user-1", "first")))
+        vm.state.test {
+            assertEquals(
+                listOf("first"),
+                expectMostRecentItem().commentRows.map { it.text },
+            )
+
+            // Second batch must drive state too — the frozen old code never delivered this.
+            ports.commentPort.emit(listOf(
+                commentFrom("user-1", "first"),
+                commentFrom("user-2", "second"),
+            ))
+            assertEquals(
+                listOf("first", "second"),
+                awaitItem().commentRows.map { it.text },
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test fun surfaces_comment_read_error_when_port_fails() = runTest {
         val (vm, ports) = newSut()
         ports.commentPort.emitError(CommentError.Read.Unavailable)
