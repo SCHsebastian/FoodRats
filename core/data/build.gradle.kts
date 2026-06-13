@@ -42,6 +42,9 @@ kotlin {
             // Crashlytics has no GitLive KMP binding — AndroidCrashReporter (androidMain) wraps the
             // native SDK directly. Version pinned by the BOM above.
             implementation(libs.firebase.crashlytics)
+            // Remote Config backs the FeatureFlagPort kill-switch (RemoteConfigFeatureFlags,
+            // androidMain). No GitLive KMP binding; native SDK pinned by the BOM above.
+            implementation(libs.firebase.config)
             // Ktor engine for Coil's KtorNetworkFetcherFactory on Android.
             implementation(libs.ktor.client.okhttp)
             // ActivityResultLauncher + ActivityResultContracts for LocationPermissionLauncherHolder.

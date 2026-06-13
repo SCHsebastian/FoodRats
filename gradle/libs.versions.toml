@@ -102,6 +102,9 @@ firebase-common    = { module = "dev.gitlive:firebase-common",    version.ref = 
 # Firebase-touching module's androidMain (was a hardcoded literal repeated in 5 files).
 firebase-bom       = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+# Remote Config — backs the FeatureFlagPort kill-switch (no GitLive KMP binding; native SDK
+# reached from androidMain only). Version pinned by the BOM above.
+firebase-config      = { module = "com.google.firebase:firebase-config" }
 
 androidx-credentials                    = { module = "androidx.credentials:credentials",                          version.ref = "credentials" }
 androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth",       version.ref = "credentials" }

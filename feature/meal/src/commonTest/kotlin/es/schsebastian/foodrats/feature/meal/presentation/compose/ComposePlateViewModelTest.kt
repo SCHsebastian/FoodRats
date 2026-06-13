@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.location.LocationError
@@ -69,6 +70,7 @@ class ComposePlateViewModelTest {
         repo: FakeMealRepository,
         classifyResult: (ByteArray) -> Result<List<DishLabel>, ClassifierError>,
         dishMap: Map<String, List<String>> = mapOf("pizza" to listOf("tomato", "cheese")),
+        mealAiEnabled: Boolean = true,
     ): ComposePlateViewModel = ComposePlateViewModel(
         updateDraft = UpdateMealDraftUseCase(repo),
         repository = repo,
@@ -78,7 +80,11 @@ class ComposePlateViewModelTest {
             override suspend fun current(): Result<Coordinates, LocationError> =
                 Result.failure(LocationError.Unavailable)
         },
-        classifyPlate = ClassifyDraftPlateUseCase(FakeClassifier(classifyResult), FakeIngredients(dishMap)),
+        classifyPlate = ClassifyDraftPlateUseCase(
+            FakeClassifier(classifyResult),
+            FakeIngredients(dishMap),
+            FakeFeatureFlags(mealAiEnabled),
+        ),
         clock = clock,
         zone = zone,
     )
@@ -99,6 +105,30 @@ class ComposePlateViewModelTest {
         // SetDetected stamps the detected set only; the user-confirmed `ingredients` stays empty.
         val draft = repo.observeDraft().first()!!
         assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), draft.detectedIngredients)
+        assertEquals(emptyList(), draft.ingredients)
+    }
+
+    @Test fun killswitch_off_skips_classification_no_detections_no_error() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        var classifierCalled = false
+        val vm = vmWith(
+            repo,
+            classifyResult = { classifierCalled = true; Result.success(listOf(DishLabel("pizza", 0.9f))) },
+            mealAiEnabled = false,
+        )
+
+        vm.onPhotoCaptured(bytes("plate"))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertFalse(st.classifying)
+            // Kill-switch on: no detections surfaced and NO error/banner (advisory feature).
+            assertEquals(emptyList(), st.detectedIngredients)
+            assertEquals(null, st.classifierError)
+        }
+        assertFalse(classifierCalled, "kill-switch off must never invoke the on-device classifier")
+        val draft = repo.observeDraft().first()!!
+        assertEquals(emptyList(), draft.detectedIngredients)
         assertEquals(emptyList(), draft.ingredients)
     }
 
@@ -163,5 +193,9 @@ class ComposePlateViewModelTest {
         override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> = emptyList()
         override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> =
             dishMap[dishSlug].orEmpty().map { IngredientSlug.of(it).getOrNull()!! }
+    }
+
+    private class FakeFeatureFlags(private val mealAiEnabled: Boolean) : FeatureFlagPort {
+        override fun isMealAiEnabled(): Boolean = mealAiEnabled
     }
 }

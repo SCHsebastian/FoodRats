@@ -12,9 +12,13 @@ import es.schsebastian.foodrats.core.data.location.AndroidLocationProvider
 import es.schsebastian.foodrats.core.data.location.LocationPermissionLauncherHolder
 import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
 import es.schsebastian.foodrats.core.domain.share.ShareController
+import es.schsebastian.foodrats.core.data.config.RemoteConfigFeatureFlags
 import es.schsebastian.foodrats.core.data.telemetry.AndroidCrashReporter
+import es.schsebastian.foodrats.core.data.telemetry.CrashReporterLogSink
+import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.feed.presentation.components.MapsApiKey
 import es.schsebastian.foodrats.core.data.image.installImageLoader
@@ -52,10 +56,17 @@ class FoodRatsApplication : Application() {
                     androidShareModule(),
                     androidAuthModule(),
                     androidCrashModule(),
+                    androidFeatureFlagsModule(),
                     androidLocationModule(),
                     androidMapsModule(),
                 ),
             )
+        }
+
+        // Release-only: route FrLog warnings/errors to Crashlytics breadcrumbs + non-fatals
+        // via the bound CrashReporter. Debug keeps the println-only path (sink stays null).
+        if (!BuildConfig.DEBUG) {
+            FrLog.installSink(CrashReporterLogSink(KoinPlatform.getKoin().get<CrashReporter>()))
         }
 
         // One-shot self-healing migration: legacy "test-crew-1" pref from the removed
@@ -73,6 +84,12 @@ class FoodRatsApplication : Application() {
     private fun androidCrashModule() = module {
         // Disable Crashlytics collection in debug builds so dev crashes don't pollute prod data.
         single<CrashReporter> { AndroidCrashReporter(collectionEnabled = !BuildConfig.DEBUG) }
+    }
+
+    private fun androidFeatureFlagsModule() = module {
+        // Remote Config-backed kill-switches (meal-AI classifier, …). Defaults on, so behavior
+        // is unchanged until the remote flag is flipped.
+        single<FeatureFlagPort> { RemoteConfigFeatureFlags() }
     }
 
     private fun androidLocationModule() = module {
