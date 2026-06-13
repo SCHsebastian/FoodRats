@@ -16,7 +16,7 @@ import kotlin.test.assertIs
 
 class JoinCrewByCodeUseCaseTest {
     private val joinerId = aid("uid-joiner")
-    private val crew = Crew(
+    private val crew = Crew.of(
         id = cid("c-2"),
         name = "Friends",
         code = (CrewCode.of("ABCD23") as Result.Ok).value,

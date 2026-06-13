@@ -277,15 +277,18 @@ internal class FirebaseMealRepository(
     override suspend fun rate(
         crewId: CrewId,
         mealId: MealId,
+        raterId: AccountId,
         score: Score,
     ): Result<Unit, RateError> = withContext(dispatchers.io) {
-        val raterUid = auth.currentUser?.uid
-            ?: return@withContext Result.failure(RateError.Unauthorized)
+        // Defense in depth: the rater identity is the explicit [raterId] from the domain,
+        // but a live auth token is still required (and the txn + rules re-check self-vote /
+        // already-rated authoritatively).
+        if (auth.currentUser?.uid == null) return@withContext Result.failure(RateError.Unauthorized)
         runCatching<Result<Unit, RateError>> {
             val outcome = firestore.rateMeal(
                 crewId = crewId,
                 mealId = mealId.value,
-                raterUid = raterUid,
+                raterUid = raterId.value,
                 score = score.value,
                 nowEpochMs = clock.now().toEpochMilliseconds(),
             )

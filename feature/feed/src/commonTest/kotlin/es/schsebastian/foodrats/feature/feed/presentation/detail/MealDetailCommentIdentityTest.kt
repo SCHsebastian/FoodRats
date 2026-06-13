@@ -28,6 +28,7 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
 import kotlinx.coroutines.Dispatchers
@@ -110,7 +111,7 @@ class MealDetailCommentIdentityTest {
             mealId = "meal-1",
             dayIso = "2026-05-20",
             observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
-            ratingPort = FakeMealRatingPort(),
+            rateMeal = RateMealUseCase(FakeMealRatingPort()),
             commentPort = commentPort,
             accountReadPort = accountPort,
             ingredientRead = FakeIngredientReadPort(),
@@ -223,7 +224,7 @@ class MealDetailCommentIdentityTest {
             mealId = "meal-1",
             dayIso = "2026-05-20",
             observeFeed = ObserveFeedUseCase(active, readPort),
-            ratingPort = FakeMealRatingPort(),
+            rateMeal = RateMealUseCase(FakeMealRatingPort()),
             commentPort = commentPort,
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),

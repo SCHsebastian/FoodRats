@@ -37,7 +37,7 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
         )
     }
     return Result.success(
-        Crew(
+        Crew.of(
             id = crewId,
             name = name,
             code = parsedCode,

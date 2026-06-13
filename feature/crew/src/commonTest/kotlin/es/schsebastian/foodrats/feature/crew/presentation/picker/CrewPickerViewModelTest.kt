@@ -59,7 +59,7 @@ class CrewPickerViewModelTest {
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     private val me = aid("uid-me")
-    private val crewA = Crew(
+    private val crewA = Crew.of(
         id = cid("c-A"),
         name = "Crew A",
         code = (CrewCode.of("ABCD23") as Result.Ok).value,

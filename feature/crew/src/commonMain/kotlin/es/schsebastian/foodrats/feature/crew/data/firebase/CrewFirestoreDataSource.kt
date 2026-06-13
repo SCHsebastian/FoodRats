@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewSize
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -112,7 +113,9 @@ class CrewFirestoreDataSource(
             if (!crewSnap.exists) throw NotFoundException
             val crew = crewSnap.data<CrewDto>()
             if (joiner.value in crew.memberIds) throw AlreadyMemberException
-            if (crew.memberIds.size >= 8) throw FullException
+            // Authoritative, atomic cap check — must stay INSIDE the transaction to avoid a
+            // TOCTOU race. References CrewSize.MAX so the 3..8 invariant has one source of truth.
+            if (!CrewSize.canAdd(crew.memberIds.size)) throw FullException
             val updatedMemberIds = crew.memberIds + joiner.value
             val updatedMembers = crew.members + (joiner.value to MemberDto(joinedAtEpochMs = nowMs))
             val updated = crew.copy(memberIds = updatedMemberIds, members = updatedMembers)
