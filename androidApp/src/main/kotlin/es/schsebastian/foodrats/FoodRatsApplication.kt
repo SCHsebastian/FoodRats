@@ -10,8 +10,8 @@ import es.schsebastian.foodrats.core.data.firebase.FirebaseInitializer
 import es.schsebastian.foodrats.core.data.firebase.installAndroidFirebaseContext
 import es.schsebastian.foodrats.core.data.location.AndroidLocationProvider
 import es.schsebastian.foodrats.core.data.location.LocationPermissionLauncherHolder
-import es.schsebastian.foodrats.core.data.share.ShareController
 import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
+import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.data.telemetry.AndroidCrashReporter
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
