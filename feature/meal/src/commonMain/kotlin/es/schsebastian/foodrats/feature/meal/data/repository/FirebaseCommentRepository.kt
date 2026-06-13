@@ -13,7 +13,9 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseFault
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
+import es.schsebastian.foodrats.feature.meal.data.firebase.toFirebaseFault
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
@@ -58,9 +60,11 @@ internal class FirebaseCommentRepository(
             )
             Result.success(Unit) as Result<Unit, CommentError.Write>
         }.getOrElse { t ->
-            val msg = t.message.orEmpty().lowercase()
-            val mapped = if ("permission-denied" in msg) CommentError.Write.Unauthorized
-                         else CommentError.Write.Unavailable
+            val mapped = when (t.toFirebaseFault()) {
+                FirebaseFault.PermissionDenied,
+                FirebaseFault.Unauthenticated -> CommentError.Write.Unauthorized
+                else -> CommentError.Write.Unavailable
+            }
             Result.failure(mapped)
         }
     }
@@ -76,10 +80,10 @@ internal class FirebaseCommentRepository(
             ds.delete(crewId, mealId, commentId.value)
             Result.success(Unit) as Result<Unit, CommentError.Delete>
         }.getOrElse { t ->
-            val msg = t.message.orEmpty().lowercase()
-            val mapped = when {
-                "permission" in msg -> CommentError.Delete.NotAuthorOrOwner
-                "not-found" in msg || "not found" in msg -> CommentError.Delete.NotFound
+            val mapped = when (t.toFirebaseFault()) {
+                FirebaseFault.PermissionDenied,
+                FirebaseFault.Unauthenticated -> CommentError.Delete.NotAuthorOrOwner
+                FirebaseFault.NotFound -> CommentError.Delete.NotFound
                 else -> CommentError.Delete.Unavailable
             }
             Result.failure(mapped)
