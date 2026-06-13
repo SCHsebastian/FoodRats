@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.core.designsystem.atoms
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -9,15 +10,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-private val DefaultPlateColor = Color(0xFFE8E6DE)
-private val DefaultEarColor = Color(0xFFB0561E)
-
 @Composable
 fun FrLogo(
     modifier: Modifier = Modifier,
     size: Dp = 96.dp,
-    plateColor: Color = DefaultPlateColor,
-    earColor: Color = DefaultEarColor,
+    // Theme-resolved so the mark adapts to light/dark — plate = surface (concrete /
+    // charcoal), ears = ember-copper secondary. Both stay overridable by callers.
+    plateColor: Color = MaterialTheme.colorScheme.surface,
+    earColor: Color = MaterialTheme.colorScheme.secondary,
 ) {
     Canvas(modifier = modifier.size(size)) {
         val w = this.size.width

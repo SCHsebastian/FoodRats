@@ -74,7 +74,7 @@ class CrewSettingsViewModel(
     }
 
     private suspend fun doSaveCrewName() {
-        val name = state.value.editingCrewName
+        val name = currentState.editingCrewName
         update { it.copy(isSavingCrewName = true, error = null) }
         when (val r = renameCrew(crewId, name)) {
             is Result.Ok -> update { it.copy(isSavingCrewName = false) }
