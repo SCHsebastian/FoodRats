@@ -1,6 +1,5 @@
 package es.schsebastian.foodrats.feature.meal.data.repository
 
-import dev.gitlive.firebase.auth.FirebaseAuth
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.DraftIngredients
@@ -21,10 +20,11 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.data.firebase.CrewMemberLookup
 import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseFault
 import es.schsebastian.foodrats.feature.meal.data.firebase.toFirebaseFault
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
-import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
-import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
+import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
 import es.schsebastian.foodrats.feature.meal.data.firebase.toMealWithRatings
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
@@ -55,13 +55,13 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 
 internal class FirebaseMealRepository(
-    private val firestore: MealFirestoreDataSource,
-    private val storage: PlateStorageDataSource,
+    private val firestore: MealFirestore,
+    private val storage: PlateStorage,
     private val drafts: MealDraftLocalStore,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: MealErrorMapper,
     private val clock: Clock,
-    private val auth: FirebaseAuth,
+    private val authorIdentity: MealAuthorIdentity,
     private val zone: TimeZone,
     private val accountRead: AccountReadPort,
 ) : MealRepository {
@@ -129,7 +129,7 @@ internal class FirebaseMealRepository(
     }
 
     private fun currentAccountId(): AccountId? {
-        val uid = auth.currentUser?.uid ?: return null
+        val uid = authorIdentity.current()?.uid ?: return null
         val result = AccountId.of(uid)
         return if (result is Result.Ok) result.value else null
     }
@@ -146,12 +146,12 @@ internal class FirebaseMealRepository(
                 }
                 val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
                 val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
-                val currentUser = auth.currentUser
+                val currentAuthor = authorIdentity.current()
                 val dto = MealDto(
                     id = mealId.value,
                     authorId = draft.authorId.value,
-                    authorName = currentUser?.displayName.orEmpty(),
-                    authorAvatarUrl = currentUser?.photoURL,
+                    authorName = currentAuthor?.displayName.orEmpty(),
+                    authorAvatarUrl = currentAuthor?.avatarUrl,
                     crewId = draft.crewId.value,
                     dayKey = draft.day.toKey(),
                     slot = slot.key(),
@@ -288,7 +288,7 @@ internal class FirebaseMealRepository(
         // Defense in depth: the rater identity is the explicit [raterId] from the domain,
         // but a live auth token is still required (and the txn + rules re-check self-vote /
         // already-rated authoritatively).
-        if (auth.currentUser?.uid == null) return@withContext Result.failure(RateError.Unauthorized)
+        if (authorIdentity.current()?.uid == null) return@withContext Result.failure(RateError.Unauthorized)
         runCatching<Result<Unit, RateError>> {
             val outcome = firestore.rateMeal(
                 crewId = crewId,
@@ -298,10 +298,10 @@ internal class FirebaseMealRepository(
                 nowEpochMs = clock.now().toEpochMilliseconds(),
             )
             when (outcome) {
-                MealFirestoreDataSource.RateOutcome.Ok -> Result.success(Unit)
-                MealFirestoreDataSource.RateOutcome.MealNotFound -> Result.failure(RateError.RateUnavailable)
-                MealFirestoreDataSource.RateOutcome.SelfRating -> Result.failure(RateError.CannotRateOwnMeal)
-                MealFirestoreDataSource.RateOutcome.AlreadyRated -> Result.failure(RateError.AlreadyRated)
+                MealFirestore.RateOutcome.Ok -> Result.success(Unit)
+                MealFirestore.RateOutcome.MealNotFound -> Result.failure(RateError.RateUnavailable)
+                MealFirestore.RateOutcome.SelfRating -> Result.failure(RateError.CannotRateOwnMeal)
+                MealFirestore.RateOutcome.AlreadyRated -> Result.failure(RateError.AlreadyRated)
             }
         }.fold(
             onSuccess = { it },
