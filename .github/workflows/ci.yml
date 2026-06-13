@@ -46,6 +46,11 @@ jobs:
         with:
           cache-cleanup: on-success
 
+      # :core:domain hosts the whole-project architecture fitness functions
+      # (ArchitectureFitnessTest + KonsistRulesTest), so they run here too.
+      # :feature:meal-ai is intentionally omitted: it has `withHostTest {}` wired
+      # but no androidHostTest sources yet, so its test task is NO-SOURCE (a no-op).
+      # Add :feature:meal-ai:testAndroidHostTest here once it gains host tests.
       - name: Run host tests
         run: >
           ./gradlew --no-daemon
@@ -56,6 +61,7 @@ jobs:
           :feature:feed:testAndroidHostTest
           :feature:stats:testAndroidHostTest
           :feature:notifications:testAndroidHostTest
+          :feature:ingredient:testAndroidHostTest
           :core:designsystem:testAndroidHostTest
 
       - name: Upload test reports
