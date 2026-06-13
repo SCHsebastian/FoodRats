@@ -42,11 +42,23 @@ fun FoodRatsApp() {
                 }
             }
             is RootNavEffect.NavigateDeepLink -> {
-                FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → Main + push ${eff.route::class.simpleName}" }
-                // Establish the authenticated base so Back from the deep-linked leaf lands on Feed,
-                // then push the leaf itself. No-op the push if the link already targets Main.
-                rootController.navigateTopLevel(Route.Main)
-                if (eff.route != Route.Main) rootController.navigate(eff.route)
+                // Mirror the NavigateTopLevel guard. A deep-link tap that arrives mid-flow must NOT
+                // clobber the user's stack: if Main is already present we're in authenticated content,
+                // so just push the leaf on top of where they are. Only when Main is absent (cold start
+                // or a stashed link resumed at Ready) do we first establish the authenticated base so
+                // Back from the leaf lands on Feed. launchSingleTop avoids stacking duplicates when the
+                // same notification is tapped twice.
+                val alreadyInAuthedContent =
+                    rootController.currentBackStack.value.any { it.destination.hasRoute<Route.Main>() }
+                if (!alreadyInAuthedContent) {
+                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → establish Main base then push ${eff.route::class.simpleName}" }
+                    rootController.navigateTopLevel(Route.Main)
+                } else {
+                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → push ${eff.route::class.simpleName} (already in authenticated content)" }
+                }
+                if (eff.route != Route.Main) {
+                    rootController.navigate(eff.route) { launchSingleTop = true }
+                }
             }
         }
     }
