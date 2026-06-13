@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlinx.coroutines.flow.map
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
@@ -34,11 +35,11 @@ import kotlin.random.Random
 val crewModule = module {
     single { CrewCodeGenerator(random = Random.Default) }
     singleOf(::CrewErrorMapper)
-    singleOf(::CrewFirestoreDataSource)
+    single<CrewDataSource> { CrewFirestoreDataSource(get(), get(), get(), get()) }
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
     single<CrewOwnerPort> {
         object : CrewOwnerPort {
-            private val ds = get<CrewFirestoreDataSource>()
+            private val ds = get<CrewDataSource>()
             override fun observeOwner(crewId: CrewId): Flow<AccountId?> =
                 ds.observeCrew(crewId).map { dto ->
                     dto?.ownerId?.let { (AccountId.of(it) as? Result.Ok)?.value }
