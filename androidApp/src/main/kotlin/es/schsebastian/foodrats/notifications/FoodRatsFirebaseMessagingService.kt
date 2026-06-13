@@ -24,14 +24,16 @@ class FoodRatsFirebaseMessagingService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        val reminder = mapper.toReminder(message.data) ?: Reminder(
-            id = message.messageId ?: System.currentTimeMillis().toString(),
-            kind = ReminderKind.NewMealPost,
-            deliverAt = Clock.System.now(),
-            title = message.notification?.title.orEmpty(),
-            body = message.notification?.body.orEmpty(),
-            payload = ReminderPayload.None,
-        )
-        scope.launch { bus.publish(reminder) }
+        scope.launch {
+            val reminder = mapper.toReminder(message.data) ?: Reminder(
+                id = message.messageId ?: System.currentTimeMillis().toString(),
+                kind = ReminderKind.NewMealPost,
+                deliverAt = Clock.System.now(),
+                title = message.notification?.title.orEmpty(),
+                body = message.notification?.body.orEmpty(),
+                payload = ReminderPayload.None,
+            )
+            bus.publish(reminder)
+        }
     }
 }
