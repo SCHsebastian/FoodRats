@@ -40,3 +40,31 @@ sealed interface MainTab : Route.Protected {
     @Serializable data object Feed : MainTab
     @Serializable data object Stats : MainTab
 }
+
+/**
+ * Whether reaching this destination requires an authenticated session.
+ *
+ * Exhaustive `when` over the sealed [Route] hierarchy with **no `else`** — adding a new route
+ * forces a compile error here until its access level is decided, so auth-gating can never silently
+ * default a new screen to "public". This is the single source of truth the root nav gates on
+ * (see `RootNavViewModel`); the [Route.Public] / [Route.Protected] markers stay as the documented
+ * classification but no longer carry the gating decision alone.
+ */
+fun Route.requiresSession(): Boolean = when (this) {
+    Route.Splash,
+    Route.SignIn,
+        -> false
+
+    Route.NotificationPermission,
+    Route.CrewPicker,
+    is Route.CrewSettings,
+    Route.Profile,
+    Route.Main,
+    Route.CaptureMeal,
+    Route.ComposePlate,
+    Route.SelectIngredients,
+    is Route.MealDetail,
+    MainTab.Feed,
+    MainTab.Stats,
+        -> true
+}
