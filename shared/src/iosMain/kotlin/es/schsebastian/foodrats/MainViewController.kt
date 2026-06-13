@@ -43,6 +43,9 @@ import platform.UIKit.UIViewController
  * The completion is invoked with `(labels, errorCode)` — exactly one side is non-null; each label is
  * a primitive `"<dishSlug>|<confidence>"` string (kept primitive so the boundary needs no exported
  * `:core:domain` type in the ObjC header).
+ *
+ * [share] bridges to ShareBridge — UIKit's `UIActivityViewController` must be presented from a live
+ * view controller, so the share sheet is built and presented in Swift (see iosApp/ShareBridge.swift).
  */
 fun MainViewController(
     viewControllerProvider: () -> UIViewController,
@@ -57,22 +60,27 @@ fun MainViewController(
         jpeg: NSData,
         (labels: List<String>?, errorCode: String?) -> Unit,
     ) -> Unit,
+    share: (String) -> Unit,
 ) = ComposeUIViewController(
     configure = {
         installImageLoader()
-        startKoin {
-            modules(
-                appModules + listOf(
-                    notificationsIosModule,
-                    mealIosModule,
-                    mealAiIosModule(classifyPlate),
-                    shareIosModule,
-                    authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
-                    crashIosModule(crashRecordNonFatal, crashLog),
-                    configIosModule,
-                    locationIosModule,
-                ),
-            )
+        // Idempotency guard: a view-controller recreation (e.g. scene reattach) would otherwise
+        // re-enter startKoin and throw KoinApplicationAlreadyStartedException. Start exactly once.
+        if (KoinPlatform.getKoinOrNull() == null) {
+            startKoin {
+                modules(
+                    appModules + listOf(
+                        notificationsIosModule,
+                        mealIosModule,
+                        mealAiIosModule(classifyPlate),
+                        shareIosModule(share),
+                        authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
+                        crashIosModule(crashRecordNonFatal, crashLog),
+                        configIosModule,
+                        locationIosModule,
+                    ),
+                )
+            }
         }
         // Route FrLog warnings/errors to the Crashlytics-backed CrashReporter. Crashlytics
         // collection is already disabled in debug on the Swift side (`#if DEBUG`), so this is
