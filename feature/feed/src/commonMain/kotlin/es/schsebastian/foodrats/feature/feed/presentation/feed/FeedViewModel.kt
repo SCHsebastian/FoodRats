@@ -3,7 +3,6 @@ package es.schsebastian.foodrats.feature.feed.presentation.feed
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.meal.MealId
-import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
 import es.schsebastian.foodrats.core.domain.meal.Score
@@ -14,6 +13,7 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -28,7 +28,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay as DomainMealDay
 
 class FeedViewModel(
     observeFeed: ObserveFeedUseCase,
-    private val ratingPort: MealRatingPort,
+    private val rateMeal: RateMealUseCase,
     private val activeCrew: ActiveCrewProvider,
     private val session: SessionProvider,
     private val clock: Clock,
@@ -74,15 +74,16 @@ class FeedViewModel(
         FeedIntent.PrevDay      -> { navigatePrev(); Unit }
         FeedIntent.NextDay      -> { navigateNext(); Unit }
         FeedIntent.DismissError -> update { it.copy(error = null, rateError = null) }
-        is FeedIntent.RateMeal  -> rateMeal(intent.mealId, intent.score)
+        is FeedIntent.RateMeal  -> rate(intent.mealId, intent.score)
     }
 
-    private suspend fun rateMeal(mealIdRaw: String, scoreRaw: Int) {
+    private suspend fun rate(mealIdRaw: String, scoreRaw: Int) {
         val crewId = activeCrew.current.first() ?: return
+        val raterId = session.current.first()?.accountId ?: return
         val mealId = MealId.of(mealIdRaw).getOrElse { return }
         val score = Score.of(scoreRaw).getOrElse { return }
         update { it.copy(pendingRateMealId = mealIdRaw, rateError = null) }
-        val r = ratingPort.rate(crewId, mealId, score)
+        val r = rateMeal(crewId, mealId, raterId, score)
         update {
             when (r) {
                 is Result.Ok  -> it.copy(pendingRateMealId = null)

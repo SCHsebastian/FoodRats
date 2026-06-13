@@ -17,7 +17,7 @@ import kotlin.test.assertIs
 class CreateCrewUseCaseTest {
 
     private val founderId = aid("uid-founder")
-    private val sampleCrew = Crew(
+    private val sampleCrew = Crew.of(
         id = cid("c-1"),
         name = "Test Crew",
         code = (CrewCode.of("ABCD23") as Result.Ok).value,

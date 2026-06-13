@@ -23,6 +23,7 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -92,7 +93,7 @@ class FeedViewModelTest {
         ),
     ) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(active, port),
-        ratingPort = ratingPort,
+        rateMeal = RateMealUseCase(ratingPort),
         activeCrew = active,
         session = session,
         clock = clock,
@@ -166,6 +167,7 @@ class FeedViewModelTest {
         assertEquals(1, ratingPort.calls.size)
         assertEquals("meal-1", ratingPort.calls.first().mealId)
         assertEquals(4, ratingPort.calls.first().score)
+        assertEquals("u-viewer", ratingPort.calls.first().raterId)
     }
 
     @Test fun rate_meal_failure_populates_rateError() = runTest {

@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.feed.di
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailViewModel
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedViewModel
 import kotlinx.datetime.TimeZone
@@ -12,6 +13,7 @@ import org.koin.dsl.module
 
 val feedModule = module {
     factoryOf(::ObserveFeedUseCase)
+    factoryOf(::RateMealUseCase)
     factoryOf(::DeleteMealUseCase)
     factoryOf(::DeleteCommentUseCase)
     single<TimeZone> { TimeZone.currentSystemDefault() }

@@ -15,7 +15,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
-import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -27,6 +26,7 @@ import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
@@ -47,7 +47,7 @@ class MealDetailViewModel(
     private val mealId: String,
     private val dayIso: String,
     observeFeed: ObserveFeedUseCase,
-    private val ratingPort: MealRatingPort,
+    private val rateMeal: RateMealUseCase,
     private val commentPort: MealCommentPort,
     private val accountReadPort: AccountReadPort,
     private val ingredientRead: IngredientReadPort,
@@ -181,7 +181,7 @@ class MealDetailViewModel(
     }
 
     override suspend fun handle(intent: MealDetailIntent) = when (intent) {
-        is MealDetailIntent.RateMeal               -> rateMeal(intent.score)
+        is MealDetailIntent.RateMeal               -> rate(intent.score)
         MealDetailIntent.DismissError              -> update {
             it.copy(
                 error = null,
@@ -219,12 +219,13 @@ class MealDetailViewModel(
         if (r is Result.Err) update { it.copy(commentDeleteError = r.error) }
     }
 
-    private suspend fun rateMeal(scoreRaw: Int) {
+    private suspend fun rate(scoreRaw: Int) {
         val crewId = activeCrew.current.first() ?: return
+        val raterId = session.current.first()?.accountId ?: return
         val parsedMealId = MealId.of(mealId).getOrElse { return }
         val score = Score.of(scoreRaw).getOrElse { return }
         update { it.copy(pendingRate = true, rateError = null) }
-        val r = ratingPort.rate(crewId, parsedMealId, score)
+        val r = rateMeal(crewId, parsedMealId, raterId, score)
         update {
             when (r) {
                 is Result.Ok  -> it.copy(pendingRate = false)
