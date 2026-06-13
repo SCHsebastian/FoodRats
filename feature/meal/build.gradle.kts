@@ -30,48 +30,27 @@ kotlin {
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.firebase.common)
-            implementation(libs.firebase.auth)
-            implementation(libs.firebase.firestore)
-            implementation(libs.firebase.storage)
-            implementation(libs.kotlinx.datetime)
+            implementation(libs.bundles.feature.ui)
+            implementation(libs.bundles.firebase.gitlive)
+            implementation(libs.bundles.kotlinx.common)
             implementation(libs.okio)
             implementation(libs.imagepickerkmp)
         }
         commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotest.assertions.core)
-            implementation(libs.turbine)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.koin.test)
+            implementation(libs.bundles.feature.test)
             // In-memory DataStore harness for MealDraftLocalStore round-trip tests
             // (AppPreferences wraps a real DataStore<Preferences>).
             implementation(libs.androidx.datastore.preferences)
         }
         val androidHostTest by getting {
             dependencies {
-                implementation(libs.kotlin.testJunit)
-                implementation(libs.junit)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.turbine)
+                implementation(libs.bundles.feature.hosttest)
             }
         }
         // StorageData.android.kt / StorageData.ios.kt expect/actual for Firebase Storage Data type
         androidMain.dependencies {
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
-            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+            implementation(project.dependencies.platform(libs.firebase.bom))
             // WorkManager runs the MealUploadWorker that resumes uploads after process death.
             implementation(libs.androidx.work.runtime)
             // Koin Android for KoinComponent in the worker (resolves the coordinator at runtime).

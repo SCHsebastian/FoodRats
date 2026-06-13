@@ -28,37 +28,18 @@ kotlin {
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.datetime)
+            implementation(libs.bundles.feature.ui)
+            implementation(libs.bundles.kotlinx.common)
             // Image loading for meal photos (FrFeedMealCard). The singleton ImageLoader
             // (with Ktor fetcher + memory/disk cache) is installed by :core:data.
             implementation(libs.coil.compose)
         }
         commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotest.assertions.core)
-            implementation(libs.turbine)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.koin.test)
+            implementation(libs.bundles.feature.test)
         }
         val androidHostTest by getting {
             dependencies {
-                implementation(libs.kotlin.testJunit)
-                implementation(libs.junit)
-                implementation(libs.androidx.testExt.junit)
-                implementation(libs.compose.ui.test.junit4)
-                implementation(libs.robolectric)
+                implementation(libs.bundles.compose.hosttest)
             }
         }
     }
