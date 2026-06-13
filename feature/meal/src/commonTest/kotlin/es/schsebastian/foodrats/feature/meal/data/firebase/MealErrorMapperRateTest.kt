@@ -8,14 +8,17 @@ import kotlin.test.assertEquals
 class MealErrorMapperRateTest {
     private val mapper = MealErrorMapper(NoopCrashReporter)
 
-    @Test fun permission_denied_underscore_maps_to_window_closed() {
+    // --- #8 regression: a PERMISSION_DENIED is an authorization rejection, NOT a closed
+    // rating window. Both message shapes classify to FirebaseFault.PermissionDenied and
+    // must map to RateUnavailable, never RatingWindowClosed. ---
+    @Test fun permission_denied_underscore_maps_to_rate_unavailable_not_window_closed() {
         val t = RuntimeException("PERMISSION_DENIED: Missing or insufficient permissions.")
-        assertEquals(RateError.RatingWindowClosed, mapper.mapRate(t))
+        assertEquals(RateError.RateUnavailable, mapper.mapRate(t))
     }
 
-    @Test fun permission_denied_hyphen_maps_to_window_closed() {
+    @Test fun permission_denied_hyphen_maps_to_rate_unavailable_not_window_closed() {
         val t = RuntimeException("permission-denied: rules rejected the update.")
-        assertEquals(RateError.RatingWindowClosed, mapper.mapRate(t))
+        assertEquals(RateError.RateUnavailable, mapper.mapRate(t))
     }
 
     @Test fun unavailable_proxy_maps_to_offline() {

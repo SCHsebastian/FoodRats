@@ -19,6 +19,8 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.data.firebase.CrewMemberLookup
+import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseFault
+import es.schsebastian.foodrats.feature.meal.data.firebase.toFirebaseFault
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
@@ -211,11 +213,14 @@ internal class FirebaseMealRepository(
             firestore.deleteMeal(crewId, mealId.value)
             Result.success(Unit) as Result<Unit, MealDeleteError>
         }.getOrElse { t ->
-            val msg = t.message.orEmpty().lowercase()
-            val mapped = when {
-                "permission" in msg -> MealDeleteError.NotAuthorOrOwner
-                "not-found" in msg || "not found" in msg -> MealDeleteError.NotFound
-                else -> MealDeleteError.Unavailable
+            val mapped = when (t.toFirebaseFault()) {
+                FirebaseFault.PermissionDenied,
+                FirebaseFault.Unauthenticated -> MealDeleteError.NotAuthorOrOwner
+                FirebaseFault.NotFound -> MealDeleteError.NotFound
+                FirebaseFault.Unavailable,
+                FirebaseFault.AlreadyExists,
+                FirebaseFault.StorageFailure,
+                is FirebaseFault.Unknown -> MealDeleteError.Unavailable
             }
             Result.failure(mapped)
         }
