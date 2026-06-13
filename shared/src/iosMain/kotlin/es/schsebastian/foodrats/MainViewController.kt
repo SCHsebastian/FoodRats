@@ -5,9 +5,13 @@ import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.app.root.FoodRatsApp
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
+import es.schsebastian.foodrats.core.data.di.configIosModule
 import es.schsebastian.foodrats.core.data.di.crashIosModule
 import es.schsebastian.foodrats.core.data.di.locationIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
+import es.schsebastian.foodrats.core.data.telemetry.CrashReporterLogSink
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.auth.di.authIosModule
 import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.meal.di.mealIosModule
@@ -65,10 +69,16 @@ fun MainViewController(
                     shareIosModule,
                     authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
                     crashIosModule(crashRecordNonFatal, crashLog),
+                    configIosModule,
                     locationIosModule,
                 ),
             )
         }
+        // Route FrLog warnings/errors to the Crashlytics-backed CrashReporter. Crashlytics
+        // collection is already disabled in debug on the Swift side (`#if DEBUG`), so this is
+        // effectively a no-op there; the debug println path is unaffected.
+        FrLog.installSink(CrashReporterLogSink(KoinPlatform.getKoin().get<CrashReporter>()))
+
         // Self-healing migration: see Android equivalent in FoodRatsApplication.onCreate.
         CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
             KoinPlatform.getKoin().get<AppPreferences>().clearLegacyDevCrewIfPresent()

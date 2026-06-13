@@ -1,6 +1,19 @@
 package es.schsebastian.foodrats.core.domain.telemetry
 
 /**
+ * Production sink for [FrLog] warnings/errors. Implemented in the data layer and
+ * wired at app boot (release builds only) so `:core:domain` stays free of vendor
+ * SDKs — the concrete sink forwards to the per-platform [CrashReporter].
+ */
+interface FrLogSink {
+    /**
+     * Forwards a warning/error. [tag] is the `FrLog` tag, [message] the rendered
+     * text, [throwable] the optional cause (recorded as a non-fatal by the sink).
+     */
+    fun warn(tag: String, message: String, throwable: Throwable?)
+}
+
+/**
  * Lightweight, tag-scoped logger for debugging KMP code paths.
  *
  * Writes to `println` so output appears in Android Logcat (tagged `I/System.out`)
@@ -21,10 +34,15 @@ package es.schsebastian.foodrats.core.domain.telemetry
  *
  * `MviViewModel` auto-emits under `"MVI/<VmClassName>"` (intents, state Δ, effects).
  *
- * TODO(scope = "observability"): research how comparable apps wire production
- * metrics/telemetry (Crashlytics breadcrumbs, OpenTelemetry, custom analytics
- * pipelines) and decide whether FrLog should sprout a sink abstraction for
- * release builds or live as a debug-only println. For now it's debug-only.
+ * ## Production sink
+ *
+ * In debug builds [sink] is null and the only output is `println` (Logcat / Xcode
+ * console). In release builds the app boot installs an [FrLogSink] backed by the
+ * per-platform [CrashReporter] (Crashlytics breadcrumbs on Android/iOS) — see
+ * `frLogSinkModule` / `installFrLogSink`. Every [w] call forwards to `sink.warn(...)`;
+ * the carried throwable (if any) is recorded as a non-fatal. The debug `println`
+ * path is unchanged. The fluent lambda form still skips message construction when a
+ * tag is off, so leaving instrumentation in place stays cheap.
  */
 object FrLog {
     /**
@@ -47,6 +65,14 @@ object FrLog {
     /** Master switch — when false, nothing logs regardless of per-tag state. */
     var enabled: Boolean = true
 
+    /**
+     * Production observability sink — null in debug (println-only). Installed at app
+     * boot in release builds (see `installFrLogSink`). Public because the [w] inline
+     * function references it; assign through [installFrLogSink], not directly, off
+     * call sites. Receives only warnings/errors ([w]), never debug spam ([d]).
+     */
+    var sink: FrLogSink? = null
+
     /** Tags explicitly turned off; unknown tags default to ENABLED (under the master switch). */
     @PublishedApi
     internal val disabledTags: MutableSet<String> = mutableSetOf()
@@ -55,13 +81,20 @@ object FrLog {
     fun enable(tag: String)  { disabledTags.remove(tag) }
     fun disable(tag: String) { disabledTags.add(tag) }
 
+    /** Installs the production [sink]. Idempotent; call once at app boot. */
+    fun installSink(sink: FrLogSink) { this.sink = sink }
+
     inline fun d(tag: String, message: () -> String) {
         if (isEnabled(tag)) println("FR/$tag ${message()}")
     }
 
     inline fun w(tag: String, throwable: Throwable? = null, message: () -> String) {
+        // Warnings/errors always reach the production sink (independent of the per-tag
+        // debug switch) so a muted tag never silences release observability.
+        val rendered = message()
+        sink?.warn(tag, rendered, throwable)
         if (isEnabled(tag)) {
-            println("FR/$tag ⚠ ${message()}")
+            println("FR/$tag ⚠ $rendered")
             throwable?.printStackTrace()
         }
     }
