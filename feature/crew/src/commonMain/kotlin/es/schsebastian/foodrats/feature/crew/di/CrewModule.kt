@@ -1,8 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.di
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
-import es.schsebastian.foodrats.core.domain.crew.CrewMembersPort
-import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -38,12 +36,6 @@ val crewModule = module {
     singleOf(::CrewErrorMapper)
     singleOf(::CrewFirestoreDataSource)
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
-    single<CrewMembersPort> {
-        object : CrewMembersPort {
-            private val ds = get<CrewFirestoreDataSource>()
-            override fun observeMembers(crewId: CrewId): Flow<List<CrewMemberView>> = ds.observeMembersRaw(crewId)
-        }
-    }
     single<CrewOwnerPort> {
         object : CrewOwnerPort {
             private val ds = get<CrewFirestoreDataSource>()
