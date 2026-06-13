@@ -1,6 +1,6 @@
 # :core:domain
 
-Pure-Kotlin contracts shared by every feature: `Result<T, E>`, sealed-interface errors, shared VOs (`AccountId`, `CrewId`, `MealId`, `MealDay`, `Score`), cross-context read ports (`MealReadPort`, `ActiveCrewProvider`, `AccountReadPort`, `CrewMembersPort`), `Clock`, `DispatcherProvider`, `CrashReporter`.
+Pure-Kotlin contracts shared by every feature: `Result<T, E>`, sealed-interface errors, shared VOs (`AccountId`, `CrewId`, `MealId`, `MealDay`, `Score`), cross-context read ports (`MealReadPort`, `ActiveCrewProvider`, `AccountReadPort`), `Clock`, `DispatcherProvider`, `CrashReporter`.
 
 ## Authoritative references
 

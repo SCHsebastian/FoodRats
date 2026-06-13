@@ -2,7 +2,6 @@ package es.schsebastian.foodrats.feature.crew.data.firebase
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
-import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -79,7 +78,7 @@ class CrewFirestoreDataSource(
                     createdAtEpochMs = nowMs,
                     memberIds = listOf(founder.value),
                     members = mapOf(
-                        founder.value to MemberDto(founderDisplayName, null, nowMs),
+                        founder.value to MemberDto(joinedAtEpochMs = nowMs),
                     ),
                 )
                 firestore.runTransaction {
@@ -115,7 +114,7 @@ class CrewFirestoreDataSource(
             if (joiner.value in crew.memberIds) throw AlreadyMemberException
             if (crew.memberIds.size >= 8) throw FullException
             val updatedMemberIds = crew.memberIds + joiner.value
-            val updatedMembers = crew.members + (joiner.value to MemberDto(joinerDisplayName, null, nowMs))
+            val updatedMembers = crew.members + (joiner.value to MemberDto(joinedAtEpochMs = nowMs))
             val updated = crew.copy(memberIds = updatedMemberIds, members = updatedMembers)
             set(crewRef, updated)
             updated
@@ -165,18 +164,6 @@ class CrewFirestoreDataSource(
         }
         emitAll(shared)
     }
-
-    /** Cold flow projecting the members map from the live crew document. */
-    fun observeMembersRaw(crewId: CrewId): Flow<List<CrewMemberView>> =
-        observeCrew(crewId).map { dto ->
-            dto?.members?.entries?.map { (uid, m) ->
-                CrewMemberView(
-                    accountUid = uid,
-                    displayName = m.displayName.orEmpty(),
-                    avatarUrl = m.avatarUrl,
-                )
-            } ?: emptyList()
-        }
 
     /** Single-shot read of a crew; returns null on not-found or error. */
     suspend fun fetchOnce(crewId: CrewId): Crew? =
