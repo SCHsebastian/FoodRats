@@ -1,19 +1,29 @@
 package es.schsebastian.foodrats.app.root
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.rememberNavController
 import es.schsebastian.foodrats.app.navigation.EventsEffect
 import es.schsebastian.foodrats.app.navigation.NavGraph
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.app.navigation.navigateTopLevel
+import es.schsebastian.foodrats.app.notifications.InAppPushBanner
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.feature.notifications.domain.bus.NotificationBus
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -72,7 +82,25 @@ fun FoodRatsApp() {
         ThemeMode.Dark -> true
     }
 
+    // Foreground/in-app push surface: the OS suppresses tray notifications while the app is
+    // foregrounded, so an app-level snackbar is the only place a foreground push is shown. Lives
+    // here at the root so it overlays every screen. The bus carries already-localized title/body
+    // (resolved via NotificationStringKey in PushPayloadMapper.toReminder).
+    val notificationBus = koinInject<NotificationBus>()
+    val snackbarHostState = remember { SnackbarHostState() }
+
     FoodRatsTheme(darkTheme = darkTheme) {
-        NavGraph(navController = rootController)
+        InAppPushBanner(bus = notificationBus, snackbarHostState = snackbarHostState)
+        Scaffold(
+            // Transparent host whose only job is to position the SnackbarHost above every screen;
+            // the NavGraph owns its own bars/insets (MainScaffold), so we let it fill the body and
+            // do NOT apply innerPadding to it (that would double-pad). The snackbar floats over.
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+        ) { _ ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                NavGraph(navController = rootController)
+            }
+        }
     }
 }

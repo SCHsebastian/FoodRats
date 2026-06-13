@@ -1,18 +1,65 @@
+@file:OptIn(org.jetbrains.compose.resources.ExperimentalResourceApi::class)
+
 package es.schsebastian.foodrats.feature.notifications.data.push
 
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
 import es.schsebastian.foodrats.feature.notifications.domain.model.ReminderKind
 import es.schsebastian.foodrats.feature.notifications.domain.model.ReminderPayload
+import es.schsebastian.foodrats.feature.notifications.i18n.NotificationStringKey
+import org.jetbrains.compose.resources.getString
 
 /**
  * Parses an incoming FCM `data` map (always `Map<String, String>` on both platforms) into a
  * domain [Reminder]. The server-side `key` field selects the parsing branch; unknown or missing
  * keys return null — caller treats null as "ignore this push".
+ *
+ * Parsing ([parse]) is pure and unit-tested. Display text ([toReminder]) is resolved through
+ * [NotificationStringKey] via the suspending Compose-resources `getString(...)` API — same
+ * discipline as [es.schsebastian.foodrats.feature.notifications.data.adapter.StreakNotificationAdapter]
+ * — so every client-built push string honours the active locale (en/es) instead of being hardcoded
+ * English in the data layer.
  */
 class PushPayloadMapper(private val clock: Clock) {
 
-    fun toReminder(data: Map<String, String>): Reminder? {
+    /** Structured, locale-free result of parsing an FCM `data` map. Unit-testable without resources. */
+    sealed interface PushContent {
+        val id: String
+        val kind: ReminderKind
+        val payload: ReminderPayload
+
+        data class NewComment(
+            override val id: String,
+            val commenterName: String,
+            val dishName: String,
+            override val payload: ReminderPayload.Comment,
+        ) : PushContent {
+            override val kind get() = ReminderKind.NewComment
+        }
+
+        data class NewMealPost(
+            override val id: String,
+            val authorName: String,
+            val dishName: String,
+            override val payload: ReminderPayload.Meal,
+        ) : PushContent {
+            override val kind get() = ReminderKind.NewMealPost
+        }
+
+        data class WeeklyDigest(
+            override val id: String,
+            override val payload: ReminderPayload.WeeklyDigest,
+        ) : PushContent {
+            override val kind get() = ReminderKind.WeeklyDigest
+        }
+    }
+
+    /**
+     * Pure parse — no resource lookup, no clock. Returns null for unknown / malformed payloads.
+     * Kept separate from [toReminder] so the branching logic is unit-testable in `commonTest`,
+     * where bundled Compose Resources are not available.
+     */
+    fun parse(data: Map<String, String>): PushContent? {
         val key = data["key"] ?: return null
         return when (key) {
             KEY_NEW_COMMENT -> newComment(data)
@@ -22,59 +69,72 @@ class PushPayloadMapper(private val clock: Clock) {
         }
     }
 
-    private fun newComment(d: Map<String, String>): Reminder? {
+    /**
+     * Parse [data] and resolve its title/body through [NotificationStringKey] for the active locale.
+     * Suspends because `getString(...)` is suspending. Returns null for unknown / malformed payloads.
+     */
+    suspend fun toReminder(data: Map<String, String>): Reminder? {
+        val content = parse(data) ?: return null
+        return when (content) {
+            is PushContent.NewComment -> Reminder(
+                id = content.id,
+                kind = content.kind,
+                deliverAt = clock.now(),
+                title = getString(
+                    NotificationStringKey.NewCommentTitle.resourceId,
+                    content.commenterName,
+                    content.dishName,
+                ),
+                body = getString(NotificationStringKey.NewCommentBody.resourceId),
+                payload = content.payload,
+            )
+            is PushContent.NewMealPost -> Reminder(
+                id = content.id,
+                kind = content.kind,
+                deliverAt = clock.now(),
+                title = getString(NotificationStringKey.NewMealPostTitle.resourceId, content.authorName),
+                body = getString(NotificationStringKey.NewMealPostBody.resourceId, content.dishName),
+                payload = content.payload,
+            )
+            is PushContent.WeeklyDigest -> Reminder(
+                id = content.id,
+                kind = content.kind,
+                deliverAt = clock.now(),
+                title = getString(NotificationStringKey.WeeklyDigestTitle.resourceId),
+                body = getString(NotificationStringKey.WeeklyDigestBody.resourceId),
+                payload = content.payload,
+            )
+        }
+    }
+
+    private fun newComment(d: Map<String, String>): PushContent? {
         val crewId = d["crewId"] ?: return null
         val mealId = d["mealId"] ?: return null
         val commentId = d["commentId"] ?: return null
-        val commenterName = d["commenterName"].orEmpty()
-        val dishName = d["dishName"].orEmpty()
-        return Reminder(
+        return PushContent.NewComment(
             id = commentId,
-            kind = ReminderKind.NewComment,
-            deliverAt = clock.now(),
-            title = "$commenterName commented on your $dishName",
-            body = "Tap to read",
+            commenterName = d["commenterName"].orEmpty(),
+            dishName = d["dishName"].orEmpty(),
             payload = ReminderPayload.Comment(crewId, mealId, commentId),
         )
     }
 
-    private fun newMealPost(d: Map<String, String>): Reminder? {
+    private fun newMealPost(d: Map<String, String>): PushContent? {
         val crewId = d["crewId"] ?: return null
         val mealId = d["mealId"] ?: return null
-        val authorName = d["authorName"].orEmpty()
-        val dishName = d["dishName"].orEmpty()
-        return Reminder(
+        return PushContent.NewMealPost(
             id = mealId,
-            kind = ReminderKind.NewMealPost,
-            deliverAt = clock.now(),
-            title = "$authorName posted a meal",
-            body = "$dishName — tap to view",
+            authorName = d["authorName"].orEmpty(),
+            dishName = d["dishName"].orEmpty(),
             payload = ReminderPayload.Meal(crewId, mealId),
         )
     }
 
-    private fun weeklyDigest(d: Map<String, String>): Reminder? {
+    private fun weeklyDigest(d: Map<String, String>): PushContent? {
         val crewId = d["crewId"] ?: return null
         val weekStartIso = d["weekStartIso"] ?: return null
-        val parts = buildList {
-            d["bestMealDishName"]?.let { dish ->
-                val score = d["bestMealScore"]
-                add(if (score != null) "Best meal: $dish ($score★)" else "Best meal: $dish")
-            }
-            d["bestCookName"]?.let { add("Best cook: $it") }
-            d["mostProlificName"]?.let { name ->
-                val count = d["mostProlificCount"]
-                add(if (count != null) "Most prolific: $name ($count)" else "Most prolific: $name")
-            }
-            d["mostVotedDishName"]?.let { add("Most voted: $it") }
-            d["mostCriticizedName"]?.let { add("Most criticized: $it") }
-        }
-        return Reminder(
+        return PushContent.WeeklyDigest(
             id = "weekly-$weekStartIso",
-            kind = ReminderKind.WeeklyDigest,
-            deliverAt = clock.now(),
-            title = "Your week in food",
-            body = parts.joinToString(" · "),
             payload = ReminderPayload.WeeklyDigest(crewId, weekStartIso),
         )
     }
