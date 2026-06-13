@@ -6,12 +6,18 @@
     <string name="stats_tab_month">Mes</string>
     <string name="stats_tab_historic">Histórico</string>
 
-    <string name="stats_hero_personal_streak_singular">%1$d día de racha</string>
-    <string name="stats_hero_personal_streak_plural">%1$d días de racha</string>
-    <string name="stats_hero_crew_streak_singular">Crew: %1$d día</string>
-    <string name="stats_hero_crew_streak_plural">Crew: %1$d días</string>
-    <string name="stats_hero_plates_today_singular">%1$d plato hoy</string>
-    <string name="stats_hero_plates_today_plural">%1$d platos hoy</string>
+    <plurals name="stats_hero_personal_streak">
+        <item quantity="one">%1$d día de racha</item>
+        <item quantity="other">%1$d días de racha</item>
+    </plurals>
+    <plurals name="stats_hero_crew_streak">
+        <item quantity="one">Crew: %1$d día</item>
+        <item quantity="other">Crew: %1$d días</item>
+    </plurals>
+    <plurals name="stats_hero_plates_today">
+        <item quantity="one">%1$d plato hoy</item>
+        <item quantity="other">%1$d platos hoy</item>
+    </plurals>
     <string name="stats_hero_i_posted_today">Has subido hoy ✓</string>
     <string name="stats_hero_no_streak">Sin racha — sube tu primer plato</string>
 
@@ -27,8 +33,10 @@
     <string name="stats_best_plate_author_format">de %1$s</string>
 
     <string name="stats_most_voted_plate_title">Plato más votado</string>
-    <string name="stats_most_voted_plate_voters_singular">%1$d votante</string>
-    <string name="stats_most_voted_plate_voters_plural">%1$d votantes</string>
+    <plurals name="stats_most_voted_plate_voters">
+        <item quantity="one">%1$d votante</item>
+        <item quantity="other">%1$d votantes</item>
+    </plurals>
 
     <string name="stats_cooks_section_title">Cocineros</string>
     <string name="stats_best_cook_title">Mejor cocinero</string>

@@ -8,12 +8,18 @@
     <string name="stats_tab_historic">All time</string>
 
     <!-- Hero card -->
-    <string name="stats_hero_personal_streak_singular">%1$d day streak</string>
-    <string name="stats_hero_personal_streak_plural">%1$d-day streak</string>
-    <string name="stats_hero_crew_streak_singular">Crew: %1$d day</string>
-    <string name="stats_hero_crew_streak_plural">Crew: %1$d days</string>
-    <string name="stats_hero_plates_today_singular">%1$d plate today</string>
-    <string name="stats_hero_plates_today_plural">%1$d plates today</string>
+    <plurals name="stats_hero_personal_streak">
+        <item quantity="one">%1$d day streak</item>
+        <item quantity="other">%1$d-day streak</item>
+    </plurals>
+    <plurals name="stats_hero_crew_streak">
+        <item quantity="one">Crew: %1$d day</item>
+        <item quantity="other">Crew: %1$d days</item>
+    </plurals>
+    <plurals name="stats_hero_plates_today">
+        <item quantity="one">%1$d plate today</item>
+        <item quantity="other">%1$d plates today</item>
+    </plurals>
     <string name="stats_hero_i_posted_today">You posted today ✓</string>
     <string name="stats_hero_no_streak">No streak yet — post your first plate</string>
 
@@ -33,8 +39,10 @@
 
     <!-- Most-voted plate -->
     <string name="stats_most_voted_plate_title">Most rated plate</string>
-    <string name="stats_most_voted_plate_voters_singular">%1$d voter</string>
-    <string name="stats_most_voted_plate_voters_plural">%1$d voters</string>
+    <plurals name="stats_most_voted_plate_voters">
+        <item quantity="one">%1$d voter</item>
+        <item quantity="other">%1$d voters</item>
+    </plurals>
 
     <!-- Cooks -->
     <string name="stats_cooks_section_title">Cooks</string>
