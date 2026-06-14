@@ -5,6 +5,9 @@ name: CI
 #  - host-tests:   the cross-platform host test suite. None of the tested
 #                  modules apply the Firebase/googleServices plugin, so this
 #                  job needs NO secrets and runs identically on fork PRs.
+#  - ios-tests:    runs the iOS-simulator unit tests for the non-Firebase modules
+#                  on the self-hosted Mac runner (the same one release uses).
+#                  Skipped on fork PRs so untrusted code never touches the runner.
 #  - release-smoke: builds the minified (R8) release AAB so ProGuard config
 #                  errors surface on the PR. Self-contained: it synthesizes a
 #                  placeholder google-services.json and disables the Crashlytics
@@ -69,6 +72,42 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: host-test-reports
+          path: '**/build/reports/tests/**'
+          if-no-files-found: ignore
+          retention-days: 7
+
+  ios-tests:
+    name: iOS unit tests (sim)
+    # The self-hosted Mac runner is the only host that can link Kotlin/Native iOS
+    # binaries. Gate to pushes + same-repo PRs so a fork PR never runs untrusted
+    # code on the self-hosted runner (see cicd-runbook §3.4).
+    if: >-
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, macos]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # Only the Firebase-free modules link iosSimulatorArm64Test. Everything that
+      # depends on :core:data (auth, crew, meal, notifications, feed, stats, shared)
+      # needs the Xcode-resolved FirebaseCore SPM framework, absent at Gradle link
+      # time, so it's excluded until that's wired (see "iOS status" in CLAUDE.md).
+      # :core:i18n and :core:designsystem have no iOS test sources today (the task is
+      # NO-SOURCE); they're listed so coverage is automatic if iOS tests are added.
+      - name: Run iOS simulator unit tests (non-Firebase modules)
+        run: >
+          ./gradlew --no-daemon
+          :core:domain:iosSimulatorArm64Test
+          :core:presentation:iosSimulatorArm64Test
+          :core:i18n:iosSimulatorArm64Test
+          :core:designsystem:iosSimulatorArm64Test
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ios-test-reports
           path: '**/build/reports/tests/**'
           if-no-files-found: ignore
           retention-days: 7
