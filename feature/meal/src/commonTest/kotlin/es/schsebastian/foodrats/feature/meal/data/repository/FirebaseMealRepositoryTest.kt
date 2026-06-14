@@ -26,6 +26,7 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
+import es.schsebastian.foodrats.feature.meal.data.test.FakeImageUrlPort
 import es.schsebastian.foodrats.feature.meal.data.test.FakeMealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.test.FakeMealFirestore
 import es.schsebastian.foodrats.feature.meal.data.test.FakePlateStorage
@@ -98,6 +99,7 @@ class FirebaseMealRepositoryTest {
             authorIdentity = fixture.identity,
             zone = zone,
             accountRead = noAccounts,
+            imageUrls = FakeImageUrlPort(),
         )
     }
 
@@ -231,8 +233,8 @@ class FirebaseMealRepositoryTest {
         assertEquals(0, f.firestore.writes.size)
     }
 
-    /** The happy path stamps the author identity onto the DTO and writes under the
-     *  deterministic day/slot doc id. */
+    /** The happy path stamps the author identity + plate PATH onto the DTO and writes under
+     *  the deterministic day/slot doc id. */
     @Test fun publish_writes_author_identity_and_deterministic_doc_id() = runTest {
         val f = Fixture().apply {
             identity.author = MealAuthorIdentity.Author("acc-1", "Chef Ada", "https://fake/ada.png")
@@ -245,7 +247,9 @@ class FirebaseMealRepositoryTest {
         val write = f.firestore.writes.single()
         assertEquals(mealId.value, write.docId)
         assertEquals("Chef Ada", write.dto.authorName)
-        assertEquals("https://fake/ada.png", write.dto.authorAvatarUrl)
+        // The plate PATH returned by the upload datasource is persisted (not a URL); author
+        // avatar is no longer denormalized onto the meal doc.
+        assertEquals(f.storage.url, write.dto.platePath)
     }
 
     // ---------------------------------------------------------------------------------

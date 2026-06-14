@@ -7,11 +7,13 @@ data class MealDto(
     val id: String? = null,
     val authorId: String? = null,
     val authorName: String? = null,
-    val authorAvatarUrl: String? = null,
     val crewId: String? = null,
     val dayKey: String? = null,
     val slot: String = "lunch",
-    val photoUrl: String? = null,
+    // Storage object PATH of the plate photo (`crews/{crewId}/meals/{mealId}.jpg`), NOT a
+    // URL — resolved to a signed URL at read time. (Author avatar is no longer denormalized
+    // here: identity, including the avatar path, resolves live via AccountReadPort.)
+    val platePath: String? = null,
     val dishName: String? = null,
     val description: String = "",
     // Optional GPS coordinates the user attached at compose time. Both null means

@@ -2,11 +2,15 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Avatars — one image per account, addressed by uid. Owner-only writes; any
-    // signed-in user can read (avatars surface in crew member rows + feed cards
-    // for everyone in the crew, so a single shared read policy is simplest).
+    // Avatars — one image per account, addressed by uid. Owner-only writes.
+    //
+    // Direct reads are DENIED (#15): a download-token URL bypasses these rules entirely
+    // (anyone with the `?token=…` string can fetch). Clients no longer mint tokens — they
+    // store the object path and read via short-lived, membership-checked V4 signed URLs
+    // from the `mintPlateUrls` callable, which sign with the service account and so are not
+    // subject to these read rules.
     match /avatars/{filename} {
-      allow read: if request.auth != null;
+      allow read: if false;
       allow write: if request.auth != null
                    && filename == request.auth.uid + ".jpg"
                    && request.resource.size < 1 * 1024 * 1024
@@ -18,11 +22,13 @@ service firebase.storage {
     // Meal plate photos. Path is `crews/{crewId}/meals/{mealId}.jpg`, with
     // mealId = `<crewId>_<uid>_<dayKey>_<slot>` (see MealId.forDaySlot).
     // We enforce author identity by parsing the uid out of mealId so the rule
-    // doesn't need to read Firestore. Membership in the crew is enforced
-    // separately by the matching Firestore rule on the meal doc — without
-    // that doc the photo is orphaned and unreferenced.
+    // doesn't need to read Firestore.
+    //
+    // Direct reads are DENIED (#15) — same rationale as avatars above. The
+    // `mintPlateUrls` callable verifies crew membership before signing a read URL, so a
+    // non-member (or a logged-out holder of an old token URL) can no longer fetch a plate.
     match /crews/{crewId}/meals/{filename} {
-      allow read: if request.auth != null;
+      allow read: if false;
       allow write: if request.auth != null
                    && filename.matches(crewId + '_' + request.auth.uid + '_.*\\.jpg')
                    && request.resource.size < 5 * 1024 * 1024

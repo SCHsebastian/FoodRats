@@ -44,10 +44,13 @@ class FirestoreAccountWriter(
     ): Result<String, AccountWriteError> = withContext(dispatchers.io) {
         if (bytes.isEmpty()) return@withContext Result.failure(AccountWriteError.Validation.EmptyBytes)
         runCatching {
-            val url = avatarStorage.upload(accountId, bytes)
+            // Upload returns the deterministic Storage PATH (not a URL); persist it as
+            // `avatarPath`. The new avatar surfaces to the UI via AccountReadPort re-emission,
+            // which resolves the path to a signed URL.
+            val path = avatarStorage.upload(accountId, bytes)
             firestore.collection("accounts").document(accountId.value)
-                .update("avatarUrl" to url)
-            Result.success(url)
+                .update("avatarPath" to path)
+            Result.success(path)
         }.getOrElse { Result.failure(AccountWriteError.Backend.Unavailable) }
     }
 }

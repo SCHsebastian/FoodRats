@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.meal.data.repository
 
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.meal.DraftIngredients
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -16,6 +17,7 @@ import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.data.firebase.CrewMemberLookup
 import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseFault
@@ -64,6 +66,7 @@ internal class FirebaseMealRepository(
     private val authorIdentity: MealAuthorIdentity,
     private val zone: TimeZone,
     private val accountRead: AccountReadPort,
+    private val imageUrls: ImageUrlPort,
 ) : MealRepository {
 
     // CoroutineExceptionHandler is mandatory: when sign-out revokes the auth token,
@@ -99,12 +102,21 @@ internal class FirebaseMealRepository(
                         val ids = dtos.flatMap { dto ->
                             listOfNotNull(dto.authorId) + dto.ratings.keys
                         }.mapNotNull { (AccountId.of(it) as? Result.Ok)?.value }.toSet()
+                        // Resolve plate PATHS → signed URLs once per dto change (avatars are
+                        // resolved upstream by AccountReadPort, so the lookup below already
+                        // carries signed avatar URLs). Cache absorbs re-resolution on scroll.
+                        val plateUrls = imageUrls
+                            .resolve(crewId, dtos.mapNotNull { it.platePath })
+                            .getOrNull().orEmpty()
                         accountRead.observeMany(ids).map { identities ->
                             val lookup = identities.entries.mapNotNull { (id, acc) ->
                                 acc?.let { id.value to CrewMemberLookup(acc.displayName, acc.avatarUrl) }
                             }.toMap()
                             dtos.mapNotNull { dto ->
-                                (dto.toMealWithRatings(lookup) as? Result.Ok)?.value
+                                (dto.toMealWithRatings(lookup) as? Result.Ok)?.value?.let { mwr ->
+                                    val url = dto.platePath?.let { plateUrls[it] } ?: ""
+                                    mwr.copy(meal = mwr.meal.copy(photoUrl = url))
+                                }
                             }
                         }
                     }
@@ -145,7 +157,7 @@ internal class FirebaseMealRepository(
                     return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
                 }
                 val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
-                val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
+                val platePath = storage.upload(draft.crewId, mealId.value, plate)
                 // The upload succeeded; the blob now exists in Storage. Anything that throws
                 // from here on (the Firestore write) leaves it orphaned, so the catch below
                 // does best-effort cleanup before propagating the original failure.
@@ -154,11 +166,10 @@ internal class FirebaseMealRepository(
                     id = mealId.value,
                     authorId = draft.authorId.value,
                     authorName = currentAuthor?.displayName.orEmpty(),
-                    authorAvatarUrl = currentAuthor?.avatarUrl,
                     crewId = draft.crewId.value,
                     dayKey = draft.day.toKey(),
                     slot = slot.key(),
-                    photoUrl = photoUrl,
+                    platePath = platePath,
                     dishName = draft.dish?.value,
                     description = draft.description.value,
                     latitude = draft.coordinates?.latitude,

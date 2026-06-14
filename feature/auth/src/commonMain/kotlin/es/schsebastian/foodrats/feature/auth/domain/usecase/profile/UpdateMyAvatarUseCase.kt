@@ -7,12 +7,13 @@ import es.schsebastian.foodrats.feature.auth.domain.error.ProfileError
 import es.schsebastian.foodrats.feature.auth.domain.error.toProfileError
 
 /**
- * Uploads the user's avatar bytes to Storage and writes the resulting URL to
- * `accounts/{uid}.avatarUrl` (canonical). Returns the public URL on success so the caller
- * can render the new avatar immediately without waiting for `AccountReadPort` to re-emit.
+ * Uploads the user's avatar bytes to Storage and writes the resulting object PATH to
+ * `accounts/{uid}.avatarPath` (canonical). Returns the stored path on success.
  *
- * Crew members lists resolve identity live, so this single canonical write is enough —
- * no denormalized cache to propagate.
+ * The new avatar surfaces in the UI via `AccountReadPort` re-emission, which resolves the
+ * path to a membership-checked signed URL — there's no usable URL to hand back synchronously
+ * (download-token URLs were removed in #15). Crew member lists resolve identity live, so this
+ * single canonical write is enough — no denormalized cache to propagate.
  */
 class UpdateMyAvatarUseCase(
     private val accountWrite: AccountWritePort,

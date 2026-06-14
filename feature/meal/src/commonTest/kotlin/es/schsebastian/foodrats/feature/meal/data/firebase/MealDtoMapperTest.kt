@@ -34,7 +34,7 @@ class MealDtoMapperTest {
 
     private fun baseDto() = MealDto(
         id = "m-1", authorId = "a-1", authorName = "Sam", crewId = "c-1",
-        dayKey = "2026-05-16", photoUrl = "https://x.png", dishName = "Pizza",
+        dayKey = "2026-05-16", platePath = "crews/c-1/meals/m-1.jpg", dishName = "Pizza",
         publishedAtEpochMs = 1_731_000_000_000,
     )
 

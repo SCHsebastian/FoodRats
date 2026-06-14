@@ -1,9 +1,12 @@
 package es.schsebastian.foodrats.feature.meal.data.test
 
+import es.schsebastian.foodrats.core.domain.image.ImageUrlError
+import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
@@ -113,4 +116,24 @@ internal class FakeMealAuthorIdentity(
         MealAuthorIdentity.Author(uid = "acc-1", displayName = "Author Name", avatarUrl = "https://fake/a.png"),
 ) : MealAuthorIdentity {
     override fun current(): MealAuthorIdentity.Author? = author
+}
+
+/**
+ * Behavioral fake for [ImageUrlPort]. By default resolves each requested path to a
+ * deterministic `signed://{path}` URL so callers can assert resolution; set [fail] to model
+ * a backend failure (the resolver contract degrades to "no URL" on the consumer side).
+ */
+internal class FakeImageUrlPort(
+    var fail: Boolean = false,
+) : ImageUrlPort {
+    val calls = mutableListOf<Pair<CrewId, List<String>>>()
+
+    override suspend fun resolve(
+        crewId: CrewId,
+        paths: List<String>,
+    ): Result<Map<String, String>, ImageUrlError> {
+        calls += crewId to paths
+        if (fail) return Result.failure(ImageUrlError.Unavailable)
+        return Result.success(paths.associateWith { "signed://$it" })
+    }
 }

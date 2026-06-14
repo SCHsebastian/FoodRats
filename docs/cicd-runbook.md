@@ -128,6 +128,29 @@ no usa (flujo Sign-In nativo).
 - **Branch protection en `main`:** requerir PR, ≥1 review, check `CI` en verde, rama actualizada; prohibir push directo.
 - **Tag protection rule** para `v*`: solo maintainers crean tags de release.
 
+### 6. Firma de URLs de imágenes — `mintPlateUrls` (#15)
+
+Las fotos de plato y los avatares ya **no** se sirven con URLs de token público
+(`getDownloadUrl()`): las reglas de Storage las deniegan (`read: if false`). El cliente
+guarda la *ruta* del objeto y la resuelve a una URL firmada V4 de corta duración (15 min)
+con la callable `mintPlateUrls` (región `europe-west3`), que verifica pertenencia a la crew
+antes de firmar.
+
+- **IAM (obligatorio):** la firma V4 con `getSignedUrl()` necesita el permiso
+  `iam.serviceAccounts.signBlob`. Concede a la service account de la función el rol
+  **Service Account Token Creator** (`roles/iam.serviceAccountTokenCreator`) sobre sí misma.
+  Sin esto `getSignedUrl` lanza en runtime y **no carga ninguna imagen**.
+  ```bash
+  gcloud iam service-accounts add-iam-policy-binding \
+    foodrats-de4ec@appspot.gserviceaccount.com \
+    --member="serviceAccount:foodrats-de4ec@appspot.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountTokenCreator" --project foodrats-de4ec
+  ```
+- **iOS:** añade el producto **FirebaseFunctions** al target en Xcode (SPM), igual que
+  FirebaseAuth/Firestore/Storage — el binding KMP de GitLive lo necesita en link/runtime.
+- **Deploy:** la callable va con el resto de funciones (`pnpm --dir functions run deploy`);
+  las reglas, con `pnpm dlx firebase-tools deploy --only storage --project foodrats-de4ec`.
+
 ---
 
 ## Operación del día a día

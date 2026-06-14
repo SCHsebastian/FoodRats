@@ -13,11 +13,10 @@ class MealWithRatingsMapperTest {
             id = "test-crew-1_uid-a_2026-05-20_lunch",
             authorId = "uid-a",
             authorName = "Maria",
-            authorAvatarUrl = null,
             crewId = "test-crew-1",
             dayKey = "2026-05-20",
             slot = "lunch",
-            photoUrl = "https://example.com/p.jpg",
+            platePath = "crews/test-crew-1/meals/test-crew-1_uid-a_2026-05-20_lunch.jpg",
             dishName = "Paella",
             description = "Hot off the pan",
             publishedAtEpochMs = 1_716_192_000_000L,
@@ -38,7 +37,7 @@ class MealWithRatingsMapperTest {
             crewId = "test-crew-1",
             dayKey = "2026-05-20",
             slot = "lunch",
-            photoUrl = "https://example.com/p.jpg",
+            platePath = "crews/test-crew-1/meals/m1.jpg",
             dishName = "Paella",
             publishedAtEpochMs = 1_716_192_000_000L,
             ratings = mapOf(
@@ -68,11 +67,10 @@ class MealWithRatingsMapperTest {
             id = "m1",
             authorId = "uid-a",
             authorName = "OldName",
-            authorAvatarUrl = "https://old/avatar.jpg",
             crewId = "test-crew-1",
             dayKey = "2026-05-21",
             slot = "lunch",
-            photoUrl = "https://example.com/p.jpg",
+            platePath = "crews/test-crew-1/meals/m1.jpg",
             dishName = "Paella",
             publishedAtEpochMs = 1L,
         )
@@ -92,11 +90,10 @@ class MealWithRatingsMapperTest {
             id = "m1",
             authorId = "uid-a",
             authorName = "FallbackName",
-            authorAvatarUrl = "https://fallback/avatar.jpg",
             crewId = "test-crew-1",
             dayKey = "2026-05-21",
             slot = "lunch",
-            photoUrl = "https://example.com/p.jpg",
+            platePath = "crews/test-crew-1/meals/m1.jpg",
             dishName = "Paella",
             publishedAtEpochMs = 1L,
         )
@@ -104,7 +101,9 @@ class MealWithRatingsMapperTest {
         assertTrue(result is Result.Ok)
         val mwr = (result as Result.Ok).value
         assertEquals("FallbackName", mwr.meal.author.displayName)
-        assertEquals("https://fallback/avatar.jpg", mwr.meal.author.avatarUrl)
+        // Author avatar is no longer denormalized on the meal doc — with no live lookup it's
+        // null (the avatar resolves via AccountReadPort when the author is a current member).
+        assertNull(mwr.meal.author.avatarUrl)
     }
 
     @Test
@@ -116,7 +115,7 @@ class MealWithRatingsMapperTest {
             crewId = "test-crew-1",
             dayKey = "2026-05-20",
             slot = "lunch",
-            photoUrl = "https://example.com/p.jpg",
+            platePath = "crews/test-crew-1/meals/m1.jpg",
             dishName = "Paella",
             publishedAtEpochMs = 1L,
             ratings = mapOf("uid-gone" to RatingEntryDto(score = 3, atMs = 1L)),

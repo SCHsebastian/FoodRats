@@ -12,7 +12,8 @@ import es.schsebastian.foodrats.feature.meal.domain.model.Plate
  * Data-layer-private: never leaves `data/firebase/`.
  */
 internal interface PlateStorage {
-    /** Uploads the plate photo and returns its download URL. */
+    /** Uploads the plate photo and returns its deterministic Storage object path
+     *  (`crews/{crewId}/meals/{mealId}.jpg`) — resolved to a signed URL at read time. */
     suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String
 
     /**

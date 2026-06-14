@@ -62,7 +62,9 @@ val authModule = module {
             ),
         )
     }
-    single<AccountReadPort> { FirestoreAccountReadDataSource(source = get()) }
+    single<AccountReadPort> {
+        FirestoreAccountReadDataSource(source = get(), imageUrls = get(), activeCrew = get())
+    }
     singleOf(::AvatarStorageDataSource)
     single<AccountWritePort> {
         FirestoreAccountWriter(firestore = get(), avatarStorage = get(), dispatchers = get())

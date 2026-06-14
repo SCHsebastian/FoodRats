@@ -14,7 +14,9 @@ data class AccountDto(
     val id: String? = null,
     val handle: String? = null,
     val displayName: String? = null,
-    val avatarUrl: String? = null,
+    // Storage object PATH of the avatar (`avatars/{uid}.jpg`), NOT a URL — non-null signals
+    // "has avatar" and is resolved to a signed URL at read time (AccountReadPort impl).
+    val avatarPath: String? = null,
     val createdAtEpochMs: Long? = null,
     // Reserved data-consent fields (spec §13); default 0 / null = "no consent recorded".
     val dataConsentVersion: Int = 0,

@@ -60,6 +60,7 @@ val mealModule = module {
             authorIdentity = get<MealAuthorIdentity>(),
             zone = get(),
             accountRead = get<AccountReadPort>(),
+            imageUrls = get(),
         )
     }
     single<MealReadPort> { get<MealRepository>() }

@@ -8,7 +8,13 @@ import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 class PlateStorageDataSource(private val storage: FirebaseStorage) : PlateStorage {
 
     /**
-     * Uploads a Plate's photo bytes to Firebase Storage and returns the download URL.
+     * Uploads a Plate's photo bytes to Firebase Storage and returns the deterministic
+     * object PATH (`crews/{crewId}/meals/{mealId}.jpg`) — NOT a download URL.
+     *
+     * We deliberately no longer mint `getDownloadUrl()` token URLs: that `?token=…` form is
+     * world-readable and bypasses Storage rules entirely. The path is persisted instead and
+     * resolved to a short-lived, membership-checked V4 signed URL at read time via
+     * `ImageUrlPort` (see #15 storage-read hardening).
      *
      * Explicit `contentType = "image/jpeg"` is mandatory: the storage rule asserts
      * `request.resource.contentType.matches('image/jpe?g')`. Android's Firebase Storage
@@ -21,12 +27,12 @@ class PlateStorageDataSource(private val storage: FirebaseStorage) : PlateStorag
      * - iOS actual: wrapper `class Data(val data: NSData)` — bridged via [toStorageData].
      */
     override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
-        val ref = storage.reference(platefile(crewId, mealId))
-        ref.putData(
+        val path = platefile(crewId, mealId)
+        storage.reference(path).putData(
             data = plate.photoBytes.toStorageData(),
             metadata = storageMetadata { contentType = "image/jpeg" },
         )
-        return ref.getDownloadUrl()
+        return path
     }
 
     /**

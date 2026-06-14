@@ -35,11 +35,15 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
     return Result.success(
         Meal(
             id = mealId,
-            author = MealAuthor(account, authorName ?: "", authorAvatarUrl),
+            // Author avatar resolves live via AccountReadPort (the meal-feed enrichment
+            // overrides this); the meal doc no longer denormalizes it.
+            author = MealAuthor(account, authorName ?: "", avatarUrl = null),
             crewId = crew,
             day = MealDay(day, TimeZone.UTC),
             slot = slot,
-            photoUrl = photoUrl ?: "",
+            // `photoUrl` carries the Storage path here; the feed enrichment resolves it to a
+            // signed URL before display (see FirebaseMealRepository.crewStream).
+            photoUrl = platePath ?: "",
             dish = dish,
             description = desc,
             publishedAt = Instant.fromEpochMilliseconds(publishedAtEpochMs ?: 0L),
@@ -61,11 +65,12 @@ fun MealDto.Companion.from(meal: Meal): MealDto = MealDto(
     id = meal.id.value,
     authorId = meal.author.accountId.value,
     authorName = meal.author.displayName,
-    authorAvatarUrl = meal.author.avatarUrl,
     crewId = meal.crewId.value,
     dayKey = meal.day.toKey(),
     slot = meal.slot.key(),
-    photoUrl = meal.photoUrl,
+    // Persist the deterministic plate PATH, derived from the ids — never `meal.photoUrl`,
+    // which at this layer holds a (resolved, expiring) signed URL.
+    platePath = "crews/${meal.crewId.value}/meals/${meal.id.value}.jpg",
     dishName = meal.dish.value,
     description = meal.description.value,
     latitude = meal.coordinates?.latitude,

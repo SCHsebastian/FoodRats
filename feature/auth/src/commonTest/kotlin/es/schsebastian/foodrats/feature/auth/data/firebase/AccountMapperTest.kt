@@ -15,7 +15,7 @@ class AccountMapperTest {
         id = "uid-1",
         handle = "sam",
         displayName = "Sam Cook",
-        avatarUrl = "https://x.png/a.jpg",
+        avatarPath = "avatars/uid-1.jpg",
         createdAtEpochMs = 1_700_000_000_000L,
         dataConsentVersion = 2,
         dataConsentGrantedAtEpochMs = 1_700_000_500_000L,
@@ -26,7 +26,8 @@ class AccountMapperTest {
         assertEquals(aid("uid-1"), account.id)
         assertEquals("sam", account.handle)
         assertEquals("Sam Cook", account.displayName)
-        assertEquals("https://x.png/a.jpg", account.avatarUrl)
+        // toAccount carries the avatar PATH on avatarUrl (resolution happens downstream).
+        assertEquals("avatars/uid-1.jpg", account.avatarUrl)
         assertEquals(2, account.dataConsentVersion)
         assertEquals(Instant.fromEpochMilliseconds(1_700_000_500_000L), account.dataConsentGrantedAt)
     }
@@ -52,7 +53,7 @@ class AccountMapperTest {
     }
 
     @Test fun toAccount_passes_null_avatar_through() {
-        assertNull(validDto.copy(avatarUrl = null).toAccount()!!.avatarUrl)
+        assertNull(validDto.copy(avatarPath = null).toAccount()!!.avatarUrl)
     }
 
     @Test fun toAccount_defaults_consent_fields_when_absent() {

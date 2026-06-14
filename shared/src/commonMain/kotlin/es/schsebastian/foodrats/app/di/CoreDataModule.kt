@@ -6,11 +6,13 @@ import dev.gitlive.firebase.firestore.firestore
 import dev.gitlive.firebase.storage.storage
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.providePreferencesDataStore
+import es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver
 import es.schsebastian.foodrats.core.data.preferences.LocaleRepository
 import es.schsebastian.foodrats.core.data.preferences.NotificationsPreferenceRepository
 import es.schsebastian.foodrats.core.data.preferences.ThemeModeRepository
 import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
@@ -37,6 +39,9 @@ val coreDataModule = module {
     single { Firebase.auth }
     single { Firebase.firestore }
     single { Firebase.storage }
+    // Resolves Storage object paths → membership-checked V4 signed URLs via the
+    // mintPlateUrls callable. Consumed by the meal-feed enrichment + AccountReadPort impl.
+    single<ImageUrlPort> { FirebaseImageUrlResolver(dispatchers = get(), clock = get()) }
     // JSON serializer shared across features (MealDraftLocalStore + others).
     single { Json { ignoreUnknownKeys = true; isLenient = true } }
 }

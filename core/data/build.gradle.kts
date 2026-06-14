@@ -24,6 +24,8 @@ kotlin {
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.androidx.datastore.preferences)
             implementation(libs.bundles.firebase.gitlive)
+            // Callable Cloud Functions binding — backs FirebaseImageUrlResolver (mintPlateUrls).
+            implementation(libs.firebase.functions)
             implementation(libs.koin.core)
             implementation(libs.okio)
             implementation(libs.coil.core)

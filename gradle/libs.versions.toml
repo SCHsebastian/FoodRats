@@ -95,6 +95,10 @@ imagepickerkmp = { module = "io.github.ismoy:imagepickerkmp", version.ref = "ima
 firebase-auth      = { module = "dev.gitlive:firebase-auth",      version.ref = "gitliveFirebase" }
 firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitliveFirebase" }
 firebase-storage   = { module = "dev.gitlive:firebase-storage",   version.ref = "gitliveFirebase" }
+# Callable Cloud Functions (mintPlateUrls) for membership-checked signed image URLs.
+# Used only by core:data's FirebaseImageUrlResolver — kept out of the firebase-gitlive
+# bundle so the other Firebase modules don't pull it transitively.
+firebase-functions = { module = "dev.gitlive:firebase-functions", version.ref = "gitliveFirebase" }
 firebase-messaging = { module = "dev.gitlive:firebase-messaging", version.ref = "gitliveFirebase" }
 firebase-common    = { module = "dev.gitlive:firebase-common",    version.ref = "gitliveFirebase" }
 # Firebase BOM — pins the com.google.firebase:* artifacts the GitLive KMP wrappers

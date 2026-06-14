@@ -8,8 +8,8 @@ import kotlin.test.assertTrue
 class MealMapperTest {
     @Test fun toDomain_succeeds_on_complete_dto() {
         val dto = MealDto(
-            id = "m-1", authorId = "a-1", authorName = "Sam", authorAvatarUrl = null,
-            crewId = "c-1", dayKey = "2026-05-16", photoUrl = "https://x.png",
+            id = "m-1", authorId = "a-1", authorName = "Sam",
+            crewId = "c-1", dayKey = "2026-05-16", platePath = "crews/c-1/meals/m-1.jpg",
             dishName = "Pizza", description = "Margherita with basil",
             publishedAtEpochMs = 1731_000_000_000,
         )
@@ -20,8 +20,8 @@ class MealMapperTest {
 
     @Test fun toDomain_succeeds_with_empty_description() {
         val dto = MealDto(
-            id = "m-2", authorId = "a-1", authorName = "Sam", authorAvatarUrl = null,
-            crewId = "c-1", dayKey = "2026-05-16", photoUrl = "https://x.png",
+            id = "m-2", authorId = "a-1", authorName = "Sam",
+            crewId = "c-1", dayKey = "2026-05-16", platePath = "crews/c-1/meals/m-2.jpg",
             dishName = "Pizza",
             publishedAtEpochMs = 1731_000_000_000,
         )
