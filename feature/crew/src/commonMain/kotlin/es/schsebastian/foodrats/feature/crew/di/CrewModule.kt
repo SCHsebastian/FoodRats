@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.feature.crew.di
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -49,6 +51,20 @@ val crewModule = module {
     single<CrewRepository> {
         // (firestore, dispatchers, errorMapper, clock)
         FirebaseCrewRepository(get(), get(), get(), get())
+    }
+    // The meal-audience picker (:feature:meal) reads a member's crews through this port,
+    // never through CrewRepository directly — keeping :feature:meal free of a :feature:crew dep.
+    single<CrewMembershipPort> {
+        object : CrewMembershipPort {
+            private val repo = get<CrewRepository>()
+            override fun observeMyCrews(accountId: AccountId): Flow<List<CrewSummary>> =
+                repo.observeMyCrews(accountId).map { r ->
+                    when (r) {
+                        is Result.Ok  -> r.value.map { CrewSummary(it.id, it.name) }
+                        is Result.Err -> emptyList()
+                    }
+                }
+        }
     }
 
     factoryOf(::CreateCrewUseCase)

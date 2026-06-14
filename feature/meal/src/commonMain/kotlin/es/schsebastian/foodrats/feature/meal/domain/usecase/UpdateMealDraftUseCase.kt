@@ -17,6 +17,7 @@ class UpdateMealDraftUseCase(private val repository: MealRepository) {
             is UpdateMealDraftCommand.SetDescription -> current.copy(description = command.description)
             is UpdateMealDraftCommand.SetSlot        -> current.copy(slot = command.slot)
             is UpdateMealDraftCommand.SetCoordinates -> current.copy(coordinates = command.coordinates)
+            is UpdateMealDraftCommand.SetAudience    -> current.copy(audienceCrewIds = command.crewIds)
             is UpdateMealDraftCommand.SetDetected    -> current.copy(
                 // Detected ≠ confirmed: the classifier output seeds ONLY the detected
                 // set (which the picker reads as its initial selection). The

@@ -21,7 +21,7 @@ class UpdateMealDraftUseCaseTest {
     private val account = (AccountId.of("acc-1") as Result.Ok).value
 
     private fun baseDraft() = MealDraft(
-        crewId = crew,
+        audienceCrewIds = setOf(crew),
         authorId = account,
         day = MealDay(LocalDate(2026, 5, 24), TimeZone.UTC),
         plate = null,

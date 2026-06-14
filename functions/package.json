@@ -9,8 +9,8 @@
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "seed:catalog": "tsx scripts/seed-catalog.ts",
-    "deploy": "firebase deploy --only functions --project foodrats-de4ec",
-    "logs": "firebase functions:log --project foodrats-de4ec"
+    "deploy": "pnpm dlx firebase-tools deploy --only functions --project foodrats-de4ec",
+    "logs": "pnpm dlx firebase-tools functions:log --project foodrats-de4ec"
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^3.4.5",

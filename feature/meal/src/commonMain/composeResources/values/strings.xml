@@ -10,7 +10,11 @@
     <string name="meal_ingredients_row_add">Add ingredients</string>
     <string name="meal_ingredients_row_summary">%1$d ingredients</string>
 
+    <string name="meal_compose_audience_label">Share with</string>
+    <string name="meal_compose_audience_all">All crews</string>
+
     <string name="meal_error_already_posted">You already posted a meal today.</string>
+    <string name="meal_error_no_crew_selected">Pick at least one crew to share with.</string>
     <string name="meal_error_not_today">Drafts can only be published the day they were started.</string>
     <string name="meal_error_publish_unavailable">Couldn't publish. Try again.</string>
     <string name="meal_error_photo_upload_failed">Couldn't upload your photo. Try again.</string>
@@ -40,6 +44,6 @@
     <string name="meal_error_location_timeout">Couldn't get your location in time. Try again.</string>
 
     <string name="meal_publish_confirm_title">Publish this meal?</string>
-    <string name="meal_publish_confirm_message">Your photo and details will be shared with the crew. The upload runs in the background — you can keep using the app.</string>
+    <string name="meal_publish_confirm_message">Your photo and details will be shared with the crews you picked. The upload runs in the background — you can keep using the app.</string>
     <string name="meal_publish_confirm_cta">Publish</string>
 </resources>

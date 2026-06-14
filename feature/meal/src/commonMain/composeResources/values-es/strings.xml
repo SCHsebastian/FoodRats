@@ -10,7 +10,11 @@
     <string name="meal_ingredients_row_add">Añadir ingredientes</string>
     <string name="meal_ingredients_row_summary">%1$d ingredientes</string>
 
+    <string name="meal_compose_audience_label">Compartir con</string>
+    <string name="meal_compose_audience_all">Todos los grupos</string>
+
     <string name="meal_error_already_posted">Ya has publicado una comida hoy.</string>
+    <string name="meal_error_no_crew_selected">Elige al menos un grupo para compartir.</string>
     <string name="meal_error_not_today">Solo puedes publicar el borrador del día.</string>
     <string name="meal_error_publish_unavailable">No se ha podido publicar. Inténtalo otra vez.</string>
     <string name="meal_error_photo_upload_failed">No se ha podido subir la foto. Inténtalo otra vez.</string>
@@ -40,6 +44,6 @@
     <string name="meal_error_location_timeout">No se ha podido obtener tu ubicación a tiempo. Inténtalo otra vez.</string>
 
     <string name="meal_publish_confirm_title">¿Publicar esta comida?</string>
-    <string name="meal_publish_confirm_message">Tu foto y los detalles se compartirán con el grupo. La subida se hace en segundo plano — puedes seguir usando la app.</string>
+    <string name="meal_publish_confirm_message">Tu foto y los detalles se compartirán con los grupos que elijas. La subida se hace en segundo plano — puedes seguir usando la app.</string>
     <string name="meal_publish_confirm_cta">Publicar</string>
 </resources>

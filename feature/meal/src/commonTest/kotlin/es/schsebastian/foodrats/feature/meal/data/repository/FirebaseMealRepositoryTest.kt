@@ -109,7 +109,7 @@ class FirebaseMealRepositoryTest {
         slot: MealSlot? = MealSlot.Lunch,
         plate: Plate? = Plate(photoBytes = byteArrayOf(1, 2, 3)),
     ) = MealDraft(
-        crewId = crew,
+        audienceCrewIds = setOf(crew),
         authorId = account,
         day = today,
         plate = plate,
@@ -252,6 +252,53 @@ class FirebaseMealRepositoryTest {
         assertEquals(f.storage.url, write.dto.platePath)
     }
 
+    /** Fan-out: a plate published to several crews writes one doc + one image copy PER crew,
+     *  each under its own crew path (so the per-crew signed-URL read model stays valid). */
+    @Test fun publish_fans_out_one_doc_and_one_image_copy_per_selected_crew() = runTest {
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(draft().copy(audienceCrewIds = setOf(crew, crew2)))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(2, f.firestore.writes.size)
+        assertEquals(2, f.storage.uploads.size)
+        assertEquals(setOf(crew.value, crew2.value), f.firestore.writes.map { it.dto.crewId }.toSet())
+        assertEquals(setOf(crew, crew2), f.storage.uploads.map { it.crewId }.toSet())
+        // Per-crew deterministic doc ids.
+        assertEquals(
+            setOf("crew-1_acc-1_2026-05-18_lunch", "crew-2_acc-1_2026-05-18_lunch"),
+            f.firestore.writes.map { it.docId }.toSet(),
+        )
+    }
+
+    /** When the slot is already taken in every selected crew, nothing is written and the result
+     *  is AlreadyPostedToday (the audience-aware "no crew left to receive it" rule). */
+    @Test fun publish_returns_already_posted_when_slot_taken_in_all_selected_crews() = runTest {
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val f = Fixture().apply { firestore.existingSlots = setOf(MealSlot.Lunch) }
+        val repo = repository(f)
+
+        val result = repo.publish(draft().copy(audienceCrewIds = setOf(crew, crew2)))
+
+        assertEquals(Result.failure(MealError.Publish.AlreadyPostedToday), result)
+        assertEquals(0, f.firestore.writes.size)
+        assertEquals(0, f.storage.uploads.size)
+    }
+
+    /** An empty audience is rejected before any IO. */
+    @Test fun publish_with_no_crew_selected_returns_no_crew_selected() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(draft().copy(audienceCrewIds = emptySet()))
+
+        assertEquals(Result.failure(MealError.Publish.NoCrewSelected), result)
+        assertEquals(0, f.storage.uploads.size)
+        assertEquals(0, f.firestore.writes.size)
+    }
+
     // ---------------------------------------------------------------------------------
     // rate
     // ---------------------------------------------------------------------------------
@@ -379,6 +426,35 @@ class FirebaseMealRepositoryTest {
         val repo = repository(f)
 
         val result = repo.delete(crew, mealId)
+
+        assertEquals(Result.failure(MealDeleteError.Unavailable), result)
+    }
+
+    /** Author "delete my post": removes the (day, slot) plate from every crew, at each crew's
+     *  own deterministic doc id. */
+    @Test fun deleteFromAllCrews_deletes_each_crews_deterministic_doc() = runTest {
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.deleteFromAllCrews(setOf(crew, crew2), account, today, MealSlot.Lunch)
+
+        assertEquals(Result.success(Unit), result)
+        assertEquals(
+            setOf(
+                crew to "crew-1_acc-1_2026-05-18_lunch",
+                crew2 to "crew-2_acc-1_2026-05-18_lunch",
+            ),
+            f.firestore.deleteCalls.toSet(),
+        )
+    }
+
+    /** A best-effort fan-out delete surfaces a transient fault so the UI can offer a retry. */
+    @Test fun deleteFromAllCrews_surfaces_unavailable_fault() = runTest {
+        val f = Fixture().apply { firestore.deleteFault = RuntimeException("UNAVAILABLE: network down") }
+        val repo = repository(f)
+
+        val result = repo.deleteFromAllCrews(setOf(crew), account, today, MealSlot.Lunch)
 
         assertEquals(Result.failure(MealDeleteError.Unavailable), result)
     }

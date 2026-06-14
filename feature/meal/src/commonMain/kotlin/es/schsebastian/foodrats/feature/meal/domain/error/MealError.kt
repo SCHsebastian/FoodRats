@@ -13,6 +13,8 @@ sealed interface MealError {
         data object AlreadyPostedToday : Publish
         data object NotToday : Publish
         data object NoSlotSelected : Publish
+        /** No crew is selected to share the plate with (the audience set is empty). */
+        data object NoCrewSelected : Publish
         data object PublishUnavailable : Publish
         data object PhotoUploadFailed : Publish
     }

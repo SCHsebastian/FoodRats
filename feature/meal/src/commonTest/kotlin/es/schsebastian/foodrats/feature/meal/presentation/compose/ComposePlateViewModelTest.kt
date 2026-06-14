@@ -2,7 +2,8 @@ package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
-import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.location.LocationError
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
@@ -58,7 +59,7 @@ class ComposePlateViewModelTest {
     private fun bytes(s: String) = s.encodeToByteArray()
 
     private fun draftWithPhoto(label: String) = MealDraft(
-        crewId = crew,
+        audienceCrewIds = setOf(crew),
         authorId = account,
         day = MealDay(LocalDate(2026, 5, 24), zone),
         plate = Plate(bytes(label)),
@@ -74,7 +75,7 @@ class ComposePlateViewModelTest {
     ): ComposePlateViewModel = ComposePlateViewModel(
         updateDraft = UpdateMealDraftUseCase(repo),
         repository = repo,
-        activeCrew = FakeActiveCrew(crew),
+        crewMembership = FakeCrewMembership(crew),
         uploadCoordinator = object : MealUploadCoordinator { override fun enqueueDraftUpload() {} },
         locationProvider = object : LocationProvider {
             override suspend fun current(): Result<Coordinates, LocationError> =
@@ -176,10 +177,9 @@ class ComposePlateViewModelTest {
         }
     }
 
-    private class FakeActiveCrew(crew: CrewId) : ActiveCrewProvider {
-        override val current: Flow<CrewId?> = MutableStateFlow(crew)
-        override suspend fun set(crewId: CrewId) {}
-        override suspend fun clear() {}
+    private class FakeCrewMembership(private val crew: CrewId) : CrewMembershipPort {
+        override fun observeMyCrews(accountId: AccountId): Flow<List<CrewSummary>> =
+            MutableStateFlow(listOf(CrewSummary(crew, "Crew ${crew.value}")))
     }
 
     private class FakeClassifier(

@@ -35,7 +35,10 @@ class MealDraftLocalStoreTest {
     @Test fun round_trips_ingredient_fields() = runTest {
         val store = MealDraftLocalStore(AppPreferences(FakeDataStore()))
         val draft = MealDraft(
-            crewId = (CrewId.of("crew-1") as Result.Ok).value,
+            audienceCrewIds = setOf(
+                (CrewId.of("crew-1") as Result.Ok).value,
+                (CrewId.of("crew-2") as Result.Ok).value,
+            ),
             authorId = (AccountId.of("acc-1") as Result.Ok).value,
             day = MealDay(LocalDate(2026, 5, 24), TimeZone.UTC),
             plate = null,
@@ -49,6 +52,10 @@ class MealDraftLocalStoreTest {
         store.save(draft)
         val restored = store.observe().first()!!
 
+        assertEquals(
+            setOf((CrewId.of("crew-1") as Result.Ok).value, (CrewId.of("crew-2") as Result.Ok).value),
+            restored.audienceCrewIds,
+        )
         assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!), restored.ingredients)
         assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), restored.detectedIngredients)
         assertEquals("food101-v1", restored.classifierVersion)

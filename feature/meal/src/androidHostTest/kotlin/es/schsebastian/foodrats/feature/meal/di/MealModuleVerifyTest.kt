@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
@@ -57,6 +58,7 @@ class MealModuleVerifyTest {
                 CrashReporter::class,
                 SessionProvider::class,
                 ActiveCrewProvider::class,
+                CrewMembershipPort::class,
                 LocationProvider::class,
                 MealClassifierPort::class,
                 IngredientReadPort::class,

@@ -5,6 +5,8 @@ import foodrats.feature.meal.generated.resources.Res
 import foodrats.feature.meal.generated.resources.meal_classifier_load_failed
 import foodrats.feature.meal.generated.resources.meal_classifier_no_detection
 import foodrats.feature.meal.generated.resources.meal_compose_add_location
+import foodrats.feature.meal.generated.resources.meal_compose_audience_all
+import foodrats.feature.meal.generated.resources.meal_compose_audience_label
 import foodrats.feature.meal.generated.resources.meal_compose_clear_location
 import foodrats.feature.meal.generated.resources.meal_compose_coordinates_format
 import foodrats.feature.meal.generated.resources.meal_compose_description_counter
@@ -16,6 +18,7 @@ import foodrats.feature.meal.generated.resources.meal_error_already_posted
 import foodrats.feature.meal.generated.resources.meal_error_location_permission
 import foodrats.feature.meal.generated.resources.meal_error_location_timeout
 import foodrats.feature.meal.generated.resources.meal_error_location_unavailable
+import foodrats.feature.meal.generated.resources.meal_error_no_crew_selected
 import foodrats.feature.meal.generated.resources.meal_error_not_today
 import foodrats.feature.meal.generated.resources.meal_error_photo_upload_failed
 import foodrats.feature.meal.generated.resources.meal_error_publish_unavailable
@@ -47,6 +50,8 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ComposeDescriptionPlaceholder(Res.string.meal_compose_description_placeholder),
     ComposeDescriptionCounter(Res.string.meal_compose_description_counter),
     ComposeAddLocation(Res.string.meal_compose_add_location),
+    ComposeAudienceLabel(Res.string.meal_compose_audience_label),
+    ComposeAudienceAll(Res.string.meal_compose_audience_all),
     ComposeLocating(Res.string.meal_compose_locating),
     ComposeClearLocation(Res.string.meal_compose_clear_location),
     ComposeCoordinatesFormat(Res.string.meal_compose_coordinates_format),
@@ -63,6 +68,7 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     IngredientsRowAdd(Res.string.meal_ingredients_row_add),
     IngredientsRowSummary(Res.string.meal_ingredients_row_summary),
     MealErrorAlreadyPosted(Res.string.meal_error_already_posted),
+    MealErrorPublishNoCrewSelected(Res.string.meal_error_no_crew_selected),
     MealErrorNotToday(Res.string.meal_error_not_today),
     MealErrorPublishUnavailable(Res.string.meal_error_publish_unavailable),
     MealErrorPublishNoSlotSelected(Res.string.meal_publish_no_slot),

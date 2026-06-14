@@ -146,6 +146,16 @@ internal class FirebaseMealRepository(
         return if (result is Result.Ok) result.value else null
     }
 
+    /**
+     * Fans a single composed plate out to every crew in [MealDraft.audienceCrewIds] —
+     * one meal document plus one image copy per crew. Per-crew copies are mandatory, not
+     * a convenience: a crew-member can only mint a signed read URL for a plate stored
+     * under *their* crew (`mintPlateUrls`), so a shared cross-crew object would be
+     * unviewable; and per-crew ownership keeps deletion ref-count-free (each crew reclaims
+     * its own blob via `onMealDeleted`). The deterministic per-crew meal id makes the whole
+     * fan-out idempotent: a crew already holding this (day, slot) is skipped, so a retry
+     * after a partial failure writes only the crews it hadn't reached.
+     */
     override suspend fun publish(draft: MealDraft): Result<Meal, MealError> =
         withContext(dispatchers.io) {
             runCatching<Result<Meal, MealError>> {
@@ -156,43 +166,83 @@ internal class FirebaseMealRepository(
                 if (draft.ingredients.size > MAX_INGREDIENTS) {
                     return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
                 }
-                val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
-                val platePath = storage.upload(draft.crewId, mealId.value, plate)
-                // The upload succeeded; the blob now exists in Storage. Anything that throws
-                // from here on (the Firestore write) leaves it orphaned, so the catch below
-                // does best-effort cleanup before propagating the original failure.
-                val currentAuthor = authorIdentity.current()
-                val dto = MealDto(
-                    id = mealId.value,
-                    authorId = draft.authorId.value,
-                    authorName = currentAuthor?.displayName.orEmpty(),
-                    crewId = draft.crewId.value,
-                    dayKey = draft.day.toKey(),
-                    slot = slot.key(),
-                    platePath = platePath,
-                    dishName = draft.dish?.value,
-                    description = draft.description.value,
-                    latitude = draft.coordinates?.latitude,
-                    longitude = draft.coordinates?.longitude,
-                    publishedAtEpochMs = clock.now().toEpochMilliseconds(),
-                    // Only the user-confirmed ingredients are persisted. The raw
-                    // classifier detection (`draft.detectedIngredients`) is a compose-time
-                    // picker seed and is intentionally NOT written to the Meal.
-                    ingredients = draft.ingredients.map { it.value },
-                    classifierVersion = draft.classifierVersion,
-                )
-                try {
-                    firestore.write(dto, mealId.value)
-                } catch (t: Throwable) {
-                    // Best-effort orphan cleanup: the upload landed but the doc write failed,
-                    // so delete the just-uploaded blob. Swallow any delete failure — it must
-                    // NOT mask the original write error the user needs to see.
-                    runCatching { storage.delete(draft.crewId, mealId.value) }
-                        .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed: ${it.message}" } }
-                    throw t
+                if (draft.audienceCrewIds.isEmpty()) {
+                    return@runCatching Result.failure(MealError.Publish.NoCrewSelected)
                 }
-                @Suppress("UNCHECKED_CAST")
-                dto.toDomain() as Result<Meal, MealError>
+                val author = draft.authorId
+                val dayKey = draft.day.toKey()
+                // Skip crews where this (day, slot) is already posted — keeps a retry from
+                // re-writing crews a prior attempt succeeded on (and the create rule would
+                // reject the duplicate anyway).
+                val freeCrews = draft.audienceCrewIds.filter { crewId ->
+                    !firestore.mealExists(crewId, author, dayKey, slot)
+                }
+                if (freeCrews.isEmpty()) {
+                    return@runCatching Result.failure(MealError.Publish.AlreadyPostedToday)
+                }
+                val currentAuthor = authorIdentity.current()
+                var representative: Meal? = null
+                var anyFailed = false
+                var anyAlreadyExists = false
+                var lastFault: Throwable? = null
+                for (crewId in freeCrews) {
+                    val mealId = MealId.forDaySlot(crewId, author, draft.day, slot)
+                    // Upload OUTSIDE the try: a storage failure must surface as PhotoUploadFailed
+                    // (mapped below), aborting the fan-out — a retry re-does the unwritten crews.
+                    val platePath = storage.upload(crewId, mealId.value, plate)
+                    val dto = MealDto(
+                        id = mealId.value,
+                        authorId = author.value,
+                        authorName = currentAuthor?.displayName.orEmpty(),
+                        crewId = crewId.value,
+                        dayKey = dayKey,
+                        slot = slot.key(),
+                        platePath = platePath,
+                        dishName = draft.dish?.value,
+                        description = draft.description.value,
+                        latitude = draft.coordinates?.latitude,
+                        longitude = draft.coordinates?.longitude,
+                        publishedAtEpochMs = clock.now().toEpochMilliseconds(),
+                        // Only the user-confirmed ingredients are persisted. The raw
+                        // classifier detection (`draft.detectedIngredients`) is a compose-time
+                        // picker seed and is intentionally NOT written to the Meal.
+                        ingredients = draft.ingredients.map { it.value },
+                        classifierVersion = draft.classifierVersion,
+                    )
+                    try {
+                        firestore.write(dto, mealId.value)
+                        if (representative == null) {
+                            representative = (dto.toDomain() as? Result.Ok)?.value
+                        }
+                    } catch (t: Throwable) {
+                        if (t.toFirebaseFault() == FirebaseFault.AlreadyExists) {
+                            // Raced the mealExists pre-check; this crew already holds the slot. The
+                            // deterministic path means our upload just overwrote the existing blob,
+                            // so DON'T delete it — it backs the live doc.
+                            anyAlreadyExists = true
+                        } else {
+                            anyFailed = true
+                            lastFault = t
+                            FrLog.w("MealRepo", t) { "fan-out write failed for crew ${crewId.value}: ${t.message}" }
+                            runCatching { storage.delete(crewId, mealId.value) }
+                                .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed: ${it.message}" } }
+                        }
+                    }
+                }
+                val rep = representative
+                when {
+                    rep != null && !anyFailed -> Result.success(rep)
+                    // Partial success → keep the draft so the coordinator retries the failed crews
+                    // (already-written ones are skipped above). Eventual full delivery beats
+                    // silently dropping the plate from some of the chosen crews.
+                    rep != null               -> Result.failure(MealError.Publish.PublishUnavailable)
+                    // Nothing written and a real fault hit → surface it through the mapper so the
+                    // PERMISSION_DENIED / UNAVAILABLE / ALREADY_EXISTS classification matches the
+                    // single-crew path.
+                    anyFailed                 -> throw lastFault!!
+                    // Every targeted crew already had this slot (raced the pre-check) → already posted.
+                    else                      -> Result.failure(MealError.Publish.AlreadyPostedToday)
+                }
             }.fold(
                 onSuccess = { it },
                 onFailure = { Result.failure(errorMapper.mapPublish(it)) },
@@ -228,6 +278,21 @@ internal class FirebaseMealRepository(
         )
     }
 
+    override suspend fun takenSlotsPerCrew(
+        crewIds: Set<CrewId>,
+        day: MealDay,
+    ): Result<Map<CrewId, Set<MealSlot>>, MealError.Read> = withContext(dispatchers.io) {
+        runCatching<Result<Map<CrewId, Set<MealSlot>>, MealError.Read>> {
+            val authorId = currentAccountId()
+                ?: return@runCatching Result.failure(MealError.Read.Unauthorized)
+            val dayKey = day.toKey()
+            Result.success(crewIds.associateWith { crewId -> firestore.takenSlots(crewId, authorId, dayKey) })
+        }.fold(
+            onSuccess = { it },
+            onFailure = { Result.failure(MealError.Read.NotFound) },
+        )
+    }
+
     override suspend fun delete(
         crewId: CrewId,
         mealId: MealId,
@@ -247,6 +312,37 @@ internal class FirebaseMealRepository(
             }
             Result.failure(mapped)
         }
+    }
+
+    override suspend fun deleteFromAllCrews(
+        crewIds: Set<CrewId>,
+        authorId: AccountId,
+        day: MealDay,
+        slot: MealSlot,
+    ): Result<Unit, MealDeleteError> = withContext(dispatchers.io) {
+        if (crewIds.isEmpty()) return@withContext Result.success(Unit)
+        // Deleting a non-existent doc is a no-op success in Firestore, so a crew that never
+        // held a copy (e.g. it wasn't in the publish audience) is harmlessly skipped. We only
+        // fail the whole action if a real error (permission / unavailable) hits a crew — for the
+        // author path that should never be permission, leaving transient Unavailable as retryable.
+        var lastError: MealDeleteError? = null
+        for (crewId in crewIds) {
+            val mealId = MealId.forDaySlot(crewId, authorId, day, slot).value
+            runCatching { firestore.deleteMeal(crewId, mealId) }
+                .onFailure { t ->
+                    when (t.toFirebaseFault()) {
+                        FirebaseFault.PermissionDenied,
+                        FirebaseFault.Unauthenticated -> lastError = MealDeleteError.NotAuthorOrOwner
+                        FirebaseFault.NotFound -> Unit
+                        FirebaseFault.Unavailable,
+                        FirebaseFault.AlreadyExists,
+                        FirebaseFault.StorageFailure,
+                        is FirebaseFault.Unknown -> lastError = MealDeleteError.Unavailable
+                    }
+                    FrLog.w("MealRepo", t) { "fan-out delete failed for crew ${crewId.value}: ${t.message}" }
+                }
+        }
+        lastError?.let { Result.failure(it) } ?: Result.success(Unit)
     }
 
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> =

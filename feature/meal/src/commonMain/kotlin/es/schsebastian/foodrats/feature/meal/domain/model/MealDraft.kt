@@ -10,7 +10,14 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 
 data class MealDraft(
-    val crewId: CrewId,
+    /**
+     * The crews this plate will be published to (the chosen audience). A meal is one
+     * logical post fanned out to a per-crew copy in each of these crews; the picker
+     * defaults to all the author's crews and the user may narrow it. Never empty at
+     * publish time — `PublishMealUseCase` rejects an empty audience with
+     * `MealError.Publish.NoCrewSelected`.
+     */
+    val audienceCrewIds: Set<CrewId>,
     val authorId: AccountId,
     val day: MealDay,
     val plate: Plate?,

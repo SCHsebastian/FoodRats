@@ -32,7 +32,7 @@ class PublishMealUseCaseTest {
     private val dish = (DishName.of("Pizza") as Result.Ok).value
 
     private fun draftForDay(day: MealDay) = MealDraft(
-        crewId = crew, authorId = account, day = day,
+        audienceCrewIds = setOf(crew), authorId = account, day = day,
         plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
         dish = dish, description = Description.EMPTY,
         slot = MealSlot.Lunch,
@@ -42,7 +42,7 @@ class PublishMealUseCaseTest {
         day: MealDay = MealDay(LocalDate(2026, 5, 18), zone),
         slot: MealSlot? = MealSlot.Lunch,
     ) = MealDraft(
-        crewId = crew, authorId = account, day = day,
+        audienceCrewIds = setOf(crew), authorId = account, day = day,
         plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
         dish = dish, description = Description.EMPTY,
         slot = slot,
@@ -106,7 +106,7 @@ class PublishMealUseCaseTest {
         val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
         val draft = sampleDraft().copy(day = today, slot = MealSlot.Lunch)
         val repo = FakeMealRepository().apply {
-            markSlotTaken(draft.crewId, today, MealSlot.Lunch)
+            markSlotTaken(crew, today, MealSlot.Lunch)
         }
         val useCase = PublishMealUseCase(repo, FixedClock(instant), TimeZone.UTC)
 
@@ -121,7 +121,7 @@ class PublishMealUseCaseTest {
         val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
         val draft = sampleDraft().copy(day = today, slot = MealSlot.Lunch)
         val repo = FakeMealRepository().apply {
-            markSlotTaken(draft.crewId, today, MealSlot.Breakfast)
+            markSlotTaken(crew, today, MealSlot.Breakfast)
             publishResultOverride = Result.success(sampleMeal().copy(day = today, slot = MealSlot.Lunch))
         }
         val useCase = PublishMealUseCase(repo, FixedClock(instant), TimeZone.UTC)

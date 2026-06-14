@@ -1,9 +1,11 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
+import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.ClassifierError
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
@@ -26,7 +28,15 @@ data class ComposePlateState(
     val draftIngredients: List<IngredientSlug> = emptyList(),
     val detectedIngredients: List<IngredientSlug> = emptyList(),
     val classifierError: ClassifierError? = null,
+    // Publish audience. `availableCrews` is every crew the author belongs to; the picker
+    // is only shown when there's more than one (otherwise the single crew is implicit).
+    // `selectedCrewIds` is the chosen subset the plate fans out to — defaults to all.
+    val availableCrews: List<CrewSummary> = emptyList(),
+    val selectedCrewIds: Set<CrewId> = emptySet(),
 ) : MviState {
+    /** True when the publish audience is shown as a picker (more than one crew to choose from). */
+    val showCrewPicker: Boolean get() = availableCrews.size > 1
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is ComposePlateState) return false
@@ -44,6 +54,8 @@ data class ComposePlateState(
             draftIngredients == other.draftIngredients &&
             detectedIngredients == other.detectedIngredients &&
             classifierError == other.classifierError &&
+            availableCrews == other.availableCrews &&
+            selectedCrewIds == other.selectedCrewIds &&
             (photoBytes?.contentEquals(other.photoBytes) ?: (other.photoBytes == null))
     }
 
@@ -62,6 +74,8 @@ data class ComposePlateState(
         result = 31 * result + draftIngredients.hashCode()
         result = 31 * result + detectedIngredients.hashCode()
         result = 31 * result + (classifierError?.hashCode() ?: 0)
+        result = 31 * result + availableCrews.hashCode()
+        result = 31 * result + selectedCrewIds.hashCode()
         result = 31 * result + (photoBytes?.contentHashCode() ?: 0)
         return result
     }
@@ -76,6 +90,11 @@ sealed interface ComposePlateIntent : MviIntent {
     data object RequestConfirm : ComposePlateIntent
     data object DismissConfirm : ComposePlateIntent
     data object ConfirmPublish : ComposePlateIntent
+
+    /** Adds/removes one crew from the publish audience (keeps at least one selected). */
+    data class CrewToggled(val crewId: CrewId) : ComposePlateIntent
+    /** Selects every crew the author belongs to (the "All" shortcut). */
+    data object AllCrewsSelected : ComposePlateIntent
 }
 
 sealed interface ComposePlateEffect : MviEffect {

@@ -152,6 +152,7 @@ class BackgroundMealUploadCoordinator(
 private fun MealError.uploadErrorKey(): String = when (this) {
     MealError.Publish.AlreadyPostedToday -> "meal.error.alreadyPosted"
     MealError.Publish.NoSlotSelected     -> "meal.error.noSlot"
+    MealError.Publish.NoCrewSelected     -> "meal.error.noCrewSelected"
     MealError.Publish.NotToday           -> "meal.error.notToday"
     MealError.Publish.PublishUnavailable -> "meal.error.publishUnavailable"
     MealError.Publish.PhotoUploadFailed  -> "meal.error.photoUploadFailed"

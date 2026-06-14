@@ -17,9 +17,17 @@ class StartMealDraftUseCase(
     private val clock: Clock,
     private val zone: TimeZone,
 ) {
-    suspend operator fun invoke(crewId: CrewId, authorId: AccountId): Result<MealDraft, MealError> {
+    /**
+     * Starts a fresh draft for [authorId], seeded with [audienceCrewIds] as the
+     * publish audience (the composer defaults this to all the author's crews and the
+     * user may narrow it before publishing).
+     */
+    suspend operator fun invoke(
+        authorId: AccountId,
+        audienceCrewIds: Set<CrewId>,
+    ): Result<MealDraft, MealError> {
         val fresh = MealDraft(
-            crewId = crewId,
+            audienceCrewIds = audienceCrewIds,
             authorId = authorId,
             day = MealDay.today(clock, zone),
             plate = null, dish = null, description = Description.EMPTY,

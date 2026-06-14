@@ -7,7 +7,9 @@ import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
@@ -16,8 +18,10 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import kotlinx.coroutines.flow.flowOf
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -76,6 +80,16 @@ class FakeCrewOwnerPort(private val owner: AccountId? = null) : CrewOwnerPort {
 class FakeMealDeletePort : MealDeletePort {
     var result: Result<Unit, MealDeleteError> = Result.success(Unit)
     override suspend fun delete(crewId: CrewId, mealId: MealId) = result
+    override suspend fun deleteFromAllCrews(
+        crewIds: Set<CrewId>,
+        authorId: AccountId,
+        day: MealDay,
+        slot: MealSlot,
+    ) = result
+}
+
+class FakeCrewMembership(private val crews: List<CrewSummary> = emptyList()) : CrewMembershipPort {
+    override fun observeMyCrews(accountId: AccountId): Flow<List<CrewSummary>> = flowOf(crews)
 }
 
 class FakeIngredientReadPort : IngredientReadPort {
@@ -121,6 +135,7 @@ class MealDetailCommentIdentityTest {
             clock = FixedClock(),
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
+            deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort),
             crewOwner = FakeCrewOwnerPort(),
         )
@@ -234,6 +249,7 @@ class MealDetailCommentIdentityTest {
             clock = FixedClock(),
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
+            deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort),
             crewOwner = FakeCrewOwnerPort(),
         )

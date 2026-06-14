@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.di
 
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
@@ -33,6 +34,7 @@ class FeedModuleVerifyTest {
         feedModule.verify(
             extraTypes = listOf(
                 ActiveCrewProvider::class,
+                CrewMembershipPort::class,
                 SessionProvider::class,
                 AccountReadPort::class,
                 CrewOwnerPort::class,

@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
 sealed interface UpdateMealDraftCommand {
@@ -14,6 +15,9 @@ sealed interface UpdateMealDraftCommand {
     data class SetSlot(val slot: MealSlot) : UpdateMealDraftCommand
     /** Pass `null` to clear an attached coordinate pair. */
     data class SetCoordinates(val coordinates: Coordinates?) : UpdateMealDraftCommand
+
+    /** Sets which crews the plate will be shared with (the publish audience). */
+    data class SetAudience(val crewIds: Set<CrewId>) : UpdateMealDraftCommand
 
     /**
      * Records a fresh classifier run: overwrites the detected set and stamps the

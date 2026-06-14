@@ -24,6 +24,8 @@ class MealErrorToStringKeyTest {
     @Test fun maps_all_publish_errors() {
         assertEquals(MealStringKey.MealErrorAlreadyPosted, (MealError.Publish.AlreadyPostedToday as MealError).toStringKey())
         assertEquals(MealStringKey.MealErrorNotToday, (MealError.Publish.NotToday as MealError).toStringKey())
+        assertEquals(MealStringKey.MealErrorPublishNoSlotSelected, (MealError.Publish.NoSlotSelected as MealError).toStringKey())
+        assertEquals(MealStringKey.MealErrorPublishNoCrewSelected, (MealError.Publish.NoCrewSelected as MealError).toStringKey())
         assertEquals(MealStringKey.MealErrorPublishUnavailable, (MealError.Publish.PublishUnavailable as MealError).toStringKey())
         assertEquals(MealStringKey.MealErrorPhotoUploadFailed, (MealError.Publish.PhotoUploadFailed as MealError).toStringKey())
     }

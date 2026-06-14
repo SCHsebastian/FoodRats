@@ -20,4 +20,14 @@ interface MealRepository : MealReadPort, MealRatingPort, MealDeletePort, MealDra
     suspend fun clearDraft()
     suspend fun hasMealForSlot(crewId: CrewId, day: MealDay, slot: MealSlot): Result<Boolean, MealError.Read>
     suspend fun takenSlotsFor(crewId: CrewId, day: MealDay): Result<Set<MealSlot>, MealError.Read>
+
+    /**
+     * For each crew in [crewIds], the slots the author has already posted on [day].
+     * Lets the composer disable a slot only when it's taken in *every* selected crew
+     * (the audience-aware "already posted" rule). One Firestore read per crew.
+     */
+    suspend fun takenSlotsPerCrew(
+        crewIds: Set<CrewId>,
+        day: MealDay,
+    ): Result<Map<CrewId, Set<MealSlot>>, MealError.Read>
 }

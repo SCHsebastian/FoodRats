@@ -45,20 +45,29 @@ class FakeMealRepository : MealRepository {
 
     override suspend fun takenSlotsFor(
         crewId: CrewId, day: MealDay,
-    ): Result<Set<MealSlot>, MealError.Read> = Result.success(
+    ): Result<Set<MealSlot>, MealError.Read> = Result.success(slotsTakenIn(crewId, day))
+
+    override suspend fun takenSlotsPerCrew(
+        crewIds: Set<CrewId>, day: MealDay,
+    ): Result<Map<CrewId, Set<MealSlot>>, MealError.Read> =
+        Result.success(crewIds.associateWith { slotsTakenIn(it, day) })
+
+    private fun slotsTakenIn(crewId: CrewId, day: MealDay): Set<MealSlot> =
         takenSlots.entries
             .filter { (k, v) -> v && k.first == crewId && k.second == day }
             .map { it.key.third }
             .toSet()
-    )
 
     override suspend fun publish(draft: MealDraft): Result<Meal, MealError> {
         publishedDrafts += draft
-        return publishResultOverride ?: Result.success(
+        publishResultOverride?.let { return it }
+        val crewId = draft.audienceCrewIds.firstOrNull()
+            ?: return Result.failure(MealError.Publish.NoCrewSelected)
+        return Result.success(
             Meal(
                 id = (MealId.of("fake-id") as Result.Ok).value,
                 author = MealAuthor(draft.authorId, "Fake", null),
-                crewId = draft.crewId,
+                crewId = crewId,
                 day = draft.day,
                 slot = MealSlot.Lunch,
                 photoUrl = "fake://photo",
@@ -73,6 +82,18 @@ class FakeMealRepository : MealRepository {
     var deleteResultOverride: Result<Unit, MealDeleteError>? = null
     override suspend fun delete(crewId: CrewId, mealId: MealId): Result<Unit, MealDeleteError> {
         deleteCalls += crewId to mealId
+        return deleteResultOverride ?: Result.success(Unit)
+    }
+
+    val deleteFromAllCrewsCalls = mutableListOf<Set<CrewId>>()
+    override suspend fun deleteFromAllCrews(
+        crewIds: Set<CrewId>,
+        authorId: AccountId,
+        day: MealDay,
+        slot: MealSlot,
+    ): Result<Unit, MealDeleteError> {
+        deleteFromAllCrewsCalls += crewIds
+        crewIds.forEach { deleteCalls += it to MealId.forDaySlot(it, authorId, day, slot) }
         return deleteResultOverride ?: Result.success(Unit)
     }
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {

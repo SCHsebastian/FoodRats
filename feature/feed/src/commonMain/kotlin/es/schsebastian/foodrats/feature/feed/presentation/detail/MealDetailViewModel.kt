@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
+import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
@@ -25,6 +26,7 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
@@ -55,12 +57,20 @@ class MealDetailViewModel(
     private val clock: Clock,
     private val zone: TimeZone,
     private val deleteMeal: DeleteMealUseCase,
+    private val deleteMyMeal: DeleteMyMealUseCase,
     private val deleteComment: DeleteCommentUseCase,
     private val crewOwner: CrewOwnerPort,
 ) : MviViewModel<MealDetailState, MealDetailIntent, MealDetailEffect>(MealDetailState()) {
 
     /** Deduped per-author flows: at most one active Firestore listener per unique authorId. */
     private val authorFlows = mutableMapOf<AccountId, SharedFlow<Account?>>()
+
+    /**
+     * The currently-displayed meal (domain), stashed from the feed stream so the delete
+     * action can read its author / day / slot. Drives the author-vs-owner delete split:
+     * the author removes the post from every crew, an owner only from the crew in view.
+     */
+    private var matchedMeal: Meal? = null
 
     init {
         val parsedDay = runCatching { LocalDate.parse(dayIso) }.getOrNull()
@@ -80,6 +90,7 @@ class MealDetailViewModel(
                                 ?.let { crewOwner.observeOwner(it).first() }
                             val todayMealDay = MealDay.today(clock, zone)
                             val matched = r.value.firstOrNull { it.meal.id.value == mealId }
+                            matchedMeal = matched?.meal
                             val nameFor = ingredientNameResolver(catalog)
                             val match = if (viewerId == null || matched == null) null
                                         else matched.toFeedUi(
@@ -213,10 +224,23 @@ class MealDetailViewModel(
     }
 
     private suspend fun deleteMealAction() {
-        val crewId = activeCrew.current.first() ?: return
         val parsedMealId = MealId.of(mealId).getOrElse { return }
+        val viewerId = session.current.first()?.accountId
+        val meal = matchedMeal
         update { it.copy(isDeletingMeal = true, mealDeleteError = null) }
-        val r = deleteMeal(crewId, parsedMealId)
+        // The author owns the post across every crew it was shared to, so deleting it as the
+        // author fans out to all of them. A crew owner (not the author) can only moderate the
+        // copy in the crew currently in view.
+        val r = if (meal != null && viewerId != null && meal.author.accountId == viewerId) {
+            deleteMyMeal(viewerId, meal.day, meal.slot)
+        } else {
+            val crewId = activeCrew.current.first()
+            if (crewId == null) {
+                update { it.copy(isDeletingMeal = false) }
+                return
+            }
+            deleteMeal(crewId, parsedMealId)
+        }
         update {
             when (r) {
                 is Result.Ok  -> it.copy(isDeletingMeal = false, mealDeleted = true)

@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.di
 
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailViewModel
@@ -14,6 +15,7 @@ val feedModule = module {
     factoryOf(::ObserveFeedUseCase)
     factoryOf(::RateMealUseCase)
     factoryOf(::DeleteMealUseCase)
+    factoryOf(::DeleteMyMealUseCase)
     factoryOf(::DeleteCommentUseCase)
     // TimeZone is bound once in coreDataModule (loaded app-wide); feed resolves it from there.
     viewModel { FeedViewModel(get(), get(), get(), get(), get(), get(), get()) }
@@ -21,7 +23,7 @@ val feedModule = module {
         MealDetailViewModel(
             mealId, dayIso,
             get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(), get(),
+            get(), get(), get(), get(), get(),
         )
     }
 }
