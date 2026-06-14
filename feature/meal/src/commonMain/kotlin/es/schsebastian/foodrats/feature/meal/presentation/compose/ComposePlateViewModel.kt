@@ -1,6 +1,9 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.location.LocationError
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
@@ -35,6 +38,7 @@ class ComposePlateViewModel(
     private val classifyPlate: ClassifyDraftPlateUseCase,
     private val clock: Clock,
     private val zone: TimeZone,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<ComposePlateState, ComposePlateIntent, ComposePlateEffect>(ComposePlateState()) {
 
     // Content fingerprint of the last photo we kicked a classification off for.
@@ -52,6 +56,7 @@ class ComposePlateViewModel(
     private var slotInitialized = false
 
     init {
+        analytics.track(AnalyticsEvent.MealComposerOpened)
         repository.observeDraft().onEach { draft ->
             update {
                 it.copy(
@@ -89,8 +94,21 @@ class ComposePlateViewModel(
         lastClassifiedFingerprint = fingerprint
         update { it.copy(classifying = true, classifierError = null) }
         viewModelScope.launch {
+            val startedAt = clock.now()
             when (val r = classifyPlate(bytes)) {
                 is Result.Ok -> {
+                    // Advisory telemetry: only when the classifier actually ran (kill-switch off
+                    // yields an empty version). detected≠confirmed, so `detected_count` here is the
+                    // model's raw suggestion count, before the user edits it in the picker.
+                    if (r.value.version.isNotEmpty()) {
+                        analytics.track(
+                            AnalyticsEvent.PlateClassified(
+                                detectedCount = r.value.ingredients.size,
+                                latencyMs = (clock.now() - startedAt).inWholeMilliseconds,
+                                classifierVersion = r.value.version,
+                            ),
+                        )
+                    }
                     // Detected ≠ confirmed: stamp ONLY the detected set. The confirmed
                     // `draftIngredients` stays driven by observeDraft and remains empty
                     // until the user confirms in the picker — detections are just its seed.

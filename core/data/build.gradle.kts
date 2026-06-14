@@ -16,6 +16,12 @@ kotlin {
         // JVM_17: firebase-* (BOM 33.5.1) ship inline functions compiled at JVM 17;
         // inlining into JVM 11 target is rejected by kotlinc.
         compilerOptions { jvmTarget = JvmTarget.JVM_17 }
+        // Runs commonTest on the JVM (Robolectric) — the iOS test target can't link the native
+        // Firebase frameworks. Covers the vendor-free commonMain logic (AppPreferences, the
+        // consent-gated analytics decorator) that needs no real Firebase at runtime.
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
     }
     sourceSets {
         commonMain.dependencies {
@@ -37,6 +43,12 @@ kotlin {
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.koin.test)
         }
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.junit)
+            }
+        }
         androidMain.dependencies {
             // PreferenceDataStoreFactory (JVM/Android) is provided by datastore-preferences artifact
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
@@ -44,6 +56,9 @@ kotlin {
             // Crashlytics has no GitLive KMP binding — AndroidCrashReporter (androidMain) wraps the
             // native SDK directly. Version pinned by the BOM above.
             implementation(libs.firebase.crashlytics)
+            // Analytics (GA4) — no GitLive binding; FirebaseAnalyticsTracker (androidMain) wraps the
+            // native SDK directly. Version pinned by the BOM above.
+            implementation(libs.firebase.analytics)
             // Remote Config backs the FeatureFlagPort kill-switch (RemoteConfigFeatureFlags,
             // androidMain). No GitLive KMP binding; native SDK pinned by the BOM above.
             implementation(libs.firebase.config)

@@ -35,6 +35,21 @@ struct ComposeView: UIViewControllerRepresentable {
             },
             share: { text in
                 ShareBridge.shareText(text)
+            },
+            analyticsLogEvent: { name, params in
+                AnalyticsBridge.logEvent(name: name, params: params)
+            },
+            analyticsSetUserId: { accountId in
+                AnalyticsBridge.setUserId(accountId)
+            },
+            analyticsSetUserProperty: { name, value in
+                AnalyticsBridge.setUserProperty(name: name, value: value)
+            },
+            analyticsSetConsent: { granted in
+                AnalyticsBridge.setConsent(granted: granted)
+            },
+            analyticsReset: {
+                AnalyticsBridge.resetData()
             }
         )
     }

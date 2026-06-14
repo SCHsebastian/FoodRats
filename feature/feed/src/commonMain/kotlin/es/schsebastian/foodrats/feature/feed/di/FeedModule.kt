@@ -18,12 +18,12 @@ val feedModule = module {
     factoryOf(::DeleteMyMealUseCase)
     factoryOf(::DeleteCommentUseCase)
     // TimeZone is bound once in coreDataModule (loaded app-wide); feed resolves it from there.
-    viewModel { FeedViewModel(get(), get(), get(), get(), get(), get(), get()) }
+    viewModel { FeedViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
     viewModel { (mealId: String, dayIso: String) ->
         MealDetailViewModel(
             mealId, dayIso,
             get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(), get(), get(),
+            get(), get(), get(), get(), get(), get(),
         )
     }
 }

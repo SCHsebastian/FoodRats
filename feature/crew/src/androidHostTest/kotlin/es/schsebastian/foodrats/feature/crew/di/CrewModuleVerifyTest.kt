@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.crew.di
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -37,6 +38,7 @@ class CrewModuleVerifyTest {
                 AccountReadPort::class,
                 Random::class,
                 CrewId::class,
+                AnalyticsPort::class,
             ),
         )
     }

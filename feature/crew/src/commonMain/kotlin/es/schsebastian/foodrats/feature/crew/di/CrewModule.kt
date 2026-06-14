@@ -29,7 +29,6 @@ import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsV
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
-import org.koin.core.module.dsl.viewModelOf
 import kotlinx.coroutines.flow.Flow
 import org.koin.dsl.module
 import kotlin.random.Random
@@ -77,7 +76,12 @@ val crewModule = module {
     factoryOf(::DeleteCrewUseCase)
     factoryOf(::RemoveMemberUseCase)
 
-    viewModelOf(::CrewPickerViewModel)
+    viewModel {
+        CrewPickerViewModel(
+            session = get(), observeMyCrews = get(), createCrew = get(), joinCrew = get(),
+            switchActive = get(), accountRead = get(), analytics = get(),
+        )
+    }
     viewModel { (crewId: CrewId) ->
         CrewSettingsViewModel(crewId, get(), get(), get(), get(), get(), get(), get())
     }

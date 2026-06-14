@@ -4,6 +4,7 @@ import dev.gitlive.firebase.auth.FirebaseAuth
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.storage.FirebaseStorage
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
@@ -65,6 +66,7 @@ class MealModuleVerifyTest {
                 FeatureFlagPort::class,
                 StreakNotificationPort::class,
                 MealUploadScheduler::class,
+                AnalyticsPort::class,
             ),
         )
     }

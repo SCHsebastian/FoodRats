@@ -34,6 +34,7 @@ import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateVi
 import es.schsebastian.foodrats.feature.meal.presentation.nudge.CaptureNudgeViewModel
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -105,12 +106,19 @@ val mealModule = module {
             prefs = get(),
             scheduler = get(),
             dispatchers = get(),
+            analytics = get(),
         )
     }
     single<MealUploadCoordinator> { get<BackgroundMealUploadCoordinator>() }
     single<MealUploadProgressPort> { get<BackgroundMealUploadCoordinator>() }
 
     viewModelOf(::CaptureMealViewModel)
-    viewModelOf(::ComposePlateViewModel)
+    viewModel {
+        ComposePlateViewModel(
+            updateDraft = get(), repository = get(), crewMembership = get(),
+            uploadCoordinator = get(), locationProvider = get(), classifyPlate = get(),
+            clock = get(), zone = get(), analytics = get(),
+        )
+    }
     viewModelOf(::CaptureNudgeViewModel)
 }

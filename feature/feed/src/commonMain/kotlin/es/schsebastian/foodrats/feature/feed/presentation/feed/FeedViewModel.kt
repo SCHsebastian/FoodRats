@@ -1,6 +1,9 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
@@ -34,6 +37,7 @@ class FeedViewModel(
     private val clock: Clock,
     private val zone: TimeZone,
     uploadProgress: MealUploadProgressPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
     FeedState(
         day = FeedDay.today(clock.now().toLocalDateTime(zone).date, zone),
@@ -84,6 +88,7 @@ class FeedViewModel(
         val score = Score.of(scoreRaw).getOrElse { return }
         update { it.copy(pendingRateMealId = mealIdRaw, rateError = null) }
         val r = rateMeal(crewId, mealId, raterId, score)
+        if (r is Result.Ok) analytics.track(AnalyticsEvent.MealRated(mealId, scoreRaw))
         update {
             when (r) {
                 is Result.Ok  -> it.copy(pendingRateMealId = null)

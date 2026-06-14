@@ -3,6 +3,9 @@ package es.schsebastian.foodrats.feature.feed.presentation.detail
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
@@ -20,6 +23,7 @@ import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -60,6 +64,7 @@ class MealDetailViewModel(
     private val deleteMyMeal: DeleteMyMealUseCase,
     private val deleteComment: DeleteCommentUseCase,
     private val crewOwner: CrewOwnerPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<MealDetailState, MealDetailIntent, MealDetailEffect>(MealDetailState()) {
 
     /** Deduped per-author flows: at most one active Firestore listener per unique authorId. */
@@ -77,6 +82,8 @@ class MealDetailViewModel(
         if (parsedDay == null) {
             update { it.copy(isLoading = false, notFound = true, commentsLoading = false) }
         } else {
+            // select_content (open) — fired once per screen open; the meal id is known up front.
+            MealId.of(mealId).getOrNull()?.let { analytics.track(AnalyticsEvent.MealOpened(it)) }
             val feedDay = FeedDay(MealDay(parsedDay, zone))
             viewModelScope.launch {
                 combine(
@@ -231,7 +238,8 @@ class MealDetailViewModel(
         // The author owns the post across every crew it was shared to, so deleting it as the
         // author fans out to all of them. A crew owner (not the author) can only moderate the
         // copy in the crew currently in view.
-        val r = if (meal != null && viewerId != null && meal.author.accountId == viewerId) {
+        val byAuthor = meal != null && viewerId != null && meal.author.accountId == viewerId
+        val r = if (byAuthor) {
             deleteMyMeal(viewerId, meal.day, meal.slot)
         } else {
             val crewId = activeCrew.current.first()
@@ -241,6 +249,7 @@ class MealDetailViewModel(
             }
             deleteMeal(crewId, parsedMealId)
         }
+        if (r is Result.Ok) analytics.track(AnalyticsEvent.MealDeleted(byAuthor = byAuthor))
         update {
             when (r) {
                 is Result.Ok  -> it.copy(isDeletingMeal = false, mealDeleted = true)
@@ -263,6 +272,7 @@ class MealDetailViewModel(
         val score = Score.of(scoreRaw).getOrElse { return }
         update { it.copy(pendingRate = true, rateError = null) }
         val r = rateMeal(crewId, parsedMealId, raterId, score)
+        if (r is Result.Ok) analytics.track(AnalyticsEvent.MealRated(parsedMealId, scoreRaw))
         update {
             when (r) {
                 is Result.Ok  -> it.copy(pendingRate = false)
@@ -289,6 +299,7 @@ class MealDetailViewModel(
         }
         update { it.copy(isPostingComment = true, commentWriteError = null) }
         val r = commentPort.post(crewId, parsedMealId, text)
+        if (r is Result.Ok) analytics.track(AnalyticsEvent.CommentPosted(parsedMealId))
         update {
             when (r) {
                 is Result.Ok  -> it.copy(isPostingComment = false, commentInput = "")

@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.di
 import dev.gitlive.firebase.auth.FirebaseAuth
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.storage.FirebaseStorage
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
@@ -45,6 +46,7 @@ class AuthModuleVerifyTest {
                 NotificationsPreferencePort::class,
                 TokenRegistrationPort::class,
                 NotificationPermissionPort::class,
+                AnalyticsPort::class,
             ),
         )
     }

@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.app.root.FoodRatsApp
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
+import es.schsebastian.foodrats.core.data.di.analyticsIosModule
 import es.schsebastian.foodrats.core.data.di.configIosModule
 import es.schsebastian.foodrats.core.data.di.crashIosModule
 import es.schsebastian.foodrats.core.data.di.locationIosModule
@@ -61,6 +62,11 @@ fun MainViewController(
         (labels: List<String>?, errorCode: String?) -> Unit,
     ) -> Unit,
     share: (String) -> Unit,
+    analyticsLogEvent: (name: String, params: Map<String, Any>) -> Unit,
+    analyticsSetUserId: (accountId: String?) -> Unit,
+    analyticsSetUserProperty: (name: String, value: String) -> Unit,
+    analyticsSetConsent: (granted: Boolean) -> Unit,
+    analyticsReset: () -> Unit,
 ) = ComposeUIViewController(
     configure = {
         installImageLoader()
@@ -76,6 +82,13 @@ fun MainViewController(
                         shareIosModule(share),
                         authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
                         crashIosModule(crashRecordNonFatal, crashLog),
+                        analyticsIosModule(
+                            analyticsLogEvent,
+                            analyticsSetUserId,
+                            analyticsSetUserProperty,
+                            analyticsSetConsent,
+                            analyticsReset,
+                        ),
                         configIosModule,
                         locationIosModule,
                     ),

@@ -19,7 +19,7 @@ import es.schsebastian.foodrats.feature.notifications.presentation.permission.No
 import kotlinx.datetime.TimeZone
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
-import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
 val notificationsModule = module {
@@ -41,5 +41,5 @@ val notificationsModule = module {
     single<StreakNotificationPort> { StreakNotificationAdapter(get()) }
     single<NotificationPermissionPort> { NotificationPermissionAdapter(get()) }
 
-    viewModelOf(::NotificationPermissionViewModel)
+    viewModel { NotificationPermissionViewModel(uc = get(), prefs = get(), analytics = get()) }
 }

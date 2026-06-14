@@ -36,6 +36,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -77,7 +78,7 @@ val authModule = module {
     factoryOf(::SetNotificationsEnabledUseCase)
     factoryOf(::EnableNotificationsUseCase)
     factoryOf(::DeleteMyAccountUseCase)
-    viewModelOf(::SignInViewModel)
+    viewModel { SignInViewModel(auth = get(), tokenRegistration = get(), analytics = get()) }
     viewModelOf(::ProfileViewModel)
     viewModelOf(::TopBarAvatarViewModel)
 }

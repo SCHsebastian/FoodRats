@@ -106,6 +106,9 @@ firebase-common    = { module = "dev.gitlive:firebase-common",    version.ref = 
 # Firebase-touching module's androidMain (was a hardcoded literal repeated in 5 files).
 firebase-bom       = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
 firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+# Firebase Analytics (GA4) — no GitLive KMP binding; native SDK reached from androidMain only
+# (FirebaseAnalyticsTracker), iOS bridged via Swift (mirrors Crashlytics). Pinned by the BOM above.
+firebase-analytics   = { module = "com.google.firebase:firebase-analytics" }
 # Remote Config — backs the FeatureFlagPort kill-switch (no GitLive KMP binding; native SDK
 # reached from androidMain only). Version pinned by the BOM above.
 firebase-config      = { module = "com.google.firebase:firebase-config" }

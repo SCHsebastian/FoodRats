@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.core.data.datastore
 
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 
 object Keys {
@@ -29,4 +31,13 @@ object Keys {
      */
     val MealUploadPending    = StoreKey(booleanPreferencesKey("meal_upload_pending"))
     val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
+
+    // ── Analytics consent (GDPR/CCPA opt-in). Absence of [AnalyticsConsentState] = "Unknown"
+    //    (no decision yet → analytics is a hard no-op). See ConsentRepository / ConsentGatedAnalytics.
+    /** `"granted"` | `"denied"`; absent = no decision recorded yet. */
+    val AnalyticsConsentState     = StoreKey(stringPreferencesKey("analytics_consent_state"))
+    /** Consent-schema version in effect when the decision was made (re-consent on bump). */
+    val AnalyticsConsentVersion   = StoreKey(intPreferencesKey("analytics_consent_version"))
+    /** Epoch millis of the decision. */
+    val AnalyticsConsentDecidedAt = StoreKey(longPreferencesKey("analytics_consent_decided_at"))
 }

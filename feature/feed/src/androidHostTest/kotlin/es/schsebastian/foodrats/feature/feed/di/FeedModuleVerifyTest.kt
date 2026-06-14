@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.di
 
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
@@ -46,6 +47,7 @@ class FeedModuleVerifyTest {
                 IngredientReadPort::class,
                 Clock::class,
                 TimeZone::class,
+                AnalyticsPort::class,
             ),
         )
     }

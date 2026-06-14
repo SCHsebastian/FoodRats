@@ -1,6 +1,9 @@
 package es.schsebastian.foodrats.feature.notifications.presentation.permission
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -12,6 +15,7 @@ import kotlinx.coroutines.launch
 class NotificationPermissionViewModel(
     private val uc: RequestNotificationPermissionUseCase,
     private val prefs: NotificationsPreferencePort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<NotificationPermissionState, NotificationPermissionIntent, NotificationPermissionEffect>(
     NotificationPermissionState(),
 ) {
@@ -32,9 +36,14 @@ class NotificationPermissionViewModel(
     override suspend fun handle(intent: NotificationPermissionIntent) {
         when (intent) {
             NotificationPermissionIntent.Request -> {
+                analytics.track(AnalyticsEvent.NotifPermissionPrompted(promptCount = 1))
                 update { it.copy(isRequesting = true, error = null) }
                 val r = uc()
                 update { it.copy(isRequesting = false, current = r) }
+                analytics.track(
+                    if (r == NotificationPermission.Granted) AnalyticsEvent.NotifPermissionGranted
+                    else AnalyticsEvent.NotifPermissionDenied,
+                )
                 // Sync the user preference with the OS outcome (best-effort: a failure here
                 // doesn't strand the user, it only leaves the toggle at its default).
                 prefs.set(enabled = r == NotificationPermission.Granted)

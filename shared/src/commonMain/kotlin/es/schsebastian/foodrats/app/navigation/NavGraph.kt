@@ -10,12 +10,14 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph
 import androidx.navigation.NavHostController
@@ -27,6 +29,9 @@ import androidx.navigation.toRoute
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.ScreenName
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
@@ -48,6 +53,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun NavGraph(navController: NavController = rememberNavController()) {
     // Outer (root) NavHost
     val controller = navController as NavHostController
+    TrackScreenViews(controller)
     NavHost(navController = controller, startDestination = Route.Splash) {
         composable<Route.Splash> {
             Box(
@@ -164,10 +170,50 @@ fun NavHostController.navigateTopLevel(route: Route) {
     }
 }
 
+/**
+ * Emits a `screen_view` analytics event on every destination change of [controller]. Firebase does
+ * not auto-track screen views under Compose Multiplatform navigation, so this is the sanctioned manual
+ * path. Used on both the root NavHost (top-level screens) and the Main scaffold's inner NavHost
+ * (Feed/Stats tabs). The screen name is derived from the route *type*, never the arg-bearing route
+ * string (see [toAnalyticsScreenName]). No-op until consent is granted (the gate is in the port).
+ */
+@Composable
+private fun TrackScreenViews(controller: NavHostController) {
+    val analytics = koinInject<AnalyticsPort>()
+    LaunchedEffect(controller) {
+        controller.currentBackStackEntryFlow.collect { entry ->
+            analytics.track(AnalyticsEvent.ScreenViewed(entry.destination.toAnalyticsScreenName()))
+        }
+    }
+}
+
+/**
+ * Maps a navigation [NavDestination] to a stable snake_case [ScreenName] from the route TYPE's simple
+ * name (e.g. `…Route.MealDetail/{mealId}/{dayIso}` → `meal_detail`). Stripping the args keeps screen
+ * cardinality low and the value within GA4's length cap.
+ */
+private fun NavDestination.toAnalyticsScreenName(): ScreenName {
+    val raw = route ?: return ScreenName("unknown")
+    val simple = raw.substringBefore('/').substringBefore('?').substringAfterLast('.')
+    return ScreenName(simple.pascalToSnakeCase().ifEmpty { "unknown" })
+}
+
+private fun String.pascalToSnakeCase(): String = buildString {
+    this@pascalToSnakeCase.forEachIndexed { index, c ->
+        if (c.isUpperCase()) {
+            if (index != 0) append('_')
+            append(c.lowercaseChar())
+        } else {
+            append(c)
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScaffold(rootController: NavHostController) {
     val inner = rememberNavController()
+    TrackScreenViews(inner)
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     val backStack by inner.currentBackStackEntryAsState()
     val isStats = backStack?.destination?.hasRoute<MainTab.Stats>() == true

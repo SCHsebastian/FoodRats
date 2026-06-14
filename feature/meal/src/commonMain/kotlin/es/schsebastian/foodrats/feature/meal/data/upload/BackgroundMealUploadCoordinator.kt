@@ -2,6 +2,10 @@ package es.schsebastian.foodrats.feature.meal.data.upload
 
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.Keys
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.analytics.PublishSource
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
@@ -45,6 +49,7 @@ class BackgroundMealUploadCoordinator(
     private val prefs: AppPreferences,
     private val scheduler: MealUploadScheduler,
     private val dispatchers: DispatcherProvider,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MealUploadCoordinator, MealUploadProgressPort {
 
     private val _status = MutableStateFlow<MealUploadStatus>(MealUploadStatus.Idle)
@@ -126,11 +131,25 @@ class BackgroundMealUploadCoordinator(
                 prefs.clear(Keys.MealUploadPending)
                 scheduler.cancel()
                 _status.value = MealUploadStatus.Succeeded
+                // meal_published fires on the TRUE outcome (publish Result Ok), not at enqueue —
+                // this is the funnel-conversion + publishing-depth event. No PII (slot/counts only).
+                draft.slot?.let { slot ->
+                    analytics.track(
+                        AnalyticsEvent.MealPublished(
+                            slot = slot,
+                            ingredientCount = draft.ingredients.size,
+                            hasDescription = draft.description.value.isNotBlank(),
+                            audienceCrewCount = draft.audienceCrewIds.size,
+                            source = PublishSource.UNKNOWN,
+                        ),
+                    )
+                }
                 // Streak nudge is best-effort — the upload already succeeded.
                 runCatching { streakNotifications.scheduleStreakNudge() }
                     .onFailure { FrLog.w("MealUpload", it) { "streak nudge skipped: ${it.message}" } }
             }
             is Result.Err -> {
+                analytics.track(AnalyticsEvent.MealPublishFailed(errorLeaf = r.error::class.simpleName ?: "Unknown"))
                 // Leave the pending flag set so WorkManager backoff retries
                 // (Android) or the next-launch resume (iOS) try again.
                 _status.value = MealUploadStatus.Failed(errorKey = r.error.uploadErrorKey())
