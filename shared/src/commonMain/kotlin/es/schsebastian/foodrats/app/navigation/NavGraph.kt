@@ -95,7 +95,7 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 crewId = args.crewId,
                 onBack = { controller.popBackStack() },
                 onLeft = { controller.navigateTopLevel(Route.CrewPicker) },
-                onSwitch = { controller.navigate(Route.CrewPicker) },
+                onSwitch = { controller.navigate(Route.CrewPicker) { launchSingleTop = true } },
                 onDeleted = { controller.navigateTopLevel(Route.CrewPicker) },
             )
         }
@@ -232,9 +232,15 @@ private fun MainScaffold(rootController: NavHostController) {
                 avatarInitials = topBarAvatar.initials,
                 avatarUrl = topBarAvatar.avatarUrl,
                 showSettings = activeCrew != null,
-                onProfileClick = { rootController.navigate(Route.Profile) },
+                // launchSingleTop on every tap-driven push: a rapid double-tap (or a recomposition
+                // that re-fires the click) must not stack a duplicate destination — the second tap
+                // reuses the existing top entry instead of pushing a clone that the user then has to
+                // Back through twice. Cheap idempotency for user-initiated navigation.
+                onProfileClick = { rootController.navigate(Route.Profile) { launchSingleTop = true } },
                 onSettingsClick = {
-                    activeCrew?.let { rootController.navigate(Route.CrewSettings(it.value)) }
+                    activeCrew?.let {
+                        rootController.navigate(Route.CrewSettings(it.value)) { launchSingleTop = true }
+                    }
                 },
             )
         },
@@ -256,7 +262,7 @@ private fun MainScaffold(rootController: NavHostController) {
                         restoreState = true
                     }
                 },
-                onCaptureClick = { rootController.navigate(Route.CaptureMeal) },
+                onCaptureClick = { rootController.navigate(Route.CaptureMeal) { launchSingleTop = true } },
             )
         },
     ) { innerPadding ->
@@ -264,9 +270,9 @@ private fun MainScaffold(rootController: NavHostController) {
             NavHost(navController = inner, startDestination = MainTab.Feed) {
                 composable<MainTab.Feed> {
                     FeedScreen(
-                        onPickCrewClick = { rootController.navigate(Route.CrewPicker) },
+                        onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
                         onMealClick = { mealId, dayIso ->
-                            rootController.navigate(Route.MealDetail(mealId, dayIso))
+                            rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
                         },
                     )
                 }

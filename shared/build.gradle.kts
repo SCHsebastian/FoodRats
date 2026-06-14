@@ -78,6 +78,14 @@ kotlin {
             implementation(libs.turbine)
             implementation(libs.kotlinx.coroutines.test)
         }
+        val androidHostTest by getting {
+            dependencies {
+                // Robolectric-backed Compose UI tests for the imperative nav glue
+                // (navigateTopLevel + back-stack behaviour) that commonTest can't reach.
+                implementation(libs.bundles.compose.hosttest)
+                implementation(libs.androidx.activity.compose)
+            }
+        }
     }
 }
 

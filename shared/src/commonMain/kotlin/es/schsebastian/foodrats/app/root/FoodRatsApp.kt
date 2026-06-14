@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.app.root
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -11,7 +12,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.rememberNavController
 import es.schsebastian.foodrats.app.navigation.EventsEffect
@@ -92,10 +92,16 @@ fun FoodRatsApp() {
     FoodRatsTheme(darkTheme = darkTheme) {
         InAppPushBanner(bus = notificationBus, snackbarHostState = snackbarHostState)
         Scaffold(
-            // Transparent host whose only job is to position the SnackbarHost above every screen;
-            // the NavGraph owns its own bars/insets (MainScaffold), so we let it fill the body and
-            // do NOT apply innerPadding to it (that would double-pad). The snackbar floats over.
-            containerColor = Color.Transparent,
+            // Host whose only job is to position the SnackbarHost above every screen; the NavGraph
+            // owns its own bars/insets (MainScaffold), so we let it fill the body and do NOT apply
+            // innerPadding to it (that would double-pad). The snackbar floats over.
+            //
+            // The container is painted with the app background (NOT transparent) so that during a
+            // navigation transition — Compose Navigation crossfades destinations, and the incoming
+            // screen may not paint its first frame instantly — the gap never reveals the platform
+            // window background (`Theme.Material` dark-gray), which showed up as an intermittent
+            // "gray screen" when opening Profile/CrewSettings. Mirrors MainScaffold's containerColor.
+            containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { _ ->
             Box(modifier = Modifier.fillMaxSize()) {

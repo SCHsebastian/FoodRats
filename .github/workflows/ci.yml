@@ -66,6 +66,7 @@ jobs:
           :feature:notifications:testAndroidHostTest
           :feature:ingredient:testAndroidHostTest
           :core:designsystem:testAndroidHostTest
+          :shared:testAndroidHostTest
 
       - name: Upload test reports
         if: always()

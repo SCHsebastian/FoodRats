@@ -15,7 +15,7 @@ JVM is auto-provisioned (Amazon Corretto 21 via foojay — see `gradle/gradle-da
 | Build & install on connected Android | `./gradlew :androidApp:installDebug` then `adb shell am start -n es.schsebastian.foodrats/.MainActivity` |
 | Build Android debug APK | `./gradlew :androidApp:assembleDebug` |
 | Build & install design-system catalog | `./gradlew :catalogApp:installDebug` then `adb shell am start -n es.schsebastian.foodrats.catalog/es.schsebastian.foodrats.catalog.CatalogActivity` |
-| All Android host tests | `./gradlew :core:domain:testAndroidHostTest :feature:auth:testAndroidHostTest :feature:crew:testAndroidHostTest :feature:meal:testAndroidHostTest :feature:feed:testAndroidHostTest :feature:stats:testAndroidHostTest :feature:notifications:testAndroidHostTest :core:designsystem:testAndroidHostTest` |
+| All Android host tests | `./gradlew :core:domain:testAndroidHostTest :feature:auth:testAndroidHostTest :feature:crew:testAndroidHostTest :feature:meal:testAndroidHostTest :feature:feed:testAndroidHostTest :feature:stats:testAndroidHostTest :feature:notifications:testAndroidHostTest :feature:ingredient:testAndroidHostTest :core:designsystem:testAndroidHostTest :shared:testAndroidHostTest` |
 | Single test | `./gradlew :feature:meal:testAndroidHostTest --tests "*PublishMealUseCaseTest.publishes_when_draft_day_is_today"` (use `*` wildcards) |
 | iOS framework (sim) | `./gradlew :shared:linkDebugFrameworkIosSimulatorArm64` — links (confirmed building/running on device 2026-05-22), see "iOS status" below |
 | iOS simulator tests | `./gradlew :<module>:iosSimulatorArm64Test` — fails to link for any module that transitively depends on Firebase (no `FirebaseCore.framework` locally; needs SPM setup in Xcode) |
