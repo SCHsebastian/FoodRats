@@ -14,4 +14,13 @@ import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 internal interface PlateStorage {
     /** Uploads the plate photo and returns its download URL. */
     suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String
+
+    /**
+     * Deletes the plate photo at the deterministic upload path for [crewId]/[mealId].
+     *
+     * Used for best-effort cleanup when the publish Firestore write fails after a successful
+     * upload, so the orphaned blob doesn't linger (a cost + privacy leak). The repository
+     * swallows any failure here — cleanup must never mask the original publish error.
+     */
+    suspend fun delete(crewId: CrewId, mealId: String)
 }

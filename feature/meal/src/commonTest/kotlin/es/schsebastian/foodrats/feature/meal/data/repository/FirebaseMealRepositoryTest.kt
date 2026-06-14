@@ -177,6 +177,25 @@ class FirebaseMealRepositoryTest {
         assertEquals(Result.failure(MealError.Publish.AlreadyPostedToday), result)
     }
 
+    /** #20: a write failure AFTER a successful upload best-effort deletes the orphaned blob —
+     *  with the uploaded path — and a failing cleanup must NOT change the returned publish error. */
+    @Test fun publish_write_failure_after_upload_cleans_up_orphan_blob_and_preserves_error() = runTest {
+        val f = Fixture().apply {
+            firestore.writeFault = RuntimeException("PERMISSION_DENIED: write rejected after upload")
+            // The cleanup itself fails — it still must be attempted and must not mask the error.
+            storage.deleteFault = RuntimeException("delete also failed")
+        }
+        val repo = repository(f)
+
+        val result = repo.publish(draft())
+
+        // The upload landed first, then the write failed → the original publish error is returned.
+        assertEquals(1, f.storage.uploads.size)
+        assertEquals(Result.failure(MealError.Publish.PublishUnavailable), result)
+        // The orphan was cleaned up at the deterministic upload path (crew + meal id).
+        assertEquals(crew to mealId.value, f.storage.deletes.single())
+    }
+
     /** A PERMISSION_DENIED write fault is a publish failure, not a read failure (#8 fix). */
     @Test fun publish_permission_denied_write_fault_maps_to_publish_unavailable() = runTest {
         val f = Fixture().apply {

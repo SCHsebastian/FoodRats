@@ -146,6 +146,9 @@ internal class FirebaseMealRepository(
                 }
                 val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
                 val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
+                // The upload succeeded; the blob now exists in Storage. Anything that throws
+                // from here on (the Firestore write) leaves it orphaned, so the catch below
+                // does best-effort cleanup before propagating the original failure.
                 val currentAuthor = authorIdentity.current()
                 val dto = MealDto(
                     id = mealId.value,
@@ -167,7 +170,16 @@ internal class FirebaseMealRepository(
                     ingredients = draft.ingredients.map { it.value },
                     classifierVersion = draft.classifierVersion,
                 )
-                firestore.write(dto, mealId.value)
+                try {
+                    firestore.write(dto, mealId.value)
+                } catch (t: Throwable) {
+                    // Best-effort orphan cleanup: the upload landed but the doc write failed,
+                    // so delete the just-uploaded blob. Swallow any delete failure — it must
+                    // NOT mask the original write error the user needs to see.
+                    runCatching { storage.delete(draft.crewId, mealId.value) }
+                        .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed: ${it.message}" } }
+                    throw t
+                }
                 @Suppress("UNCHECKED_CAST")
                 dto.toDomain() as Result<Meal, MealError>
             }.fold(

@@ -85,15 +85,22 @@ internal class FakeMealFirestore : MealFirestore {
  */
 internal class FakePlateStorage : PlateStorage {
     var uploadFault: Throwable? = null
+    var deleteFault: Throwable? = null
     var url: String = "https://fake/plate.jpg"
 
     data class UploadCall(val crewId: CrewId, val mealId: String, val plate: Plate)
     val uploads = mutableListOf<UploadCall>()
+    val deletes = mutableListOf<Pair<CrewId, String>>()
 
     override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
         uploads += UploadCall(crewId, mealId, plate)
         uploadFault?.let { throw it }
         return url
+    }
+
+    override suspend fun delete(crewId: CrewId, mealId: String) {
+        deletes += crewId to mealId
+        deleteFault?.let { throw it }
     }
 }
 

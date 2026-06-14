@@ -21,11 +21,22 @@ class PlateStorageDataSource(private val storage: FirebaseStorage) : PlateStorag
      * - iOS actual: wrapper `class Data(val data: NSData)` — bridged via [toStorageData].
      */
     override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
-        val ref = storage.reference("crews/${crewId.value}/meals/${mealId}.jpg")
+        val ref = storage.reference(platefile(crewId, mealId))
         ref.putData(
             data = plate.photoBytes.toStorageData(),
             metadata = storageMetadata { contentType = "image/jpeg" },
         )
         return ref.getDownloadUrl()
     }
+
+    /**
+     * Deletes the blob at the deterministic upload path. Called for best-effort cleanup when
+     * the publish write fails after a successful upload; the repository swallows any failure.
+     */
+    override suspend fun delete(crewId: CrewId, mealId: String) {
+        storage.reference(platefile(crewId, mealId)).delete()
+    }
+
+    private fun platefile(crewId: CrewId, mealId: String): String =
+        "crews/${crewId.value}/meals/${mealId}.jpg"
 }
