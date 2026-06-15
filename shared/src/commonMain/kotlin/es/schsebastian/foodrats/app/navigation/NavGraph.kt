@@ -53,6 +53,8 @@ import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIng
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
 import es.schsebastian.foodrats.feature.meal.presentation.nudge.CaptureNudgeViewModel
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionScreen
+import es.schsebastian.foodrats.app.i18n.SharedStringKey
+import es.schsebastian.foodrats.feature.stats.presentation.passport.PassportScreen
 import es.schsebastian.foodrats.feature.stats.presentation.stats.StatsScreen
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -266,10 +268,28 @@ private fun MainScaffold(rootController: NavHostController) {
     // collectAsStateWithLifecycle never collects and the screen hangs on a blank spinner. Neither tab
     // keeps its own back stack (Feed pushes detail/picker through the root controller), so a saveable
     // selected-tab flag is all the state we need and it survives configuration change + process death.
-    var isStats by rememberSaveable { mutableStateOf(false) }
+    // Saveable selected tab as a MainTab: Feed | Passport | Stats. A flat switch (not a nested
+    // NavHost) for the back-stack-restoration reason documented below.
+    var selectedTab: MainTab by rememberSaveable(
+        stateSaver = androidx.compose.runtime.saveable.Saver(
+            save = { it::class.simpleName },
+            restore = { name ->
+                when (name) {
+                    MainTab.Passport::class.simpleName -> MainTab.Passport
+                    MainTab.Stats::class.simpleName -> MainTab.Stats
+                    else -> MainTab.Feed
+                }
+            },
+        ),
+    ) { mutableStateOf(MainTab.Feed) }
     val analytics = koinInject<AnalyticsPort>()
-    LaunchedEffect(isStats) {
-        analytics.track(AnalyticsEvent.ScreenViewed(ScreenName(if (isStats) "stats" else "feed")))
+    LaunchedEffect(selectedTab) {
+        val name = when (selectedTab) {
+            MainTab.Feed -> "feed"
+            MainTab.Passport -> "passport"
+            MainTab.Stats -> "stats"
+        }
+        analytics.track(AnalyticsEvent.ScreenViewed(ScreenName(name)))
     }
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
@@ -283,7 +303,11 @@ private fun MainScaffold(rootController: NavHostController) {
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             MainTopBar(
-                isStats = isStats,
+                titleKey = when (selectedTab) {
+                    MainTab.Feed -> SharedStringKey.NavTabFeed
+                    MainTab.Passport -> SharedStringKey.NavTabPassport
+                    MainTab.Stats -> SharedStringKey.NavTabStats
+                },
                 avatarInitials = topBarAvatar.initials,
                 avatarUrl = topBarAvatar.avatarUrl,
                 showSettings = activeCrew != null,
@@ -301,17 +325,18 @@ private fun MainScaffold(rootController: NavHostController) {
         },
         bottomBar = {
             MainBottomBar(
-                isStats = isStats,
+                selected = selectedTab,
                 hasPostedToday = captureNudge.hasPostedToday,
-                onFeedClick = { isStats = false },
-                onStatsClick = { isStats = true },
+                onFeedClick = { selectedTab = MainTab.Feed },
+                onPassportClick = { selectedTab = MainTab.Passport },
+                onStatsClick = { selectedTab = MainTab.Stats },
                 onCaptureClick = { rootController.navigate(Route.CaptureMeal) { launchSingleTop = true } },
             )
         },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            if (isStats) {
-                StatsScreen(
+            when (selectedTab) {
+                MainTab.Stats -> StatsScreen(
                     // In-app weekly-recap entry (roadmap §2.4). weekStart is informational — the
                     // client derives the recap from its own stats/achievements read paths.
                     onOpenRecap = {
@@ -320,8 +345,8 @@ private fun MainScaffold(rootController: NavHostController) {
                         ) { launchSingleTop = true }
                     },
                 )
-            } else {
-                FeedScreen(
+                MainTab.Passport -> PassportScreen()
+                MainTab.Feed -> FeedScreen(
                     onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
                     onMealClick = { mealId, dayIso ->
                         rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }

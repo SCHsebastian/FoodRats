@@ -61,6 +61,7 @@ sealed interface Route {
 /** Inner routes inside the [Route.Main] bottom-nav graph; all require a session. */
 sealed interface MainTab : Route.Protected {
     @Serializable data object Feed : MainTab
+    @Serializable data object Passport : MainTab
     @Serializable data object Stats : MainTab
 }
 
@@ -92,6 +93,7 @@ fun Route.requiresSession(): Boolean = when (this) {
     is Route.MealDetail,
     is Route.WeeklyStory,
     MainTab.Feed,
+    MainTab.Passport,
     MainTab.Stats,
         -> true
 }

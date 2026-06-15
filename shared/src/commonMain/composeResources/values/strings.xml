@@ -4,6 +4,7 @@
     <string name="nav_settings_cta">Settings</string>
     <string name="nav_tab_feed">Feed</string>
     <string name="nav_tab_stats">Stats</string>
+    <string name="nav_tab_passport">Passport</string>
     <string name="nav_profile_cta">Your Profile</string>
     <string name="consent_title">Help us improve FoodRats</string>
     <string name="consent_body">Turn on anonymous usage analytics so we can see which features crews actually use and fix what\'s broken. We measure events, counts and screens — never your photos, descriptions, comments, crew names or location.</string>

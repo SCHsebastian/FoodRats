@@ -42,8 +42,6 @@ import es.schsebastian.foodrats.feature.stats.domain.model.WindowStats
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrBestPlatePodium
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrCookAwardCard
-import es.schsebastian.foodrats.feature.stats.presentation.components.FrCuisinePassport
-import es.schsebastian.foodrats.feature.stats.presentation.components.FrIngredientBingo
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrMemberIngredientRow
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrMostUsedIngredientCard
 import es.schsebastian.foodrats.feature.stats.presentation.components.FrMostVotedPlate
@@ -168,16 +166,8 @@ private fun StatsContent(
             }
         }
         item { FrTodayStripe(hero = snap.hero) }
-        snap.cuisinePassport?.let { passport ->
-            if (passport.totalCount > 0) {
-                item { FrCuisinePassport(passport = passport) }
-            }
-        }
-        snap.ingredientBingo?.let { bingo ->
-            if (bingo.totalCount > 0) {
-                item { FrIngredientBingo(bingo = bingo) }
-            }
-        }
+        // The cuisine passport + ingredient bingo collection grids moved to their own "Passport" tab
+        // (they each render a full-width badge grid that crowded the competitive stats below).
         stickyHeader {
             FrStatsTabRow(selected = state.selectedTab, onSelect = onSelectTab)
         }

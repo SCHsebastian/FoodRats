@@ -24,7 +24,7 @@ import es.schsebastian.foodrats.core.i18n.resolve
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MainTopBar(
-    isStats: Boolean,
+    titleKey: SharedStringKey,
     avatarInitials: String,
     avatarUrl: String?,
     showSettings: Boolean,
@@ -34,7 +34,7 @@ internal fun MainTopBar(
     CenterAlignedTopAppBar(
         title = {
             FrText(
-                text = resolve(if (isStats) SharedStringKey.NavTabStats else SharedStringKey.NavTabFeed),
+                text = resolve(titleKey),
                 style = MaterialTheme.typography.titleLarge,
             )
         },

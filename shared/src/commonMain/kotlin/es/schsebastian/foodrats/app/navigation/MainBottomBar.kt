@@ -67,9 +67,10 @@ import es.schsebastian.foodrats.core.i18n.resolve
  */
 @Composable
 internal fun MainBottomBar(
-    isStats: Boolean,
+    selected: MainTab,
     hasPostedToday: Boolean,
     onFeedClick: () -> Unit,
+    onPassportClick: () -> Unit,
     onStatsClick: () -> Unit,
     onCaptureClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -97,22 +98,42 @@ internal fun MainBottomBar(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                BottomTab(
-                    icon = FrIcons.Home,
-                    label = resolve(SharedStringKey.NavTabFeed),
-                    selected = !isStats,
-                    onClick = onFeedClick,
+                // Two equal-weight halves flank a fixed center gap so the raised capture button
+                // (pinned to TopCenter below) stays perfectly centered. The longest label
+                // (Stats / "Estadísticas") sits ALONE on the right half so it doesn't wrap; the two
+                // shorter labels (Feed · Passport) share the left half.
+                Row(
                     modifier = Modifier.weight(1f),
-                )
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BottomTab(
+                        icon = FrIcons.Home,
+                        label = resolve(SharedStringKey.NavTabFeed),
+                        selected = selected == MainTab.Feed,
+                        onClick = onFeedClick,
+                    )
+                    BottomTab(
+                        icon = FrIcons.Public,
+                        label = resolve(SharedStringKey.NavTabPassport),
+                        selected = selected == MainTab.Passport,
+                        onClick = onPassportClick,
+                    )
+                }
                 // Center gap for the raised capture button (overlaid below).
                 Spacer(Modifier.size(Sizes.captureButton))
-                BottomTab(
-                    icon = FrIcons.Stats,
-                    label = resolve(SharedStringKey.NavTabStats),
-                    selected = isStats,
-                    onClick = onStatsClick,
+                Row(
                     modifier = Modifier.weight(1f),
-                )
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BottomTab(
+                        icon = FrIcons.Stats,
+                        label = resolve(SharedStringKey.NavTabStats),
+                        selected = selected == MainTab.Stats,
+                        onClick = onStatsClick,
+                    )
+                }
             }
         }
         CaptureButton(
@@ -141,12 +162,18 @@ private fun BottomTab(
         modifier = modifier
             .clip(RoundedCornerShape(Radius.md))
             .selectable(selected = selected, role = Role.Tab, onClick = onClick)
-            .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            .padding(horizontal = Spacing.xs, vertical = Spacing.xs),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
     ) {
         FrIcon(image = icon, tint = color, contentDescription = label, modifier = Modifier.size(Sizes.iconMd))
-        FrText(text = label, style = MaterialTheme.typography.labelSmall, color = color)
+        FrText(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = color,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+        )
     }
 }
 

@@ -4,6 +4,7 @@
     <string name="nav_settings_cta">Ajustes</string>
     <string name="nav_tab_feed">Inicio</string>
     <string name="nav_tab_stats">Estadísticas</string>
+    <string name="nav_tab_passport">Pasaporte</string>
     <string name="nav_profile_cta">Tu perfil</string>
     <string name="consent_title">Ayúdanos a mejorar FoodRats</string>
     <string name="consent_body">Activa las estadísticas de uso anónimas para que veamos qué funciones usan de verdad las cuadrillas y arreglemos lo que falla. Medimos eventos, recuentos y pantallas — nunca tus fotos, descripciones, comentarios, nombres de cuadrilla ni tu ubicación.</string>

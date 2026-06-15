@@ -11,6 +11,7 @@ import foodrats.shared.generated.resources.nav_capture_cta
 import foodrats.shared.generated.resources.nav_profile_cta
 import foodrats.shared.generated.resources.nav_settings_cta
 import foodrats.shared.generated.resources.nav_tab_feed
+import foodrats.shared.generated.resources.nav_tab_passport
 import foodrats.shared.generated.resources.nav_tab_stats
 import foodrats.shared.generated.resources.recap_badges_title
 import foodrats.shared.generated.resources.recap_best_cook_subtitle
@@ -42,6 +43,7 @@ enum class SharedStringKey(override val resourceId: StringResource) : StringKey 
     NavCaptureCta(Res.string.nav_capture_cta),
     NavSettingsCta(Res.string.nav_settings_cta),
     NavTabFeed(Res.string.nav_tab_feed),
+    NavTabPassport(Res.string.nav_tab_passport),
     NavTabStats(Res.string.nav_tab_stats),
     NavProfileCta(Res.string.nav_profile_cta),
     ConsentTitle(Res.string.consent_title),
