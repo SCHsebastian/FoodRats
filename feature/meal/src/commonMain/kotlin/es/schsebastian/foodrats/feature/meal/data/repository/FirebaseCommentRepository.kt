@@ -1,6 +1,5 @@
 package es.schsebastian.foodrats.feature.meal.data.repository
 
-import dev.gitlive.firebase.auth.FirebaseAuth
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
@@ -12,8 +11,9 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentDto
-import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseFault
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
 import es.schsebastian.foodrats.feature.meal.data.firebase.toFirebaseFault
 import kotlinx.coroutines.flow.Flow
@@ -22,9 +22,22 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
+/**
+ * [MealCommentPort] over the `crews/{crewId}/meals/{mealId}/comments` subcollection.
+ *
+ * Mirrors [FirebaseReactionRepository]: observe maps the DTO stream into the [MealComment] read
+ * model (malformed docs are dropped — forward-compat), and the two write methods do their work
+ * inside exactly one `withContext(dispatchers.io)` (CHARTER rule 4). Vendor failures are bucketed
+ * via [toFirebaseFault] and mapped to the typed [CommentError] tree — never inspected by message
+ * anywhere but that one seam.
+ *
+ * Depends on the data-layer [CommentFirestore] + [MealAuthorIdentity] seams (not the concrete
+ * Firestore data source / GitLive `FirebaseAuth`) so the orchestration is fakeable in `commonTest`
+ * and the Firebase→own-server swap re-binds those two seams, not the repository.
+ */
 internal class FirebaseCommentRepository(
-    private val ds: CommentFirestoreDataSource,
-    private val auth: FirebaseAuth,
+    private val ds: CommentFirestore,
+    private val authorIdentity: MealAuthorIdentity,
     private val clock: Clock,
     private val dispatchers: DispatcherProvider,
 ) : MealCommentPort {
@@ -47,13 +60,13 @@ internal class FirebaseCommentRepository(
         mealId: MealId,
         text: CommentText,
     ): Result<Unit, CommentError.Write> = withContext(dispatchers.io) {
-        val user = auth.currentUser
+        val uid = authorIdentity.current()?.uid
             ?: return@withContext Result.failure(CommentError.Write.Unauthorized)
         runCatching {
             ds.create(
                 crewId, mealId,
                 CommentDto(
-                    authorId = user.uid,
+                    authorId = uid,
                     text = text.value,
                     createdAtEpochMs = clock.now().toEpochMilliseconds(),
                 ),
@@ -74,7 +87,7 @@ internal class FirebaseCommentRepository(
         mealId: MealId,
         commentId: MealCommentId,
     ): Result<Unit, CommentError.Delete> = withContext(dispatchers.io) {
-        auth.currentUser
+        authorIdentity.current()?.uid
             ?: return@withContext Result.failure(CommentError.Delete.NotAuthorOrOwner)
         runCatching {
             ds.delete(crewId, mealId, commentId.value)

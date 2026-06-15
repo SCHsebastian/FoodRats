@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
+import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.HasPostedTodayAdapter
@@ -35,7 +36,6 @@ import es.schsebastian.foodrats.feature.meal.domain.queue.DraftRetryPolicy
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.DiscardMealDraftUseCase
-import es.schsebastian.foodrats.feature.meal.domain.usecase.ObserveMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
@@ -84,10 +84,14 @@ val mealModule = module {
     // Exposed so the ingredient picker (:feature:ingredient) reads/edits the draft's
     // ingredient slugs without depending on :feature:meal (spec §7.2).
     single<MealDraftIngredientsPort> { get<MealRepository>() }
+    // Comments live behind the data-layer CommentFirestore seam (fakeable in commonTest),
+    // mirroring MealFirestore/ReactionFirestore. The auth uid is read through the shared
+    // MealAuthorIdentity seam so the vendor FirebaseAuth type never reaches the repository.
+    single<CommentFirestore> { get<CommentFirestoreDataSource>() }
     single<MealCommentPort> {
         FirebaseCommentRepository(
-            ds = get(),
-            auth = get(),
+            ds = get<CommentFirestore>(),
+            authorIdentity = get<MealAuthorIdentity>(),
             clock = get(),
             dispatchers = get(),
         )
@@ -113,7 +117,6 @@ val mealModule = module {
     factoryOf(::UpdateMealDraftUseCase)
     factoryOf(::PublishMealUseCase)
     factoryOf(::DiscardMealDraftUseCase)
-    factoryOf(::ObserveMealDraftUseCase)
     // Resolves MealClassifierPort (bound by :feature:meal-ai) + IngredientReadPort
     // (bound by :feature:ingredient) at app composition — see shared/ aggregator.
     factoryOf(::ClassifyDraftPlateUseCase)
