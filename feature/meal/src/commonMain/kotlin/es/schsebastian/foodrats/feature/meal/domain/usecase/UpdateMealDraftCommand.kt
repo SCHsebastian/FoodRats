@@ -20,14 +20,16 @@ sealed interface UpdateMealDraftCommand {
     data class SetAudience(val crewIds: Set<CrewId>) : UpdateMealDraftCommand
 
     /**
-     * Records a fresh classifier run: overwrites the detected set and stamps the
-     * classifier version. Issued once per captured photo. Does NOT touch the
-     * user-confirmed `ingredients` list — the detected set is only the ingredient
-     * picker's initial selection; confirmation is the user's explicit act,
-     * recorded by [SetIngredients].
+     * Records a fresh classifier run: overwrites the detected set, the detected dish
+     * slug, and stamps the classifier version. Issued once per captured photo. Does NOT
+     * touch the user-confirmed `ingredients` list — the detected set is only the ingredient
+     * picker's initial selection; confirmation is the user's explicit act, recorded by
+     * [SetIngredients]. The [dishSlug] is the `dishCuisineMap` key; the publish path resolves
+     * it to a `Meal.cuisine` via `CuisineReadPort.loadDishCuisine` (roadmap §2.2 stamp-at-publish).
      */
     data class SetDetected(
         val detected: List<IngredientSlug>,
+        val dishSlug: String,
         val version: String,
     ) : UpdateMealDraftCommand
 

@@ -10,7 +10,14 @@ import es.schsebastian.foodrats.core.data.firebase.FirebaseInitializer
 import es.schsebastian.foodrats.core.data.firebase.installAndroidFirebaseContext
 import es.schsebastian.foodrats.core.data.location.AndroidLocationProvider
 import es.schsebastian.foodrats.core.data.location.LocationPermissionLauncherHolder
+import es.schsebastian.foodrats.core.data.share.PlateImageDecoder
 import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
+import es.schsebastian.foodrats.core.data.share.StoryCardRenderer
+import es.schsebastian.foodrats.core.data.share.StoryCardRendererAndroid
+import es.schsebastian.foodrats.core.data.share.StoryShareController
+import es.schsebastian.foodrats.core.data.share.StoryShareControllerImpl
+import es.schsebastian.foodrats.core.data.share.StoryShareLauncher
+import es.schsebastian.foodrats.core.data.share.StoryShareLauncherAndroid
 import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.data.config.RemoteConfigFeatureFlags
 import es.schsebastian.foodrats.core.data.di.analyticsAndroidModule
@@ -81,6 +88,12 @@ class FoodRatsApplication : Application() {
 
     private fun androidShareModule() = module {
         single<ShareController> { ShareControllerAndroid(androidContext()) }
+        // Shareable story cards (spec 2026-06-14): off-screen card → PNG, then to IG Stories / sheet.
+        single<StoryCardRenderer> { StoryCardRendererAndroid(androidContext(), dispatchers = get()) }
+        single<StoryShareLauncher> { StoryShareLauncherAndroid(androidContext()) }
+        single { PlateImageDecoder(platformContext = androidContext()) }
+        // The single testable seam feed/stats ViewModels inject (decode → render → launch).
+        single<StoryShareController> { StoryShareControllerImpl(decoder = get(), renderer = get(), launcher = get()) }
     }
 
     private fun androidCrashModule() = module {

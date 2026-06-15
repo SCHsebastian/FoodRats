@@ -28,14 +28,25 @@ import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_met
 import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_title
 import foodrats.feature.stats.generated.resources.stats_top_ingredient_by_member_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_title
+import foodrats.feature.stats.generated.resources.stats_bingo_collected_on_format
+import foodrats.feature.stats.generated.resources.stats_bingo_locked_label
+import foodrats.feature.stats.generated.resources.stats_bingo_progress_format
+import foodrats.feature.stats.generated.resources.stats_bingo_title
+import foodrats.feature.stats.generated.resources.stats_passport_collected_on_format
+import foodrats.feature.stats.generated.resources.stats_passport_locked_label
+import foodrats.feature.stats.generated.resources.stats_passport_progress_format
+import foodrats.feature.stats.generated.resources.stats_passport_title
 import foodrats.feature.stats.generated.resources.stats_plate_photo_format
 import foodrats.feature.stats.generated.resources.stats_roast_section_title
+import foodrats.feature.stats.generated.resources.stats_share_award
+import foodrats.feature.stats.generated.resources.stats_share_score_format
 import foodrats.feature.stats.generated.resources.stats_summary_avg_per_day_label
 import foodrats.feature.stats.generated.resources.stats_summary_total_plates_label
 import foodrats.feature.stats.generated.resources.stats_tab_historic
 import foodrats.feature.stats.generated.resources.stats_tab_month
 import foodrats.feature.stats.generated.resources.stats_tab_week
 import foodrats.feature.stats.generated.resources.stats_title
+import foodrats.feature.stats.generated.resources.stats_weekly_recap_cta
 import foodrats.feature.stats.generated.resources.stats_window_empty_historic
 import foodrats.feature.stats.generated.resources.stats_window_empty_month
 import foodrats.feature.stats.generated.resources.stats_window_empty_week
@@ -84,8 +95,22 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     CookAwardNeedsMoreSingular(Res.string.stats_cook_award_needs_more_singular),
     CookAwardNeedsMorePlural(Res.string.stats_cook_award_needs_more_plural),
 
+    PassportTitle(Res.string.stats_passport_title),
+    PassportProgressFormat(Res.string.stats_passport_progress_format),
+    PassportLockedLabel(Res.string.stats_passport_locked_label),
+    PassportCollectedOnFormat(Res.string.stats_passport_collected_on_format),
+
+    BingoTitle(Res.string.stats_bingo_title),
+    BingoProgressFormat(Res.string.stats_bingo_progress_format),
+    BingoLockedLabel(Res.string.stats_bingo_locked_label),
+    BingoCollectedOnFormat(Res.string.stats_bingo_collected_on_format),
+
     EmptyHeadline(Res.string.stats_empty_headline),
     EmptySubtext(Res.string.stats_empty_subtext),
+
+    WeeklyRecapCta(Res.string.stats_weekly_recap_cta),
+    ShareAward(Res.string.stats_share_award),
+    ShareScoreFormat(Res.string.stats_share_score_format),
 
     ErrorNoActiveCrew(Res.string.stats_error_no_active_crew),
     ErrorNotSignedIn(Res.string.stats_error_not_signed_in),

@@ -5,4 +5,35 @@
     <string name="nav_tab_feed">Inicio</string>
     <string name="nav_tab_stats">Estadísticas</string>
     <string name="nav_profile_cta">Tu perfil</string>
+    <string name="consent_title">Ayúdanos a mejorar FoodRats</string>
+    <string name="consent_body">Activa las estadísticas de uso anónimas para que veamos qué funciones usan de verdad las cuadrillas y arreglemos lo que falla. Medimos eventos, recuentos y pantallas — nunca tus fotos, descripciones, comentarios, nombres de cuadrilla ni tu ubicación.</string>
+    <string name="consent_privacy_note">Sin publicidad, sin rastreo entre otras apps, sin vender tus datos. Puedes cambiarlo cuando quieras en Ajustes.</string>
+    <string name="consent_allow">Permitir estadísticas</string>
+    <string name="consent_deny">No, gracias</string>
+
+    <!-- Resumen semanal en historias (roadmap §2.4) -->
+    <string name="recap_entry_cta">Ver tu semana</string>
+    <string name="recap_close">Cerrar resumen</string>
+    <string name="recap_progress">Progreso del resumen</string>
+    <string name="recap_cover_title">Tu semana en comida</string>
+    <string name="recap_cover_subtitle">Un repaso rápido de la semana de tu cuadrilla</string>
+    <string name="recap_top_meal_title">Plato de la semana</string>
+    <string name="recap_top_meal_author">de %1$s</string>
+    <string name="recap_top_meal_score">%1$.1f ★ · %2$d votos</string>
+    <string name="recap_best_cook_title">Mejor cocinero/a</string>
+    <string name="recap_best_cook_subtitle">%1$s · %2$.1f ★ de media</string>
+    <string name="recap_most_prolific_title">Más prolífico/a</string>
+    <string name="recap_most_prolific_subtitle">%1$s publicó %2$d platos</string>
+    <string name="recap_streak_title">Estás que ardes</string>
+    <string name="recap_streak_subtitle">Racha de %1$d días publicando</string>
+    <string name="recap_badges_title">Insignias nuevas esta semana</string>
+    <string name="recap_cuisines_title">Pasaporte de cocinas</string>
+    <string name="recap_cuisines_subtitle">%1$d de %2$d cocinas conseguidas</string>
+    <string name="recap_your_week_title">Tu semana</string>
+    <string name="recap_your_week_streak">Racha de %1$d días</string>
+    <string name="recap_your_week_cuisines">%1$d cocinas</string>
+    <string name="recap_your_week_ingredients">%1$d ingredientes</string>
+    <string name="recap_empty_title">Una semana tranquila</string>
+    <string name="recap_empty_subtitle">Aún no hay platos — el resumen de tu cuadrilla se irá llenando según publiquéis.</string>
+    <string name="recap_share_cta">Compartir resumen</string>
 </resources>

@@ -18,9 +18,23 @@ sealed interface ConsentDecision {
     data class Denied(val version: Int, val at: Instant) : ConsentDecision
 }
 
-/** True only for a current-version explicit grant. The single predicate the gate trusts. */
+/** True only for a current-version explicit grant. The single predicate the analytics gate trusts. */
 val ConsentDecision.isAnalyticsGranted: Boolean
     get() = this is ConsentDecision.Granted && version >= AnalyticsConfig.CURRENT_CONSENT_VERSION
+
+/**
+ * True when the routing gate must show the consent screen: no decision yet ([ConsentDecision.Unknown])
+ * OR a stored grant/deny made under an older consent schema ([AnalyticsConfig.CURRENT_CONSENT_VERSION]
+ * bumped → re-consent, GDPR purpose-specificity). The single predicate the consent-routing gate trusts —
+ * do NOT confuse with [isAnalyticsGranted]: a *current-version* [ConsentDecision.Denied] is a settled
+ * decision (gate stays away) yet is still "not granted" for tracking purposes.
+ */
+val ConsentDecision.needsDecision: Boolean
+    get() = when (this) {
+        is ConsentDecision.Unknown -> true
+        is ConsentDecision.Granted -> version < AnalyticsConfig.CURRENT_CONSENT_VERSION
+        is ConsentDecision.Denied -> version < AnalyticsConfig.CURRENT_CONSENT_VERSION
+    }
 
 /**
  * Reads and writes the analytics-consent decision. Implemented in `:core:data` over `AppPreferences`

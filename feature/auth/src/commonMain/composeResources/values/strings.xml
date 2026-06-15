@@ -37,6 +37,9 @@
     <string name="auth_profile_change_avatar_cta">Tap to change avatar</string>
     <string name="auth_profile_avatar_uploading">Uploading…</string>
     <string name="auth_profile_account_section">Account</string>
+    <string name="auth_profile_achievements_section">Badges</string>
+    <string name="auth_profile_achievements_row">Badges</string>
+    <string name="auth_profile_achievements_subtitle">See your earned and locked achievements</string>
     <string name="auth_profile_sign_out_cta">Sign out</string>
     <string name="auth_profile_sign_out_failed">Couldn't sign out. Try again.</string>
     <string name="auth_profile_display_name_blank">Display name can't be empty.</string>
@@ -66,6 +69,17 @@
     <string name="auth_profile_notifications_permission_denied_forever">Notifications are blocked. Enable them in system settings to receive updates.</string>
     <string name="auth_profile_notifications_open_system_settings_cta">Open system settings</string>
 
+    <string name="auth_profile_analytics_row">Share anonymous usage data</string>
+    <string name="auth_profile_analytics_subtitle_on">On — helping improve FoodRats. No personal content is ever collected, and you can turn this off at any time.</string>
+    <string name="auth_profile_analytics_subtitle_off">Off — no usage analytics are collected. Turn this on to help improve FoodRats; no personal content is ever collected.</string>
+
+    <string name="auth_export_data_row">Export my data</string>
+    <string name="auth_export_data_subtitle">Download a copy of your account, meals, ratings and crews (GDPR).</string>
+    <string name="auth_export_data_in_flight">Preparing your export…</string>
+    <string name="auth_export_data_ready_subtitle">Your export is ready. The download link is valid for about 15 minutes.</string>
+    <string name="auth_export_data_ready_cta">Download</string>
+    <string name="auth_export_data_error_backend">Couldn't prepare your export. Try again.</string>
+
     <string name="auth_profile_delete_account_row">Delete my account</string>
     <string name="auth_profile_delete_account_subtitle">Permanently removes your meals, ratings and memberships.</string>
 
@@ -86,5 +100,5 @@
     <string name="auth_delete_account_error_phrase">The confirmation phrase didn't match. Type it exactly.</string>
     <string name="auth_delete_account_error_not_implemented">Account deletion is being rolled out. Reach out to support to delete your account today.</string>
     <string name="auth_delete_account_error_backend">Couldn't reach the deletion service. Try again.</string>
-    <string name="auth_delete_account_error_ownership">Transfer ownership of your crews before deleting your account.</string>
+    <string name="auth_delete_account_error_ownership">Couldn't reassign your crew's owner. Please try again.</string>
 </resources>

@@ -138,6 +138,7 @@ class MealDetailCommentIdentityTest {
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort),
             crewOwner = FakeCrewOwnerPort(),
+            storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
         )
         return vm to TestPorts(commentPort, accountPort)
     }
@@ -252,6 +253,7 @@ class MealDetailCommentIdentityTest {
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort),
             crewOwner = FakeCrewOwnerPort(),
+            storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
         )
         vm.state.test {
             val s = expectMostRecentItem()

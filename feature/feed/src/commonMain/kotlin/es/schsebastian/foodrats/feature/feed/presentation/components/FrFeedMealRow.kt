@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,15 +22,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.image.rememberThumbHashPainter
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
@@ -51,6 +58,7 @@ fun FrFeedMealRow(
     ui: FeedMealUi,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onReact: () -> Unit = {},
 ) {
     val semantic = LocalFrSemanticColors.current
     val avg = ui.averageScore
@@ -75,11 +83,17 @@ fun FrFeedMealRow(
                         .clip(RoundedCornerShape(Radius.md))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
-                    if (ui.photoUrl.isNotBlank()) {
+                    val imageUrl = ui.feedImageUrl
+                    if (imageUrl.isNotBlank()) {
+                        // ThumbHash placeholder (instant blur) while the thumbnail loads; falls
+                        // back to the flat surfaceVariant box behind it when no hash is present.
+                        val placeholder = rememberThumbHashPainter(ui.thumbHash)
                         AsyncImage(
-                            model = ui.photoUrl,
+                            model = imageUrl,
                             contentDescription = ui.dishName,
                             contentScale = ContentScale.Crop,
+                            placeholder = placeholder,
+                            error = placeholder,
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
@@ -111,14 +125,19 @@ fun FrFeedMealRow(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
+                    // Blind voting: hide the author's identity until the viewer has rated. The
+                    // placeholder avatar gets blank initials + no image (generic), and the name
+                    // line shows the masked label instead of the real name.
+                    val authorLabel =
+                        if (ui.authorMasked) resolve(FeedStringKey.BlindAuthor) else ui.authorName
                     // decorative — the adjacent author-name label carries the identity for screen readers.
                     FrAvatar(
-                        initials = ui.authorName,
-                        imageUrl = ui.authorAvatarUrl,
+                        initials = if (ui.authorMasked) "" else ui.authorName,
+                        imageUrl = if (ui.authorMasked) null else ui.authorAvatarUrl,
                         size = Sizes.avatarSm,
                     )
                     FrText(
-                        text = ui.authorName,
+                        text = authorLabel,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -174,7 +193,67 @@ fun FrFeedMealRow(
                         maxLines = 1,
                     )
                 }
+
+                ReactionButton(
+                    glyph = ui.dayEmote,
+                    count = ui.reactionCount,
+                    reacted = ui.viewerReacted,
+                    onReact = onReact,
+                )
             }
+        }
+    }
+}
+
+/**
+ * The daily-emote react affordance: a pill carrying the meal-day's [glyph], its toggled state, and
+ * the live reaction [count]. Tapping toggles the viewer's reaction; the count doubles as the
+ * compact "who reacted" presentation (roadmap §1.3 — names-or-count, we show the count). It sits
+ * inside the clickable card, so its own [clickable] swallows the tap before the card's onClick.
+ */
+@Composable
+private fun ReactionButton(
+    glyph: String,
+    count: Int,
+    reacted: Boolean,
+    onReact: () -> Unit,
+) {
+    val semantic = LocalFrSemanticColors.current
+    val containerColor =
+        if (reacted) semantic.celebration.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant
+    val contentColor =
+        if (reacted) semantic.celebration else MaterialTheme.colorScheme.onSurfaceVariant
+    val label =
+        if (count > 0) resolve(FeedStringKey.ReactionsLabel, count) else resolve(FeedStringKey.ReactionCta)
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(Radius.pill))
+            .background(containerColor)
+            .then(
+                if (reacted) {
+                    Modifier.border(1.dp, semantic.celebration, RoundedCornerShape(Radius.pill))
+                } else {
+                    Modifier
+                },
+            )
+            .clickable(onClick = onReact)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
+            .semantics {
+                this.role = Role.Button
+                this.selected = reacted
+                this.contentDescription = label
+            },
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
+    ) {
+        FrText(text = glyph, style = MaterialTheme.typography.labelMedium)
+        if (count > 0) {
+            FrText(
+                text = resolve(FeedStringKey.ReactionCount, count),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = contentColor,
+                maxLines = 1,
+            )
         }
     }
 }

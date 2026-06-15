@@ -18,12 +18,42 @@ val feedModule = module {
     factoryOf(::DeleteMyMealUseCase)
     factoryOf(::DeleteCommentUseCase)
     // TimeZone is bound once in coreDataModule (loaded app-wide); feed resolves it from there.
-    viewModel { FeedViewModel(get(), get(), get(), get(), get(), get(), get(), get()) }
+    // analytics is passed EXPLICITLY (CHARTER rule 9) so the NoopAnalyticsTracker default never
+    // short-circuits graph resolution — same reason MealReactionPort is bound positionally here.
+    viewModel {
+        FeedViewModel(
+            observeFeed = get(),
+            rateMeal = get(),
+            activeCrew = get(),
+            session = get(),
+            clock = get(),
+            zone = get(),
+            uploadProgress = get(),
+            blindVoting = get(),
+            reactions = get(),
+            queuedUploadActions = get(),
+            analytics = get(),
+        )
+    }
     viewModel { (mealId: String, dayIso: String) ->
         MealDetailViewModel(
-            mealId, dayIso,
-            get(), get(), get(), get(), get(), get(), get(), get(),
-            get(), get(), get(), get(), get(), get(),
+            mealId = mealId,
+            dayIso = dayIso,
+            observeFeed = get(),
+            rateMeal = get(),
+            commentPort = get(),
+            accountReadPort = get(),
+            ingredientRead = get(),
+            activeCrew = get(),
+            session = get(),
+            clock = get(),
+            zone = get(),
+            deleteMeal = get(),
+            deleteMyMeal = get(),
+            deleteComment = get(),
+            crewOwner = get(),
+            storyShareController = get(),
+            analytics = get(),
         )
     }
 }

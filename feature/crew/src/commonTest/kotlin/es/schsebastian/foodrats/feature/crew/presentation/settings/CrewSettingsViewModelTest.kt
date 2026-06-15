@@ -3,6 +3,8 @@ package es.schsebastian.foodrats.feature.crew.presentation.settings
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
@@ -20,6 +22,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -59,14 +62,76 @@ class CrewSettingsViewModelTest {
     @AfterTest fun tearDown() { Dispatchers.resetMain() }
 
     @Test
-    fun owner_confirms_remove_member_surfaces_not_implemented_error() = runTest {
-        val vm = buildVm(ownerId)
+    fun owner_confirms_remove_member_removes_member_without_error() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(ownerId, repo)
         assertEquals(true, vm.state.value.isOwner)
         assertEquals(ownerId, vm.state.value.myAccountId)
 
         vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(memberId))
 
-        assertEquals(CrewError.NotImplemented.RemoveMember, vm.state.value.error)
+        assertEquals(null, vm.state.value.error)
+        assertEquals(Triple(crewId, ownerId, memberId), repo.lastRemoveMember)
+    }
+
+    @Test
+    fun owner_remove_member_emits_success_effect_clears_progress_and_tracks_analytics() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ownerId, repo, analytics)
+
+        vm.effects.test {
+            vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(memberId))
+            assertEquals(CrewSettingsEffect.MemberRemoved(displayName = null), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertNull(vm.state.value.error)
+        assertTrue(vm.state.value.removingMemberIds.isEmpty())
+        assertEquals(Triple(crewId, ownerId, memberId), repo.lastRemoveMember)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.CrewMemberRemoved(crewId)), analytics.events.toList())
+    }
+
+    @Test
+    fun non_owner_remove_member_surfaces_not_owner_and_does_not_call_port_or_track() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(memberId, repo, analytics)
+
+        vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(ownerId))
+
+        assertEquals(CrewError.RemoveMember.NotOwner, vm.state.value.error)
+        assertTrue(vm.state.value.removingMemberIds.isEmpty())
+        assertNull(repo.lastRemoveMember)
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test
+    fun owner_removing_self_surfaces_cannot_remove_self_and_does_not_track() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ownerId, repo, analytics)
+
+        vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(ownerId))
+
+        assertEquals(CrewError.RemoveMember.CannotRemoveSelf, vm.state.value.error)
+        assertTrue(vm.state.value.removingMemberIds.isEmpty())
+        assertNull(repo.lastRemoveMember)
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test
+    fun owner_removing_non_member_surfaces_member_not_found_and_does_not_track() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ownerId, repo, analytics)
+
+        vm.onIntent(CrewSettingsIntent.RemoveMemberConfirmed(aid("uid-stranger")))
+
+        assertEquals(CrewError.RemoveMember.MemberNotFound, vm.state.value.error)
+        assertTrue(vm.state.value.removingMemberIds.isEmpty())
+        assertNull(repo.lastRemoveMember)
+        assertTrue(analytics.events.isEmpty())
     }
 
     @Test
@@ -111,6 +176,33 @@ class CrewSettingsViewModelTest {
 
         assertEquals(CrewError.Validation.NameBlank, vm.state.value.error)
         assertEquals(false, vm.state.value.isSavingCrewName)
+    }
+
+    @Test
+    fun owner_toggles_blind_voting_on_and_state_reflects_it() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(ownerId, repo)
+        assertEquals(false, vm.state.value.crew?.blindVoting)
+
+        vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(true))
+
+        assertEquals(Pair(crewId, true), repo.lastSetBlindVoting)
+        assertEquals(true, vm.state.value.crew?.blindVoting)
+        assertEquals(false, vm.state.value.isSavingBlindVoting)
+        assertNull(vm.state.value.error)
+    }
+
+    @Test
+    fun non_owner_toggle_blind_voting_surfaces_authorization_error() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(memberId, repo)
+
+        vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(true))
+
+        assertEquals(CrewError.Authorization.NotOwner, vm.state.value.error)
+        assertEquals(false, vm.state.value.isSavingBlindVoting)
+        assertNull(repo.lastSetBlindVoting)
+        assertEquals(false, vm.state.value.crew?.blindVoting)
     }
 
     @Test
@@ -193,6 +285,7 @@ class CrewSettingsViewModelTest {
     private fun buildVm(
         actingAs: AccountId,
         repo: FakeCrewRepository = FakeCrewRepository(listOf(sampleCrew)),
+        analytics: RecordingAnalyticsTracker = RecordingAnalyticsTracker(),
     ): CrewSettingsViewModel {
         val session = FixedSessionProvider(Session(accountId = actingAs, activeCrewId = crewId))
         return CrewSettingsViewModel(
@@ -200,10 +293,12 @@ class CrewSettingsViewModelTest {
             observeCrew = ObserveCrewUseCase(repo),
             renameCrew = RenameCrewUseCase(repo, session),
             deleteCrew = DeleteCrewUseCase(repo, session),
+            setBlindVoting = SetBlindVotingUseCase(repo, session),
             leaveCrew = LeaveCrewUseCase(repo),
-            removeMember = RemoveMemberUseCase(),
+            removeMember = RemoveMemberUseCase(repo, session),
             session = session,
             accountRead = EmptyAccountReadPort,
+            analytics = analytics,
         )
     }
 

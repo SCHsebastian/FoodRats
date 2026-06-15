@@ -20,6 +20,14 @@
     <string name="feed_slot_lunch">Lunch</string>
     <string name="feed_slot_dinner">Dinner</string>
     <string name="feed_no_votes_yet">No votes yet</string>
+    <string name="feed_blind_author">Hidden until you rate</string>
+    <string name="feed_reaction_cta">React</string>
+    <string name="feed_reaction_count">%1$d</string>
+    <string name="feed_reactions_label">%1$d reactions</string>
+    <string name="feed_reaction_error_offline">No internet connection. Try again when you're back online.</string>
+    <string name="feed_reaction_error_unauthorized">You can't react to this meal</string>
+    <string name="feed_reaction_error_meal_not_found">This meal is no longer here.</string>
+    <string name="feed_reaction_error_unavailable">Couldn't react. Try again.</string>
     <string name="feed_average_heading">Average</string>
     <string name="feed_rate_this_meal">Rate this meal</string>
     <string name="feed_your_vote">Your vote: %1$d ★</string>
@@ -62,4 +70,11 @@
     <string name="feed_delete_comment_confirm_title">Delete this comment?</string>
     <string name="feed_delete_confirm_cta">Delete</string>
     <string name="feed_delete_cancel_cta">Cancel</string>
+    <!-- Share a plate to Instagram Stories (spec §10). -->
+    <string name="feed_share_meal">Share</string>
+    <!-- Offline-first publish queue indicator in the feed top bar (roadmap §5.2). -->
+    <string name="feed_queue_pending">%1$d waiting to publish</string>
+    <string name="feed_queue_failed">%1$d failed to post</string>
+    <string name="feed_queue_retry_cta">Retry</string>
+    <string name="feed_queue_dismiss_cta">Dismiss</string>
 </resources>

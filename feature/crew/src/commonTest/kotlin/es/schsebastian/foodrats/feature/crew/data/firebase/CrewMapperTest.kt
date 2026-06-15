@@ -57,6 +57,18 @@ class CrewMapperTest {
         )
     }
 
+    @Test fun toDomain_defaults_blindVoting_to_false_when_absent() {
+        val r = validDto.toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(false, r.value.blindVoting)
+    }
+
+    @Test fun toDomain_carries_blindVoting_true_when_set() {
+        val r = validDto.copy(blindVoting = true).toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(true, r.value.blindVoting)
+    }
+
     @Test fun toDomain_skips_member_entries_with_missing_accountId_join_data() {
         // memberIds in but no matching members map entry — drop silently.
         val dto = validDto.copy(members = mapOf("uid-1" to MemberDto(joinedAtEpochMs = 1L)))

@@ -5,9 +5,11 @@ import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealDraftIngredientsPort
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
+import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.HasPostedTodayAdapter
@@ -18,10 +20,18 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSour
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseCommentRepository
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.ReactionFirestore
+import es.schsebastian.foodrats.feature.meal.data.firebase.ReactionFirestoreDataSource
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
+import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueLocalStore
+import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueRepository
+import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseMealRepository
+import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseReactionRepository
 import es.schsebastian.foodrats.feature.meal.data.upload.BackgroundMealUploadCoordinator
+import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
+import es.schsebastian.foodrats.feature.meal.domain.queue.DraftRetryPolicy
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.DiscardMealDraftUseCase
@@ -41,7 +51,10 @@ import org.koin.dsl.module
 val mealModule = module {
     singleOf(::MealFirestoreDataSource)
     singleOf(::CommentFirestoreDataSource)
-    singleOf(::PlateStorageDataSource)
+    singleOf(::ReactionFirestoreDataSource)
+    // Explicit single (not singleOf): the PlateCompressor ctor param uses its default — Koin's
+    // constructor-reflection `singleOf` would otherwise try to resolve PlateCompressor from the graph.
+    single { PlateStorageDataSource(storage = get()) }
     singleOf(::MealDraftLocalStore)
     singleOf(::MealErrorMapper)
     // The repository depends on data-layer ports, not the concrete Firebase data sources
@@ -62,6 +75,7 @@ val mealModule = module {
             zone = get(),
             accountRead = get<AccountReadPort>(),
             imageUrls = get(),
+            cuisineRead = get(),
         )
     }
     single<MealReadPort> { get<MealRepository>() }
@@ -74,6 +88,16 @@ val mealModule = module {
         FirebaseCommentRepository(
             ds = get(),
             auth = get(),
+            clock = get(),
+            dispatchers = get(),
+        )
+    }
+    // Reactions live behind the data-layer ReactionFirestore seam (fakeable in commonTest),
+    // mirroring MealFirestore. Consumed by :feature:feed via the :core:domain port.
+    single<ReactionFirestore> { get<ReactionFirestoreDataSource>() }
+    single<MealReactionPort> {
+        FirebaseReactionRepository(
+            firestore = get<ReactionFirestore>(),
             clock = get(),
             dispatchers = get(),
         )
@@ -94,6 +118,26 @@ val mealModule = module {
     // (bound by :feature:ingredient) at app composition — see shared/ aggregator.
     factoryOf(::ClassifyDraftPlateUseCase)
 
+    // Offline-first durable publish queue (roadmap §5.2). DraftQueueLocalStore
+    // persists the JSON list (incl. base64 plate bytes) so a process death / airplane
+    // mode never loses a composed plate; DraftQueueRepository is the IO boundary;
+    // DraftRetryRunner drains it idempotently on connectivity-return.
+    // ConnectivityMonitor comes from the platform module (ConnectivityManager on
+    // Android, NWPathMonitor on iOS).
+    singleOf(::DraftQueueLocalStore)
+    single<DraftQueuePort> {
+        DraftQueueRepository(store = get(), clock = get(), dispatchers = get())
+    }
+    single { DraftRetryPolicy() }
+    single {
+        DraftRetryRunner(
+            queue = get<DraftQueuePort>(),
+            publish = get<MealRepository>(),
+            connectivity = get(),
+            policy = get(),
+        )
+    }
+
     // Single instance holds both read (status flow) and write (enqueue) sides
     // so Feed/Stats observe the same coordinator that the composer kicks off.
     // MealUploadScheduler comes from the platform module (WorkManager on
@@ -102,15 +146,17 @@ val mealModule = module {
         BackgroundMealUploadCoordinator(
             repository = get(),
             publishMeal = get(),
-            streakNotifications = get(),
             prefs = get(),
             scheduler = get(),
             dispatchers = get(),
             analytics = get(),
+            draftQueue = get<DraftQueuePort>(),
+            retryRunner = get(),
         )
     }
     single<MealUploadCoordinator> { get<BackgroundMealUploadCoordinator>() }
     single<MealUploadProgressPort> { get<BackgroundMealUploadCoordinator>() }
+    single<QueuedUploadActionsPort> { get<BackgroundMealUploadCoordinator>() }
 
     viewModelOf(::CaptureMealViewModel)
     viewModel {

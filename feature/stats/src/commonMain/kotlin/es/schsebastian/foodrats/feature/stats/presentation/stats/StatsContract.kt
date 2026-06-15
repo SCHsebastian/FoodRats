@@ -16,12 +16,26 @@ data class StatsState(
     val isRefreshing: Boolean = false,
     val epoch: Int = 0,
     val isUploadActive: Boolean = false,
+    /** True while a share card (award or streak) is rasterizing; shows a spinner on the button. */
+    val isPreparingShare: Boolean = false,
+    /** Transient share-outcome toast; cleared via [StatsIntent.DismissShareOutcome] (spec §10). */
+    val shareOutcome: ShareOutcomeUi? = null,
 ) : MviState
+
+/** Presentation mirror of `StoryShareOutcome` → which toast the screen shows (spec §10). */
+enum class ShareOutcomeUi { Succeeded, OpenedSheet, Failed }
 
 sealed interface StatsIntent : MviIntent {
     data class SelectTab(val tab: Tab) : StatsIntent
     data object Refresh : StatsIntent
     data object DismissError : StatsIntent
+
+    /** Share an award plate (best meal) to Instagram Stories; [mealId] is the award's meal id. */
+    data class ShareAwardTapped(val mealId: String) : StatsIntent
+
+    /** Share the member's personal streak to Instagram Stories. */
+    data object ShareStreakTapped : StatsIntent
+    data object DismissShareOutcome : StatsIntent
 }
 
 sealed interface StatsEffect : MviEffect

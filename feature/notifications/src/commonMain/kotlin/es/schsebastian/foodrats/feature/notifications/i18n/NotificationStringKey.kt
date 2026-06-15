@@ -21,6 +21,8 @@ import foodrats.feature.notifications.generated.resources.notifications_permissi
 import foodrats.feature.notifications.generated.resources.notifications_permission_settings
 import foodrats.feature.notifications.generated.resources.notifications_permission_skip
 import foodrats.feature.notifications.generated.resources.notifications_permission_title
+import foodrats.feature.notifications.generated.resources.notifications_social_nudge_body
+import foodrats.feature.notifications.generated.resources.notifications_social_nudge_title
 import foodrats.feature.notifications.generated.resources.notifications_streak_body
 import foodrats.feature.notifications.generated.resources.notifications_streak_title
 import foodrats.feature.notifications.generated.resources.notifications_weekly_digest_body
@@ -44,6 +46,8 @@ enum class NotificationStringKey(override val resourceId: StringResource) : Stri
     NewMealPostBody(Res.string.notifications_new_meal_post_body),
     WeeklyDigestTitle(Res.string.notifications_weekly_digest_title),
     WeeklyDigestBody(Res.string.notifications_weekly_digest_body),
+    SocialNudgeTitle(Res.string.notifications_social_nudge_title),
+    SocialNudgeBody(Res.string.notifications_social_nudge_body),
     ErrorDenied(Res.string.notifications_error_denied),
     ErrorDeniedForever(Res.string.notifications_error_denied_forever),
     ErrorUnavailable(Res.string.notifications_error_unavailable),

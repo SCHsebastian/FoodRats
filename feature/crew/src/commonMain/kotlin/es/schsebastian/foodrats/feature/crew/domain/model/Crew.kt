@@ -19,6 +19,16 @@ data class Crew(
     val ownerId: AccountId,
     val createdAt: Instant,
     val members: List<Member>,
+    /**
+     * When `true`, a meal's author identity is hidden from a crewmate until that
+     * crewmate has cast their own [es.schsebastian.foodrats.core.domain.meal.Score]
+     * — so members aren't anchored by who cooked it. An owner-settable crew policy;
+     * defaults to `false` so existing crews keep current (un-blind) behavior.
+     * The masking rule itself is
+     * [es.schsebastian.foodrats.core.domain.crew.BlindVotingPolicy]; feed reads this
+     * flag through [es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort].
+     */
+    val blindVoting: Boolean = false,
 ) {
     val size: Int get() = members.size
 
@@ -48,6 +58,7 @@ data class Crew(
             ownerId: AccountId,
             createdAt: Instant,
             members: List<Member>,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members)
+            blindVoting: Boolean = false,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting)
     }
 }

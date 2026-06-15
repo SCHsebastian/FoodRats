@@ -143,6 +143,22 @@ class CrewFirestoreDataSource(
         }
     }
 
+    override suspend fun removeMember(crewId: CrewId, target: AccountId): Unit =
+        withContext(dispatchers.io) {
+            val crewRef = crewsCol.document(crewId.value)
+            firestore.runTransaction {
+                val crewSnap = get(crewRef)
+                if (!crewSnap.exists) throw NotFoundException
+                val crew = crewSnap.data<CrewDto>()
+                if (target.value !in crew.memberIds) throw NotMemberException
+                // The owner can never remove themselves (enforced by the repository + rules), so the
+                // remaining set is always non-empty — no crew-deletion branch needed here, unlike `leave`.
+                val remainingIds = crew.memberIds - target.value
+                val remainingMembers = crew.members - target.value
+                set(crewRef, crew.copy(memberIds = remainingIds, members = remainingMembers))
+            }
+        }
+
     override fun observeMyCrews(accountId: AccountId): Flow<List<CrewDto>> =
         crewsCol.where { "memberIds" contains accountId.value }
             .snapshots
@@ -174,6 +190,19 @@ class CrewFirestoreDataSource(
             .map { dto -> if (dto == null) null else (dto.toDomain() as? Result.Ok)?.value }
             .first()
 
+    /** Single-shot resolve of a crew via its invite code: code doc → crew id → crew doc. */
+    override suspend fun fetchByCode(code: CrewCode): Crew = withContext(dispatchers.io) {
+        val codeSnap = codesCol.document(code.value).get()
+        if (!codeSnap.exists) throw CodeUnknownException
+        val crewId = codeSnap.data<CrewCodeDto>().crewId ?: throw NotFoundException
+        val crewSnap = crewsCol.document(crewId).get()
+        if (!crewSnap.exists) throw NotFoundException
+        when (val r = crewSnap.data<CrewDto>().toDomain()) {
+            is Result.Ok  -> r.value
+            is Result.Err -> throw NotFoundException
+        }
+    }
+
     override suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
@@ -189,6 +218,14 @@ class CrewFirestoreDataSource(
                     delete(crewsCol.document(crewId.value))
                     delete(codesCol.document(code.value))
                 }.commit()
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    override suspend fun setBlindVoting(crewId: CrewId, enabled: Boolean): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("blindVoting" to enabled)
                 Result.success(Unit)
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }

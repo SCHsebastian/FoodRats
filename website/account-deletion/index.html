@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delete your FoodRats account &amp; data</title>
+  <meta name="description" content="How to delete your FoodRats account and the data associated with it." />
+  <style>
+    :root {
+      --bg: #E8E6DE;        /* concrete */
+      --surface: #ffffff;
+      --ink: #1B1C19;       /* charcoal-olive */
+      --muted: #5b5e54;
+      --primary: #4F6E2B;   /* deep olive */
+      --ember: #B0561E;     /* ember copper */
+      --line: #d8d6cc;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+    header { margin-bottom: 32px; }
+    .brand { font-weight: 800; letter-spacing: -0.02em; color: var(--primary); font-size: 20px; }
+    h1 { font-size: 30px; line-height: 1.2; margin: 8px 0 4px; }
+    .lede { color: var(--muted); margin-top: 0; }
+    section {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 24px 26px;
+      margin-top: 22px;
+    }
+    h2 { font-size: 19px; margin: 0 0 10px; }
+    ol, ul { margin: 0; padding-left: 22px; }
+    li { margin: 6px 0; }
+    code { background: #f1efe8; padding: 1px 6px; border-radius: 6px; font-size: 0.92em; }
+    .pill { display: inline-block; background: var(--primary); color: #fff; border-radius: 999px;
+            padding: 2px 12px; font-size: 13px; font-weight: 600; }
+    .ember { color: var(--ember); }
+    a { color: var(--primary); }
+    footer { margin-top: 40px; color: var(--muted); font-size: 13px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 14px; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div class="brand">FoodRats</div>
+      <h1>Delete your account &amp; data</h1>
+      <p class="lede">Developer: Sebastián Cardona · App: FoodRats (<code>es.schsebastian.foodrats</code>)</p>
+    </header>
+
+    <section>
+      <h2>Delete from inside the app <span class="pill">Recommended</span></h2>
+      <ol>
+        <li>Open <strong>FoodRats</strong> and sign in.</li>
+        <li>Go to <strong>Profile</strong>.</li>
+        <li>Tap <strong>Delete account</strong> and confirm.</li>
+      </ol>
+      <p>Your account and the data below are permanently removed, you are signed out, and analytics
+         data tied to your device is reset.</p>
+    </section>
+
+    <section>
+      <h2>Can't access the app?</h2>
+      <p>Email <a class="ember" href="mailto:schsebastiancardonahenao@gmail.com?subject=FoodRats%20account%20deletion">schsebastiancardonahenao@gmail.com</a>
+         from the address linked to your Google sign-in, with the subject
+         <em>"FoodRats account deletion"</em>. We process the request within <strong>30 days</strong>.</p>
+    </section>
+
+    <section>
+      <h2>What gets deleted</h2>
+      <table>
+        <tr><th>Data</th><th>What happens</th></tr>
+        <tr><td>Account profile (name, email, user ID)</td><td>Deleted</td></tr>
+        <tr><td>Meals &amp; plate photos you posted</td><td>Deleted across every crew</td></tr>
+        <tr><td>Comments &amp; ratings you made</td><td>Deleted</td></tr>
+        <tr><td>Crew memberships</td><td>Removed</td></tr>
+        <tr><td>Analytics &amp; diagnostic identifiers</td><td>Reset / dissociated</td></tr>
+      </table>
+      <p style="margin-top:14px">
+        Some data may persist briefly in encrypted backups and is purged on the normal backup
+        rotation. Aggregate, non-identifying analytics that cannot be tied back to you may be retained.
+      </p>
+    </section>
+
+    <footer>
+      FoodRats is a closed-group meal-sharing app. This page is provided to comply with Google Play
+      and Apple App Store account-deletion requirements.
+    </footer>
+  </main>
+</body>
+</html>

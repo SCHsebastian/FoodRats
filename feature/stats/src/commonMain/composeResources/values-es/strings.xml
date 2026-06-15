@@ -58,6 +58,16 @@
     <string name="stats_cook_award_needs_more_singular">Falta %1$d plato para entrar</string>
     <string name="stats_cook_award_needs_more_plural">Faltan %1$d platos para entrar</string>
 
+    <string name="stats_passport_title">Pasaporte de cocinas</string>
+    <string name="stats_passport_progress_format">%1$d / %2$d</string>
+    <string name="stats_passport_locked_label">Bloqueada</string>
+    <string name="stats_passport_collected_on_format">Conseguida %1$s</string>
+
+    <string name="stats_bingo_title">Bingo de ingredientes</string>
+    <string name="stats_bingo_progress_format">%1$d / %2$d</string>
+    <string name="stats_bingo_locked_label">Bloqueado</string>
+    <string name="stats_bingo_collected_on_format">Capturado %1$s</string>
+
     <string name="stats_empty_headline">Sin estadísticas todavía</string>
     <string name="stats_empty_subtext">Sube una comida para empezar a sumar.</string>
     <string name="stats_error_no_active_crew">Elige una crew para ver sus stats.</string>
@@ -65,4 +75,12 @@
     <string name="stats_error_unauthorized">No eres miembro de esta crew.</string>
     <string name="stats_error_crew_not_found">Crew no encontrada.</string>
     <string name="stats_error_unavailable">No se pudieron cargar las stats. Inténtalo otra vez.</string>
+
+    <!-- Entrada al resumen semanal en historias (roadmap §2.4) -->
+    <string name="stats_weekly_recap_cta">Ver tu semana</string>
+
+    <!-- Compartir un premio / racha en Instagram Stories (spec §10) -->
+    <string name="stats_share_award">Compartir</string>
+    <!-- Pastilla de puntuación en la tarjeta del premio compartido (media ★ · número). -->
+    <string name="stats_share_score_format">%1$s ★ · %2$d</string>
 </resources>

@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.core.data.preferences
 
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.Keys
+import es.schsebastian.foodrats.core.data.datastore.to
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
 import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
@@ -40,9 +41,13 @@ class ConsentRepository(
     override suspend fun revoke() = write(STATE_DENIED)
 
     private suspend fun write(state: String): Unit = withContext(dispatchers.io) {
-        prefs.set(Keys.AnalyticsConsentState, state)
-        prefs.set(Keys.AnalyticsConsentVersion, AnalyticsConfig.CURRENT_CONSENT_VERSION)
-        prefs.set(Keys.AnalyticsConsentDecidedAt, clock.now().toEpochMilliseconds())
+        // Single transaction so observers of `decision` never see a half-written, inconsistent state
+        // (e.g. state set but version/decided-at still stale).
+        prefs.setAll(
+            Keys.AnalyticsConsentState to state,
+            Keys.AnalyticsConsentVersion to AnalyticsConfig.CURRENT_CONSENT_VERSION,
+            Keys.AnalyticsConsentDecidedAt to clock.now().toEpochMilliseconds(),
+        )
     }
 
     private companion object {

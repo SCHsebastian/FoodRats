@@ -88,6 +88,35 @@ class PushPayloadMapperTest {
     }
 
     @Test
+    fun social_nudge_payload_parses_to_SocialNudge_content() {
+        val data = mapOf(
+            "kind" to "SocialNudge",
+            "key" to "social_nudge",
+            "postedCount" to "3",
+            "crewSize" to "5",
+        )
+        val content = assertIs<PushPayloadMapper.PushContent.SocialNudge>(mapper.parse(data))
+        assertEquals(ReminderKind.SocialNudge, content.kind)
+        assertEquals("social-nudge", content.id)
+        assertEquals(3, content.postedCount)
+        assertEquals(5, content.crewSize)
+        // No deep target — a tap just opens the app to Feed.
+        assertEquals(ReminderPayload.None, content.payload)
+    }
+
+    @Test
+    fun social_nudge_with_non_numeric_count_returns_null() {
+        val data = mapOf("key" to "social_nudge", "postedCount" to "lots", "crewSize" to "5")
+        assertNull(mapper.parse(data))
+    }
+
+    @Test
+    fun social_nudge_missing_crew_size_returns_null() {
+        val data = mapOf("key" to "social_nudge", "postedCount" to "3")
+        assertNull(mapper.parse(data))
+    }
+
+    @Test
     fun missing_required_field_returns_null() {
         // key present but mealId missing → unparseable
         val data = mapOf("key" to "new_meal_post", "crewId" to "C1")

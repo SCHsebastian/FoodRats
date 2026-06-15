@@ -29,7 +29,14 @@ data class MealDetailState(
     val mealDeleted: Boolean = false,
     val mealDeleteError: MealDeleteError? = null,
     val commentDeleteError: CommentError.Delete? = null,
+    /** True while the plate share card is rasterizing (decode + render); shows a spinner. */
+    val isPreparingShare: Boolean = false,
+    /** Transient share-outcome toast; cleared via [MealDetailIntent.DismissShareOutcome]. */
+    val shareOutcome: ShareOutcomeUi? = null,
 ) : MviState
+
+/** Presentation mirror of `StoryShareOutcome` → which toast the screen shows (spec §10). */
+enum class ShareOutcomeUi { Succeeded, OpenedSheet, Failed }
 
 sealed interface MealDetailIntent : MviIntent {
     data class RateMeal(val score: Int) : MealDetailIntent
@@ -38,6 +45,10 @@ sealed interface MealDetailIntent : MviIntent {
     data object PostComment : MealDetailIntent
     data object DeleteMeal : MealDetailIntent
     data class DeleteComment(val id: MealCommentId) : MealDetailIntent
+
+    /** Share the displayed plate to Instagram Stories. */
+    data object ShareTapped : MealDetailIntent
+    data object DismissShareOutcome : MealDetailIntent
 }
 
 sealed interface MealDetailEffect : MviEffect

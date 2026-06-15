@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.materialIcon
 import androidx.compose.material.icons.materialPath
@@ -543,6 +544,170 @@ private val LogoutVector: ImageVector = materialIcon(name = "Filled.Logout") {
     }
 }
 
+// ── Achievement-badge glyphs (vendored; material-icons-extended has no iOS artifact) ──
+
+// Restaurant (fork + knife) — the "plate / meal" achievement family.
+private val RestaurantVector: ImageVector = materialIcon(name = "Filled.Restaurant") {
+    materialPath {
+        moveTo(11f, 9f)
+        horizontalLineTo(9f)
+        verticalLineTo(2f)
+        horizontalLineTo(7f)
+        verticalLineToRelative(7f)
+        horizontalLineTo(5f)
+        verticalLineTo(2f)
+        horizontalLineTo(3f)
+        verticalLineToRelative(7f)
+        curveToRelative(0f, 2.12f, 1.66f, 3.84f, 3.75f, 3.97f)
+        verticalLineTo(22f)
+        horizontalLineToRelative(2.5f)
+        verticalLineToRelative(-9.03f)
+        curveTo(11.34f, 12.84f, 13f, 11.12f, 13f, 9f)
+        verticalLineTo(2f)
+        horizontalLineToRelative(-2f)
+        verticalLineToRelative(7f)
+        close()
+        moveTo(16f, 6f)
+        verticalLineToRelative(8f)
+        horizontalLineToRelative(2.5f)
+        verticalLineToRelative(8f)
+        horizontalLineTo(21f)
+        verticalLineTo(2f)
+        curveToRelative(-2.76f, 0f, -5f, 2.24f, -5f, 4f)
+        close()
+    }
+}
+
+// EmojiEvents-style trophy — the generic achievement / award glyph.
+private val TrophyVector: ImageVector = materialIcon(name = "Filled.Trophy") {
+    materialPath {
+        moveTo(19f, 5f)
+        horizontalLineToRelative(-2f)
+        verticalLineTo(3f)
+        horizontalLineTo(7f)
+        verticalLineToRelative(2f)
+        horizontalLineTo(5f)
+        curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+        verticalLineToRelative(1f)
+        curveToRelative(0f, 2.55f, 1.92f, 4.63f, 4.39f, 4.94f)
+        curveToRelative(0.63f, 1.5f, 1.98f, 2.63f, 3.61f, 2.96f)
+        verticalLineTo(19f)
+        horizontalLineTo(7f)
+        verticalLineToRelative(2f)
+        horizontalLineToRelative(10f)
+        verticalLineToRelative(-2f)
+        horizontalLineToRelative(-4f)
+        verticalLineToRelative(-3.1f)
+        curveToRelative(1.63f, -0.33f, 2.98f, -1.46f, 3.61f, -2.96f)
+        curveTo(19.08f, 12.63f, 21f, 10.55f, 21f, 8f)
+        verticalLineTo(7f)
+        curveToRelative(0f, -1.1f, -0.9f, -2f, -2f, -2f)
+        close()
+        moveTo(5f, 8f)
+        verticalLineTo(7f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(3.82f)
+        curveTo(5.84f, 10.4f, 5f, 9.3f, 5f, 8f)
+        close()
+        moveTo(19f, 8f)
+        curveToRelative(0f, 1.3f, -0.84f, 2.4f, -2f, 2.82f)
+        verticalLineTo(7f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(1f)
+        close()
+    }
+}
+
+// Eco (leaf) — the "ingredient variety" achievement family.
+private val EcoVector: ImageVector = materialIcon(name = "Filled.Eco") {
+    materialPath {
+        moveTo(6.05f, 8.05f)
+        curveToRelative(-2.73f, 2.73f, -2.73f, 7.15f, -0.02f, 9.88f)
+        curveToRelative(1.47f, -3.4f, 4.09f, -6.24f, 7.36f, -7.93f)
+        curveToRelative(-2.77f, 2.34f, -4.71f, 5.61f, -5.39f, 9.32f)
+        curveToRelative(2.6f, 1.23f, 5.8f, 0.78f, 7.95f, -1.37f)
+        curveTo(19.43f, 14.47f, 20f, 4f, 20f, 4f)
+        reflectiveCurveTo(9.53f, 4.57f, 6.05f, 8.05f)
+        close()
+    }
+}
+
+// WbSunny — the "early bird / breakfast" achievement.
+private val SunVector: ImageVector = materialIcon(name = "Filled.Sun") {
+    materialPath {
+        moveTo(12f, 7f)
+        curveToRelative(-2.76f, 0f, -5f, 2.24f, -5f, 5f)
+        reflectiveCurveToRelative(2.24f, 5f, 5f, 5f)
+        reflectiveCurveToRelative(5f, -2.24f, 5f, -5f)
+        reflectiveCurveToRelative(-2.24f, -5f, -5f, -5f)
+        close()
+        moveTo(11f, 2f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(3f)
+        horizontalLineToRelative(-2f)
+        close()
+        moveTo(11f, 19f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(3f)
+        horizontalLineToRelative(-2f)
+        close()
+        moveTo(2f, 11f)
+        horizontalLineToRelative(3f)
+        verticalLineToRelative(2f)
+        horizontalLineTo(2f)
+        close()
+        moveTo(19f, 11f)
+        horizontalLineToRelative(3f)
+        verticalLineToRelative(2f)
+        horizontalLineToRelative(-3f)
+        close()
+    }
+}
+
+// NightsStay (moon) — the "night owl / dinner" achievement.
+private val MoonVector: ImageVector = materialIcon(name = "Filled.Moon") {
+    materialPath {
+        moveTo(12f, 3f)
+        curveToRelative(-4.97f, 0f, -9f, 4.03f, -9f, 9f)
+        reflectiveCurveToRelative(4.03f, 9f, 9f, 9f)
+        reflectiveCurveToRelative(9f, -4.03f, 9f, -9f)
+        curveToRelative(0f, -0.46f, -0.04f, -0.92f, -0.1f, -1.36f)
+        curveToRelative(-0.98f, 1.37f, -2.58f, 2.26f, -4.4f, 2.26f)
+        curveToRelative(-2.98f, 0f, -5.4f, -2.42f, -5.4f, -5.4f)
+        curveToRelative(0f, -1.81f, 0.89f, -3.42f, 2.26f, -4.4f)
+        curveTo(12.92f, 3.04f, 12.46f, 3f, 12f, 3f)
+        close()
+    }
+}
+
+// Public (globe) — forward-hook cuisine/globe achievement.
+private val PublicVector: ImageVector = materialIcon(name = "Filled.Public") {
+    materialPath(pathFillType = PathFillType.EvenOdd) {
+        moveTo(12f, 2f)
+        curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+        reflectiveCurveToRelative(4.48f, 10f, 10f, 10f)
+        reflectiveCurveToRelative(10f, -4.48f, 10f, -10f)
+        reflectiveCurveTo(17.52f, 2f, 12f, 2f)
+        close()
+        moveTo(12f, 20f)
+        curveToRelative(-4.41f, 0f, -8f, -3.59f, -8f, -8f)
+        reflectiveCurveToRelative(3.59f, -8f, 8f, -8f)
+        reflectiveCurveToRelative(8f, 3.59f, 8f, 8f)
+        reflectiveCurveToRelative(-3.59f, 8f, -8f, 8f)
+        close()
+        moveTo(7f, 11f)
+        horizontalLineToRelative(10f)
+        verticalLineToRelative(2f)
+        horizontalLineTo(7f)
+        close()
+        moveTo(11f, 7f)
+        horizontalLineToRelative(2f)
+        verticalLineToRelative(10f)
+        horizontalLineToRelative(-2f)
+        close()
+    }
+}
+
 object FrIcons {
     val Back: ImageVector          = Icons.Filled.ArrowBack
     val Camera: ImageVector        = PhotoCameraVector
@@ -572,6 +737,14 @@ object FrIcons {
     // KeyboardArrowLeft/Right from material-icons-core automirrored as substitutes.
     val ChevronLeft: ImageVector   = Icons.AutoMirrored.Filled.KeyboardArrowLeft
     val ChevronRight: ImageVector  = Icons.AutoMirrored.Filled.KeyboardArrowRight
+    // Achievement-badge glyphs.
+    val Share: ImageVector         = Icons.Filled.Share
+    val Restaurant: ImageVector    = RestaurantVector
+    val Trophy: ImageVector        = TrophyVector
+    val Eco: ImageVector           = EcoVector
+    val Sun: ImageVector           = SunVector
+    val Moon: ImageVector          = MoonVector
+    val Public: ImageVector        = PublicVector
 }
 
 @FrPreview

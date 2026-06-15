@@ -65,6 +65,14 @@ private val OnCharcoalElevated  = Color(0xFFC4C8BB)
 private val OutlineDark         = Color(0xFF8E9387)
 private val OutlineVariantDark  = Color(0xFF44483D)
 
+// Achievement-tier metals. Theme-independent on purpose: bronze/silver/gold reference physical
+// metals, so they must read the same in light and dark for tier recognition — they are NOT
+// semantic meaning roles (those live in FrSemanticColors) and must not shift with the theme.
+// TierBronze intentionally equals the Iron & Ember ember-copper (EmberLight / celebration) family.
+internal val TierBronze = Color(0xFFB0561E)
+internal val TierSilver = Color(0xFF9AA0A6)
+internal val TierGold   = Color(0xFFD4A017)
+
 internal val FoodRatsLightColors = lightColorScheme(
     primary               = OliveLight,
     onPrimary             = OliveLightOn,

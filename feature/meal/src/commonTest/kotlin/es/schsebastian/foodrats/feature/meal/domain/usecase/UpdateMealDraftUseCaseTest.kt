@@ -39,11 +39,13 @@ class UpdateMealDraftUseCaseTest {
         // Detected ≠ confirmed: a classifier run must NOT stamp the user-confirmed
         // `ingredients` list (that's SetIngredients' job). It only seeds `detectedIngredients`.
         val (update, repo) = setup(baseDraft())
-        update(UpdateMealDraftCommand.SetDetected(listOf(IngredientSlug.of("tomato").getOrNull()!!), "food101-v1"))
+        update(UpdateMealDraftCommand.SetDetected(listOf(IngredientSlug.of("tomato").getOrNull()!!), "pizza", "food101-v1"))
         val updated = repo.observeDraft().first()!!
         assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), updated.detectedIngredients)
         assertEquals(emptyList(), updated.ingredients)
         assertEquals("food101-v1", updated.classifierVersion)
+        // The detected dish slug is carried for the publish-time cuisine stamp (roadmap §2.2).
+        assertEquals("pizza", updated.detectedDishSlug)
     }
 
     @Test fun setIngredients_does_not_touch_detected() = runTest {

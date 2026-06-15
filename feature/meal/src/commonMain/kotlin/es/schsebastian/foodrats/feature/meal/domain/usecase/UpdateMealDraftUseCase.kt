@@ -24,6 +24,9 @@ class UpdateMealDraftUseCase(private val repository: MealRepository) {
                 // user-confirmed `ingredients` list is written exclusively by
                 // SetIngredients, so unattested detections never reach the published Meal.
                 detectedIngredients = command.detected,
+                // The detected dish slug is carried so the publish path can stamp Meal.cuisine
+                // (roadmap §2.2). Like the detected ingredients it is advisory, not user-attested.
+                detectedDishSlug = command.dishSlug,
                 classifierVersion = command.version,
             )
             is UpdateMealDraftCommand.SetIngredients -> current.copy(ingredients = command.ingredients)

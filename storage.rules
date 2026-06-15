@@ -27,12 +27,28 @@ service firebase.storage {
     // Direct reads are DENIED (#15) — same rationale as avatars above. The
     // `mintPlateUrls` callable verifies crew membership before signing a read URL, so a
     // non-member (or a logged-out holder of an old token URL) can no longer fetch a plate.
+    //
+    // Thumbnails (`<mealId>_thumb.jpg`) are written ONLY by the `onPlateImageFinalized`
+    // Cloud Function via the Admin SDK (which bypasses these rules). The explicit
+    // `_thumb.jpg` suffix exclusion below blocks any client from writing/overwriting a
+    // thumbnail — a `<crewId>_<uid>_..._thumb.jpg` name would otherwise match the author
+    // pattern and slip through.
     match /crews/{crewId}/meals/{filename} {
       allow read: if false;
       allow write: if request.auth != null
                    && filename.matches(crewId + '_' + request.auth.uid + '_.*\\.jpg')
+                   && !filename.endsWith('_thumb.jpg')
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/jpe?g');
+    }
+
+    // GDPR data-export archives (Art. 20). Written ONLY by the `exportMyData` callable via the
+    // Admin SDK (which bypasses these rules), and the user downloads via the short-lived V4 signed
+    // URL that callable mints (signed reads also bypass rules). The explicit owner-only read here
+    // is defense-in-depth — a user may read only their OWN export object, and no client may write.
+    match /exports/{uid}/{filename} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
     }
 
     // Default: deny.

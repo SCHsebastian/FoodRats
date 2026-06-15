@@ -2,9 +2,13 @@ package es.schsebastian.foodrats.feature.stats.domain.usecase
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.cuisine.Cuisine
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineSlug
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -61,10 +65,17 @@ private class FakeRead(initial: List<MealWithRatings>, val err: MealReadError? =
     override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) = flow
 }
 
-private class FakeIngredientRead : IngredientReadPort {
-    override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = flowOf(emptyMap())
+private class FakeIngredientRead(
+    private val catalog: Map<IngredientSlug, Ingredient> = emptyMap(),
+) : IngredientReadPort {
+    override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = flowOf(catalog)
     override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> = emptyList()
     override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> = emptyList()
+}
+
+private class FakeCuisineRead(private val catalog: Map<CuisineSlug, Cuisine> = emptyMap()) : CuisineReadPort {
+    override fun observeCatalog(): Flow<Map<CuisineSlug, Cuisine>> = flowOf(catalog)
+    override suspend fun loadDishCuisine(dishSlug: String): CuisineSlug? = null
 }
 
 private class FixedClock(val instant: Instant) : Clock { override fun now() = instant }
@@ -79,7 +90,12 @@ class ObserveStatsUseCaseTest {
     private val me = (AccountId.of("me") as Result.Ok).value
     private val crewId = (CrewId.of("c-1") as Result.Ok).value
 
-    private fun makeMeal(authorId: AccountId, date: LocalDate): MealWithRatings {
+    private fun makeMeal(
+        authorId: AccountId,
+        date: LocalDate,
+        ingredients: List<IngredientSlug> = emptyList(),
+        detectedIngredients: List<IngredientSlug> = emptyList(),
+    ): MealWithRatings {
         val meal = Meal(
             id = (MealId.of("m-${authorId.value}-${date}") as Result.Ok).value,
             author = MealAuthor(authorId, authorId.value, null),
@@ -90,12 +106,16 @@ class ObserveStatsUseCaseTest {
             dish = (DishName.of("Pasta") as Result.Ok).value,
             description = Description.EMPTY,
             publishedAt = now,
+            ingredients = ingredients,
+            detectedIngredients = detectedIngredients,
         )
         return MealWithRatings(meal, emptyList())
     }
 
+    private fun slug(raw: String) = (IngredientSlug.of(raw) as Result.Ok).value
+
     @Test fun emits_NotSignedIn_when_no_session() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), FakeIngredientRead(), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), clock, zone)
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NotSignedIn), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -103,7 +123,7 @@ class ObserveStatsUseCaseTest {
     }
 
     @Test fun emits_NoActiveCrew_when_no_crew() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), FakeIngredientRead(), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), clock, zone)
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NoActiveCrew), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -117,6 +137,7 @@ class ObserveStatsUseCaseTest {
             FakeSession(Session(me, null)),
             FakeRead(listOf(mine)),
             FakeIngredientRead(),
+            FakeCuisineRead(),
             clock,
             zone,
         )
@@ -140,6 +161,7 @@ class ObserveStatsUseCaseTest {
             FakeSession(Session(me, null)),
             FakeRead(listOf(mine)),
             FakeIngredientRead(),
+            FakeCuisineRead(),
             clock,
             zone,
         )
@@ -165,6 +187,7 @@ class ObserveStatsUseCaseTest {
             FakeSession(Session(me, null)),
             FakeRead(listOf(mine)),
             FakeIngredientRead(),
+            FakeCuisineRead(),
             clock,
             zone,
         )
@@ -178,12 +201,67 @@ class ObserveStatsUseCaseTest {
         }
     }
 
+    @Test fun bingo_credits_confirmed_ingredients_only_not_AI_detected() = runTest {
+        val tomato = slug("tomato")
+        val basil = slug("basil")
+        val mine = makeMeal(
+            me,
+            today,
+            ingredients = listOf(tomato),       // confirmed → collected
+            detectedIngredients = listOf(basil), // AI-only → must stay locked
+        )
+        val catalog = linkedMapOf(
+            tomato to Ingredient(tomato, "Tomato", IngredientCategory.Vegetable),
+            basil to Ingredient(basil, "Basil", IngredientCategory.Spice),
+        )
+        val uc = ObserveStatsUseCase(
+            FakeActive(crewId),
+            FakeSession(Session(me, null)),
+            FakeRead(listOf(mine)),
+            FakeIngredientRead(catalog),
+            FakeCuisineRead(),
+            clock,
+            zone,
+        )
+        uc(flowOf(false), flowOf(0)).test {
+            val r = awaitItem()
+            assertIs<Result.Ok<StatsSnapshot>>(r)
+            val bingo = r.value.ingredientBingo
+            assertNotNull(bingo)
+            assertEquals(2, bingo.totalCount)
+            assertEquals(1, bingo.collectedCount)
+            assertEquals(true, bingo.cells.single { it.ingredient.slug == tomato }.collected)
+            assertEquals(false, bingo.cells.single { it.ingredient.slug == basil }.collected)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun bingo_is_null_when_ingredient_catalog_empty() = runTest {
+        val mine = makeMeal(me, today, ingredients = listOf(slug("tomato")))
+        val uc = ObserveStatsUseCase(
+            FakeActive(crewId),
+            FakeSession(Session(me, null)),
+            FakeRead(listOf(mine)),
+            FakeIngredientRead(emptyMap()),
+            FakeCuisineRead(),
+            clock,
+            zone,
+        )
+        uc(flowOf(false), flowOf(0)).test {
+            val r = awaitItem()
+            assertIs<Result.Ok<StatsSnapshot>>(r)
+            assertNull(r.value.ingredientBingo)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test fun current_error_propagates() = runTest {
         val uc = ObserveStatsUseCase(
             FakeActive(crewId),
             FakeSession(Session(me, null)),
             FakeRead(emptyList(), MealReadError.Unauthorized),
             FakeIngredientRead(),
+            FakeCuisineRead(),
             clock,
             zone,
         )

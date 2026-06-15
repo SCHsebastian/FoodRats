@@ -22,5 +22,6 @@ internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Delete.PhraseMismatch -> AuthStringKey.DeleteAccountErrorPhrase
     ProfileError.Delete.NotImplemented -> AuthStringKey.DeleteAccountErrorNotImplemented
     ProfileError.Delete.Unavailable -> AuthStringKey.DeleteAccountErrorBackend
-    ProfileError.Delete.OwnerOfActiveCrew -> AuthStringKey.DeleteAccountErrorOwnership
+    ProfileError.Delete.OwnerReassignFailed -> AuthStringKey.DeleteAccountErrorOwnership
+    ProfileError.Export.Unavailable -> AuthStringKey.ExportDataErrorBackend
 }

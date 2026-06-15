@@ -76,6 +76,22 @@ internal class FirebaseCrewRepository(
         )
     }
 
+    override suspend fun findByCode(code: CrewCode): Result<Crew, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching { dataSource.fetchByCode(code) }.fold(
+                onSuccess = { Result.success(it) },
+                onFailure = { t ->
+                    Result.failure(
+                        when (t) {
+                            CodeUnknownException -> CrewError.Invite.CodeUnknown
+                            NotFoundException    -> CrewError.Membership.NotFound
+                            else                 -> errorMapper.map(t)
+                        },
+                    )
+                },
+            )
+        }
+
     override suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching { dataSource.leave(crewId, leaver) }.fold(
@@ -119,5 +135,41 @@ internal class FirebaseCrewRepository(
         val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
         return dataSource.deleteCrew(crewId, crew.code)
+    }
+
+    override suspend fun setBlindVoting(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        enabled: Boolean,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setBlindVoting(crewId, enabled)
+    }
+
+    override suspend fun removeMember(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        target: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.RemoveMember.NotOwner)
+        if (target == requestedBy) return Result.failure(CrewError.RemoveMember.CannotRemoveSelf)
+        if (crew.members.none { it.accountId == target }) {
+            return Result.failure(CrewError.RemoveMember.MemberNotFound)
+        }
+        return runCatching { dataSource.removeMember(crewId, target) }.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { t ->
+                Result.failure(
+                    when (t) {
+                        NotFoundException -> CrewError.Membership.NotFound
+                        // TOCTOU: target vanished between the read above and the atomic write.
+                        NotMemberException -> CrewError.RemoveMember.MemberNotFound
+                        else -> errorMapper.map(t)
+                    },
+                )
+            },
+        )
     }
 }

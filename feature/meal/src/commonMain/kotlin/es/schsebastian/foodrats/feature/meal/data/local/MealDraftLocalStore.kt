@@ -43,6 +43,7 @@ private data class MealDraftJson(
     val longitude: Double? = null,
     val ingredients: List<String> = emptyList(),
     val detectedIngredients: List<String> = emptyList(),
+    val detectedDishSlug: String? = null,
     val classifierVersion: String? = null,
 )
 
@@ -85,6 +86,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             coordinates = coords,
             ingredients = ingredients.mapNotNull { IngredientSlug.of(it).getOrNull() },
             detectedIngredients = detectedIngredients.mapNotNull { IngredientSlug.of(it).getOrNull() },
+            detectedDishSlug = detectedDishSlug,
             classifierVersion = classifierVersion,
         )
     }
@@ -105,6 +107,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             longitude = d.coordinates?.longitude,
             ingredients = d.ingredients.map { it.value },
             detectedIngredients = d.detectedIngredients.map { it.value },
+            detectedDishSlug = d.detectedDishSlug,
             classifierVersion = d.classifierVersion,
         )
     }

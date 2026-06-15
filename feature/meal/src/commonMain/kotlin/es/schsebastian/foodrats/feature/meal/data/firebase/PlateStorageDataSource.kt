@@ -5,7 +5,10 @@ import dev.gitlive.firebase.storage.storageMetadata
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
-class PlateStorageDataSource(private val storage: FirebaseStorage) : PlateStorage {
+internal class PlateStorageDataSource(
+    private val storage: FirebaseStorage,
+    private val compressor: PlateCompressor = PlateCompressor(),
+) : PlateStorage {
 
     /**
      * Uploads a Plate's photo bytes to Firebase Storage and returns the deterministic
@@ -28,8 +31,13 @@ class PlateStorageDataSource(private val storage: FirebaseStorage) : PlateStorag
      */
     override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
         val path = platefile(crewId, mealId)
+        // On-device downscale + re-encode before upload (roadmap §5.1) to cut upload size and
+        // storage cost. Best-effort: [PlateCompressor] returns the original bytes on any failure,
+        // so this never blocks a publish. The blocking codec work is acceptable here — this is the
+        // repository's single IO boundary (publish's `withContext(io)`), not a UI thread.
+        val bytes = compressor.compress(plate.photoBytes)
         storage.reference(path).putData(
-            data = plate.photoBytes.toStorageData(),
+            data = bytes.toStorageData(),
             metadata = storageMetadata { contentType = "image/jpeg" },
         )
         return path

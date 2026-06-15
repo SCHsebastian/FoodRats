@@ -32,6 +32,7 @@ import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedDayHeader
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedMealRow
+import es.schsebastian.foodrats.feature.feed.presentation.components.FrUploadQueueBar
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.minus
@@ -63,6 +64,14 @@ fun FeedScreen(
                 val secondary = if (isToday || isYesterday) iso else ""
                 Column(modifier = Modifier.fillMaxWidth()) {
                     FrUploadProgressBar(visible = state.isUploadActive)
+                    // Offline-first publish queue indicator (roadmap §5.2): pending +
+                    // terminal-failed counts with retry/dismiss. Hides itself when empty.
+                    FrUploadQueueBar(
+                        pending = state.queuedPending,
+                        failed = state.queuedFailed,
+                        onRetry = { vm.onIntent(FeedIntent.RetryQueuedDrafts) },
+                        onDismiss = { vm.onIntent(FeedIntent.DismissQueuedDrafts) },
+                    )
                     FrFeedDayHeader(
                         primaryLabel = primary,
                         secondaryLabel = secondary,
@@ -129,6 +138,7 @@ fun FeedScreen(
                                     FrFeedMealRow(
                                         ui = ui,
                                         onClick = { onMealClick(ui.mealId, dayIso) },
+                                        onReact = { vm.onIntent(FeedIntent.ReactMeal(ui.mealId)) },
                                         modifier = Modifier.animateItem(),
                                     )
                                 }
@@ -141,6 +151,9 @@ fun FeedScreen(
                         }
                     }
                     state.rateError?.let { err ->
+                        FrErrorBanner(text = resolve(err.toStringKey()))
+                    }
+                    state.reactError?.let { err ->
                         FrErrorBanner(text = resolve(err.toStringKey()))
                     }
                 }

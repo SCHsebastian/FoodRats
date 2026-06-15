@@ -25,7 +25,12 @@ class AnalyticsTaxonomyTest {
         AnalyticsEvent.CrewJoined(crewId, JoinMethod.INVITE_CODE),
         AnalyticsEvent.CrewCreated(crewId),
         AnalyticsEvent.CrewLeft(crewId),
+        AnalyticsEvent.CrewMemberRemoved(crewId),
         AnalyticsEvent.CrewInviteShared(crewId),
+        AnalyticsEvent.PlateShared(mealId),
+        AnalyticsEvent.AwardShared(mealId),
+        AnalyticsEvent.StreakShared(streakDays = 14),
+        AnalyticsEvent.RecapShared(sceneKind = "your_week"),
         AnalyticsEvent.MealCaptureStarted(CaptureSource.CAMERA),
         AnalyticsEvent.PlateClassified(detectedCount = 3, latencyMs = 120L, classifierVersion = "food101_v1"),
         AnalyticsEvent.IngredientsConfirmed(detectedCount = 3, confirmedCount = 2),
@@ -36,13 +41,19 @@ class AnalyticsTaxonomyTest {
         AnalyticsEvent.MealOpened(mealId),
         AnalyticsEvent.MealRated(mealId, score = 4),
         AnalyticsEvent.CommentPosted(mealId),
+        AnalyticsEvent.MealReacted(mealId, reactionKind = "daily_glyph"),
         AnalyticsEvent.FeedDayViewed(mealCount = 5, dayOffset = 0),
+        AnalyticsEvent.AchievementUnlocked("first_plate"),
         AnalyticsEvent.StreakViewed,
         AnalyticsEvent.LeaderboardViewed,
+        AnalyticsEvent.DigestStoryOpened(DigestStorySource.NOTIFICATION, sceneCount = 5),
+        AnalyticsEvent.DigestStorySceneViewed(sceneKind = "top_meal", sceneIndex = 1),
+        AnalyticsEvent.DigestStoryCompleted(sceneCount = 5),
         AnalyticsEvent.NotifPermissionPrompted(promptCount = 1),
         AnalyticsEvent.NotifPermissionGranted,
         AnalyticsEvent.NotifPermissionDenied,
         AnalyticsEvent.ScreenViewed(ScreenName("meal_detail")),
+        AnalyticsEvent.AccountDeleted,
         AnalyticsEvent.ConsentGranted(version = 1),
     )
 
@@ -100,6 +111,29 @@ class AnalyticsTaxonomyTest {
                 assertTrue(key !in forbiddenKeys, "param '$key' on '${e.name}' is PII")
                 assertTrue(forbiddenFragments.none { key.contains(it) }, "param '$key' on '${e.name}' is PII")
             }
+        }
+    }
+
+    @Test
+    fun share_card_events_reuse_the_share_name_with_content_type_and_item_id() {
+        // Locks the "reuse `share`, never invent a new event" decision (spec §11): each share-card
+        // leaf emits name == "share", a content_type in {plate, award, streak}, and an item_id; and
+        // no param carries a display name (the no-PII guard already in [no_param_name_is_pii]).
+        val shareCards = listOf(
+            AnalyticsEvent.PlateShared(mealId) to "plate",
+            AnalyticsEvent.AwardShared(mealId) to "award",
+            AnalyticsEvent.StreakShared(streakDays = 14) to "streak",
+            AnalyticsEvent.RecapShared(sceneKind = "your_week") to "recap",
+        )
+        shareCards.forEach { (event, expectedContentType) ->
+            assertTrue(event.name == "share", "share-card event must reuse `share`: '${event.name}'")
+            val contentType = (event.params["content_type"] as? AnalyticsValue.Text)?.value
+            assertTrue(
+                contentType == expectedContentType,
+                "expected content_type=$expectedContentType, got '$contentType'",
+            )
+            assertTrue(contentType in setOf("plate", "award", "streak", "recap"), "illegal content_type '$contentType'")
+            assertTrue(event.params.containsKey("item_id"), "share-card event missing item_id: '${event.name}'")
         }
     }
 

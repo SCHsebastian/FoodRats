@@ -13,6 +13,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,6 +29,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import es.schsebastian.foodrats.app.consent.ConsentScreen
+import es.schsebastian.foodrats.app.recap.WeeklyStoryScreen
+import es.schsebastian.foodrats.core.domain.analytics.DigestStorySource
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -36,6 +42,8 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
+import es.schsebastian.foodrats.feature.achievements.presentation.AchievementsScreen
+import es.schsebastian.foodrats.feature.crew.presentation.invite.AcceptInviteScreen
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScreen
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsScreen
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailScreen
@@ -85,6 +93,12 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             NotificationPermissionScreen(onContinue = {})
         }
 
+        composable<Route.Consent> {
+            // Continue is a no-op: writing the consent decision (grant/deny) drives
+            // RootNavViewModel to emit NavigateTopLevel(Main), which navigateTopLevel handles.
+            ConsentScreen(onDecided = {})
+        }
+
         composable<Route.CrewPicker> {
             CrewPickerScreen(onCrewSelected = { _ -> controller.navigateTopLevel(Route.Main) })
         }
@@ -97,11 +111,34 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 onLeft = { controller.navigateTopLevel(Route.CrewPicker) },
                 onSwitch = { controller.navigate(Route.CrewPicker) { launchSingleTop = true } },
                 onDeleted = { controller.navigateTopLevel(Route.CrewPicker) },
+                // Canonical invite URL lives in `shared`'s DeepLinks (the URL contract owner);
+                // passed down so :feature:crew stays free of a dependency on :shared.
+                inviteUrlFor = { code -> DeepLinks.inviteUrl(code) },
+            )
+        }
+
+        composable<Route.InvitePreview> { entry ->
+            val args = entry.toRoute<Route.InvitePreview>()
+            AcceptInviteScreen(
+                code = args.code,
+                onJoined = { controller.navigateTopLevel(Route.Main) },
+                onBack = {
+                    // From a cold-start invite the only thing behind us is Main (established by the
+                    // deep-link handler); pop to it so "Not now" lands on the feed rather than exiting.
+                    if (!controller.popBackStack()) controller.navigateTopLevel(Route.Main)
+                },
             )
         }
 
         composable<Route.Profile> {
-            ProfileScreen(onBack = { controller.popBackStack() })
+            ProfileScreen(
+                onBack = { controller.popBackStack() },
+                onOpenAchievements = { controller.navigate(Route.Achievements) { launchSingleTop = true } },
+            )
+        }
+
+        composable<Route.Achievements> {
+            AchievementsScreen(onBack = { controller.popBackStack() })
         }
 
         composable<Route.Main> {
@@ -139,6 +176,17 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                 mealId = args.mealId,
                 dayIso = args.dayIso,
                 onBack = { controller.popBackStack() },
+            )
+        }
+        composable<Route.WeeklyStory> { entry ->
+            val args = entry.toRoute<Route.WeeklyStory>()
+            WeeklyStoryScreen(
+                onDismiss = { controller.popBackStack() },
+                source = if (args.fromNotification) {
+                    DigestStorySource.NOTIFICATION
+                } else {
+                    DigestStorySource.IN_APP
+                },
             )
         }
     }
@@ -212,11 +260,18 @@ private fun String.pascalToSnakeCase(): String = buildString {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun MainScaffold(rootController: NavHostController) {
-    val inner = rememberNavController()
-    TrackScreenViews(inner)
+    // The two tabs (Feed/Stats) are a flat switch, NOT a nested NavHost. A NavHost nested inside an
+    // outer NavHost destination corrupts back-stack lifecycle restoration after process death — the
+    // restored top destination (e.g. CrewSettings) never reaches RESUMED, so its
+    // collectAsStateWithLifecycle never collects and the screen hangs on a blank spinner. Neither tab
+    // keeps its own back stack (Feed pushes detail/picker through the root controller), so a saveable
+    // selected-tab flag is all the state we need and it survives configuration change + process death.
+    var isStats by rememberSaveable { mutableStateOf(false) }
+    val analytics = koinInject<AnalyticsPort>()
+    LaunchedEffect(isStats) {
+        analytics.track(AnalyticsEvent.ScreenViewed(ScreenName(if (isStats) "stats" else "feed")))
+    }
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
-    val backStack by inner.currentBackStackEntryAsState()
-    val isStats = backStack?.destination?.hasRoute<MainTab.Stats>() == true
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
     val topBarAvatar by topBarAvatarVm.state.collectAsState()
     val captureNudgeVm: CaptureNudgeViewModel = koinViewModel()
@@ -248,35 +303,30 @@ private fun MainScaffold(rootController: NavHostController) {
             MainBottomBar(
                 isStats = isStats,
                 hasPostedToday = captureNudge.hasPostedToday,
-                onFeedClick = {
-                    inner.navigate(MainTab.Feed) {
-                        popUpTo<MainTab.Feed> { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                onStatsClick = {
-                    inner.navigate(MainTab.Stats) {
-                        popUpTo<MainTab.Feed> { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
+                onFeedClick = { isStats = false },
+                onStatsClick = { isStats = true },
                 onCaptureClick = { rootController.navigate(Route.CaptureMeal) { launchSingleTop = true } },
             )
         },
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            NavHost(navController = inner, startDestination = MainTab.Feed) {
-                composable<MainTab.Feed> {
-                    FeedScreen(
-                        onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
-                        onMealClick = { mealId, dayIso ->
-                            rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
-                        },
-                    )
-                }
-                composable<MainTab.Stats> { StatsScreen() }
+            if (isStats) {
+                StatsScreen(
+                    // In-app weekly-recap entry (roadmap §2.4). weekStart is informational — the
+                    // client derives the recap from its own stats/achievements read paths.
+                    onOpenRecap = {
+                        rootController.navigate(
+                            Route.WeeklyStory(weekStart = "", fromNotification = false),
+                        ) { launchSingleTop = true }
+                    },
+                )
+            } else {
+                FeedScreen(
+                    onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
+                    onMealClick = { mealId, dayIso ->
+                        rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
+                    },
+                )
             }
         }
     }

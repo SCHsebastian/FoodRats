@@ -6,4 +6,14 @@
     <string name="common_continue">Continuar</string>
     <string name="common_back">Atrás</string>
     <string name="common_open_settings">Abrir ajustes</string>
+    <!-- Tarjetas de historia compartibles (spec §10): texto de tarjeta reutilizado por feed + stats. -->
+    <string name="share_card_brand_footer">FoodRats</string>
+    <string name="share_card_award_best_meal">Mejor plato</string>
+    <string name="share_card_award_best_cook">Mejor cocinero/a</string>
+    <string name="share_card_streak_headline">Racha de %1$d días 🔥</string>
+    <string name="share_card_streak_subline">A seguir cocinando</string>
+    <!-- Avisos de resultado al compartir (spec §10). -->
+    <string name="share_succeeded">Compartido en tu historia</string>
+    <string name="share_opened_sheet">Abriendo para compartir…</string>
+    <string name="share_failed">No se pudo compartir ahora.</string>
 </resources>

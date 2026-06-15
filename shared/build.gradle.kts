@@ -61,10 +61,15 @@ kotlin {
             implementation(projects.feature.feed)
             implementation(projects.feature.stats)
             implementation(projects.feature.notifications)
+            implementation(projects.feature.achievements)
 
             // Navigation + serialization
             implementation(libs.nav.compose)
             implementation(libs.kotlinx.serialization.json)
+
+            // Coil 3 — the weekly-recap top-meal scene loads the plate photo (the singleton
+            // ImageLoader is already installed app-wide by installFeedImageLoader()).
+            implementation(libs.coil.compose)
 
             // Firebase (GitLive KMP bindings)
             implementation(libs.bundles.firebase.gitlive)
@@ -84,6 +89,8 @@ kotlin {
                 // (navigateTopLevel + back-stack behaviour) that commonTest can't reach.
                 implementation(libs.bundles.compose.hosttest)
                 implementation(libs.androidx.activity.compose)
+                // Koin static graph verification (JVM-only) for the app-level weeklyStoryModule.
+                implementation(libs.koin.test)
             }
         }
     }

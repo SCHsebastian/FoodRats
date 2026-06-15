@@ -36,6 +36,11 @@ struct ComposeView: UIViewControllerRepresentable {
             share: { text in
                 ShareBridge.shareText(text)
             },
+            storyShare: { pngBytes in
+                // KotlinByteArray -> Data, then hand to the Stories / fallback presenter.
+                let data = pngBytes.toData()
+                return KotlinInt(value: StoryShareBridge.shareToStories(data))
+            },
             analyticsLogEvent: { name, params in
                 AnalyticsBridge.logEvent(name: name, params: params)
             },

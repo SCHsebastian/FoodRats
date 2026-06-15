@@ -21,7 +21,7 @@ const validMeal = (overrides: Record<string, unknown> = {}) => ({
   crewId: CREW,
   dayKey: DAY,
   slot: "lunch",
-  photoUrl: "https://x/p.jpg",
+  platePath: "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg",
   publishedAtEpochMs: Date.now(),
   ratings: {},
   ratingSum: 0,
@@ -96,6 +96,16 @@ describe("meals create — award-aggregate self-stuffing (the P1 fix)", () => {
     const db = env.authenticatedContext("alice").firestore();
     const tenDays = Date.now() + 10 * 24 * 60 * 60 * 1000;
     await assertFails(setDoc(doc(db, PATH), validMeal({ publishedAtEpochMs: tenDays })));
+  });
+
+  it("REJECTS create with a server-owned field (thumbHash spoof)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(db, PATH), validMeal({ thumbHash: "forged" })));
+  });
+
+  it("REJECTS create with an unknown field (field whitelist)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(db, PATH), validMeal({ photoUrl: "https://x/p.jpg" })));
   });
 });
 

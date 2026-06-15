@@ -4,7 +4,7 @@ import { logger } from "firebase-functions/v2";
 import { readTokens, pruneToken, DeviceToken } from "./tokens";
 
 export interface PushPayload {
-  kind: "NewComment" | "NewMealPost" | "WeeklyDigest";
+  kind: "NewComment" | "NewMealPost" | "WeeklyDigest" | "SocialNudge";
   key: string;
   notificationTitle: string;
   notificationBody: string;
@@ -20,6 +20,17 @@ export interface PushPayload {
  */
 export function mealDeepLink(mealId: string, dayIso: string): string {
   return `foodrats://app/meal/${mealId}/${dayIso}`;
+}
+
+/**
+ * Canonical deep link into the weekly-recap story (roadmap §2.4). Mirrors the client URL contract in
+ * `shared/.../app/navigation/DeepLink.kt` (`SEGMENT_DIGEST` → `Route.WeeklyStory`): the first path
+ * segment is the discriminator, so `foodrats://app/digest/{weekStart}` opens the swipeable recap.
+ * Carried in the FCM `data` under `link`; the apps forward it to the DeepLinkBus on the digest tap.
+ * Keep in sync with that contract.
+ */
+export function digestDeepLink(weekStartIso: string): string {
+  return `foodrats://app/digest/${weekStartIso}`;
 }
 
 /** Send to every device registered for a single uid. */

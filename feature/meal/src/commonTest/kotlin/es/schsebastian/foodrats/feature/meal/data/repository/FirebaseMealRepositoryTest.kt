@@ -7,12 +7,16 @@ import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.cuisine.Cuisine
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineSlug
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealKind
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.Score
@@ -23,8 +27,10 @@ import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.telemetry.NoopCrashReporter
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
+import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.data.test.FakeImageUrlPort
 import es.schsebastian.foodrats.feature.meal.data.test.FakeMealAuthorIdentity
@@ -75,6 +81,18 @@ class FirebaseMealRepositoryTest {
         override fun observe(id: AccountId): Flow<Account?> = MutableStateFlow(null)
     }
 
+    /** Resolves a fixed dish→cuisine map; [fault] true makes every lookup throw (advisory path). */
+    private class FakeCuisineReadPort(
+        private val map: Map<String, String> = emptyMap(),
+        private val fault: Boolean = false,
+    ) : CuisineReadPort {
+        override fun observeCatalog(): Flow<Map<CuisineSlug, Cuisine>> = MutableStateFlow(emptyMap())
+        override suspend fun loadDishCuisine(dishSlug: String): CuisineSlug? {
+            if (fault) throw RuntimeException("cuisine lookup failed")
+            return map[dishSlug]?.let { CuisineSlug.of(it).getOrNull() }
+        }
+    }
+
     private class Fixture {
         val firestore = FakeMealFirestore()
         val storage = FakePlateStorage()
@@ -82,7 +100,10 @@ class FirebaseMealRepositoryTest {
     }
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-    private fun repository(fixture: Fixture): FirebaseMealRepository {
+    private fun repository(
+        fixture: Fixture,
+        cuisineRead: CuisineReadPort = FakeCuisineReadPort(),
+    ): FirebaseMealRepository {
         val testDispatcher = UnconfinedTestDispatcher()
         val dispatchers = object : DispatcherProvider {
             override val main: CoroutineDispatcher = testDispatcher
@@ -100,12 +121,14 @@ class FirebaseMealRepositoryTest {
             zone = zone,
             accountRead = noAccounts,
             imageUrls = FakeImageUrlPort(),
+            cuisineRead = cuisineRead,
         )
     }
 
     private fun draft(
         ingredients: List<IngredientSlug> = emptyList(),
         detectedIngredients: List<IngredientSlug> = emptyList(),
+        detectedDishSlug: String? = null,
         slot: MealSlot? = MealSlot.Lunch,
         plate: Plate? = Plate(photoBytes = byteArrayOf(1, 2, 3)),
     ) = MealDraft(
@@ -118,6 +141,7 @@ class FirebaseMealRepositoryTest {
         slot = slot,
         ingredients = ingredients,
         detectedIngredients = detectedIngredients,
+        detectedDishSlug = detectedDishSlug,
         classifierVersion = "food101-v1",
     )
 
@@ -154,6 +178,51 @@ class FirebaseMealRepositoryTest {
 
         assertTrue(result is Result.Ok)
         assertEquals(emptyList(), f.firestore.writes.single().dto.ingredients)
+    }
+
+    /** §2.2 stamp-at-publish: the detected dish resolves to a cuisine slug written onto the meal. */
+    @Test fun publish_stamps_cuisine_from_detected_dish() = runTest {
+        val f = Fixture()
+        val repo = repository(f, FakeCuisineReadPort(map = mapOf("pizza" to "italian")))
+
+        val result = repo.publish(draft(detectedDishSlug = "pizza"))
+
+        assertTrue(result is Result.Ok)
+        assertEquals("italian", f.firestore.writes.single().dto.cuisine)
+    }
+
+    /** A dish absent from the cuisine map stamps no cuisine — and publish still succeeds. */
+    @Test fun publish_leaves_cuisine_null_when_dish_unmapped() = runTest {
+        val f = Fixture()
+        val repo = repository(f, FakeCuisineReadPort(map = emptyMap()))
+
+        val result = repo.publish(draft(detectedDishSlug = "unknown-dish"))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(null, f.firestore.writes.single().dto.cuisine)
+    }
+
+    /** Advisory: a cuisine-lookup FAULT never blocks publish — cuisine just stays null. */
+    @Test fun publish_succeeds_with_null_cuisine_when_lookup_throws() = runTest {
+        val f = Fixture()
+        val repo = repository(f, FakeCuisineReadPort(fault = true))
+
+        val result = repo.publish(draft(detectedDishSlug = "pizza"))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(1, f.firestore.writes.size)
+        assertEquals(null, f.firestore.writes.single().dto.cuisine)
+    }
+
+    /** No classified dish on the draft → no lookup, no cuisine. */
+    @Test fun publish_leaves_cuisine_null_when_no_dish_detected() = runTest {
+        val f = Fixture()
+        val repo = repository(f, FakeCuisineReadPort(map = mapOf("pizza" to "italian")))
+
+        val result = repo.publish(draft(detectedDishSlug = null))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(null, f.firestore.writes.single().dto.cuisine)
     }
 
     /** A Storage upload failure maps to the photo-upload error, NOT a generic publish error,
@@ -297,6 +366,84 @@ class FirebaseMealRepositoryTest {
         assertEquals(Result.failure(MealError.Publish.NoCrewSelected), result)
         assertEquals(0, f.storage.uploads.size)
         assertEquals(0, f.firestore.writes.size)
+    }
+
+    // ---------------------------------------------------------------------------------
+    // MealKind seam — behaviorally-inert Solo discriminator threaded end-to-end
+    // (spec 2026-06-14-meal-post-types §4 / §6; w4-meal-kind-seam-integration)
+    // ---------------------------------------------------------------------------------
+
+    /**
+     * §4/§6 round trip: the returned `Meal` from `publish` is `MealKind.Solo`. The repo builds the
+     * representative aggregate via `dto.toDomain()` over the DTO it actually writes — so this proves
+     * the publish→domain leg, not just the mapper in isolation (which `MealMapperTest` covers).
+     */
+    @Test fun publish_returns_meal_with_solo_kind() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(draft())
+
+        assertTrue(result is Result.Ok)
+        assertEquals(MealKind.Solo, result.value.kind)
+    }
+
+    /** The write path stamps the `"solo"` discriminator on every published DTO — the only kind
+     *  the system writes today (the draft carries no `kind`, spec §4.3). */
+    @Test fun publish_stamps_solo_discriminator_on_written_dto() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(draft())
+
+        assertTrue(result is Result.Ok)
+        assertEquals("solo", f.firestore.writes.single().dto.kind)
+    }
+
+    /** End-to-end publish→read round trip: the exact DTO the repo wrote, read back through the
+     *  same `toDomain` the feed/stats/detail read paths use, deserializes to `MealKind.Solo`. This
+     *  closes the loop `MealMapperTest` only checks at the DTO↔domain boundary. */
+    @Test fun published_dto_reads_back_as_solo_kind() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+
+        assertTrue(repo.publish(draft()) is Result.Ok)
+        val writtenDto = f.firestore.writes.single().dto
+
+        val readBack = writtenDto.toDomain()
+        assertTrue(readBack is Result.Ok)
+        assertEquals(MealKind.Solo, readBack.value.kind)
+    }
+
+    /** Tolerant read (spec §6.2): a legacy/pre-seam doc with NO `kind` field deserializes to Solo.
+     *  Pre-launch there is no migration — old docs must read as `Solo` for free. Mirrors the
+     *  serialization default `MealDto.kind = "solo"`, asserted here at the repository read seam. */
+    @Test fun legacy_doc_without_kind_field_reads_back_as_solo() = runTest {
+        // A DTO that predates the seam: the `kind` field was never written, so the deserializer
+        // fills the `"solo"` default. Build it omitting `kind` to model exactly that doc shape.
+        val legacy = MealDto(
+            id = "legacy-1", authorId = "acc-1", authorName = "Sam",
+            crewId = "crew-1", dayKey = "2026-05-18", platePath = "crews/crew-1/meals/legacy-1.jpg",
+            dishName = "Pizza", publishedAtEpochMs = 1731_000_000_000,
+        )
+        assertEquals("solo", legacy.kind)
+
+        val readBack = legacy.toDomain()
+        assertTrue(readBack is Result.Ok)
+        assertEquals(MealKind.Solo, readBack.value.kind)
+    }
+
+    /** Fan-out keeps the seam inert across every per-crew copy: each written DTO carries `"solo"`. */
+    @Test fun publish_fan_out_stamps_solo_on_every_per_crew_copy() = runTest {
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(draft().copy(audienceCrewIds = setOf(crew, crew2)))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(2, f.firestore.writes.size)
+        assertTrue(f.firestore.writes.all { it.dto.kind == "solo" })
     }
 
     // ---------------------------------------------------------------------------------

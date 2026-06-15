@@ -69,4 +69,32 @@ class MealDtoMapperTest {
         val back = (baseDto().copy(ingredients = listOf("", "tomato")).toDomain() as Result.Ok).value
         assertEquals(1, back.ingredients.size)
     }
+
+    @Test fun reads_thumbhash_and_thumbnail_path_from_dto() {
+        val dto = baseDto().copy(
+            thumbHash = "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+            thumbnailPath = "crews/c-1/meals/m-1_thumb.jpg",
+        )
+        val meal = (dto.toDomain() as Result.Ok).value
+        assertEquals("1QcSHQRnh493V4dIh4eXh1h4kJUI", meal.thumbHash)
+        // The path is carried as-is on `thumbnailUrl` at this layer; the feed enrichment resolves
+        // it to a signed URL before display (same contract as photoUrl/platePath).
+        assertEquals("crews/c-1/meals/m-1_thumb.jpg", meal.thumbnailUrl)
+    }
+
+    @Test fun tolerates_absent_thumbhash_on_old_docs() {
+        // Pre-pipeline doc: both fields absent → null hash, empty thumbnail (never a read failure).
+        val meal = (baseDto().toDomain() as Result.Ok).value
+        assertEquals(null, meal.thumbHash)
+        assertEquals("", meal.thumbnailUrl)
+    }
+
+    @Test fun round_trips_thumbhash_but_never_mints_thumbnail_path() {
+        // The client never claims a thumbnail it didn't generate (server-owned), so `from` carries
+        // the hash through but leaves thumbnailPath null.
+        val meal = baseMeal().copy(thumbHash = "1QcSHQRnh493V4dIh4eXh1h4kJUI")
+        val dto = MealDto.from(meal)
+        assertEquals("1QcSHQRnh493V4dIh4eXh1h4kJUI", dto.thumbHash)
+        assertEquals(null, dto.thumbnailPath)
+    }
 }

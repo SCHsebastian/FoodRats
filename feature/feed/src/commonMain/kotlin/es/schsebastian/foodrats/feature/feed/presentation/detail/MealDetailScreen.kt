@@ -63,6 +63,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.atoms.FrGlassPill
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
+import es.schsebastian.foodrats.core.designsystem.image.rememberThumbHashPainter
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
@@ -75,6 +76,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
@@ -115,6 +117,18 @@ fun MealDetailScreen(
                 onRequestDeleteMeal = { showDeleteMealDialog = true },
             )
         }
+    }
+
+    // Share-outcome toast (spec §10). Resolved here; cleared after a short window.
+    state.shareOutcome?.let { outcome ->
+        val message = resolve(
+            when (outcome) {
+                ShareOutcomeUi.Succeeded  -> ShareCardStringKey.ShareSucceeded
+                ShareOutcomeUi.OpenedSheet -> ShareCardStringKey.ShareOpenedSheet
+                ShareOutcomeUi.Failed     -> ShareCardStringKey.ShareFailed
+            },
+        )
+        ShareOutcomeToast(message = message, onDismiss = { vm.onIntent(MealDetailIntent.DismissShareOutcome) })
     }
 
     if (showDeleteMealDialog) {
@@ -168,8 +182,10 @@ private fun MealDetailBody(
                 meal = meal,
                 canDelete = state.canDeleteMeal,
                 deleteEnabled = !state.isDeletingMeal,
+                isPreparingShare = state.isPreparingShare,
                 onBack = onBack,
                 onDelete = onRequestDeleteMeal,
+                onShare = { onIntent(MealDetailIntent.ShareTapped) },
             )
 
             Column(
@@ -237,8 +253,10 @@ private fun PhotoHero(
     meal: FeedMealUi,
     canDelete: Boolean,
     deleteEnabled: Boolean,
+    isPreparingShare: Boolean,
     onBack: () -> Unit,
     onDelete: () -> Unit,
+    onShare: () -> Unit,
 ) {
     val semantic = LocalFrSemanticColors.current
     // Pinch-to-zoom that snaps back on release. Two-finger only, so single-finger drags still
@@ -280,10 +298,15 @@ private fun PhotoHero(
                 },
         ) {
             if (meal.photoUrl.isNotBlank()) {
+                // Detail always loads the FULL plate; the ThumbHash blur is the placeholder while
+                // it streams in (the feed thumbnail is already cached, so the hand-off is smooth).
+                val placeholder = rememberThumbHashPainter(meal.thumbHash)
                 AsyncImage(
                     model = meal.photoUrl,
                     contentDescription = meal.dishName,
                     contentScale = ContentScale.Crop,
+                    placeholder = placeholder,
+                    error = placeholder,
                     modifier = Modifier.fillMaxSize(),
                 )
             } else {
@@ -312,13 +335,26 @@ private fun PhotoHero(
             contentDescription = resolve(FeedStringKey.DetailBackCta),
             modifier = Modifier.align(Alignment.TopStart).padding(Spacing.md),
         )
-        if (canDelete && deleteEnabled) {
-            FrGlassPill(
-                icon = FrIcons.Delete,
-                onClick = onDelete,
-                contentDescription = resolve(FeedStringKey.DeleteMealCta),
-                modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.md),
-            )
+        Row(
+            modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            if (isPreparingShare) {
+                FrProgressIndicator()
+            } else {
+                FrGlassPill(
+                    icon = FrIcons.Share,
+                    onClick = onShare,
+                    contentDescription = resolve(FeedStringKey.ShareMeal),
+                )
+            }
+            if (canDelete && deleteEnabled) {
+                FrGlassPill(
+                    icon = FrIcons.Delete,
+                    onClick = onDelete,
+                    contentDescription = resolve(FeedStringKey.DeleteMealCta),
+                )
+            }
         }
     }
 }
@@ -572,6 +608,24 @@ private fun StickyCommentComposer(
             contentDescription = resolve(FeedStringKey.CommentsSendCta),
             enabled = sendEnabled,
         )
+    }
+}
+
+/**
+ * Brief, auto-dismissing bottom toast for a share outcome (spec §10). No system Toast primitive
+ * exists in the design system, so this is a small in-app overlay built from `Fr*` atoms; it clears
+ * itself after a short window via [onDismiss].
+ */
+@Composable
+private fun ShareOutcomeToast(message: String, onDismiss: () -> Unit) {
+    LaunchedEffect(message) {
+        kotlinx.coroutines.delay(2500)
+        onDismiss()
+    }
+    Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
+        FrCard {
+            FrText(text = message, style = MaterialTheme.typography.bodyMedium)
+        }
     }
 }
 

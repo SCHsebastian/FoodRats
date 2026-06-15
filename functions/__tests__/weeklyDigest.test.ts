@@ -7,6 +7,7 @@ import {
   digestWindow,
   CREWS_PAGE_SIZE,
 } from "../src/triggers/weeklyDigest";
+import { digestDeepLink } from "../src/fcm/push";
 
 /**
  * Build a fake `ListCrewPage` over a fixed list of crew ids that hands them out
@@ -114,5 +115,17 @@ describe("digestWindow — previous-week ISO range", () => {
       prevStartKey: "2026-06-01",
       prevEndKey: "2026-06-07",
     });
+  });
+});
+
+describe("digestDeepLink — recap story deep link (roadmap §2.4)", () => {
+  it("builds the custom-scheme /digest/{weekStart} link the client parser expects", () => {
+    // Must match shared/.../navigation/DeepLink.kt SEGMENT_DIGEST → Route.WeeklyStory.
+    expect(digestDeepLink("2026-06-01")).toBe("foodrats://app/digest/2026-06-01");
+  });
+
+  it("the digest window's prevStartKey is the link's week segment", () => {
+    const window = digestWindow(DateTime.utc(2026, 6, 10, 9, 0, 0));
+    expect(digestDeepLink(window.prevStartKey)).toBe("foodrats://app/digest/2026-06-01");
   });
 });

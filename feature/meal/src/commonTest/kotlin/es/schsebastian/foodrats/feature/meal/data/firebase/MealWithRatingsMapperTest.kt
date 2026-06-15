@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.data.firebase
 
+import es.schsebastian.foodrats.core.domain.meal.MealKind
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -127,6 +128,37 @@ class MealWithRatingsMapperTest {
         val mwr = (result as Result.Ok).value
         assertEquals(1, mwr.ratingCount)
         assertEquals("—", mwr.ratings.first().raterDisplayName)
+    }
+
+    /**
+     * The read model feed/stats/detail consume (`MealWithRatings.meal`) carries `MealKind` through
+     * unchanged — both with no lookup and through the live-identity `baseMeal.copy(author = …)`
+     * branch (which must not drop `kind`). Locks the §4.2 claim that the seam rides `MealReadPort`
+     * for free: every read meal is `Solo` today, and nothing downstream branches on it.
+     */
+    @Test
+    fun read_model_carries_solo_kind_through_to_meal_with_ratings() {
+        val dto = MealDto(
+            id = "m1",
+            authorId = "uid-a",
+            authorName = "Maria",
+            crewId = "test-crew-1",
+            dayKey = "2026-05-20",
+            slot = "lunch",
+            platePath = "crews/test-crew-1/meals/m1.jpg",
+            dishName = "Paella",
+            publishedAtEpochMs = 1L,
+        )
+        // No-lookup branch.
+        val plain = (dto.toMealWithRatings(crewMembers = emptyMap()) as Result.Ok).value
+        assertEquals(MealKind.Solo, plain.meal.kind)
+        // Live-identity override branch (baseMeal.copy(author = …)) must preserve kind.
+        val withLive = (
+            dto.toMealWithRatings(
+                crewMembers = mapOf("uid-a" to CrewMemberLookup("NewName", "https://new/a.jpg")),
+            ) as Result.Ok
+            ).value
+        assertEquals(MealKind.Solo, withLive.meal.kind)
     }
 
     private data class FakeMember(val displayName: String, val avatarUrl: String?)

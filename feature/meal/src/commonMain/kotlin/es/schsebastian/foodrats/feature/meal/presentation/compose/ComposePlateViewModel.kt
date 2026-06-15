@@ -112,7 +112,7 @@ class ComposePlateViewModel(
                     // Detected ≠ confirmed: stamp ONLY the detected set. The confirmed
                     // `draftIngredients` stays driven by observeDraft and remains empty
                     // until the user confirms in the picker — detections are just its seed.
-                    updateDraft(UpdateMealDraftCommand.SetDetected(r.value.ingredients, r.value.version))
+                    updateDraft(UpdateMealDraftCommand.SetDetected(r.value.ingredients, r.value.dishSlug, r.value.version))
                     update {
                         it.copy(
                             classifying = false,

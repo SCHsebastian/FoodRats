@@ -1,10 +1,19 @@
 package es.schsebastian.foodrats.feature.stats.presentation.stats
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.data.share.RecordingStoryShareController
+import es.schsebastian.foodrats.core.data.share.StoryShareOutcome
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsValue
+import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.cuisine.Cuisine
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineSlug
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -57,24 +66,72 @@ class StatsViewModelTest {
     private val me = (AccountId.of("me") as Result.Ok).value
     private val crew = (CrewId.of("c") as Result.Ok).value
 
-    private fun makeMealMine(): MealWithRatings {
+    private fun makeMealMine(
+        id: String = "m",
+        cuisine: CuisineSlug? = null,
+        ingredients: List<IngredientSlug> = emptyList(),
+        detectedIngredients: List<IngredientSlug> = emptyList(),
+    ): MealWithRatings {
         val meal = Meal(
-            (MealId.of("m") as Result.Ok).value,
-            MealAuthor(me, "Me", null),
-            crew,
-            MealDay(today, zone),
-            MealSlot.Lunch,
-            "u",
-            (DishName.of("Pasta") as Result.Ok).value,
-            Description.EMPTY,
-            now,
+            id = (MealId.of(id) as Result.Ok).value,
+            author = MealAuthor(me, "Me", null),
+            crewId = crew,
+            day = MealDay(today, zone),
+            slot = MealSlot.Lunch,
+            photoUrl = "u",
+            dish = (DishName.of("Pasta") as Result.Ok).value,
+            description = Description.EMPTY,
+            publishedAt = now,
+            ingredients = ingredients,
+            detectedIngredients = detectedIngredients,
+            cuisine = cuisine,
         )
         return MealWithRatings(meal, emptyList())
     }
 
-    private fun makeVm(): StatsViewModel {
+    private fun cuisine(slug: String, name: String = slug) =
+        Cuisine((CuisineSlug.of(slug) as Result.Ok).value, name, slug)
+
+    private fun slug(raw: String) = (IngredientSlug.of(raw) as Result.Ok).value
+
+    private fun ingredient(slug: String, name: String = slug) =
+        Ingredient((IngredientSlug.of(slug) as Result.Ok).value, name, IngredientCategory.Vegetable)
+
+    /** A meal authored by [otherId] WITH one rating from [me], so the window has a non-null best plate. */
+    private fun makeRatedMeal(
+        id: String = "rated",
+        otherId: AccountId = (AccountId.of("chef") as Result.Ok).value,
+    ): MealWithRatings {
+        val meal = Meal(
+            id = (MealId.of(id) as Result.Ok).value,
+            author = MealAuthor(otherId, "Chef", null),
+            crewId = crew,
+            day = MealDay(today, zone),
+            slot = MealSlot.Lunch,
+            photoUrl = "photo-url-$id",
+            dish = (DishName.of("Lasagna") as Result.Ok).value,
+            description = Description.EMPTY,
+            publishedAt = now,
+        )
+        val rating = es.schsebastian.foodrats.core.domain.meal.MealRating(
+            raterId = me,
+            raterDisplayName = "Me",
+            raterAvatarUrl = null,
+            score = (es.schsebastian.foodrats.core.domain.meal.Score.of(5) as Result.Ok).value,
+            ratedAt = now,
+        )
+        return MealWithRatings(meal, listOf(rating))
+    }
+
+    private fun makeVm(
+        meals: List<MealWithRatings> = listOf(makeMealMine()),
+        cuisineCatalog: Map<CuisineSlug, Cuisine> = emptyMap(),
+        ingredientCatalog: Map<IngredientSlug, Ingredient> = emptyMap(),
+        shareController: RecordingStoryShareController = RecordingStoryShareController(),
+        analytics: RecordingAnalyticsTracker = RecordingAnalyticsTracker(),
+    ): StatsViewModel {
         val mealsFlow = MutableStateFlow<Result<List<MealWithRatings>, MealReadError>>(
-            Result.success(listOf(makeMealMine())),
+            Result.success(meals),
         )
         val active = object : ActiveCrewProvider {
             override val current: Flow<CrewId?> = MutableStateFlow(crew)
@@ -91,17 +148,26 @@ class StatsViewModelTest {
             override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay) = mealsFlow
         }
         val ingredientRead = object : IngredientReadPort {
-            override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = MutableStateFlow(emptyMap())
+            override fun observeCatalog(): Flow<Map<IngredientSlug, Ingredient>> = MutableStateFlow(ingredientCatalog)
             override suspend fun findBySlugs(slugs: Set<IngredientSlug>) = emptyList<Ingredient>()
             override suspend fun suggestForDish(dishSlug: String) = emptyList<IngredientSlug>()
+        }
+        val cuisineRead = object : CuisineReadPort {
+            override fun observeCatalog(): Flow<Map<CuisineSlug, Cuisine>> = MutableStateFlow(cuisineCatalog)
+            override suspend fun loadDishCuisine(dishSlug: String): CuisineSlug? = null
         }
         val uploadProgress = object : MealUploadProgressPort {
             override val status: MutableStateFlow<MealUploadStatus> =
                 MutableStateFlow(MealUploadStatus.Idle)
+            override val queue = MealUploadProgressPort.DEFAULT_QUEUE
         }
         return StatsViewModel(
-            observeStats = ObserveStatsUseCase(active, session, read, ingredientRead, clock, zone),
+            observeStats = ObserveStatsUseCase(active, session, read, ingredientRead, cuisineRead, clock, zone),
             uploadProgress = uploadProgress,
+            storyShareController = shareController,
+            clock = clock,
+            zone = zone,
+            analytics = analytics,
         )
     }
 
@@ -135,5 +201,134 @@ class StatsViewModelTest {
         val initial = vm.state.value.epoch
         vm.onIntent(StatsIntent.Refresh)
         assertEquals(initial + 1, vm.state.value.epoch)
+    }
+
+    @Test fun passport_marks_collected_and_locked_cells_with_progress() = runTest {
+        val italian = (CuisineSlug.of("italian") as Result.Ok).value
+        val japanese = (CuisineSlug.of("japanese") as Result.Ok).value
+        val vm = makeVm(
+            // One own meal stamped italian; japanese in the catalog but never cooked.
+            meals = listOf(makeMealMine(id = "m1", cuisine = italian)),
+            cuisineCatalog = linkedMapOf(
+                italian to cuisine("italian", "Italian"),
+                japanese to cuisine("japanese", "Japanese"),
+            ),
+        )
+        vm.state.test {
+            val s = expectMostRecentItem()
+            val passport = s.snapshot?.cuisinePassport
+            assertNotNull(passport)
+            assertEquals(2, passport.totalCount)
+            assertEquals(1, passport.collectedCount)
+            assertEquals(true, passport.cells.first { it.cuisine.slug == italian }.collected)
+            assertEquals(false, passport.cells.first { it.cuisine.slug == japanese }.collected)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun passport_is_null_when_cuisine_catalog_empty() = runTest {
+        val vm = makeVm(cuisineCatalog = emptyMap())
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertNotNull(s.snapshot)
+            assertNull(s.snapshot!!.cuisinePassport)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun bingo_marks_collected_and_locked_cells_with_progress() = runTest {
+        val tomato = slug("tomato")
+        val basil = slug("basil")
+        val garlic = slug("garlic")
+        val vm = makeVm(
+            // One own meal CONFIRMS tomato; basil is only an AI detection (must stay locked); garlic
+            // is in the catalog but never used.
+            meals = listOf(
+                makeMealMine(
+                    id = "m1",
+                    ingredients = listOf(tomato),
+                    detectedIngredients = listOf(basil),
+                ),
+            ),
+            ingredientCatalog = linkedMapOf(
+                tomato to ingredient("tomato", "Tomato"),
+                basil to ingredient("basil", "Basil"),
+                garlic to ingredient("garlic", "Garlic"),
+            ),
+        )
+        vm.state.test {
+            val s = expectMostRecentItem()
+            val bingo = s.snapshot?.ingredientBingo
+            assertNotNull(bingo)
+            assertEquals(3, bingo.totalCount)
+            assertEquals(1, bingo.collectedCount)
+            assertEquals(true, bingo.cells.first { it.ingredient.slug == tomato }.collected)
+            assertEquals(false, bingo.cells.first { it.ingredient.slug == basil }.collected)
+            assertEquals(false, bingo.cells.first { it.ingredient.slug == garlic }.collected)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun bingo_is_null_when_ingredient_catalog_empty() = runTest {
+        val vm = makeVm(ingredientCatalog = emptyMap())
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertNotNull(s.snapshot)
+            assertNull(s.snapshot!!.ingredientBingo)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ───────────────────────────── share (spec §8.2 / §12) ─────────────────────────────
+
+    @Test fun sharing_streak_invokes_launcher_and_fires_streak_event_on_success() = runTest {
+        val share = RecordingStoryShareController(outcome = StoryShareOutcome.OpenedInstagram)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = makeVm(shareController = share, analytics = analytics)
+        vm.onIntent(StatsIntent.ShareStreakTapped)
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(false, s.isPreparingShare)
+            assertEquals(ShareOutcomeUi.Succeeded, s.shareOutcome)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, share.callCount)
+        assertNull(share.lastCall!!.plateUrl) // streak card has no photo
+        val event = analytics.events.filterIsInstance<AnalyticsEvent.StreakShared>().single()
+        assertEquals("share", event.name)
+        assertEquals(AnalyticsValue.Count(1L), event.params["item_id"]) // makeVm seeds a 1-day streak
+    }
+
+    @Test fun sharing_streak_does_not_fire_event_on_failed_outcome() = runTest {
+        val share = RecordingStoryShareController(outcome = StoryShareOutcome.Failed)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = makeVm(shareController = share, analytics = analytics)
+        vm.onIntent(StatsIntent.ShareStreakTapped)
+        vm.state.test {
+            assertEquals(ShareOutcomeUi.Failed, expectMostRecentItem().shareOutcome)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, share.callCount)
+        assertEquals(0, analytics.events.filterIsInstance<AnalyticsEvent.StreakShared>().size)
+    }
+
+    @Test fun sharing_award_decodes_plate_url_and_fires_award_event() = runTest {
+        val share = RecordingStoryShareController(outcome = StoryShareOutcome.OpenedFallbackSheet)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = makeVm(meals = listOf(makeRatedMeal(id = "rated")), shareController = share, analytics = analytics)
+        // Read the best plate's id from the loaded snapshot, then share it.
+        val mealId = vm.state.value.snapshot!!.week.bestMeal!!.mealId.value
+        vm.onIntent(StatsIntent.ShareAwardTapped(mealId))
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(false, s.isPreparingShare)
+            assertEquals(ShareOutcomeUi.OpenedSheet, s.shareOutcome)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, share.callCount)
+        assertEquals("photo-url-rated", share.lastCall!!.plateUrl)
+        val event = analytics.events.filterIsInstance<AnalyticsEvent.AwardShared>().single()
+        assertEquals("share", event.name)
+        assertEquals(AnalyticsValue.Text(mealId), event.params["item_id"])
     }
 }

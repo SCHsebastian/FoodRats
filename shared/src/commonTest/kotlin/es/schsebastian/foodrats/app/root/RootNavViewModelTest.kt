@@ -3,6 +3,9 @@ package es.schsebastian.foodrats.app.root
 import app.cash.turbine.test
 import es.schsebastian.foodrats.app.navigation.DeepLinkBus
 import es.schsebastian.foodrats.app.navigation.Route
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
+import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
+import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -24,6 +27,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RootNavViewModelTest {
@@ -49,11 +53,26 @@ class RootNavViewModelTest {
         override val prompted = promptedFlow
         override suspend fun markPrompted(): Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
     }
+    // Default to a current-version grant so the consent gate is satisfied for tests that don't
+    // exercise it; the consent-gate test drives this flow explicitly.
+    private val consentFlow = MutableStateFlow<ConsentDecision>(
+        ConsentDecision.Granted(AnalyticsConfig.CURRENT_CONSENT_VERSION, Instant.fromEpochSeconds(0)),
+    )
+    private val consent = object : ConsentPort {
+        override val decision = consentFlow
+        override suspend fun grant() {
+            consentFlow.value = ConsentDecision.Granted(AnalyticsConfig.CURRENT_CONSENT_VERSION, Instant.fromEpochSeconds(0))
+        }
+        override suspend fun deny() {
+            consentFlow.value = ConsentDecision.Denied(AnalyticsConfig.CURRENT_CONSENT_VERSION, Instant.fromEpochSeconds(0))
+        }
+        override suspend fun revoke() = deny()
+    }
 
     @BeforeTest fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @AfterTest fun tearDown() { Dispatchers.resetMain() }
 
-    private fun buildVm() = RootNavViewModel(session, activeCrew, notifications, bus)
+    private fun buildVm() = RootNavViewModel(session, activeCrew, notifications, consent, bus)
 
     /** Bring all gates to satisfied so the stage resolves to Ready. */
     private fun makeReady() {
@@ -117,7 +136,7 @@ class RootNavViewModelTest {
         crewFlow.value = crewId("c1")
         promptedFlow.value = true
 
-        val vm = RootNavViewModel(resolvingSession, activeCrew, notifications, bus)
+        val vm = RootNavViewModel(resolvingSession, activeCrew, notifications, consent, bus)
         vm.effects.test {
             // Auth not resolved yet → no navigation at all (app stays on Splash).
             expectNoEvents()
@@ -138,6 +157,43 @@ class RootNavViewModelTest {
 
             bus.publish("https://foodrats.app/unknown/thing")
             expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun shows_consent_when_decision_needed_then_proceeds_to_main_after_a_decision() = runTest {
+        // All onboarding gates satisfied EXCEPT consent: an undecided (Unknown) decision must route to
+        // the consent screen and hold there — never landing on Main until the user decides.
+        consentFlow.value = ConsentDecision.Unknown
+        sessionFlow.value = Session(accountId("u1"), crewId("c1"))
+        promptedFlow.value = true
+        crewFlow.value = crewId("c1")
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.Consent), awaitItem())
+            expectNoEvents() // held on Consent — no Main while undecided
+
+            // User decides (grant or deny is equivalent for the gate; both settle needsDecision=false).
+            consent.deny()
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.Main), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun settled_current_version_denial_does_not_re_show_consent() = runTest {
+        // An explicit decline at the current consent version is a SETTLED decision: needsDecision is
+        // false, so the gate must skip the consent screen and go straight to Main — no re-prompt.
+        consentFlow.value = ConsentDecision.Denied(AnalyticsConfig.CURRENT_CONSENT_VERSION, Instant.fromEpochSeconds(0))
+        sessionFlow.value = Session(accountId("u1"), crewId("c1"))
+        promptedFlow.value = true
+        crewFlow.value = crewId("c1")
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.Main), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }

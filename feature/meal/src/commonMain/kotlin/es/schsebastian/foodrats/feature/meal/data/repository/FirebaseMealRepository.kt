@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.meal.data.repository
 
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.meal.DraftIngredients
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
@@ -9,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealKind
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
@@ -27,6 +29,7 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
+import es.schsebastian.foodrats.feature.meal.data.firebase.toDiscriminator
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
 import es.schsebastian.foodrats.feature.meal.data.firebase.toMealWithRatings
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
@@ -67,6 +70,7 @@ internal class FirebaseMealRepository(
     private val zone: TimeZone,
     private val accountRead: AccountReadPort,
     private val imageUrls: ImageUrlPort,
+    private val cuisineRead: CuisineReadPort,
 ) : MealRepository {
 
     // CoroutineExceptionHandler is mandatory: when sign-out revokes the auth token,
@@ -102,11 +106,16 @@ internal class FirebaseMealRepository(
                         val ids = dtos.flatMap { dto ->
                             listOfNotNull(dto.authorId) + dto.ratings.keys
                         }.mapNotNull { (AccountId.of(it) as? Result.Ok)?.value }.toSet()
-                        // Resolve plate PATHS → signed URLs once per dto change (avatars are
-                        // resolved upstream by AccountReadPort, so the lookup below already
-                        // carries signed avatar URLs). Cache absorbs re-resolution on scroll.
-                        val plateUrls = imageUrls
-                            .resolve(crewId, dtos.mapNotNull { it.platePath })
+                        // Resolve plate AND thumbnail PATHS → signed URLs once per dto change
+                        // (avatars are resolved upstream by AccountReadPort, so the lookup below
+                        // already carries signed avatar URLs). Thumbnails share the crew prefix, so
+                        // `mintPlateUrls` authorizes them in the same batch — no callable change
+                        // (roadmap §5.1 handoff). Cache absorbs re-resolution on scroll.
+                        val signedUrls = imageUrls
+                            .resolve(
+                                crewId,
+                                dtos.flatMap { listOfNotNull(it.platePath, it.thumbnailPath) },
+                            )
                             .getOrNull().orEmpty()
                         accountRead.observeMany(ids).map { identities ->
                             val lookup = identities.entries.mapNotNull { (id, acc) ->
@@ -114,8 +123,14 @@ internal class FirebaseMealRepository(
                             }.toMap()
                             dtos.mapNotNull { dto ->
                                 (dto.toMealWithRatings(lookup) as? Result.Ok)?.value?.let { mwr ->
-                                    val url = dto.platePath?.let { plateUrls[it] } ?: ""
-                                    mwr.copy(meal = mwr.meal.copy(photoUrl = url))
+                                    val plateUrl = dto.platePath?.let { signedUrls[it] } ?: ""
+                                    val thumbUrl = dto.thumbnailPath?.let { signedUrls[it] } ?: ""
+                                    mwr.copy(
+                                        meal = mwr.meal.copy(
+                                            photoUrl = plateUrl,
+                                            thumbnailUrl = thumbUrl,
+                                        ),
+                                    )
                                 }
                             }
                         }
@@ -181,6 +196,14 @@ internal class FirebaseMealRepository(
                     return@runCatching Result.failure(MealError.Publish.AlreadyPostedToday)
                 }
                 val currentAuthor = authorIdentity.current()
+                // Resolve the cuisine ONCE for the whole fan-out from the detected dish. Advisory:
+                // a missing/unmapped dish OR a lookup fault yields null (cuisine just stays
+                // unstamped) — it must NEVER block publishing. Stays inside this publish
+                // withContext (the single IO boundary); loadDishCuisine itself does no extra hop
+                // beyond its own, which is fine — it's still one logical publish operation.
+                val cuisineSlug = draft.detectedDishSlug
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { runCatching { cuisineRead.loadDishCuisine(it) }.getOrNull() }
                 var representative: Meal? = null
                 var anyFailed = false
                 var anyAlreadyExists = false
@@ -208,6 +231,10 @@ internal class FirebaseMealRepository(
                         // picker seed and is intentionally NOT written to the Meal.
                         ingredients = draft.ingredients.map { it.value },
                         classifierVersion = draft.classifierVersion,
+                        cuisine = cuisineSlug?.value,
+                        // Stamp Solo — the draft carries no kind yet (spec §4.3); every published
+                        // meal is Solo. Branch on draft.kind only when the Together build ships.
+                        kind = MealKind.Solo.toDiscriminator(),
                     )
                     try {
                         firestore.write(dto, mealId.value)

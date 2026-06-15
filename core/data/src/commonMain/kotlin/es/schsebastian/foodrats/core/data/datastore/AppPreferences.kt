@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.core.data.datastore
 
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
@@ -18,6 +19,23 @@ class AppPreferences(private val store: DataStore<Preferences>) {
     suspend fun <T : Any> set(key: StoreKey<T>, value: T) {
         FrLog.d(FrLog.Tags.Prefs) { "set(${key.prefs.name}) = $value" }
         store.edit { it[key.prefs] = value }
+    }
+
+    /**
+     * Writes multiple key/value pairs in a single DataStore transaction so observers never see a
+     * partially-applied set. Use this when several keys must update atomically (e.g. a consent
+     * decision's state + version + timestamp).
+     */
+    suspend fun setAll(vararg entries: Entry<*>) {
+        FrLog.d(FrLog.Tags.Prefs) { "setAll(${entries.joinToString { it.key.prefs.name }})" }
+        store.edit { prefs -> entries.forEach { it.applyTo(prefs) } }
+    }
+
+    /** A typed key/value pair for [setAll]. Build with [StoreKey.to]. */
+    class Entry<T : Any> internal constructor(val key: StoreKey<T>, private val value: T) {
+        internal fun applyTo(prefs: MutablePreferences) {
+            prefs[key.prefs] = value
+        }
     }
 
     suspend fun <T : Any> clear(key: StoreKey<T>) {

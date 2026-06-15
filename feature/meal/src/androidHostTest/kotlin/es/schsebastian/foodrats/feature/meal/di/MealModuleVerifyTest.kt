@@ -9,13 +9,14 @@ import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
-import es.schsebastian.foodrats.core.domain.notifications.StreakNotificationPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.time.Clock
+import es.schsebastian.foodrats.feature.meal.data.queue.ConnectivityMonitor
 import es.schsebastian.foodrats.feature.meal.data.upload.MealUploadScheduler
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.Json
@@ -35,8 +36,9 @@ import kotlin.test.Test
  *    `SessionProvider`, `ActiveCrewProvider`, `LocationProvider`, `FeatureFlagPort`
  *    (the meal-AI kill-switch `ClassifyDraftPlateUseCase` reads; bound per-platform).
  *  - Cross-feature ports the composer/coordinator resolve at app composition: `MealClassifierPort`
- *    (`:feature:meal-ai`), `IngredientReadPort` (`:feature:ingredient`), `StreakNotificationPort`
- *    (`:feature:notifications`).
+ *    (`:feature:meal-ai`), `IngredientReadPort` (`:feature:ingredient`). (The local-streak-nudge
+ *    `StreakNotificationPort` is no longer a coordinator dependency — the server `streakNudge`
+ *    Cloud Function supersedes the local DailyInactivityWorker; see the coordinator's publish arm.)
  *  - `MealUploadScheduler` is the per-platform binding (`mealAndroidModule`/`mealIosModule`).
  *
  * `verify` is JVM-only, so this lives in androidHostTest.
@@ -63,9 +65,10 @@ class MealModuleVerifyTest {
                 LocationProvider::class,
                 MealClassifierPort::class,
                 IngredientReadPort::class,
+                CuisineReadPort::class,
                 FeatureFlagPort::class,
-                StreakNotificationPort::class,
                 MealUploadScheduler::class,
+                ConnectivityMonitor::class,
                 AnalyticsPort::class,
             ),
         )

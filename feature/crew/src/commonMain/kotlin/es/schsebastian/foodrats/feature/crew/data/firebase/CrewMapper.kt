@@ -44,6 +44,7 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             ownerId = ownerId,
             createdAt = Instant.fromEpochMilliseconds(createdAtMs),
             members = members,
+            blindVoting = blindVoting,
         ),
     )
 }

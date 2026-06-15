@@ -26,15 +26,15 @@ class PersonalStreakTest {
     private val other = (AccountId.of("other") as Result.Ok).value
 
     private fun meal(author: AccountId, day: LocalDate) = Meal(
-        (MealId.of("${author.value}-$day") as Result.Ok).value,
-        MealAuthor(author, author.value, null),
-        (CrewId.of("c") as Result.Ok).value,
-        MealDay(day, zone),
-        MealSlot.Lunch,
-        "u",
-        (DishName.of("Pasta") as Result.Ok).value,
-        Description.EMPTY,
-        Instant.fromEpochMilliseconds(0L),
+        id = (MealId.of("${author.value}-$day") as Result.Ok).value,
+        author = MealAuthor(author, author.value, null),
+        crewId = (CrewId.of("c") as Result.Ok).value,
+        day = MealDay(day, zone),
+        slot = MealSlot.Lunch,
+        photoUrl = "u",
+        dish = (DishName.of("Pasta") as Result.Ok).value,
+        description = Description.EMPTY,
+        publishedAt = Instant.fromEpochMilliseconds(0L),
     )
 
     @Test fun posted_today_streak_is_one() {

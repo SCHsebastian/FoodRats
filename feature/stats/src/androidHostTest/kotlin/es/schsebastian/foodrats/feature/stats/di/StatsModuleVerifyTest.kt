@@ -1,6 +1,9 @@
 package es.schsebastian.foodrats.feature.stats.di
 
+import es.schsebastian.foodrats.core.data.share.StoryShareController
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
@@ -32,9 +35,12 @@ class StatsModuleVerifyTest {
                 SessionProvider::class,
                 MealReadPort::class,
                 IngredientReadPort::class,
+                CuisineReadPort::class,
                 MealUploadProgressPort::class,
                 Clock::class,
                 TimeZone::class,
+                StoryShareController::class,
+                AnalyticsPort::class,
             ),
         )
     }

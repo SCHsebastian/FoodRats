@@ -37,7 +37,9 @@ sealed interface CrewError {
         data object Unavailable : Backend
     }
 
-    sealed interface NotImplemented : CrewError {
-        data object RemoveMember : NotImplemented
+    sealed interface RemoveMember : CrewError {
+        data object NotOwner : RemoveMember        // only the crew owner may remove a member
+        data object CannotRemoveSelf : RemoveMember // the owner cannot remove themselves (leaving is a separate flow)
+        data object MemberNotFound : RemoveMember  // the target is not a member of this crew
     }
 }

@@ -41,6 +41,11 @@
 | `feed_day_viewed` | proposed | A feed day loads | `meal_count`, `day_offset` | `FeedViewModel` (wire next; guard noise) |
 | `streak_viewed` | proposed | Stats streak tab shown | — | `StatsViewModel` (wire next) |
 | `leaderboard_viewed` | proposed | Stats leaderboard tab shown | — | `StatsViewModel` (wire next) |
+| `achievement_unlocked` | live | An achievement's unlock timestamp persisted (Ok) | `achievement_id` | `AchievementsViewModel.persistAndCelebrate` |
+| `digest_story_opened` | live | Weekly-recap story first ready | `digest_source`, `scene_count` | `WeeklyStoryViewModel` (shared) |
+| `digest_story_scene_viewed` | live | A recap scene becomes visible | `scene_kind`, `scene_index` | `WeeklyStoryViewModel` (shared) |
+| `digest_story_completed` | live | Advanced past the last recap scene | `scene_count` | `WeeklyStoryViewModel` (shared) |
+| `share` | live | Recap scene shared as a story card (OpenedInstagram/FallbackSheet, not Failed) | `content_type=recap`, `item_id`=scene-kind wire slug | `WeeklyStoryViewModel.shareScene` (shared) |
 | `notif_permission_prompted` | live | OS permission dialog requested | `prompt_count` | `NotificationPermissionViewModel` |
 | `notif_permission_granted` | live | OS permission granted | — | `NotificationPermissionViewModel` |
 | `notif_permission_denied` | live | OS permission denied | — | `NotificationPermissionViewModel` |

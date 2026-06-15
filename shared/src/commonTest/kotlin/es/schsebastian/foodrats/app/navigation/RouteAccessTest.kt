@@ -24,6 +24,7 @@ class RouteAccessTest {
     fun protected_routes_require_a_session() {
         val protectedRoutes: List<Route> = listOf(
             Route.NotificationPermission,
+            Route.Consent,
             Route.CrewPicker,
             Route.CrewSettings(crewId = "crew-1"),
             Route.Profile,
@@ -32,6 +33,7 @@ class RouteAccessTest {
             Route.ComposePlate,
             Route.SelectIngredients,
             Route.MealDetail(mealId = "m1", dayIso = "2026-06-13"),
+            Route.WeeklyStory(weekStart = "2026-06-08"),
             MainTab.Feed,
             MainTab.Stats,
         )
@@ -49,6 +51,7 @@ class RouteAccessTest {
             Route.Splash,
             Route.SignIn,
             Route.NotificationPermission,
+            Route.Consent,
             Route.CrewPicker,
             Route.CrewSettings(crewId = "crew-1"),
             Route.Profile,
@@ -57,6 +60,7 @@ class RouteAccessTest {
             Route.ComposePlate,
             Route.SelectIngredients,
             Route.MealDetail(mealId = "m1", dayIso = "2026-06-13"),
+            Route.WeeklyStory(weekStart = "2026-06-08"),
             MainTab.Feed,
             MainTab.Stats,
         )

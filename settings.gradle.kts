@@ -29,6 +29,7 @@ dependencyResolutionManagement {
 }
 
 include(":androidApp")
+include(":baselineprofile")
 include(":catalogApp")
 include(":shared")
 
@@ -38,6 +39,7 @@ include(":core:designsystem")
 include(":core:presentation")
 include(":core:i18n")
 
+include(":feature:achievements")
 include(":feature:auth")
 include(":feature:crew")
 include(":feature:feed")

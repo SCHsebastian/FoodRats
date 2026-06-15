@@ -2,6 +2,9 @@ package es.schsebastian.foodrats.feature.crew.presentation.settings
 
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -12,6 +15,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -25,10 +29,12 @@ class CrewSettingsViewModel(
     private val observeCrew: ObserveCrewUseCase,
     private val renameCrew: RenameCrewUseCase,
     private val deleteCrew: DeleteCrewUseCase,
+    private val setBlindVoting: SetBlindVotingUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val removeMember: RemoveMemberUseCase,
     private val session: SessionProvider,
     private val accountRead: AccountReadPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<CrewSettingsState, CrewSettingsIntent, CrewSettingsEffect>(CrewSettingsState()) {
 
     init {
@@ -64,6 +70,7 @@ class CrewSettingsViewModel(
     override suspend fun handle(intent: CrewSettingsIntent) = when (intent) {
         is CrewSettingsIntent.CrewNameChanged -> update { it.copy(editingCrewName = intent.value) }
         CrewSettingsIntent.SaveCrewName -> doSaveCrewName()
+        is CrewSettingsIntent.ToggleBlindVoting -> doToggleBlindVoting(intent.enabled)
         CrewSettingsIntent.SwitchCrew -> emit(CrewSettingsEffect.NavigateToCrewPicker)
         CrewSettingsIntent.Leave -> doLeave()
         CrewSettingsIntent.RequestDelete -> update { it.copy(showDeleteConfirm = true) }
@@ -79,6 +86,16 @@ class CrewSettingsViewModel(
         when (val r = renameCrew(crewId, name)) {
             is Result.Ok -> update { it.copy(isSavingCrewName = false) }
             is Result.Err -> update { it.copy(isSavingCrewName = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doToggleBlindVoting(enabled: Boolean) {
+        update { it.copy(isSavingBlindVoting = true, error = null) }
+        when (val r = setBlindVoting(crewId, enabled)) {
+            // On success the crew listener re-emits with the new flag — state.crew is the
+            // single source of truth for the switch's checked position; no local copy here.
+            is Result.Ok -> update { it.copy(isSavingBlindVoting = false) }
+            is Result.Err -> update { it.copy(isSavingBlindVoting = false, error = r.error) }
         }
     }
 
@@ -100,9 +117,20 @@ class CrewSettingsViewModel(
     }
 
     private suspend fun doRemoveMember(intent: CrewSettingsIntent.RemoveMemberConfirmed) {
-        when (val r = removeMember(intent.accountId)) {
-            is Result.Ok -> Unit
-            is Result.Err -> update { it.copy(error = r.error) }
+        val target = intent.accountId
+        // Capture the live name BEFORE the write, so the success snackbar can still name the member
+        // after the crew flow drops their row.
+        val removedName = currentState.identities[target]?.displayName
+        update { it.copy(removingMemberIds = it.removingMemberIds + target, error = null) }
+        when (val r = removeMember(crewId, target)) {
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.CrewMemberRemoved(crewId))
+                update { it.copy(removingMemberIds = it.removingMemberIds - target) }
+                emit(CrewSettingsEffect.MemberRemoved(removedName))
+            }
+            is Result.Err -> update {
+                it.copy(removingMemberIds = it.removingMemberIds - target, error = r.error)
+            }
         }
     }
 }

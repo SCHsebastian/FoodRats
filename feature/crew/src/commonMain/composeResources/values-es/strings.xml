@@ -26,6 +26,9 @@
     <string name="crew_settings_danger_section">Zona de peligro</string>
     <string name="crew_settings_crew_name_label">Nombre del grupo</string>
     <string name="crew_settings_save">Guardar</string>
+    <string name="crew_settings_blind_voting_section">Votación a ciegas</string>
+    <string name="crew_settings_blind_voting_label">Ocultar quién cocinó hasta votar</string>
+    <string name="crew_settings_blind_voting_description">Cuando está activado, el autor de un plato permanece oculto hasta que lo hayas puntuado, para que nadie se deje influir por quién cocinó.</string>
     <string name="crew_settings_switch_crew">Cambiar de grupo</string>
     <string name="crew_settings_invite_code">Código de invitación</string>
     <string name="crew_settings_share">Compartir</string>
@@ -50,9 +53,22 @@
     <string name="crew_error_authorization_not_owner">Solo el dueño del grupo puede hacer esto.</string>
     <string name="crew_error_validation_display_name_blank">El nombre de usuario no puede estar vacío.</string>
     <string name="crew_error_validation_display_name_too_long">El nombre de usuario es demasiado largo (máx. 40 caracteres).</string>
-    <string name="crew_remove_member_not_yet_available">Quitar miembros aún no está disponible — pronto.</string>
+    <string name="crew_error_remove_member_not_owner">Solo el dueño del grupo puede quitar miembros.</string>
+    <string name="crew_error_remove_member_cannot_remove_self">No puedes quitarte a ti mismo — mejor sal del grupo.</string>
+    <string name="crew_error_remove_member_member_not_found">Esa persona no es miembro de este grupo.</string>
     <string name="crew_settings_remove_member_cta">Quitar</string>
     <string name="crew_settings_remove_member_confirm_title">¿Quitar a %1$s?</string>
     <string name="crew_settings_remove_member_confirm_body">%1$s perderá el acceso al grupo.</string>
+    <string name="crew_settings_member_removed">Se quitó a %1$s del grupo.</string>
     <string name="crew_member_deleted">Usuario eliminado</string>
+    <string name="crew_settings_share_link">Compartir enlace de invitación</string>
+    <string name="crew_settings_show_qr">Mostrar código QR</string>
+    <string name="crew_settings_qr_caption">Escanea para unirte a %1$s</string>
+    <string name="crew_settings_qr_close">Listo</string>
+    <string name="crew_invite_share_message">Únete a mi grupo %1$s en FoodRats: %2$s</string>
+    <string name="crew_invite_eyebrow">Invitación al grupo</string>
+    <string name="crew_invite_subtitle">Te han invitado a unirte a</string>
+    <string name="crew_invite_join_cta">Unirme al grupo</string>
+    <string name="crew_invite_decline_cta">Ahora no</string>
+    <string name="crew_invite_back_cta">Atrás</string>
 </resources>

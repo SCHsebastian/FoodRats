@@ -4,6 +4,7 @@ import dev.gitlive.firebase.auth.FirebaseAuth
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.storage.FirebaseStorage
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
@@ -47,6 +48,7 @@ class AuthModuleVerifyTest {
                 TokenRegistrationPort::class,
                 NotificationPermissionPort::class,
                 AnalyticsPort::class,
+                ConsentPort::class,
             ),
         )
     }

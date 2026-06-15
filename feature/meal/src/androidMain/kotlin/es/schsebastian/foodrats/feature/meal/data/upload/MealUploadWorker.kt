@@ -4,20 +4,31 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 
 /**
- * Background-survivable wrapper around [BackgroundMealUploadCoordinator].
+ * Background-survivable wrapper around [BackgroundMealUploadCoordinator] +
+ * the offline-first durable queue (roadmap §5.2).
  *
  * WorkManager keeps the request alive across process death, network drops,
  * and reboots (with the `KEEP` unique-work policy so a re-enqueue can't pile
- * up workers). The actual publish runs through the coordinator's
- * `resumeFromBackgroundWorker()` so the in-process flow and this one share
- * a single mutex — we never run the publish twice in parallel.
+ * up workers, and a `NetworkType.CONNECTED` constraint so it fires on reconnect).
+ * The worker:
+ *  1. resumes the legacy single-flag upload (`resumeFromBackgroundWorker()`),
+ *     sharing the coordinator's mutex so we never publish twice in parallel; and
+ *  2. drains the durable [DraftRetryRunner] queue ([DraftRetryRunner.runOnce] with
+ *     no scope, so it relies on WorkManager's backoff rather than scheduling its
+ *     own in-process delay — the worker process may die between attempts).
+ * Both publish through the same idempotent deterministic `MealId`, so the two
+ * paths can never duplicate a meal.
  *
- * Resolves the coordinator at runtime via Koin (`KoinComponent`) because
- * WorkManager instantiates workers via reflection and we can't pass it in.
+ * `Result.retry` (→ WorkManager exponential backoff) iff anything is still
+ * undrained; `Result.success` once both paths report done.
+ *
+ * Resolves dependencies at runtime via Koin (`KoinComponent`) because
+ * WorkManager instantiates workers via reflection and we can't pass them in.
  */
 class MealUploadWorker(
     appContext: Context,
@@ -25,11 +36,17 @@ class MealUploadWorker(
 ) : CoroutineWorker(appContext, params), KoinComponent {
 
     private val coordinator: BackgroundMealUploadCoordinator by inject()
+    private val retryRunner: DraftRetryRunner by inject()
 
     override suspend fun doWork(): Result =
-        runCatching { coordinator.resumeFromBackgroundWorker() }.fold(
-            onSuccess = { succeeded ->
-                if (succeeded) Result.success() else Result.retry()
+        runCatching {
+            val singleDone = coordinator.resumeFromBackgroundWorker()
+            // No scope → no in-process backoff delay; WorkManager backoff drives retries.
+            val queueDrained = retryRunner.runOnce(scope = null)
+            singleDone && queueDrained
+        }.fold(
+            onSuccess = { done ->
+                if (done) Result.success() else Result.retry()
             },
             onFailure = { t ->
                 FrLog.w("MealUpload", t) { "worker failed: ${t.message}" }

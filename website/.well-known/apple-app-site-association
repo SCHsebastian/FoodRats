@@ -1,0 +1,23 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["2AH7L26L78.es.schsebastian.foodrats"],
+        "components": [
+          {
+            "/": "/meal/*",
+            "comment": "Meal detail — /meal/{mealId}/{dayIso}"
+          },
+          {
+            "/": "/crew/*",
+            "comment": "Crew settings — /crew/{crewId}"
+          },
+          {
+            "/": "/invite/*",
+            "comment": "Crew invite — /invite/{code}"
+          }
+        ]
+      }
+    ]
+  }
+}

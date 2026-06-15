@@ -15,8 +15,18 @@ object DeepLinks {
     const val APP_SCHEME = "foodrats"
     const val APP_HOST = "app"
 
-    const val SEGMENT_MEAL = "meal"   // /meal/{mealId}/{dayIso}  → Route.MealDetail
-    const val SEGMENT_CREW = "crew"   // /crew/{crewId}           → Route.CrewSettings
+    const val SEGMENT_MEAL = "meal"     // /meal/{mealId}/{dayIso}  → Route.MealDetail
+    const val SEGMENT_CREW = "crew"     // /crew/{crewId}           → Route.CrewSettings
+    const val SEGMENT_DIGEST = "digest" // /digest/{weekStart}      → Route.WeeklyStory
+    const val SEGMENT_INVITE = "invite" // /invite/{code}           → Route.InvitePreview
+
+    /**
+     * Canonical shareable invite URL for [code], e.g. `https://foodrats.app/invite/AB2K9P`. Uses the
+     * Universal/App-Links host so a recipient without the app installed still hits the (user-hosted)
+     * web unfurl page, while an installed app intercepts it (autoVerify). The single source of truth
+     * for the URL a crew member shares — must mirror the [parseDeepLink] `invite` arm exactly.
+     */
+    fun inviteUrl(code: String): String = "$WEB_SCHEME://$WEB_HOST/$SEGMENT_INVITE/$code"
 }
 
 /**
@@ -37,6 +47,15 @@ fun parseDeepLink(uriString: String): Route? {
 
         segments.size >= 2 && segments[0] == DeepLinks.SEGMENT_CREW ->
             Route.CrewSettings(crewId = segments[1])
+
+        segments.size >= 2 && segments[0] == DeepLinks.SEGMENT_DIGEST ->
+            // Reached via the weekly-digest push tap → the story records a notification open source.
+            Route.WeeklyStory(weekStart = segments[1], fromNotification = true)
+
+        segments.size >= 2 && segments[0] == DeepLinks.SEGMENT_INVITE ->
+            // Self-sufficient invite: the link carries the crew CODE (not the crew id), so the
+            // accept screen can resolve + join the crew straight from the link without a prior code.
+            Route.InvitePreview(code = segments[1])
 
         else -> null
     }

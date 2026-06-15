@@ -9,6 +9,7 @@ sealed interface RootStage {
     data object Splash : RootStage
     data object NeedsSignIn : RootStage
     data object NeedsNotificationPermission : RootStage
+    data object NeedsConsent : RootStage
     data object NeedsCrew : RootStage
     data object Ready : RootStage
 }

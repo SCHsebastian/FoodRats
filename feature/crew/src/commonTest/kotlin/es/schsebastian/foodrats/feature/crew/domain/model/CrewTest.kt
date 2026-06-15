@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -52,5 +53,16 @@ class CrewTest {
         val crew = crewOf(listOf("a", "b"))
         val result = crew.addMember(member("a"))
         assertEquals(Result.failure(CrewError.Membership.AlreadyMember), result)
+    }
+
+    @Test fun blindVoting_defaults_off() {
+        assertFalse(crewOf(listOf("a", "b")).blindVoting)
+    }
+
+    @Test fun addMember_preserves_blindVoting() {
+        val crew = crewOf(listOf("a", "b")).copy(blindVoting = true)
+        val result = crew.addMember(member("c"))
+        assertTrue(result is Result.Ok)
+        assertTrue(result.value.blindVoting)
     }
 }

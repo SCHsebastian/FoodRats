@@ -14,6 +14,7 @@ enum class AuthMethod(val wire: String) {
 
 enum class JoinMethod(val wire: String) {
     INVITE_CODE("invite_code"),
+    INVITE_LINK("invite_link"),
 }
 
 // Meal slot is the domain type `core.domain.meal.MealSlot`; events emit `slot.key()` directly rather
@@ -28,4 +29,10 @@ enum class PublishSource(val wire: String) {
 enum class CaptureSource(val wire: String) {
     CAMERA("camera"),
     GALLERY("gallery"),
+}
+
+/** How the weekly-recap story was reached (roadmap §2.4). */
+enum class DigestStorySource(val wire: String) {
+    NOTIFICATION("notification"),
+    IN_APP("in_app"),
 }

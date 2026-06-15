@@ -42,6 +42,17 @@ interface CrewDataSource {
     /** Throws [NotFoundException] / [NotMemberException] (+ mapped backend throwables) on failure. */
     suspend fun leave(crewId: CrewId, leaver: AccountId)
 
+    /**
+     * Owner-initiated removal of [target] from the crew. Atomic: drops [target] from both
+     * `memberIds` and the `members` map inside a transaction.
+     *
+     * Throws [NotFoundException] (crew gone) / [NotMemberException] (target is not a member —
+     * the TOCTOU guard re-checked inside the transaction) (+ mapped backend throwables) on failure.
+     * The owner / not-self invariants are enforced by the repository (read-then-decide) and by
+     * `firestore.rules` server-side; the transaction here owns only the atomic membership mutation.
+     */
+    suspend fun removeMember(crewId: CrewId, target: AccountId)
+
     fun observeMyCrews(accountId: AccountId): Flow<List<CrewDto>>
 
     fun observeCrew(crewId: CrewId): Flow<CrewDto?>
@@ -49,7 +60,17 @@ interface CrewDataSource {
     /** Single-shot read of a crew; returns null on not-found or error. */
     suspend fun fetchOnce(crewId: CrewId): Crew?
 
+    /**
+     * Single-shot read of a crew via its invite [code] — resolves `crewCodes/{code}` → crew id →
+     * `crews/{crewId}`. Used by the accept-invite preview (the recipient has the code from the link,
+     * not the crew id). Throws [CodeUnknownException] (code doc missing) / [NotFoundException] (crew
+     * doc gone) (+ mapped backend throwables) on failure.
+     */
+    suspend fun fetchByCode(code: CrewCode): Crew
+
     suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError>
 
     suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError>
+
+    suspend fun setBlindVoting(crewId: CrewId, enabled: Boolean): Result<Unit, CrewError>
 }

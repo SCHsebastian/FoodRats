@@ -8,7 +8,9 @@ import foodrats.feature.crew.generated.resources.crew_error_already_member
 import foodrats.feature.crew.generated.resources.crew_error_authorization_not_owner
 import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_blank
 import foodrats.feature.crew.generated.resources.crew_error_validation_display_name_too_long
-import foodrats.feature.crew.generated.resources.crew_remove_member_not_yet_available
+import foodrats.feature.crew.generated.resources.crew_error_remove_member_cannot_remove_self
+import foodrats.feature.crew.generated.resources.crew_error_remove_member_member_not_found
+import foodrats.feature.crew.generated.resources.crew_error_remove_member_not_owner
 import foodrats.feature.crew.generated.resources.crew_error_code_malformed
 import foodrats.feature.crew.generated.resources.crew_error_code_unknown
 import foodrats.feature.crew.generated.resources.crew_error_collision
@@ -33,6 +35,9 @@ import foodrats.feature.crew.generated.resources.crew_picker_join_cta
 import foodrats.feature.crew.generated.resources.crew_picker_title
 import foodrats.feature.crew.generated.resources.crew_settings_actions_section
 import foodrats.feature.crew.generated.resources.crew_settings_back_cta
+import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_description
+import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_label
+import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_section
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
@@ -48,6 +53,7 @@ import foodrats.feature.crew.generated.resources.crew_settings_members_section
 import foodrats.feature.crew.generated.resources.crew_settings_owner_badge
 import foodrats.feature.crew.generated.resources.crew_settings_role_member
 import foodrats.feature.crew.generated.resources.crew_settings_role_owner
+import foodrats.feature.crew.generated.resources.crew_settings_member_removed
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_body
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_title
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_cta
@@ -55,6 +61,16 @@ import foodrats.feature.crew.generated.resources.crew_settings_save
 import foodrats.feature.crew.generated.resources.crew_settings_copy_cta
 import foodrats.feature.crew.generated.resources.crew_settings_share
 import foodrats.feature.crew.generated.resources.crew_settings_share_code
+import foodrats.feature.crew.generated.resources.crew_settings_share_link
+import foodrats.feature.crew.generated.resources.crew_settings_show_qr
+import foodrats.feature.crew.generated.resources.crew_settings_qr_caption
+import foodrats.feature.crew.generated.resources.crew_settings_qr_close
+import foodrats.feature.crew.generated.resources.crew_invite_share_message
+import foodrats.feature.crew.generated.resources.crew_invite_eyebrow
+import foodrats.feature.crew.generated.resources.crew_invite_subtitle
+import foodrats.feature.crew.generated.resources.crew_invite_join_cta
+import foodrats.feature.crew.generated.resources.crew_invite_decline_cta
+import foodrats.feature.crew.generated.resources.crew_invite_back_cta
 import foodrats.feature.crew.generated.resources.crew_settings_switch_crew
 import foodrats.feature.crew.generated.resources.crew_settings_title
 import org.jetbrains.compose.resources.StringResource
@@ -86,10 +102,23 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsDangerSection(Res.string.crew_settings_danger_section),
     SettingsCrewNameLabel(Res.string.crew_settings_crew_name_label),
     SettingsSave(Res.string.crew_settings_save),
+    SettingsBlindVotingSection(Res.string.crew_settings_blind_voting_section),
+    SettingsBlindVotingLabel(Res.string.crew_settings_blind_voting_label),
+    SettingsBlindVotingDescription(Res.string.crew_settings_blind_voting_description),
     SettingsSwitchCrew(Res.string.crew_settings_switch_crew),
     SettingsInviteCode(Res.string.crew_settings_invite_code),
     SettingsShare(Res.string.crew_settings_share),
+    SettingsShareLink(Res.string.crew_settings_share_link),
+    SettingsShowQr(Res.string.crew_settings_show_qr),
+    SettingsQrCaption(Res.string.crew_settings_qr_caption),
+    SettingsQrClose(Res.string.crew_settings_qr_close),
     SettingsCopyCta(Res.string.crew_settings_copy_cta),
+    InviteShareMessage(Res.string.crew_invite_share_message),
+    InviteEyebrow(Res.string.crew_invite_eyebrow),
+    InviteSubtitle(Res.string.crew_invite_subtitle),
+    InviteJoinCta(Res.string.crew_invite_join_cta),
+    InviteDeclineCta(Res.string.crew_invite_decline_cta),
+    InviteBackCta(Res.string.crew_invite_back_cta),
     SettingsDeleteCta(Res.string.crew_settings_delete_cta),
     SettingsDeleteTitle(Res.string.crew_settings_delete_title),
     SettingsDeleteBody(Res.string.crew_settings_delete_body),
@@ -110,9 +139,12 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     ErrorAuthorizationNotOwner(Res.string.crew_error_authorization_not_owner),
     ErrorValidationDisplayNameBlank(Res.string.crew_error_validation_display_name_blank),
     ErrorValidationDisplayNameTooLong(Res.string.crew_error_validation_display_name_too_long),
-    RemoveMemberNotYetAvailable(Res.string.crew_remove_member_not_yet_available),
+    ErrorRemoveMemberNotOwner(Res.string.crew_error_remove_member_not_owner),
+    ErrorRemoveMemberCannotRemoveSelf(Res.string.crew_error_remove_member_cannot_remove_self),
+    ErrorRemoveMemberMemberNotFound(Res.string.crew_error_remove_member_member_not_found),
     SettingsRemoveMemberCta(Res.string.crew_settings_remove_member_cta),
     SettingsRemoveMemberConfirmTitle(Res.string.crew_settings_remove_member_confirm_title),
     SettingsRemoveMemberConfirmBody(Res.string.crew_settings_remove_member_confirm_body),
+    SettingsMemberRemoved(Res.string.crew_settings_member_removed),
     MemberDeleted(Res.string.crew_member_deleted),
 }

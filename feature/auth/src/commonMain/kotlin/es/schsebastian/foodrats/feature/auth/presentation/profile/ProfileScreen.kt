@@ -16,6 +16,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
@@ -49,6 +50,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
+    onOpenAchievements: () -> Unit = {},
     vm: ProfileViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -120,6 +122,8 @@ fun ProfileScreen(
                 )
             }) }
             item { PreferencesSection(state, vm) }
+            item { AchievementsSection(onOpenAchievements) }
+            item { DataExportSection(state, vm) }
             item { DangerZoneSection(state, vm) }
         }
     }
@@ -279,6 +283,77 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
                 )
             }
             Spacer(Modifier.height(Spacing.xs))
+        }
+
+        FrSettingsDivider()
+
+        // Analytics consent — withdraw or re-grant at any time (GDPR Art. 7(3)). The switch
+        // mirrors ConsentPort.decision; flipping it writes grant()/revoke().
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileAnalyticsRow),
+            subtitle = if (state.analyticsConsentGranted)
+                resolve(AuthStringKey.ProfileAnalyticsSubtitleOn)
+            else
+                resolve(AuthStringKey.ProfileAnalyticsSubtitleOff),
+            icon = FrIcons.Stats,
+            trailing = {
+                FrSwitch(
+                    checked = state.analyticsConsentGranted,
+                    onCheckedChange = { vm.onIntent(ProfileIntent.AnalyticsConsentToggled(it)) },
+                )
+            },
+        )
+    }
+}
+
+@Composable
+private fun AchievementsSection(onOpenAchievements: () -> Unit) {
+    FrSettingsSection(title = resolve(AuthStringKey.ProfileAchievementsSection)) {
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileAchievementsRow),
+            subtitle = resolve(AuthStringKey.ProfileAchievementsSubtitle),
+            icon = FrIcons.Trophy,
+            onClick = onOpenAchievements,
+        )
+    }
+}
+
+@Composable
+private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
+    val uriHandler = LocalUriHandler.current
+    FrSettingsSection(title = resolve(AuthStringKey.ProfileAccountSection)) {
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ExportDataRow),
+            subtitle = if (state.isExportingData)
+                resolve(AuthStringKey.ExportDataInFlight)
+            else
+                resolve(AuthStringKey.ExportDataSubtitle),
+            icon = FrIcons.Stats,
+            enabled = !state.isExportingData,
+            onClick = { vm.onIntent(ProfileIntent.ExportMyData) },
+        )
+        state.exportError?.let {
+            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
+            Spacer(Modifier.height(Spacing.xs))
+        }
+        state.exportDownloadUrl?.let { url ->
+            FrText(
+                text = resolve(AuthStringKey.ExportDataReadySubtitle),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+            FrButton(
+                label = resolve(AuthStringKey.ExportDataReadyCta),
+                onClick = {
+                    uriHandler.openUri(url)
+                    vm.onIntent(ProfileIntent.DismissExportResult)
+                },
+                variant = FrButtonVariant.Secondary,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
         }
     }
 }

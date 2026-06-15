@@ -33,6 +33,10 @@ kotlin {
             implementation(libs.bundles.feature.ui)
             implementation(libs.bundles.kotlinx.common)
             implementation(libs.bundles.firebase.gitlive)
+            // GitLive Functions binding — the `deleteAccount` callable backing
+            // FirebaseAccountDeletionPort. Not part of the firebase-gitlive bundle
+            // (same as :core:data, which pulls it in standalone for FirebaseImageUrlResolver).
+            implementation(libs.firebase.functions)
             // Avatar picker (gallery) — mirrors :feature:crew. If iOS link breaks on
             // material-icons-extended, add the same exclude noted in CLAUDE.md.
             implementation(libs.imagepickerkmp)

@@ -30,6 +30,16 @@ object Keys {
      * pick it up.
      */
     val MealUploadPending    = StoreKey(booleanPreferencesKey("meal_upload_pending"))
+
+    /**
+     * The durable offline-first publish queue (roadmap §5.2): a JSON array of
+     * queued drafts (each with its status, attempt count, and base64 plate bytes)
+     * so a process death or airplane-mode session never loses a composed plate.
+     * Distinct from [MealDraftJson] (the single in-flight composer draft) and
+     * [MealUploadPending] (the legacy single-flag resume marker). Owned by
+     * `:feature:meal`'s `DraftQueueLocalStore`.
+     */
+    val DraftQueueJson       = StoreKey(stringPreferencesKey("draft_queue_json"))
     val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
 
     // ── Analytics consent (GDPR/CCPA opt-in). Absence of [AnalyticsConsentState] = "Unknown"

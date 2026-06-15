@@ -23,6 +23,14 @@ import foodrats.feature.feed.generated.resources.feed_delete_meal_confirm_body
 import foodrats.feature.feed.generated.resources.feed_delete_meal_confirm_title
 import foodrats.feature.feed.generated.resources.feed_delete_meal_cta
 import foodrats.feature.feed.generated.resources.feed_average_heading
+import foodrats.feature.feed.generated.resources.feed_blind_author
+import foodrats.feature.feed.generated.resources.feed_reaction_count
+import foodrats.feature.feed.generated.resources.feed_reaction_cta
+import foodrats.feature.feed.generated.resources.feed_reaction_error_meal_not_found
+import foodrats.feature.feed.generated.resources.feed_reaction_error_offline
+import foodrats.feature.feed.generated.resources.feed_reaction_error_unauthorized
+import foodrats.feature.feed.generated.resources.feed_reaction_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_reactions_label
 import foodrats.feature.feed.generated.resources.feed_detail_back_cta
 import foodrats.feature.feed.generated.resources.feed_detail_not_found
 import foodrats.feature.feed.generated.resources.feed_detail_title
@@ -41,8 +49,13 @@ import foodrats.feature.feed.generated.resources.feed_pick_crew_cta
 import foodrats.feature.feed.generated.resources.feed_no_votes_yet
 import foodrats.feature.feed.generated.resources.feed_plates_count
 import foodrats.feature.feed.generated.resources.feed_prev_day
+import foodrats.feature.feed.generated.resources.feed_queue_dismiss_cta
+import foodrats.feature.feed.generated.resources.feed_queue_failed
+import foodrats.feature.feed.generated.resources.feed_queue_pending
+import foodrats.feature.feed.generated.resources.feed_queue_retry_cta
 import foodrats.feature.feed.generated.resources.feed_rating_summary
 import foodrats.feature.feed.generated.resources.feed_rating_summary_votes
+import foodrats.feature.feed.generated.resources.feed_share_meal
 import foodrats.feature.feed.generated.resources.feed_slot_breakfast
 import foodrats.feature.feed.generated.resources.feed_slot_dinner
 import foodrats.feature.feed.generated.resources.feed_slot_lunch
@@ -87,6 +100,14 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     ErrorCrewNotFound(Res.string.feed_error_crew_not_found),
     ErrorUnavailable(Res.string.feed_error_unavailable),
     NoVotesYet(Res.string.feed_no_votes_yet),
+    BlindAuthor(Res.string.feed_blind_author),
+    ReactionCta(Res.string.feed_reaction_cta),
+    ReactionCount(Res.string.feed_reaction_count),
+    ReactionsLabel(Res.string.feed_reactions_label),
+    ReactionErrorOffline(Res.string.feed_reaction_error_offline),
+    ReactionErrorUnauthorized(Res.string.feed_reaction_error_unauthorized),
+    ReactionErrorMealNotFound(Res.string.feed_reaction_error_meal_not_found),
+    ReactionErrorUnavailable(Res.string.feed_reaction_error_unavailable),
     AverageHeading(Res.string.feed_average_heading),
     RateThisMeal(Res.string.feed_rate_this_meal),
     YourVote(Res.string.feed_your_vote),
@@ -106,6 +127,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     RateErrorUnauthorized(Res.string.feed_rate_error_unauthorized),
     RateErrorOffline(Res.string.feed_rate_error_offline),
     RateErrorUnavailable(Res.string.feed_rate_error_unavailable),
+    ShareMeal(Res.string.feed_share_meal),
     DetailBackCta(Res.string.feed_detail_back_cta),
     DetailTitle(Res.string.feed_detail_title),
     DetailNotFound(Res.string.feed_detail_not_found),
@@ -129,4 +151,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     DeleteCommentConfirmTitle(Res.string.feed_delete_comment_confirm_title),
     DeleteConfirmCta(Res.string.feed_delete_confirm_cta),
     DeleteCancelCta(Res.string.feed_delete_cancel_cta),
+    QueuePending(Res.string.feed_queue_pending),
+    QueueFailed(Res.string.feed_queue_failed),
+    QueueRetryCta(Res.string.feed_queue_retry_cta),
+    QueueDismissCta(Res.string.feed_queue_dismiss_cta),
 }

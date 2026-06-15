@@ -38,11 +38,24 @@ androidxWork = "2.10.0"
 androidxLifecycleProcess = "2.9.0"
 coil = "3.4.0"
 # MediaPipe Tasks Vision — on-device food classifier (:feature:meal-ai).
-# 0.10.35 ships 16-KB-page-aligned native .so (libmediapipe_tasks_vision_jni.so),
-# required for Play submissions targeting Android 15+ since 2025-11-01. Earlier pins
-# (e.g. 0.10.14) emit 4-KB-aligned LOAD segments and are rejected by Play.
-# Keep in lockstep with the iOS MediaPipeTasksVision cocoapod pin in iosApp/Podfile.
+# 0.10.35 ships 16-KB-page-aligned native libs — required for Play submissions
+# targeting Android 15+ since 2025-11-01. Earlier pins (e.g. 0.10.14) emitted
+# 4-KB-aligned (align 2**12) LOAD segments and are rejected by Play; 0.10.35's are
+# all align 2**14 (16 KB) — verified across all four ABIs (see roadmap §0.3 /
+# docs/session/reports/w0-16kb-alignment.md). NB: in 0.10.35 the native lib was
+# renamed `libmediapipe_tasks_vision_jni.so` → `libmediapipe_tasks_jni.so` and moved
+# from tasks-vision into the transitive `tasks-core` AAR. Keep in lockstep with the
+# iOS MediaPipeTasksVision cocoapod pin in iosApp/Podfile.
 mediapipeTasksVision = "0.10.35"
+# Baseline Profiles + startup macrobenchmarks (:baselineprofile, roadmap §5.3).
+# benchmark + baselineprofile MUST track AGP — AGP 9.x (the 1.4.x line targets AGP 8.x and
+# rejects :androidApp here with "not a supported android module"; the 1.5.0-alpha line is the
+# one that recognises AGP 9's variant API). uiautomator drives the cold-start journey;
+# profileinstaller ships the generated profile inside the release APK/AAB at runtime.
+androidxBenchmark = "1.5.0-alpha06"
+androidxBaselineprofile = "1.5.0-alpha06"
+androidxUiautomator = "2.3.0"
+androidxProfileinstaller = "1.4.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -134,8 +147,16 @@ coil-core          = { module = "io.coil-kt.coil3:coil",               version.r
 coil-compose       = { module = "io.coil-kt.coil3:coil-compose",       version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 
-# MediaPipe Tasks Vision (Android). 16-KB-aligned .so — see version note above.
+# MediaPipe Tasks Vision (Android). Pulls tasks-core transitively, which carries the
+# 16-KB-aligned libmediapipe_tasks_jni.so — see version note above.
 mediapipe-tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "mediapipeTasksVision" }
+
+# Baseline Profiles + startup macrobenchmark stack (:baselineprofile module, roadmap §5.3).
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "androidxBenchmark" }
+androidx-test-uiautomator       = { module = "androidx.test.uiautomator:uiautomator",     version.ref = "androidxUiautomator" }
+# profileinstaller is normally pulled transitively, but :androidApp pins it explicitly so the
+# generated Baseline Profile is installed at first run on devices without Play Cloud profiles.
+androidx-profileinstaller       = { module = "androidx.profileinstaller:profileinstaller", version.ref = "androidxProfileinstaller" }
 
 [bundles]
 # NB: dashed bundle names nest in the generated accessor, exactly like libraries —
@@ -169,3 +190,7 @@ kotlinMultiplatform            = { id = "org.jetbrains.kotlin.multiplatform",   
 kotlinxSerialization           = { id = "org.jetbrains.kotlin.plugin.serialization",     version.ref = "kotlin" }
 googleServices                 = { id = "com.google.gms.google-services",                version.ref = "googleServices" }
 firebaseCrashlytics            = { id = "com.google.firebase.crashlytics",                version.ref = "firebaseCrashlyticsPlugin" }
+# androidTest (com.android.test) hosts the macrobenchmark module; baselineprofile wires
+# generation into :androidApp and consumes the result into the release build (roadmap §5.3).
+androidTest                    = { id = "com.android.test",                              version.ref = "agp" }
+androidxBaselineprofile        = { id = "androidx.baselineprofile",                      version.ref = "androidxBaselineprofile" }

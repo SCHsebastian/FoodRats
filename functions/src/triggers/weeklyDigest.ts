@@ -1,36 +1,16 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { getFirestore, DocumentSnapshot } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import { DateTime } from "luxon";
-import { sendToCrew } from "../fcm/push";
+import { sendToCrew, digestDeepLink } from "../fcm/push";
 import { KEY_WEEKLY_DIGEST, FALLBACK } from "../i18n/keys";
 import { computeAwards, ratingAggregatesFrom, MealInput, Awards } from "../stats/computeWindow";
+import { paginateCrews, firestoreCrewPager } from "./crewScan";
 
-/**
- * Page size for the bounded crews scan. The old implementation did a single
- * `crews.get()` that loaded EVERY crew doc into memory at once — un-boundable as
- * the crew count grows, risking function memory/timeout limits (#19, P2).
- *
- * 200 keeps each Firestore round-trip's working set small (crew docs are tiny —
- * `memberIds` + a little metadata) while keeping the number of round-trips low.
- * Per-crew work (the meals query + award recompute + fan-out push) runs one crew
- * at a time, so peak memory is one page of crew ids plus one crew's meals —
- * independent of total crew count.
- */
-export const CREWS_PAGE_SIZE = 200;
-
-/** A single bounded page of crew ids plus the cursor needed to fetch the next one. */
-export interface CrewPage {
-  ids: string[];
-  /** The last doc in this page; pass back as `cursor` to fetch the next page. `null` when exhausted. */
-  cursor: DocumentSnapshot | null;
-}
-
-/** Fetches one bounded page of crew ids starting after `cursor` (or from the start when null). */
-export type ListCrewPage = (cursor: DocumentSnapshot | null) => Promise<CrewPage>;
-
-/** Computes and (if non-empty) sends the digest for a single crew. */
-export type ProcessCrew = (crewId: string) => Promise<void>;
+// Re-exported so existing importers (and tests) keep their import path stable; the bounded
+// crew-scan now lives in `./crewScan` and is shared with `streakNudge`.
+export { paginateCrews, CREWS_PAGE_SIZE } from "./crewScan";
+export type { CrewPage, ListCrewPage, ProcessCrew } from "./crewScan";
 
 /** The previous-week ISO day-key window the digest aggregates over. */
 export interface DigestWindow {
@@ -47,34 +27,6 @@ export function digestWindow(now: DateTime): DigestWindow {
     prevStartKey: prevWeekStart.toFormat("yyyy-LL-dd"),
     prevEndKey: prevWeekEnd.toFormat("yyyy-LL-dd"),
   };
-}
-
-/**
- * Bounded crew scan: walks the crews collection one page at a time and invokes
- * `processCrew` for every crew exactly once. Memory stays bounded to a single
- * page regardless of total crew count. Returns the number of crews processed.
- *
- * Fully injectable (`listCrewPage` / `processCrew`) so the pagination loop is
- * unit-testable without mocking the whole firebase-admin SDK.
- */
-export async function paginateCrews(
-  listCrewPage: ListCrewPage,
-  processCrew: ProcessCrew,
-): Promise<number> {
-  let cursor: DocumentSnapshot | null = null;
-  let processed = 0;
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const page = await listCrewPage(cursor);
-    for (const crewId of page.ids) {
-      await processCrew(crewId);
-      processed += 1;
-    }
-    // No cursor (or an empty short page) means the collection is exhausted.
-    if (!page.cursor || page.ids.length === 0) break;
-    cursor = page.cursor;
-  }
-  return processed;
 }
 
 /**
@@ -116,25 +68,12 @@ export async function processCrewDigest(crewId: string, window: DigestWindow): P
     data: {
       crewId,
       weekStartIso: window.prevStartKey,
+      // Deep link to the in-app swipeable recap (roadmap §2.4). The apps forward data.link to the
+      // DeepLinkBus on tap; parseDeepLink maps /digest/{weekStart} → Route.WeeklyStory.
+      link: digestDeepLink(window.prevStartKey),
       ...flattenAwardsToData(awards),
     },
   });
-}
-
-/** Firestore-backed crew pager: orders by document id and pages with a cursor. */
-function firestoreCrewPager(): ListCrewPage {
-  return async (cursor) => {
-    let query = getFirestore()
-      .collection("crews")
-      .orderBy("__name__")
-      .limit(CREWS_PAGE_SIZE);
-    if (cursor) query = query.startAfter(cursor);
-    const snap = await query.get();
-    return {
-      ids: snap.docs.map((d) => d.id),
-      cursor: snap.docs.length < CREWS_PAGE_SIZE ? null : snap.docs[snap.docs.length - 1],
-    };
-  };
 }
 
 export const weeklyDigest = onSchedule(

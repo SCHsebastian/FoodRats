@@ -38,6 +38,7 @@ class CrewModuleVerifyTest {
                 AccountReadPort::class,
                 Random::class,
                 CrewId::class,
+                String::class,
                 AnalyticsPort::class,
             ),
         )

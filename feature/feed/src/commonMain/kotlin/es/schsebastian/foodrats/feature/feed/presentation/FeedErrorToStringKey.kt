@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.presentation
 
 import es.schsebastian.foodrats.core.domain.meal.RateError
+import es.schsebastian.foodrats.core.domain.meal.ReactionError
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 
@@ -19,4 +20,13 @@ fun RateError.toStringKey(): FeedStringKey = when (this) {
     RateError.Unauthorized       -> FeedStringKey.RateErrorUnauthorized
     RateError.Offline            -> FeedStringKey.RateErrorOffline
     RateError.RateUnavailable    -> FeedStringKey.RateErrorUnavailable
+}
+
+fun ReactionError.toStringKey(): FeedStringKey = when (this) {
+    ReactionError.Read.Unauthorized   -> FeedStringKey.ReactionErrorUnauthorized
+    ReactionError.Read.Unavailable    -> FeedStringKey.ReactionErrorUnavailable
+    ReactionError.Toggle.Unauthorized -> FeedStringKey.ReactionErrorUnauthorized
+    ReactionError.Toggle.MealNotFound -> FeedStringKey.ReactionErrorMealNotFound
+    ReactionError.Toggle.Offline      -> FeedStringKey.ReactionErrorOffline
+    ReactionError.Toggle.Unavailable  -> FeedStringKey.ReactionErrorUnavailable
 }

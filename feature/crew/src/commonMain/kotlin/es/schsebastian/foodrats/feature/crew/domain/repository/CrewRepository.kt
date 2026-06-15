@@ -16,6 +16,13 @@ interface CrewRepository {
     /** Joins an existing Crew by invite code. Transactional under contention. */
     suspend fun joinByCode(code: CrewCode, joiner: AccountId, joinerDisplayName: String): Result<Crew, CrewError>
 
+    /**
+     * Resolves a Crew by its invite [code] WITHOUT joining — for the accept-invite preview (the
+     * recipient has only the code from the link). Read-only. Returns [CrewError.Invite.CodeUnknown]
+     * for an unknown code, [CrewError.Membership.NotFound] if the crew is gone.
+     */
+    suspend fun findByCode(code: CrewCode): Result<Crew, CrewError>
+
     /** Leaves a Crew. Hard-deletes the Crew + invite code if `leaver` was the last member. */
     suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError>
 
@@ -30,4 +37,15 @@ interface CrewRepository {
 
     /** Deletes a Crew entirely. Only the owner may delete. */
     suspend fun deleteCrew(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError>
+
+    /** Toggles the crew's blind-voting policy. Only the owner may change it. */
+    suspend fun setBlindVoting(crewId: CrewId, requestedBy: AccountId, enabled: Boolean): Result<Unit, CrewError>
+
+    /**
+     * Removes [target] from the crew. Only the owner ([requestedBy]) may remove a member, and the
+     * owner cannot remove themselves (leaving is a separate flow). Authorization, self-removal, and
+     * membership invariants are enforced atomically server-side by the implementation (mirrored
+     * in-domain by [es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase]).
+     */
+    suspend fun removeMember(crewId: CrewId, requestedBy: AccountId, target: AccountId): Result<Unit, CrewError>
 }

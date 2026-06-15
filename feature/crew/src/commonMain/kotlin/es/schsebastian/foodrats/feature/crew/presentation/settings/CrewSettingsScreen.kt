@@ -16,6 +16,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -42,6 +43,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
@@ -71,12 +73,23 @@ fun CrewSettingsScreen(
     onLeft: () -> Unit,
     onSwitch: () -> Unit = {},
     onDeleted: () -> Unit = {},
+    /**
+     * Builds the canonical shareable invite URL from a crew code. Supplied by the NavGraph (the URL
+     * contract owner in `:shared`) so this feature stays free of a dependency on `:shared`. Defaults
+     * to the bare code so previews/tests that don't wire it still render.
+     */
+    inviteUrlFor: (String) -> String = { it },
     vm: CrewSettingsViewModel = koinViewModel(parameters = { parametersOf((CrewId.of(crewId) as es.schsebastian.foodrats.core.domain.result.Result.Ok).value) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
     val share = koinInject<ShareController>()
     var memberPendingRemoval by remember { mutableStateOf<AccountId?>(null) }
+    var showQr by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val deletedMemberFallback = resolve(CrewStringKey.MemberDeleted)
+    // Name to show in the success snackbar; set by the MemberRemoved effect, cleared once shown.
+    var memberRemovedName by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
@@ -84,11 +97,22 @@ fun CrewSettingsScreen(
                 CrewSettingsEffect.NavigateToCrewPicker -> onSwitch()
                 CrewSettingsEffect.Left -> onLeft()
                 CrewSettingsEffect.Deleted -> onDeleted()
+                is CrewSettingsEffect.MemberRemoved ->
+                    memberRemovedName = eff.displayName ?: deletedMemberFallback
             }
         }
     }
 
+    memberRemovedName?.let { name ->
+        val message = resolve(CrewStringKey.SettingsMemberRemoved, name)
+        LaunchedEffect(name) {
+            snackbarHostState.showSnackbar(message)
+            memberRemovedName = null
+        }
+    }
+
     FrScreenScaffold(
+        snackbarHostState = snackbarHostState,
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
@@ -130,10 +154,13 @@ fun CrewSettingsScreen(
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
                 item {
+                    val inviteUrl = inviteUrlFor(crew.code.value)
+                    val shareMessage = resolve(CrewStringKey.InviteShareMessage, crew.name, inviteUrl)
                     CrewHeroCard(
                         crew = crew,
                         onCopy = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
-                        onShare = { share.shareText(crew.code.value) },
+                        onShareLink = { share.shareText(shareMessage) },
+                        onShowQr = { showQr = true },
                     )
                 }
 
@@ -157,6 +184,14 @@ fun CrewSettingsScreen(
                             )
                         }
                     }
+
+                    item {
+                        BlindVotingCard(
+                            enabled = crew.blindVoting,
+                            saving = state.isSavingBlindVoting,
+                            onToggle = { vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(it)) },
+                        )
+                    }
                 }
 
                 item {
@@ -165,6 +200,7 @@ fun CrewSettingsScreen(
                         isOwner = state.isOwner,
                         myAccountId = state.myAccountId,
                         identities = state.identities,
+                        removingMemberIds = state.removingMemberIds,
                         onRemove = { memberPendingRemoval = it },
                     )
                 }
@@ -195,6 +231,16 @@ fun CrewSettingsScreen(
         }
     }
 
+    if (showQr) {
+        state.crew?.let { c ->
+            InviteQrDialog(
+                crewName = c.name,
+                inviteUrl = inviteUrlFor(c.code.value),
+                onDismiss = { showQr = false },
+            )
+        }
+    }
+
     if (state.showDeleteConfirm) {
         DeleteCrewConfirmDialog(
             crewName = state.crew?.name.orEmpty(),
@@ -221,12 +267,17 @@ fun CrewSettingsScreen(
     }
 }
 
-/** Centered crew identity: name, member count, and the invite-code chip + Share. */
+/**
+ * Centered crew identity: name, member count, the tap-to-copy invite-code chip, and the invite-link
+ * actions (Share link via the system share sheet + Show QR). The full shareable deep link / QR is
+ * built upstream from the code (see [CrewSettingsScreen.inviteUrlFor]).
+ */
 @Composable
 private fun CrewHeroCard(
     crew: Crew,
     onCopy: () -> Unit,
-    onShare: () -> Unit,
+    onShareLink: () -> Unit,
+    onShowQr: () -> Unit,
 ) {
     FrCard(modifier = Modifier.fillMaxWidth()) {
         Column(
@@ -240,36 +291,107 @@ private fun CrewHeroCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            // Tap-to-copy invite code chip — mono + letter-spaced.
+            Surface(
+                onClick = onCopy,
+                shape = RoundedCornerShape(Radius.md),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Box(
+                    modifier = Modifier.padding(vertical = Spacing.md, horizontal = Spacing.md),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    FrText(
+                        text = crew.code.value,
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 2.sp,
+                        ),
+                    )
+                }
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Tap-to-copy invite code chip — mono + letter-spaced.
-                Surface(
-                    onClick = onCopy,
-                    shape = RoundedCornerShape(Radius.md),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Box(
-                        modifier = Modifier.padding(vertical = Spacing.md, horizontal = Spacing.md),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        FrText(
-                            text = crew.code.value,
-                            style = MaterialTheme.typography.titleMedium.copy(
-                                fontFamily = FontFamily.Monospace,
-                                letterSpacing = 2.sp,
-                            ),
-                        )
-                    }
-                }
                 FrButton(
-                    label = resolve(CrewStringKey.SettingsShare),
-                    onClick = onShare,
+                    label = resolve(CrewStringKey.SettingsShareLink),
+                    onClick = onShareLink,
                     modifier = Modifier.weight(1f),
+                )
+                FrButton(
+                    label = resolve(CrewStringKey.SettingsShowQr),
+                    onClick = onShowQr,
+                    variant = FrButtonVariant.Secondary,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/** Modal showing the crew's invite link as a scannable QR code plus a caption. */
+@Composable
+private fun InviteQrDialog(
+    crewName: String,
+    inviteUrl: String,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        FrCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                FrText(
+                    text = resolve(CrewStringKey.SettingsQrCaption, crewName),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode(content = inviteUrl)
+                FrButton(
+                    label = resolve(CrewStringKey.SettingsQrClose),
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        }
+    }
+}
+
+/** Owner-only blind-voting policy toggle: label + explanation on the left, [FrSwitch] on the right. */
+@Composable
+private fun BlindVotingCard(
+    enabled: Boolean,
+    saving: Boolean,
+    onToggle: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(resolve(CrewStringKey.SettingsBlindVotingSection))
+        FrCard(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    FrText(
+                        text = resolve(CrewStringKey.SettingsBlindVotingLabel),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    FrText(
+                        text = resolve(CrewStringKey.SettingsBlindVotingDescription),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                FrSwitch(
+                    checked = enabled,
+                    onCheckedChange = { onToggle(it) },
+                    enabled = !saving,
                 )
             }
         }
@@ -283,6 +405,7 @@ private fun MembersCard(
     isOwner: Boolean,
     myAccountId: AccountId?,
     identities: Map<AccountId, es.schsebastian.foodrats.core.domain.account.Account?>,
+    removingMemberIds: Set<AccountId>,
     onRemove: (AccountId) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -307,6 +430,7 @@ private fun MembersCard(
             crew.members.forEachIndexed { index, m ->
                 val isMemberOwner = m.accountId == crew.ownerId
                 val canRemove = isOwner && m.accountId != myAccountId
+                val isRemoving = m.accountId in removingMemberIds
                 FrCrewMemberRow(
                     account = identities[m.accountId],
                     subtitle = resolve(
@@ -314,11 +438,18 @@ private fun MembersCard(
                     ),
                     trailing = if (canRemove) {
                         {
-                            FrIconButton(
-                                icon = FrIcons.Close,
-                                onClick = { onRemove(m.accountId) },
-                                contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
-                            )
+                            if (isRemoving) {
+                                FrProgressIndicator(
+                                    modifier = Modifier.size(Sizes.iconMd),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                FrIconButton(
+                                    icon = FrIcons.Close,
+                                    onClick = { onRemove(m.accountId) },
+                                    contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
+                                )
+                            }
                         }
                     } else null,
                 )

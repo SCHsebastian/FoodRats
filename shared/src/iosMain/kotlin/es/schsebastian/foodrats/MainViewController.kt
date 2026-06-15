@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.data.di.configIosModule
 import es.schsebastian.foodrats.core.data.di.crashIosModule
 import es.schsebastian.foodrats.core.data.di.locationIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
+import es.schsebastian.foodrats.core.data.di.storyShareIosModule
 import es.schsebastian.foodrats.core.data.telemetry.CrashReporterLogSink
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
@@ -47,6 +48,12 @@ import platform.UIKit.UIViewController
  *
  * [share] bridges to ShareBridge — UIKit's `UIActivityViewController` must be presented from a live
  * view controller, so the share sheet is built and presented in Swift (see iosApp/ShareBridge.swift).
+ *
+ * [storyShare] bridges to StoryShareBridge — the shareable story-card PNG is handed to Instagram
+ * Stories (UIPasteboard background image + `instagram-stories://share`) or, when Instagram is absent,
+ * a `UIActivityViewController`. Presentation must happen from a live view controller on the main
+ * thread, so it is built in Swift (see iosApp/StoryShareBridge.swift). Returns a status code:
+ * 0 = Instagram opened, 1 = fallback sheet, 2 = failed.
  */
 fun MainViewController(
     viewControllerProvider: () -> UIViewController,
@@ -62,6 +69,7 @@ fun MainViewController(
         (labels: List<String>?, errorCode: String?) -> Unit,
     ) -> Unit,
     share: (String) -> Unit,
+    storyShare: (imagePng: ByteArray) -> Int,
     analyticsLogEvent: (name: String, params: Map<String, Any>) -> Unit,
     analyticsSetUserId: (accountId: String?) -> Unit,
     analyticsSetUserProperty: (name: String, value: String) -> Unit,
@@ -80,6 +88,7 @@ fun MainViewController(
                         mealIosModule,
                         mealAiIosModule(classifyPlate),
                         shareIosModule(share),
+                        storyShareIosModule(storyShare),
                         authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
                         crashIosModule(crashRecordNonFatal, crashLog),
                         analyticsIosModule(

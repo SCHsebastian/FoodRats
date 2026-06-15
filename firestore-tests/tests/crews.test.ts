@@ -94,3 +94,70 @@ describe("crews — rename authorization", () => {
     await assertFails(updateDoc(doc(db, "crews/c1"), { name: "Hacked" }));
   });
 });
+
+describe("crews — owner removes a member", () => {
+  beforeEach(async () => {
+    await seedCrew(env, "c1", {
+      ownerId: "alice",
+      name: "C1",
+      memberIds: ["alice", "bob", "carol"],
+      members: { alice: {}, bob: {}, carol: {} },
+    });
+  });
+
+  it("the owner can remove another member", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/c1"), {
+        memberIds: ["alice", "carol"],
+        members: { alice: {}, carol: {} },
+      }),
+    );
+  });
+
+  it("a non-owner member CANNOT remove another member", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        memberIds: ["alice", "bob"],
+        members: { alice: {}, bob: {} },
+      }),
+    );
+  });
+
+  it("the remove-member path CANNOT also reassign ownerId", async () => {
+    // Smuggling an ownerId change alongside the membership shrink is rejected: branch (6) is
+    // gated by hasOnly(['memberIds','members']), so touching ownerId fails every update branch.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        ownerId: "bob",
+        memberIds: ["alice", "carol"],
+        members: { alice: {}, carol: {} },
+      }),
+    );
+  });
+
+  it("a stranger (non-member) CANNOT remove a member", async () => {
+    const db = env.authenticatedContext("mallory").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        memberIds: ["alice", "carol"],
+        members: { alice: {}, carol: {} },
+      }),
+    );
+  });
+
+  it("the owner CANNOT remove themselves via the remove-member path", async () => {
+    // Branch (6) requires the owner to remain in the new memberIds; dropping self plus
+    // another member shrinks the set by two, so it also misses the leave branch (5)
+    // (which only permits removing exactly self). All update branches reject it.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        memberIds: ["carol"],
+        members: { carol: {} },
+      }),
+    );
+  });
+});

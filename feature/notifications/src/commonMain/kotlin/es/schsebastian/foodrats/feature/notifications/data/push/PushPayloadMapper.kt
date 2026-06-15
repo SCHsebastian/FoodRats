@@ -52,6 +52,20 @@ class PushPayloadMapper(private val clock: Clock) {
         ) : PushContent {
             override val kind get() = ReminderKind.WeeklyDigest
         }
+
+        /**
+         * The server-side social-proof streak nudge ("N of M crewmates posted today"). It carries
+         * no crew/meal id, so its [payload] is [ReminderPayload.None] — a tap just opens the app to
+         * Feed, matching the weekly-digest / inactivity "no deep target" convention.
+         */
+        data class SocialNudge(
+            override val id: String,
+            val postedCount: Int,
+            val crewSize: Int,
+        ) : PushContent {
+            override val kind get() = ReminderKind.SocialNudge
+            override val payload get() = ReminderPayload.None
+        }
     }
 
     /**
@@ -65,6 +79,7 @@ class PushPayloadMapper(private val clock: Clock) {
             KEY_NEW_COMMENT -> newComment(data)
             KEY_NEW_MEAL_POST -> newMealPost(data)
             KEY_WEEKLY_DIGEST -> weeklyDigest(data)
+            KEY_SOCIAL_NUDGE -> socialNudge(data)
             else -> null
         }
     }
@@ -104,6 +119,18 @@ class PushPayloadMapper(private val clock: Clock) {
                 body = getString(NotificationStringKey.WeeklyDigestBody.resourceId),
                 payload = content.payload,
             )
+            is PushContent.SocialNudge -> Reminder(
+                id = content.id,
+                kind = content.kind,
+                deliverAt = clock.now(),
+                title = getString(NotificationStringKey.SocialNudgeTitle.resourceId),
+                body = getString(
+                    NotificationStringKey.SocialNudgeBody.resourceId,
+                    content.postedCount,
+                    content.crewSize,
+                ),
+                payload = content.payload,
+            )
         }
     }
 
@@ -139,9 +166,28 @@ class PushPayloadMapper(private val clock: Clock) {
         )
     }
 
+    /**
+     * The server sends `postedCount`/`crewSize` as strings. Both must parse to ints; a malformed
+     * or absent count makes the body untemplatable, so we return null (push ignored in-app). The
+     * nudge has no per-send id in the contract, so the id is fixed — a same-day re-send replaces
+     * the prior banner rather than stacking.
+     */
+    private fun socialNudge(d: Map<String, String>): PushContent? {
+        val postedCount = d["postedCount"]?.toIntOrNull() ?: return null
+        val crewSize = d["crewSize"]?.toIntOrNull() ?: return null
+        return PushContent.SocialNudge(
+            id = "social-nudge",
+            postedCount = postedCount,
+            crewSize = crewSize,
+        )
+    }
+
     private companion object {
         const val KEY_NEW_COMMENT = "new_comment"
         const val KEY_NEW_MEAL_POST = "new_meal_post"
         const val KEY_WEEKLY_DIGEST = "weekly_digest"
+
+        /** Discriminator for the server-side social-proof streak nudge (server const `KEY_SOCIAL_NUDGE`). */
+        const val KEY_SOCIAL_NUDGE = "social_nudge"
     }
 }

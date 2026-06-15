@@ -70,6 +70,17 @@ class FirebaseCrewRepositoryTest {
         members = listOf(Member(accountId = aid(ownerRaw), joinedAt = Instant.fromEpochMilliseconds(nowMs))),
     )
 
+    private fun crewWithMembers(ownerRaw: String, vararg memberRaws: String): Crew = Crew.of(
+        id = cid("c-1"),
+        name = "Test Crew",
+        code = code("ABCD23"),
+        ownerId = aid(ownerRaw),
+        createdAt = Instant.fromEpochMilliseconds(nowMs),
+        members = (listOf(ownerRaw) + memberRaws).distinct().map {
+            Member(accountId = aid(it), joinedAt = Instant.fromEpochMilliseconds(nowMs))
+        },
+    )
+
     // ---------------- create ----------------
 
     @Test
@@ -196,6 +207,81 @@ class FirebaseCrewRepositoryTest {
     fun leave_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
         ds.leaveThrows = RuntimeException("boom")
         val r = repo().leave(cid("c-1"), aid("owner"))
+        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+    }
+
+    // ---------------- removeMember ----------------
+
+    @Test
+    fun removeMember_owner_fetches_then_removes_target() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "victim")
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(cid("c-1"), ds.lastFetchOnce)
+        assertEquals(cid("c-1") to aid("victim"), ds.lastRemoveMember)
+    }
+
+    @Test
+    fun removeMember_returns_NotFound_when_crew_absent_and_does_not_write() = runTest {
+        ds.fetchOnceResult = null
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
+        assertEquals(Result.failure(CrewError.Membership.NotFound), r)
+        assertNull(ds.lastRemoveMember)
+    }
+
+    @Test
+    fun removeMember_returns_NotOwner_when_requester_is_not_owner_and_does_not_write() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "intruder", "victim")
+        val r = repo().removeMember(cid("c-1"), aid("intruder"), aid("victim"))
+        assertEquals(Result.failure(CrewError.RemoveMember.NotOwner), r)
+        assertNull(ds.lastRemoveMember)
+    }
+
+    @Test
+    fun removeMember_returns_CannotRemoveSelf_when_owner_targets_self_and_does_not_write() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "victim")
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("owner"))
+        assertEquals(Result.failure(CrewError.RemoveMember.CannotRemoveSelf), r)
+        assertNull(ds.lastRemoveMember)
+    }
+
+    @Test
+    fun removeMember_returns_MemberNotFound_when_target_absent_and_does_not_write() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "someone")
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("stranger"))
+        assertEquals(Result.failure(CrewError.RemoveMember.MemberNotFound), r)
+        assertNull(ds.lastRemoveMember)
+    }
+
+    @Test
+    fun removeMember_classifies_datasource_NotMember_TOCTOU_as_RemoveMember_MemberNotFound() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "victim")
+        ds.removeMemberThrows = NotMemberException
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
+        assertEquals(Result.failure(CrewError.RemoveMember.MemberNotFound), r)
+    }
+
+    @Test
+    fun removeMember_classifies_datasource_NotFound_as_Membership_NotFound() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "victim")
+        ds.removeMemberThrows = NotFoundException
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
+        assertEquals(Result.failure(CrewError.Membership.NotFound), r)
+    }
+
+    @Test
+    fun removeMember_classifies_permission_denied_throwable_as_Backend_PermissionDenied() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "victim")
+        ds.removeMemberThrows = RuntimeException("PERMISSION_DENIED: not the owner")
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
+        assertEquals(Result.failure(CrewError.Backend.PermissionDenied), r)
+    }
+
+    @Test
+    fun removeMember_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "victim")
+        ds.removeMemberThrows = RuntimeException("boom")
+        val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
         assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
     }
 

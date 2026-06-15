@@ -3,6 +3,9 @@ package es.schsebastian.foodrats.feature.feed.presentation.detail
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.data.share.StoryShareController
+import es.schsebastian.foodrats.core.data.share.StoryShareOutcome
+import es.schsebastian.foodrats.core.designsystem.templates.ShareCardFormat
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
@@ -34,6 +37,7 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.PlateShareCardContent
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -64,6 +68,7 @@ class MealDetailViewModel(
     private val deleteMyMeal: DeleteMyMealUseCase,
     private val deleteComment: DeleteCommentUseCase,
     private val crewOwner: CrewOwnerPort,
+    private val storyShareController: StoryShareController,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<MealDetailState, MealDetailIntent, MealDetailEffect>(MealDetailState()) {
 
@@ -228,6 +233,38 @@ class MealDetailViewModel(
         MealDetailIntent.PostComment               -> postComment()
         MealDetailIntent.DeleteMeal                -> deleteMealAction()
         is MealDetailIntent.DeleteComment          -> deleteCommentAction(intent.id)
+        MealDetailIntent.ShareTapped               -> shareMeal()
+        MealDetailIntent.DismissShareOutcome       -> update { it.copy(shareOutcome = null) }
+    }
+
+    /**
+     * Shares the displayed plate to Instagram Stories (spec §8.2). The renderer/decoder own their IO
+     * (no `withContext` here); the off-screen card content resolves its own i18n in composition. The
+     * `share` analytics event fires ONLY when the launcher actually opened Instagram or the fallback
+     * sheet — never on `Failed`, never in a use case (CHARTER §9).
+     */
+    private suspend fun shareMeal() {
+        val meal = currentState.meal ?: return
+        if (currentState.isPreparingShare) return
+        val parsedMealId = MealId.of(meal.mealId).getOrNull()
+        update { it.copy(isPreparingShare = true, shareOutcome = null) }
+        val outcome = storyShareController.share(
+            plateUrl = meal.photoUrl,
+            format = ShareCardFormat.Story,
+        ) { plate -> PlateShareCardContent(meal, plate) }
+        if (outcome != StoryShareOutcome.Failed && parsedMealId != null) {
+            analytics.track(AnalyticsEvent.PlateShared(parsedMealId))
+        }
+        update {
+            it.copy(
+                isPreparingShare = false,
+                shareOutcome = when (outcome) {
+                    StoryShareOutcome.OpenedInstagram    -> ShareOutcomeUi.Succeeded
+                    StoryShareOutcome.OpenedFallbackSheet -> ShareOutcomeUi.OpenedSheet
+                    StoryShareOutcome.Failed             -> ShareOutcomeUi.Failed
+                },
+            )
+        }
     }
 
     private suspend fun deleteMealAction() {

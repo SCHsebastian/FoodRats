@@ -3,6 +3,12 @@ package es.schsebastian.foodrats.feature.auth.presentation.profile
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.analytics.isAnalyticsGranted
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
@@ -19,6 +25,7 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
@@ -52,6 +59,16 @@ data class ProfileState(
     val notificationsEnabled: Boolean = true,
     val notificationsError: StringKey? = null,
 
+    // Analytics consent — reflects ConsentPort.decision; the user can withdraw or
+    // re-grant at any time (GDPR Art. 7(3)). True only for a current-version grant.
+    val analyticsConsentGranted: Boolean = false,
+
+    // Data export (GDPR Art. 20) — request the archive, then expose the download URL.
+    val isExportingData: Boolean = false,
+    val exportDownloadUrl: String? = null,
+    val exportExpiresAtMs: Long? = null,
+    val exportError: StringKey? = null,
+
     // Danger Zone — delete account
     val deleteScreenOpen: Boolean = false,
     val deleteConfirmation: String = "",
@@ -76,6 +93,11 @@ sealed interface ProfileIntent : MviIntent {
 
     data class NotificationsToggled(val enabled: Boolean) : ProfileIntent
     data object OpenNotificationSystemSettings : ProfileIntent
+
+    data class AnalyticsConsentToggled(val enabled: Boolean) : ProfileIntent
+
+    data object ExportMyData : ProfileIntent
+    data object DismissExportResult : ProfileIntent
 
     data object OpenDeleteAccount : ProfileIntent
     data object CloseDeleteAccount : ProfileIntent
@@ -103,6 +125,9 @@ class ProfileViewModel(
     private val enableNotifications: EnableNotificationsUseCase,
     private val notificationPermission: NotificationPermissionPort,
     private val deleteMyAccount: DeleteMyAccountUseCase,
+    private val exportMyData: ExportMyDataUseCase,
+    private val consent: ConsentPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<ProfileState, ProfileIntent, ProfileEffect>(ProfileState()) {
 
     init {
@@ -134,6 +159,15 @@ class ProfileViewModel(
                 update { it.copy(notificationsEnabled = on) }
             }.collect {}
         }
+        viewModelScope.launch {
+            // The switch reflects the observed decision (single source of truth): true only for a
+            // current-version grant; an Unknown/Denied/stale decision reads as off.
+            consent.decision
+                .map { it.isAnalyticsGranted }
+                .distinctUntilChanged()
+                .onEach { granted -> update { it.copy(analyticsConsentGranted = granted) } }
+                .collect {}
+        }
     }
 
     override suspend fun handle(intent: ProfileIntent) {
@@ -159,6 +193,18 @@ class ProfileViewModel(
 
             is ProfileIntent.NotificationsToggled -> doSetNotifications(intent.enabled)
             ProfileIntent.OpenNotificationSystemSettings -> notificationPermission.openSystemSettings()
+
+            is ProfileIntent.AnalyticsConsentToggled -> doSetAnalyticsConsent(intent.enabled)
+
+            ProfileIntent.ExportMyData -> doExportMyData()
+            ProfileIntent.DismissExportResult ->
+                update {
+                    it.copy(
+                        exportDownloadUrl = null,
+                        exportExpiresAtMs = null,
+                        exportError = null,
+                    )
+                }
 
             ProfileIntent.OpenDeleteAccount ->
                 update {
@@ -257,19 +303,94 @@ class ProfileViewModel(
         }
     }
 
-    private suspend fun doDeleteAccount() {
-        val expected = expectedDeletePhrase()
-        update { it.copy(isDeletingAccount = true, deleteDialogOpen = false, deleteError = null) }
-        val r = deleteMyAccount(currentState.deleteConfirmation, expected)
+    private suspend fun doSetAnalyticsConsent(enabled: Boolean) {
+        // The switch's checked state is driven solely by the observed ConsentPort.decision
+        // collector above — never write analyticsConsentGranted here. We only persist the decision;
+        // the collector flips the row when the write lands (single source of truth). The
+        // ConsentGatedAnalytics decorator observes the same decision and toggles the SDK itself —
+        // we never call AnalyticsPort.applyConsent here.
+        if (enabled) {
+            consent.grant()
+            // Recorded only AFTER the grant lands, so the event is itself consent-compliant
+            // (charter rule #9: the analytics call site lives in the VM, after the write).
+            analytics.track(AnalyticsEvent.ConsentGranted(AnalyticsConfig.CURRENT_CONSENT_VERSION))
+        } else {
+            // Withdraw (GDPR Art. 7(3)). `revoke()` is the port's settings-opt-out path; the
+            // decorator pushes resetData() to the SDK on the granted→denied transition. No event:
+            // tracking is now off, so emitting one would be a consent violation.
+            consent.revoke()
+        }
+    }
+
+    private suspend fun doExportMyData() {
+        // Read-only and idempotent: each request mints a fresh 15-min signed URL. No analytics
+        // event — there is no `data_exported` leaf in the taxonomy, and one would risk PII.
+        update {
+            it.copy(
+                isExportingData = true,
+                exportError = null,
+                exportDownloadUrl = null,
+                exportExpiresAtMs = null,
+            )
+        }
+        val r = exportMyData()
         update {
             when (r) {
                 is Result.Ok -> it.copy(
-                    isDeletingAccount = false,
-                    deleteScreenOpen = false,
-                    deleteConfirmation = "",
-                    deleteError = null,
+                    isExportingData = false,
+                    exportDownloadUrl = r.value.downloadUrl,
+                    exportExpiresAtMs = r.value.expiresAtMs,
+                    exportError = null,
                 )
                 is Result.Err -> it.copy(
+                    isExportingData = false,
+                    exportError = r.error.toStringKey(),
+                )
+            }
+        }
+    }
+
+    private suspend fun doDeleteAccount() {
+        val expected = expectedDeletePhrase()
+        update { it.copy(isDeletingAccount = true, deleteDialogOpen = false, deleteError = null) }
+        when (val r = deleteMyAccount(currentState.deleteConfirmation, expected)) {
+            is Result.Ok -> {
+                // Local teardown, in this exact order (spec §7): the event fires while the
+                // analytics identity still points at the about-to-be-cleared user, THEN we
+                // sever and reset that identity, THEN sign out locally (the Auth user is
+                // already deleted server-side). No navigation effect — the root-nav stage
+                // machine observes SessionProvider.current go signed-out and routes to SignIn.
+                analytics.track(AnalyticsEvent.AccountDeleted)
+                analytics.setUserId(null)
+                analytics.resetData()
+                // The Auth user is already deleted server-side; sign-out is the local teardown.
+                // A failed sign-out is final (not retryable — there is no account left to retry
+                // against): surface it as deleteError but still close the in-progress state. The
+                // root-nav stage machine routes to SignIn once SessionProvider.current goes
+                // signed-out; if the local session lingers, the error keeps the user informed.
+                when (val signOutResult = signOut.signOut()) {
+                    is Result.Ok -> update {
+                        it.copy(
+                            isDeletingAccount = false,
+                            deleteScreenOpen = false,
+                            deleteConfirmation = "",
+                            deleteError = null,
+                        )
+                    }
+                    is Result.Err -> update {
+                        it.copy(
+                            isDeletingAccount = false,
+                            deleteScreenOpen = false,
+                            deleteConfirmation = "",
+                            deleteError = AuthStringKey.ProfileSignOutFailed,
+                        )
+                    }
+                }
+            }
+            is Result.Err -> update {
+                // Keep the session intact so the user can retry — fire NOTHING (no event,
+                // no identity reset, no sign-out).
+                it.copy(
                     isDeletingAccount = false,
                     deleteError = r.error.toStringKey(),
                 )

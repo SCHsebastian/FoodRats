@@ -69,6 +69,18 @@
     <string name="stats_cook_award_needs_more_singular">%1$d more plate to qualify</string>
     <string name="stats_cook_award_needs_more_plural">%1$d more plates to qualify</string>
 
+    <!-- Cuisine passport -->
+    <string name="stats_passport_title">Cuisine passport</string>
+    <string name="stats_passport_progress_format">%1$d / %2$d</string>
+    <string name="stats_passport_locked_label">Locked</string>
+    <string name="stats_passport_collected_on_format">Collected %1$s</string>
+
+    <!-- Ingredient bingo (Pokédex) -->
+    <string name="stats_bingo_title">Ingredient bingo</string>
+    <string name="stats_bingo_progress_format">%1$d / %2$d</string>
+    <string name="stats_bingo_locked_label">Locked</string>
+    <string name="stats_bingo_collected_on_format">Caught %1$s</string>
+
     <!-- Empty / errors -->
     <string name="stats_empty_headline">No stats yet</string>
     <string name="stats_empty_subtext">Post a meal to get the numbers rolling.</string>
@@ -77,4 +89,12 @@
     <string name="stats_error_unauthorized">You aren't a member of this crew.</string>
     <string name="stats_error_crew_not_found">Crew not found.</string>
     <string name="stats_error_unavailable">Couldn't load stats. Try again.</string>
+
+    <!-- Weekly recap story entry (roadmap §2.4) -->
+    <string name="stats_weekly_recap_cta">See your week</string>
+
+    <!-- Share an award / streak to Instagram Stories (spec §10) -->
+    <string name="stats_share_award">Share</string>
+    <!-- On-card score pill for the shared award (avg ★ · count). -->
+    <string name="stats_share_score_format">%1$s ★ · %2$d</string>
 </resources>

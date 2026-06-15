@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen chrome -->
+    <string name="achievements_screen_title">Insignias</string>
+    <string name="achievements_earned_section_title">Conseguidas</string>
+    <string name="achievements_locked_section_title">Bloqueadas</string>
+    <string name="achievements_progress_format">%1$d / %2$d</string>
+    <string name="achievements_earned_on_format">Conseguida el %1$s</string>
+    <string name="achievements_unlocked_toast">¡Insignia desbloqueada!</string>
+    <string name="achievements_celebration_title">¡Nueva insignia!</string>
+    <string name="achievements_detail_locked_label">Bloqueada</string>
+    <string name="achievements_detail_close_cta">Cerrar</string>
+    <string name="achievements_empty_subtext">Publica comidas para empezar a ganar insignias.</string>
+
+    <!-- first_plate -->
+    <string name="achievements_first_plate_title">Primer plato</string>
+    <string name="achievements_first_plate_desc">Publica tu primera comida.</string>
+
+    <!-- meals_10 / meals_50 / meals_100 -->
+    <string name="achievements_meals_10_title">Calentando motores</string>
+    <string name="achievements_meals_10_desc">Publica 10 comidas.</string>
+    <string name="achievements_meals_50_title">Cocinillas</string>
+    <string name="achievements_meals_50_desc">Publica 50 comidas.</string>
+    <string name="achievements_meals_100_title">Cocinero centenario</string>
+    <string name="achievements_meals_100_desc">Publica 100 comidas.</string>
+
+    <!-- ingredients_25 / ingredients_50 / ingredients_100 (solo confirmados) -->
+    <string name="achievements_ingredients_25_title">Explorador de ingredientes</string>
+    <string name="achievements_ingredients_25_desc">Usa 25 ingredientes distintos.</string>
+    <string name="achievements_ingredients_50_title">Saqueador de despensa</string>
+    <string name="achievements_ingredients_50_desc">Usa 50 ingredientes distintos.</string>
+    <string name="achievements_ingredients_100_title">Maestro de las especias</string>
+    <string name="achievements_ingredients_100_desc">Usa 100 ingredientes distintos.</string>
+
+    <!-- streak_personal_7 / 30 / 100 -->
+    <string name="achievements_streak_personal_7_title">En racha</string>
+    <string name="achievements_streak_personal_7_desc">Mantén una racha personal de 7 días.</string>
+    <string name="achievements_streak_personal_30_title">Imparable</string>
+    <string name="achievements_streak_personal_30_desc">Mantén una racha personal de 30 días.</string>
+    <string name="achievements_streak_personal_100_title">Racha de hierro</string>
+    <string name="achievements_streak_personal_100_desc">Mantén una racha personal de 100 días.</string>
+
+    <!-- streak_crew_7 / 30 -->
+    <string name="achievements_streak_crew_7_title">Cuadrilla en llamas</string>
+    <string name="achievements_streak_crew_7_desc">Mantén una racha de cuadrilla de 7 días.</string>
+    <string name="achievements_streak_crew_30_title">Cuadrilla inseparable</string>
+    <string name="achievements_streak_crew_30_desc">Mantén una racha de cuadrilla de 30 días.</string>
+
+    <!-- best_cook -->
+    <string name="achievements_best_cook_title">Chef estrella</string>
+    <string name="achievements_best_cook_desc">Mantén la mejor nota media.</string>
+
+    <!-- early_bird_10 / night_owl_10 -->
+    <string name="achievements_early_bird_10_title">Madrugador</string>
+    <string name="achievements_early_bird_10_desc">Publica 10 desayunos.</string>
+    <string name="achievements_night_owl_10_title">Ave nocturna</string>
+    <string name="achievements_night_owl_10_desc">Publica 10 cenas.</string>
+
+    <!-- Errores -->
+    <string name="achievements_error_not_signed_in">No has iniciado sesión.</string>
+    <string name="achievements_error_no_active_crew">Elige una cuadrilla para ver tus insignias.</string>
+    <string name="achievements_error_unauthorized">No tienes permiso para verlas.</string>
+    <string name="achievements_error_unavailable">No se pudieron cargar las insignias. Inténtalo otra vez.</string>
+</resources>

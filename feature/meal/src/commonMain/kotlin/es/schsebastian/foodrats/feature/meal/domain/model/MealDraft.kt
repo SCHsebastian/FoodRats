@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.domain.model
 
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineSlug
 import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
@@ -28,4 +29,16 @@ data class MealDraft(
     val ingredients: List<IngredientSlug> = emptyList(),
     val detectedIngredients: List<IngredientSlug> = emptyList(),
     val classifierVersion: String? = null,
+    /**
+     * The dish slug detected by the classifier (the `dishCuisineMap` key). Held on the draft
+     * so the cuisine can be STAMPED at publish (roadmap §2.2). Set from
+     * `DraftClassification.dishSlug` when a plate is classified; `null` when no classification
+     * ran. The publish path resolves this to a [CuisineSlug] via
+     * `CuisineReadPort.loadDishCuisine(...)` and writes `Meal.cuisine`.
+     *
+     * NOTE: not yet wired by `ComposePlateViewModel`/`UpdateMealDraftCommand`/`FirebaseMealRepository`
+     * — see `docs/session/handoffs/w2-cuisine-passport-domain.md` for the exact write contract
+     * the presentation/data task must implement.
+     */
+    val detectedDishSlug: String? = null,
 )

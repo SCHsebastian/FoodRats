@@ -1,8 +1,24 @@
 package es.schsebastian.foodrats.feature.stats.domain.model
 
+import es.schsebastian.foodrats.core.domain.cuisine.CuisinePassport
+import es.schsebastian.foodrats.core.domain.meal.IngredientBingo
+
 data class StatsSnapshot(
     val hero: HeroStats,
     val week: WindowStats,
     val month: WindowStats,
     val historic: WindowStats?,
+    /**
+     * The signed-in member's cuisine passport (roadmap §2.2): every catalog cuisine as a collected
+     * or locked cell, derived from the cuisines STAMPED on the member's OWN confirmed meals over the
+     * loaded window. `null` only until the cuisine catalog has emitted (renders nothing then).
+     */
+    val cuisinePassport: CuisinePassport? = null,
+    /**
+     * The signed-in member's ingredient bingo (roadmap §2.3): every catalog ingredient as a collected
+     * or locked Pokédex cell, derived from the CONFIRMED `Meal.ingredients` of the member's OWN meals
+     * over the loaded window (AI `detectedIngredients` are excluded). `null` only until the ingredient
+     * catalog has emitted (renders nothing then).
+     */
+    val ingredientBingo: IngredientBingo? = null,
 )
