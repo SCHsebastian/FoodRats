@@ -1,0 +1,11 @@
+{
+  "conditions": [],
+  "parameters": {
+    "meal_ai_enabled": {
+      "defaultValue": { "value": "true" },
+      "description": "Kill-switch for on-device meal-AI plate classification (advisory). Android reads it; iOS is default-on. Set false to disable a misbehaving classifier — classify then yields no detections, never an error. Safe default: true.",
+      "valueType": "BOOLEAN"
+    }
+  },
+  "parameterGroups": {}
+}
