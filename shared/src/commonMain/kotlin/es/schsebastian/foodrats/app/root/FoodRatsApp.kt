@@ -8,6 +8,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -69,6 +70,28 @@ fun FoodRatsApp() {
                 if (eff.route != Route.Main) {
                     rootController.navigate(eff.route) { launchSingleTop = true }
                 }
+            }
+        }
+    }
+
+    // Empty-stack floor — last-resort guard against the white/blank screen. The root NavHost must
+    // never be left with no real destination: that renders nothing, and the next system BACK exits
+    // the app. It can be reached when a transient top-level re-emit (RootNavViewModel re-fires on
+    // stage flips) collapses the stack to a single pushed leaf (Profile/CrewSettings) via
+    // navigateTopLevel's `popUpTo(bottom, inclusive)`, and the user then presses BACK — popBackStack()
+    // returns false and leaves the stack empty. If that ever happens *after* we've landed at least
+    // once, re-establish the authenticated base so the worst case degrades to "back to Feed" instead
+    // of a stuck blank screen. Guarded on `hasLanded` so it never pre-empts the initial Splash→SignIn
+    // landing for a signed-out cold start.
+    LaunchedEffect(rootController) {
+        var hasLanded = false
+        rootController.currentBackStack.collect { stack ->
+            val realEntries = stack.count { it.destination !is androidx.navigation.NavGraph }
+            if (realEntries > 0) {
+                hasLanded = true
+            } else if (hasLanded) {
+                FrLog.d(FrLog.Tags.RootNav) { "app: root back stack emptied — re-landing Main" }
+                rootController.navigateTopLevel(Route.Main)
             }
         }
     }
