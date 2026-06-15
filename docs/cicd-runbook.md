@@ -85,7 +85,7 @@ Carga estos secrets (en el environment correspondiente, o repo-wide los comunes)
 | `ANDROID_KEYSTORE_BASE64` | ambos | `base64 -i upload.jks` |
 | `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` | ambos | de la upload key |
 | `PLAY_SERVICE_ACCOUNT_JSON` | ambos | `base64 -i play-service-account.json` |
-| `GOOGLESERVICE_INFO_PLIST` | ambos | `base64 -i iosApp/iosApp/GoogleService-Info.plist` |
+| `GOOGLE_SERVICE_INFO_PLIST` | ambos | `base64 -i iosApp/iosApp/GoogleService-Info.plist` |
 | `ASC_KEY_ID` / `ASC_ISSUER_ID` | ambos | de la API key |
 | `ASC_KEY_P8` | ambos | `base64 -i AuthKey_XXXX.p8` |
 | `MATCH_GIT_URL` | ambos | URL del repo privado de match |

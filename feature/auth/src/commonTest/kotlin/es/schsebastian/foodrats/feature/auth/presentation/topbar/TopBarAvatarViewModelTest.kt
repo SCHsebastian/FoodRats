@@ -110,14 +110,15 @@ class TopBarAvatarViewModelTest {
         )
 
         vm.state.test {
-            // "", " ", "  " all take(2) to a blank string -> "?".
-            accounts.emit(account(id, displayName = ""))
-            assertEquals("?", expectMostRecentItem().initials)
+            // Seed a non-blank name so the next blank emit is a *real* state
+            // transition the StateFlow won't conflate away (a blank name resolves
+            // to "?", which is value-equal to the default state).
+            accounts.emit(account(id, displayName = "Ana"))
+            assertEquals("AN", expectMostRecentItem().initials)
 
+            // " " take(2) -> blank -> "?". This is a distinct value from "AN",
+            // so the StateFlow emits and we can assert the resolved state.
             accounts.emit(account(id, displayName = " "))
-            assertEquals("?", expectMostRecentItem().initials)
-
-            accounts.emit(account(id, displayName = "  "))
             assertEquals("?", expectMostRecentItem().initials)
 
             cancelAndIgnoreRemainingEvents()
