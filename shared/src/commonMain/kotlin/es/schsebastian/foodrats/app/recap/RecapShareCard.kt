@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.designsystem.templates.ShareCardFormat
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.toFixed
 
 /**
  * Maps a [RecapScene] to a shareable story-card model + renders it off-screen (spec §8.1 row 4, the
@@ -96,7 +97,7 @@ fun RecapShareCardContent(card: RecapShareCard, plate: ImageBitmap?) {
                 dishName = card.dishName,
                 authorName = card.authorName,
                 scoreLabel = if (card.ratingCount > 0) {
-                    resolve(SharedStringKey.RecapTopMealScore, card.score, card.ratingCount)
+                    resolve(SharedStringKey.RecapTopMealScore, card.score.toFixed(1), card.ratingCount)
                 } else {
                     null
                 },

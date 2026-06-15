@@ -122,19 +122,24 @@ service cloud.firestore {
                       && request.resource.data.slot in ["breakfast", "lunch", "dinner"]
                       && mealId == crewId + "_" + request.auth.uid + "_" + request.resource.data.dayKey + "_" + request.resource.data.slot
                       && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId))
-                      // Whitelist exactly the client-writable fields at publish. Server-owned
-                      // fields (`thumbHash`, `thumbnailPath`) are written later by the image
-                      // pipeline via the Admin SDK (which bypasses rules) — a client must not be
-                      // able to forge the blur placeholder or spoof a thumbnail URL at create.
+                      // Whitelist the client-writable fields at publish. The server-owned fields
+                      // `thumbHash` / `thumbnailPath` are written later by the image pipeline via
+                      // the Admin SDK (which bypasses rules); a client must not be able to forge the
+                      // blur placeholder or spoof a thumbnail URL at create. They are LISTED here —
+                      // because GitLive's `.set(dto)` serializes with `encodeDefaults = true`, so it
+                      // sends EVERY MealDto field, including these two as `null` — but pinned to
+                      // `null` by the two clauses below so a client can only ever send them empty.
                       // `keys()` (not `diff().affectedKeys()`) because every field is new on create;
-                      // hasOnly permits any of these to be absent (defaulted). Mirrors the field set
-                      // written in FirebaseMealRepository / MealDto.
+                      // hasOnly permits any of these to be absent (defaulted). Mirrors MealDto.
                       && request.resource.data.keys().hasOnly([
                         'id', 'authorId', 'authorName', 'crewId', 'dayKey', 'slot', 'platePath',
                         'dishName', 'description', 'latitude', 'longitude', 'publishedAtEpochMs',
                         'ratings', 'ratingSum', 'voterCount', 'ingredients', 'classifierVersion',
-                        'cuisine', 'kind'
+                        'cuisine', 'kind', 'thumbHash', 'thumbnailPath'
                       ])
+                      // Server-owned: a client may only send these as null (or omit them).
+                      && (!('thumbHash' in request.resource.data) || request.resource.data.thumbHash == null)
+                      && (!('thumbnailPath' in request.resource.data) || request.resource.data.thumbnailPath == null)
                       // A meal MUST be created with zero rating aggregates. Without this
                       // the author could publish with ratingSum:9999 / voterCount:9 and win
                       // the server-attested weekly Best Cook / Best Meal digest. The vote

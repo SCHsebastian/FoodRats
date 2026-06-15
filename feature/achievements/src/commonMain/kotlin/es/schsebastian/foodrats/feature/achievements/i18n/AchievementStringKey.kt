@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.achievements.generated.resources.Res
 import foodrats.feature.achievements.generated.resources.achievements_best_cook_desc
 import foodrats.feature.achievements.generated.resources.achievements_best_cook_title
+import foodrats.feature.achievements.generated.resources.achievements_celebration_ack
 import foodrats.feature.achievements.generated.resources.achievements_celebration_title
 import foodrats.feature.achievements.generated.resources.achievements_detail_close_cta
 import foodrats.feature.achievements.generated.resources.achievements_detail_locked_label
@@ -62,6 +63,7 @@ enum class AchievementStringKey(override val resourceId: StringResource) : Strin
     EarnedOnFormat(Res.string.achievements_earned_on_format),
     UnlockedToast(Res.string.achievements_unlocked_toast),
     CelebrationTitle(Res.string.achievements_celebration_title),
+    CelebrationAck(Res.string.achievements_celebration_ack),
     DetailLockedLabel(Res.string.achievements_detail_locked_label),
     DetailCloseCta(Res.string.achievements_detail_close_cta),
     EmptySubtext(Res.string.achievements_empty_subtext),

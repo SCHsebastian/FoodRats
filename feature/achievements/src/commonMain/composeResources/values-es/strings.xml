@@ -8,6 +8,7 @@
     <string name="achievements_earned_on_format">Conseguida el %1$s</string>
     <string name="achievements_unlocked_toast">¡Insignia desbloqueada!</string>
     <string name="achievements_celebration_title">¡Nueva insignia!</string>
+    <string name="achievements_celebration_ack">¡Genial!</string>
     <string name="achievements_detail_locked_label">Bloqueada</string>
     <string name="achievements_detail_close_cta">Cerrar</string>
     <string name="achievements_empty_subtext">Publica comidas para empezar a ganar insignias.</string>

@@ -37,9 +37,18 @@ service firebase.storage {
       allow read: if false;
       allow write: if request.auth != null
                    && filename.matches(crewId + '_' + request.auth.uid + '_.*\\.jpg')
-                   && !filename.endsWith('_thumb.jpg')
+                   && !filename.matches('.*_thumb\\.jpg')
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/jpe?g');
+      // Author-scoped delete. `allow write` nominally covers delete, but its size/contentType
+      // clauses reference `request.resource`, which is NULL on a delete — so they can never be
+      // satisfied and delete would always 403. This explicit rule lets the author reclaim their
+      // OWN plate: best-effort orphan cleanup when a publish's Firestore write fails after the
+      // upload succeeded (FirebaseMealRepository). Scoped exactly like `write` (the filename
+      // embeds the author uid); thumbnails are server-owned (Admin SDK) and excluded.
+      allow delete: if request.auth != null
+                    && filename.matches(crewId + '_' + request.auth.uid + '_.*\\.jpg')
+                    && !filename.matches('.*_thumb\\.jpg');
     }
 
     // GDPR data-export archives (Art. 20). Written ONLY by the `exportMyData` callable via the

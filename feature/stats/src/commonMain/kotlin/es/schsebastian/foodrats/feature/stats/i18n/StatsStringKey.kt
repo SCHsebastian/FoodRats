@@ -28,10 +28,26 @@ import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_met
 import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_title
 import foodrats.feature.stats.generated.resources.stats_top_ingredient_by_member_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_title
+import foodrats.feature.stats.generated.resources.stats_bingo_category_beverage
+import foodrats.feature.stats.generated.resources.stats_bingo_category_dairy
+import foodrats.feature.stats.generated.resources.stats_bingo_category_fish
+import foodrats.feature.stats.generated.resources.stats_bingo_category_fruit
+import foodrats.feature.stats.generated.resources.stats_bingo_category_grain
+import foodrats.feature.stats.generated.resources.stats_bingo_category_legume
+import foodrats.feature.stats.generated.resources.stats_bingo_category_meat
+import foodrats.feature.stats.generated.resources.stats_bingo_category_other
+import foodrats.feature.stats.generated.resources.stats_bingo_category_sauce
+import foodrats.feature.stats.generated.resources.stats_bingo_category_spice
+import foodrats.feature.stats.generated.resources.stats_bingo_category_sweet
+import foodrats.feature.stats.generated.resources.stats_bingo_category_vegetable
 import foodrats.feature.stats.generated.resources.stats_bingo_collected_on_format
+import foodrats.feature.stats.generated.resources.stats_bingo_index_format
 import foodrats.feature.stats.generated.resources.stats_bingo_locked_label
+import foodrats.feature.stats.generated.resources.stats_bingo_mystery_glyph
+import foodrats.feature.stats.generated.resources.stats_bingo_mystery_name
 import foodrats.feature.stats.generated.resources.stats_bingo_progress_format
 import foodrats.feature.stats.generated.resources.stats_bingo_title
+import foodrats.feature.stats.generated.resources.stats_collection_title
 import foodrats.feature.stats.generated.resources.stats_passport_collected_on_format
 import foodrats.feature.stats.generated.resources.stats_passport_locked_label
 import foodrats.feature.stats.generated.resources.stats_passport_progress_format
@@ -95,6 +111,8 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     CookAwardNeedsMoreSingular(Res.string.stats_cook_award_needs_more_singular),
     CookAwardNeedsMorePlural(Res.string.stats_cook_award_needs_more_plural),
 
+    CollectionTitle(Res.string.stats_collection_title),
+
     PassportTitle(Res.string.stats_passport_title),
     PassportProgressFormat(Res.string.stats_passport_progress_format),
     PassportLockedLabel(Res.string.stats_passport_locked_label),
@@ -104,6 +122,22 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     BingoProgressFormat(Res.string.stats_bingo_progress_format),
     BingoLockedLabel(Res.string.stats_bingo_locked_label),
     BingoCollectedOnFormat(Res.string.stats_bingo_collected_on_format),
+    BingoMysteryGlyph(Res.string.stats_bingo_mystery_glyph),
+    BingoMysteryName(Res.string.stats_bingo_mystery_name),
+    BingoIndexFormat(Res.string.stats_bingo_index_format),
+
+    BingoCategoryVegetable(Res.string.stats_bingo_category_vegetable),
+    BingoCategoryFruit(Res.string.stats_bingo_category_fruit),
+    BingoCategoryMeat(Res.string.stats_bingo_category_meat),
+    BingoCategoryFish(Res.string.stats_bingo_category_fish),
+    BingoCategoryDairy(Res.string.stats_bingo_category_dairy),
+    BingoCategoryGrain(Res.string.stats_bingo_category_grain),
+    BingoCategoryLegume(Res.string.stats_bingo_category_legume),
+    BingoCategorySauce(Res.string.stats_bingo_category_sauce),
+    BingoCategorySpice(Res.string.stats_bingo_category_spice),
+    BingoCategorySweet(Res.string.stats_bingo_category_sweet),
+    BingoCategoryBeverage(Res.string.stats_bingo_category_beverage),
+    BingoCategoryOther(Res.string.stats_bingo_category_other),
 
     EmptyHeadline(Res.string.stats_empty_headline),
     EmptySubtext(Res.string.stats_empty_subtext),

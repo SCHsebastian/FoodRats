@@ -680,6 +680,28 @@ private val MoonVector: ImageVector = materialIcon(name = "Filled.Moon") {
     }
 }
 
+// ChefHat (toque) — the "best cook" achievement. Distinct from CrownVector, which already marks the
+// stats "best plate" podium; a chef's hat reads as the cook, not the dish.
+private val ChefHatVector: ImageVector = materialIcon(name = "Filled.ChefHat") {
+    materialPath {
+        // Hat band.
+        moveTo(7f, 17f)
+        horizontalLineToRelative(10f)
+        verticalLineToRelative(3.5f)
+        horizontalLineToRelative(-10f)
+        close()
+        // Puffy crown (three lobes) resting on the band.
+        moveTo(8f, 17f)
+        curveTo(6f, 17f, 4.6f, 15.6f, 4.6f, 14f)
+        curveTo(4.6f, 12.1f, 6.1f, 11f, 7.6f, 11f)
+        curveTo(7.7f, 8.6f, 9.6f, 7f, 12f, 7f)
+        curveTo(14.4f, 7f, 16.3f, 8.6f, 16.4f, 11f)
+        curveTo(17.9f, 11f, 19.4f, 12.1f, 19.4f, 14f)
+        curveTo(19.4f, 15.6f, 18f, 17f, 16f, 17f)
+        close()
+    }
+}
+
 // Public (globe) — forward-hook cuisine/globe achievement.
 private val PublicVector: ImageVector = materialIcon(name = "Filled.Public") {
     materialPath(pathFillType = PathFillType.EvenOdd) {
@@ -745,6 +767,7 @@ object FrIcons {
     val Sun: ImageVector           = SunVector
     val Moon: ImageVector          = MoonVector
     val Public: ImageVector        = PublicVector
+    val ChefHat: ImageVector       = ChefHatVector
 }
 
 @FrPreview

@@ -19,7 +19,7 @@ object AchievementCatalog {
             id = AchievementId("first_plate"),
             titleKey = AchievementStringKey.FirstPlateTitle,
             descriptionKey = AchievementStringKey.FirstPlateDesc,
-            iconKey = AchievementIcon.Plate,
+            iconKey = AchievementIcon.FirstPlate,
             criterion = AchievementCriterion.FirstPlate,
         ),
         Achievement(
@@ -114,7 +114,7 @@ object AchievementCatalog {
             id = AchievementId("best_cook"),
             titleKey = AchievementStringKey.BestCookTitle,
             descriptionKey = AchievementStringKey.BestCookDesc,
-            iconKey = AchievementIcon.Chef,
+            iconKey = AchievementIcon.ChefHat,
             criterion = AchievementCriterion.BestCook,
         ),
         Achievement(

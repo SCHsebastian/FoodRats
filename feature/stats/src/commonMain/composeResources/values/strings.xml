@@ -69,17 +69,38 @@
     <string name="stats_cook_award_needs_more_singular">%1$d more plate to qualify</string>
     <string name="stats_cook_award_needs_more_plural">%1$d more plates to qualify</string>
 
+    <!-- Collection tab (cuisine passport + ingredient pokédex) -->
+    <string name="stats_collection_title">Collection</string>
+
     <!-- Cuisine passport -->
     <string name="stats_passport_title">Cuisine passport</string>
     <string name="stats_passport_progress_format">%1$d / %2$d</string>
     <string name="stats_passport_locked_label">Locked</string>
     <string name="stats_passport_collected_on_format">Collected %1$s</string>
 
-    <!-- Ingredient bingo (Pokédex) -->
-    <string name="stats_bingo_title">Ingredient bingo</string>
+    <!-- Ingredient pokédex -->
+    <string name="stats_bingo_title">Ingredient Pokédex</string>
     <string name="stats_bingo_progress_format">%1$d / %2$d</string>
     <string name="stats_bingo_locked_label">Locked</string>
     <string name="stats_bingo_collected_on_format">Caught %1$s</string>
+    <!-- Pokédex reveal mechanic: locked cells hide the ingredient behind a silhouette. -->
+    <string name="stats_bingo_mystery_glyph">?</string>
+    <string name="stats_bingo_mystery_name">???</string>
+    <!-- Dex number; the index is zero-padded in code and passed as a string. -->
+    <string name="stats_bingo_index_format">#%1$s</string>
+    <!-- Pokédex category section headers. -->
+    <string name="stats_bingo_category_vegetable">Vegetables</string>
+    <string name="stats_bingo_category_fruit">Fruit</string>
+    <string name="stats_bingo_category_meat">Meat</string>
+    <string name="stats_bingo_category_fish">Fish &amp; Seafood</string>
+    <string name="stats_bingo_category_dairy">Dairy</string>
+    <string name="stats_bingo_category_grain">Grains</string>
+    <string name="stats_bingo_category_legume">Legumes</string>
+    <string name="stats_bingo_category_sauce">Sauces</string>
+    <string name="stats_bingo_category_spice">Spices</string>
+    <string name="stats_bingo_category_sweet">Sweets</string>
+    <string name="stats_bingo_category_beverage">Beverages</string>
+    <string name="stats_bingo_category_other">Other</string>
 
     <!-- Empty / errors -->
     <string name="stats_empty_headline">No stats yet</string>

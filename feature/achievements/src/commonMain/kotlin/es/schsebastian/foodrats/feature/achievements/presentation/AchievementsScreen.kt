@@ -117,11 +117,12 @@ fun AchievementsScreen(
     }
 
     celebration?.let { titleKey ->
+        // Single-action acknowledge dialog: one "Nice!" button, not the confirm/dismiss pair (which
+        // previously rendered the same "Close" label twice). It's a notification, not a gate.
         FrConfirmDialog(
             title = resolve(AchievementStringKey.CelebrationTitle),
             message = "${resolve(titleKey)}\n${resolve(AchievementStringKey.UnlockedToast)}",
-            confirmLabel = resolve(AchievementStringKey.DetailCloseCta),
-            dismissLabel = resolve(AchievementStringKey.DetailCloseCta),
+            confirmLabel = resolve(AchievementStringKey.CelebrationAck),
             onConfirm = { celebration = null },
             onDismiss = { celebration = null },
         )

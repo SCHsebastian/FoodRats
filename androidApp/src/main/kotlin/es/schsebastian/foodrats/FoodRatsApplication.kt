@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.data.firebase.FirebaseInitializer
 import es.schsebastian.foodrats.core.data.firebase.installAndroidFirebaseContext
 import es.schsebastian.foodrats.core.data.location.AndroidLocationProvider
 import es.schsebastian.foodrats.core.data.location.LocationPermissionLauncherHolder
+import es.schsebastian.foodrats.core.data.share.ForegroundActivityHolder
 import es.schsebastian.foodrats.core.data.share.PlateImageDecoder
 import es.schsebastian.foodrats.core.data.share.ShareControllerAndroid
 import es.schsebastian.foodrats.core.data.share.StoryCardRenderer
@@ -52,6 +53,9 @@ class FoodRatsApplication : Application() {
         FirebaseInitializer.init()
         NotificationChannels.ensure(this)
         installImageLoader()
+        // Track the foreground Activity so the off-screen share-card renderer has a window to host
+        // its capture in. Must register before MainActivity resumes (see ForegroundActivityHolder).
+        ForegroundActivityHolder.install(this)
 
         startKoin {
             androidLogger()

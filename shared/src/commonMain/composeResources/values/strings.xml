@@ -20,9 +20,9 @@
     <string name="recap_cover_subtitle">A quick recap of your crew\'s week</string>
     <string name="recap_top_meal_title">Plate of the week</string>
     <string name="recap_top_meal_author">by %1$s</string>
-    <string name="recap_top_meal_score">%1$.1f ★ · %2$d votes</string>
+    <string name="recap_top_meal_score">%1$s ★ · %2$d votes</string>
     <string name="recap_best_cook_title">Best cook</string>
-    <string name="recap_best_cook_subtitle">%1$s · %2$.1f ★ average</string>
+    <string name="recap_best_cook_subtitle">%1$s · %2$s ★ average</string>
     <string name="recap_most_prolific_title">Most prolific</string>
     <string name="recap_most_prolific_subtitle">%1$s posted %2$d plates</string>
     <string name="recap_streak_title">You\'re on a roll</string>

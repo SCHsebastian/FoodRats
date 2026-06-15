@@ -15,6 +15,7 @@ import es.schsebastian.foodrats.feature.achievements.domain.model.AchievementTie
  * same rule that keeps `FrMealCard` out of the design system.
  */
 internal fun AchievementIcon.toVector(): ImageVector = when (this) {
+    AchievementIcon.FirstPlate -> FrIcons.Star
     AchievementIcon.Plate -> FrIcons.Restaurant
     AchievementIcon.Trophy -> FrIcons.Trophy
     AchievementIcon.Ingredients -> FrIcons.Eco
@@ -23,6 +24,7 @@ internal fun AchievementIcon.toVector(): ImageVector = when (this) {
     AchievementIcon.Sunrise -> FrIcons.Sun
     AchievementIcon.Moon -> FrIcons.Moon
     AchievementIcon.Chef -> FrIcons.Crown
+    AchievementIcon.ChefHat -> FrIcons.ChefHat
     AchievementIcon.Globe -> FrIcons.Public
 }
 

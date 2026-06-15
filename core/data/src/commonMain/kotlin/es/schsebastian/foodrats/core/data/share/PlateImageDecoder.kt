@@ -32,6 +32,9 @@ class PlateImageDecoder(
             val loader = SingletonImageLoader.get(platformContext)
             val request = ImageRequest.Builder(platformContext)
                 .data(url)
+                // The off-screen renderer draws this onto a software Canvas; a hardware bitmap can't be
+                // drawn there ("Software rendering doesn't support hardware bitmaps"). Android-only.
+                .softwareBitmapForCapture()
                 .build()
             (loader.execute(request) as? SuccessResult)
                 ?.image
@@ -46,3 +49,10 @@ class PlateImageDecoder(
  * [ImageBitmap]. expect/actual because the conversion differs per platform.
  */
 internal expect fun imageBitmapFromCoil(bitmap: coil3.Bitmap): ImageBitmap
+
+/**
+ * Forces a software-backed (non-hardware) decode so the result can be drawn onto a software Canvas
+ * by the off-screen [StoryCardRenderer]. Android disables hardware bitmaps; other platforms (Skia)
+ * have no hardware-bitmap concept, so this is a no-op there.
+ */
+internal expect fun ImageRequest.Builder.softwareBitmapForCapture(): ImageRequest.Builder

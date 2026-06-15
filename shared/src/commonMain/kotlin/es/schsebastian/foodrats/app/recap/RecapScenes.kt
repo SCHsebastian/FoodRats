@@ -26,6 +26,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.toFixed
 import es.schsebastian.foodrats.feature.achievements.i18n.AchievementStringKey
 
 /**
@@ -41,7 +42,7 @@ fun RecapSceneView(scene: RecapScene, modifier: Modifier = Modifier) {
         is RecapScene.TopMeal -> TopMealScene(scene, modifier)
         is RecapScene.BestCook -> CenteredScene(
             title = resolve(SharedStringKey.RecapBestCookTitle),
-            subtitle = resolve(SharedStringKey.RecapBestCookSubtitle, scene.memberName, scene.avgScore),
+            subtitle = resolve(SharedStringKey.RecapBestCookSubtitle, scene.memberName, scene.avgScore.toFixed(1)),
             icon = FrIcons.Crown,
             tint = LocalFrSemanticColors.current.celebration,
             modifier = modifier,
@@ -94,7 +95,7 @@ private fun TopMealScene(scene: RecapScene.TopMeal, modifier: Modifier) {
         CenteredText(scene.dishName, MaterialTheme.typography.headlineSmall, Color.White)
         CenteredText(resolve(SharedStringKey.RecapTopMealAuthor, scene.authorName), MaterialTheme.typography.bodyMedium, Color.White)
         CenteredText(
-            resolve(SharedStringKey.RecapTopMealScore, scene.score, scene.ratingCount),
+            resolve(SharedStringKey.RecapTopMealScore, scene.score.toFixed(1), scene.ratingCount),
             MaterialTheme.typography.titleSmall,
             LocalFrSemanticColors.current.celebration,
         )

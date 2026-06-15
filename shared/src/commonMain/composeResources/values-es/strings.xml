@@ -20,9 +20,9 @@
     <string name="recap_cover_subtitle">Un repaso rápido de la semana de tu cuadrilla</string>
     <string name="recap_top_meal_title">Plato de la semana</string>
     <string name="recap_top_meal_author">de %1$s</string>
-    <string name="recap_top_meal_score">%1$.1f ★ · %2$d votos</string>
+    <string name="recap_top_meal_score">%1$s ★ · %2$d votos</string>
     <string name="recap_best_cook_title">Mejor cocinero/a</string>
-    <string name="recap_best_cook_subtitle">%1$s · %2$.1f ★ de media</string>
+    <string name="recap_best_cook_subtitle">%1$s · %2$s ★ de media</string>
     <string name="recap_most_prolific_title">Más prolífico/a</string>
     <string name="recap_most_prolific_subtitle">%1$s publicó %2$d platos</string>
     <string name="recap_streak_title">Estás que ardes</string>

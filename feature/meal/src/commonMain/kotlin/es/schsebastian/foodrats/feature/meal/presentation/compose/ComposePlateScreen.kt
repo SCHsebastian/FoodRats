@@ -43,6 +43,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.time.SystemClock
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.toFixed
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.presentation.components.CrewAudiencePicker
@@ -72,7 +73,7 @@ fun ComposePlateScreen(
     val today = remember { MealDay.today(SystemClock(), TimeZone.currentSystemDefault()) }
     val emote = remember(today) { DailyEmote.forDay(today) }
     val coordinatesLabel = state.coordinates?.let { coords ->
-        resolve(MealStringKey.ComposeCoordinatesFormat, coords.latitude, coords.longitude)
+        resolve(MealStringKey.ComposeCoordinatesFormat, coords.latitude.toFixed(5), coords.longitude.toFixed(5))
     }
 
     LaunchedEffect(Unit) {

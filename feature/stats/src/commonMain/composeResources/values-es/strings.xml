@@ -58,15 +58,32 @@
     <string name="stats_cook_award_needs_more_singular">Falta %1$d plato para entrar</string>
     <string name="stats_cook_award_needs_more_plural">Faltan %1$d platos para entrar</string>
 
+    <string name="stats_collection_title">Colección</string>
+
     <string name="stats_passport_title">Pasaporte de cocinas</string>
     <string name="stats_passport_progress_format">%1$d / %2$d</string>
     <string name="stats_passport_locked_label">Bloqueada</string>
     <string name="stats_passport_collected_on_format">Conseguida %1$s</string>
 
-    <string name="stats_bingo_title">Bingo de ingredientes</string>
+    <string name="stats_bingo_title">Pokédex de ingredientes</string>
     <string name="stats_bingo_progress_format">%1$d / %2$d</string>
     <string name="stats_bingo_locked_label">Bloqueado</string>
     <string name="stats_bingo_collected_on_format">Capturado %1$s</string>
+    <string name="stats_bingo_mystery_glyph">?</string>
+    <string name="stats_bingo_mystery_name">???</string>
+    <string name="stats_bingo_index_format">#%1$s</string>
+    <string name="stats_bingo_category_vegetable">Verduras</string>
+    <string name="stats_bingo_category_fruit">Frutas</string>
+    <string name="stats_bingo_category_meat">Carnes</string>
+    <string name="stats_bingo_category_fish">Pescados y mariscos</string>
+    <string name="stats_bingo_category_dairy">Lácteos</string>
+    <string name="stats_bingo_category_grain">Cereales</string>
+    <string name="stats_bingo_category_legume">Legumbres</string>
+    <string name="stats_bingo_category_sauce">Salsas</string>
+    <string name="stats_bingo_category_spice">Especias</string>
+    <string name="stats_bingo_category_sweet">Dulces</string>
+    <string name="stats_bingo_category_beverage">Bebidas</string>
+    <string name="stats_bingo_category_other">Otros</string>
 
     <string name="stats_empty_headline">Sin estadísticas todavía</string>
     <string name="stats_empty_subtext">Sube una comida para empezar a sumar.</string>

@@ -6,6 +6,7 @@ package es.schsebastian.foodrats.feature.achievements.domain.model
  * presentation layer maps each value to an `FrIcons` vector (spec §5.3, §8.4).
  */
 enum class AchievementIcon {
+    FirstPlate,
     Plate,
     Trophy,
     Ingredients,
@@ -14,5 +15,6 @@ enum class AchievementIcon {
     Sunrise,
     Moon,
     Chef,
+    ChefHat,
     Globe,
 }

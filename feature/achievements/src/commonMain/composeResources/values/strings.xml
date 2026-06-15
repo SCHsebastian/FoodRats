@@ -8,6 +8,7 @@
     <string name="achievements_earned_on_format">Earned %1$s</string>
     <string name="achievements_unlocked_toast">Badge unlocked!</string>
     <string name="achievements_celebration_title">New badge!</string>
+    <string name="achievements_celebration_ack">Nice!</string>
     <string name="achievements_detail_locked_label">Locked</string>
     <string name="achievements_detail_close_cta">Close</string>
     <string name="achievements_empty_subtext">Publish meals to start earning badges.</string>

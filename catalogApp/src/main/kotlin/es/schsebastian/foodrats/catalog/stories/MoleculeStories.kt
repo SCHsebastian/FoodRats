@@ -270,9 +270,13 @@ private fun StarRatingStory() {
 @Composable
 private fun ConfirmDialogStory() {
     var open by remember { mutableStateOf(false) }
+    var ackOpen by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        CatalogScene(label = "Open dialog (tap to preview)") {
+        CatalogScene(label = "Confirm/dismiss (tap to preview)") {
             FrButton(label = "Show confirm dialog", onClick = { open = true })
+        }
+        CatalogScene(label = "Single-action acknowledge (no dismissLabel)") {
+            FrButton(label = "Show acknowledge dialog", onClick = { ackOpen = true })
         }
         if (open) {
             FrConfirmDialog(
@@ -282,6 +286,15 @@ private fun ConfirmDialogStory() {
                 dismissLabel = "Cancel",
                 onConfirm = { open = false },
                 onDismiss = { open = false },
+            )
+        }
+        if (ackOpen) {
+            FrConfirmDialog(
+                title = "New badge!",
+                message = "First Plate\nBadge unlocked!",
+                confirmLabel = "Nice!",
+                onConfirm = { ackOpen = false },
+                onDismiss = { ackOpen = false },
             )
         }
     }
