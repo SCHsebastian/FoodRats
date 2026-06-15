@@ -202,7 +202,10 @@ class MealDetailViewModel(
         val account = authors[c.authorId]
         val resolved = authors.containsKey(c.authorId)
         val isDeleted = resolved && account == null
-        val canDelete = !isDeleted && viewerId != null &&
+        // RBAC: viewer may delete a comment row iff they authored it OR own the crew.
+        // Whether the *author's account doc* has resolved (`isDeleted`) is identity-join
+        // state, unrelated to the viewer's delete permission — it must not gate it.
+        val canDelete = viewerId != null &&
             (c.authorId == viewerId || ownerId == viewerId)
         CommentRowUi(
             id = c.id,
