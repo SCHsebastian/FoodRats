@@ -20,7 +20,9 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
+import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 
 @Composable
@@ -39,7 +41,7 @@ fun FrMostVotedPlate(
     ) {
         AsyncImage(
             model = award.photoUrl,
-            contentDescription = null,
+            contentDescription = resolve(StatsStringKey.PlatePhotoFormat, award.dish.value),
             modifier = Modifier
                 .size(Sizes.avatarLg)
                 .clip(RoundedCornerShape(Radius.sm)),
@@ -56,11 +58,8 @@ fun FrMostVotedPlate(
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface,
             )
-            val key = if (award.ratingCount == 1)
-                StatsStringKey.MostVotedPlateVotersSingular
-            else StatsStringKey.MostVotedPlateVotersPlural
             FrText(
-                text = resolve(key, award.ratingCount),
+                text = resolvePlural(StatsPluralKey.MostVotedPlateVoters, award.ratingCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

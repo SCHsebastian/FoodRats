@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.meal.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -20,7 +21,7 @@ class UpdateMealDraftUseCaseTest {
     private val account = (AccountId.of("acc-1") as Result.Ok).value
 
     private fun baseDraft() = MealDraft(
-        crewId = crew,
+        audienceCrewIds = setOf(crew),
         authorId = account,
         day = MealDay(LocalDate(2026, 5, 24), TimeZone.UTC),
         plate = null,
@@ -34,24 +35,28 @@ class UpdateMealDraftUseCaseTest {
         return UpdateMealDraftUseCase(repo) to repo
     }
 
-    @Test fun setDetected_writes_all_three_fields() = runTest {
+    @Test fun setDetected_seeds_detected_and_version_only_never_confirmed() = runTest {
+        // Detected ≠ confirmed: a classifier run must NOT stamp the user-confirmed
+        // `ingredients` list (that's SetIngredients' job). It only seeds `detectedIngredients`.
         val (update, repo) = setup(baseDraft())
-        update(UpdateMealDraftCommand.SetDetected(listOf(IngredientSlug("tomato")), "food101-v1"))
+        update(UpdateMealDraftCommand.SetDetected(listOf(IngredientSlug.of("tomato").getOrNull()!!), "pizza", "food101-v1"))
         val updated = repo.observeDraft().first()!!
-        assertEquals(listOf(IngredientSlug("tomato")), updated.detectedIngredients)
-        assertEquals(listOf(IngredientSlug("tomato")), updated.ingredients)
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), updated.detectedIngredients)
+        assertEquals(emptyList(), updated.ingredients)
         assertEquals("food101-v1", updated.classifierVersion)
+        // The detected dish slug is carried for the publish-time cuisine stamp (roadmap §2.2).
+        assertEquals("pizza", updated.detectedDishSlug)
     }
 
     @Test fun setIngredients_does_not_touch_detected() = runTest {
         val initial = baseDraft().copy(
-            detectedIngredients = listOf(IngredientSlug("a")),
-            ingredients = listOf(IngredientSlug("a")),
+            detectedIngredients = listOf(IngredientSlug.of("a").getOrNull()!!),
+            ingredients = listOf(IngredientSlug.of("a").getOrNull()!!),
         )
         val (update, repo) = setup(initial)
-        update(UpdateMealDraftCommand.SetIngredients(listOf(IngredientSlug("a"), IngredientSlug("b"))))
+        update(UpdateMealDraftCommand.SetIngredients(listOf(IngredientSlug.of("a").getOrNull()!!, IngredientSlug.of("b").getOrNull()!!)))
         val updated = repo.observeDraft().first()!!
-        assertEquals(listOf(IngredientSlug("a")), updated.detectedIngredients)
-        assertEquals(listOf(IngredientSlug("a"), IngredientSlug("b")), updated.ingredients)
+        assertEquals(listOf(IngredientSlug.of("a").getOrNull()!!), updated.detectedIngredients)
+        assertEquals(listOf(IngredientSlug.of("a").getOrNull()!!, IngredientSlug.of("b").getOrNull()!!), updated.ingredients)
     }
 }

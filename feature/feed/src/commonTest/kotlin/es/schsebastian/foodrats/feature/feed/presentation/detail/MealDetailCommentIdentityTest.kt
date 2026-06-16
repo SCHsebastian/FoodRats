@@ -7,16 +7,21 @@ import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import kotlinx.coroutines.flow.flowOf
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -28,6 +33,7 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
 import kotlinx.coroutines.Dispatchers
@@ -74,6 +80,16 @@ class FakeCrewOwnerPort(private val owner: AccountId? = null) : CrewOwnerPort {
 class FakeMealDeletePort : MealDeletePort {
     var result: Result<Unit, MealDeleteError> = Result.success(Unit)
     override suspend fun delete(crewId: CrewId, mealId: MealId) = result
+    override suspend fun deleteFromAllCrews(
+        crewIds: Set<CrewId>,
+        authorId: AccountId,
+        day: MealDay,
+        slot: MealSlot,
+    ) = result
+}
+
+class FakeCrewMembership(private val crews: List<CrewSummary> = emptyList()) : CrewMembershipPort {
+    override fun observeMyCrews(accountId: AccountId): Flow<List<CrewSummary>> = flowOf(crews)
 }
 
 class FakeIngredientReadPort : IngredientReadPort {
@@ -110,7 +126,7 @@ class MealDetailCommentIdentityTest {
             mealId = "meal-1",
             dayIso = "2026-05-20",
             observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
-            ratingPort = FakeMealRatingPort(),
+            rateMeal = RateMealUseCase(FakeMealRatingPort()),
             commentPort = commentPort,
             accountReadPort = accountPort,
             ingredientRead = FakeIngredientReadPort(),
@@ -119,8 +135,10 @@ class MealDetailCommentIdentityTest {
             clock = FixedClock(),
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
+            deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort),
             crewOwner = FakeCrewOwnerPort(),
+            storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
         )
         return vm to TestPorts(commentPort, accountPort)
     }
@@ -208,8 +226,8 @@ class MealDetailCommentIdentityTest {
             dish = (es.schsebastian.foodrats.core.domain.meal.DishName.of("Pasta") as Result.Ok).value,
             description = es.schsebastian.foodrats.core.domain.meal.Description.EMPTY,
             publishedAt = Instant.parse("2026-05-20T10:00:00Z"),
-            ingredients = listOf(IngredientSlug("egg")),
-            detectedIngredients = listOf(IngredientSlug("bacon")),
+            ingredients = listOf(IngredientSlug.of("egg").getOrNull()!!),
+            detectedIngredients = listOf(IngredientSlug.of("bacon").getOrNull()!!),
         )
         val readPort = FakeMealReadPort(
             perDay = mapOf((crew to day.toKey()) to listOf(
@@ -223,7 +241,7 @@ class MealDetailCommentIdentityTest {
             mealId = "meal-1",
             dayIso = "2026-05-20",
             observeFeed = ObserveFeedUseCase(active, readPort),
-            ratingPort = FakeMealRatingPort(),
+            rateMeal = RateMealUseCase(FakeMealRatingPort()),
             commentPort = commentPort,
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
@@ -232,12 +250,41 @@ class MealDetailCommentIdentityTest {
             clock = FixedClock(),
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
+            deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort),
             crewOwner = FakeCrewOwnerPort(),
+            storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
         )
         vm.state.test {
             val s = expectMostRecentItem()
             assertEquals(listOf("Egg"), s.meal?.ingredients)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun second_comment_batch_updates_state_does_not_freeze() = runTest {
+        // Regression: the old code started a nested terminal `collect` inside the
+        // outer comment collector, which suspended the outer collector forever after
+        // the first batch — so a SECOND batch never reached state. flatMapLatest fixes it.
+        val (vm, ports) = newSut()
+        ports.accountPort.set(accountId("user-1"), Account(accountId("user-1"), "h", "Sebas", null, null))
+        ports.accountPort.set(accountId("user-2"), Account(accountId("user-2"), "h", "Lia", null, null))
+        ports.commentPort.emit(listOf(commentFrom("user-1", "first")))
+        vm.state.test {
+            assertEquals(
+                listOf("first"),
+                expectMostRecentItem().commentRows.map { it.text },
+            )
+
+            // Second batch must drive state too — the frozen old code never delivered this.
+            ports.commentPort.emit(listOf(
+                commentFrom("user-1", "first"),
+                commentFrom("user-2", "second"),
+            ))
+            assertEquals(
+                listOf("first", "second"),
+                awaitItem().commentRows.map { it.text },
+            )
             cancelAndIgnoreRemainingEvents()
         }
     }

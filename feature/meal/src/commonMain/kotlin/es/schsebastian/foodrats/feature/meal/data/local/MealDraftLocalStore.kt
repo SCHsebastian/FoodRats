@@ -12,6 +12,7 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import kotlin.io.encoding.Base64
@@ -26,7 +27,10 @@ import kotlinx.serialization.serializer
 
 @Serializable
 private data class MealDraftJson(
-    val crewId: String,
+    // The chosen publish audience. `crewId` (singular) is the legacy field a pre-multi-crew
+    // draft may still carry on disk; it's read as a one-element audience for back-compat.
+    val audienceCrewIds: List<String> = emptyList(),
+    val crewId: String? = null,
     val authorId: String,
     val dayIso: String,
     val zoneId: String,
@@ -39,6 +43,7 @@ private data class MealDraftJson(
     val longitude: Double? = null,
     val ingredients: List<String> = emptyList(),
     val detectedIngredients: List<String> = emptyList(),
+    val detectedDishSlug: String? = null,
     val classifierVersion: String? = null,
 )
 
@@ -57,7 +62,10 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
 
     @OptIn(ExperimentalEncodingApi::class)
     private fun MealDraftJson.toDomain(): MealDraft? {
-        val crew = CrewId.of(crewId).getOrElse { return null }
+        // Prefer the multi-crew audience; fall back to the legacy singular `crewId`.
+        val rawAudience = audienceCrewIds.ifEmpty { listOfNotNull(crewId) }
+        val audience = rawAudience.mapNotNull { CrewId.of(it).getOrNull() }.toSet()
+        if (audience.isEmpty()) return null
         val acc  = AccountId.of(authorId).getOrElse { return null }
         val day  = runCatching { LocalDate.parse(dayIso) }.getOrNull() ?: return null
         val zone = runCatching { TimeZone.of(zoneId) }.getOrNull() ?: TimeZone.UTC
@@ -68,7 +76,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             (Coordinates.of(latitude, longitude) as? Result.Ok)?.value
         } else null
         return MealDraft(
-            crewId = crew,
+            audienceCrewIds = audience,
             authorId = acc,
             day = MealDay(day, zone),
             plate = plate,
@@ -76,8 +84,9 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             description = desc,
             slot = slot?.let(MealSlot::fromKey),
             coordinates = coords,
-            ingredients = ingredients.mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() },
-            detectedIngredients = detectedIngredients.mapNotNull { runCatching { IngredientSlug(it) }.getOrNull() },
+            ingredients = ingredients.mapNotNull { IngredientSlug.of(it).getOrNull() },
+            detectedIngredients = detectedIngredients.mapNotNull { IngredientSlug.of(it).getOrNull() },
+            detectedDishSlug = detectedDishSlug,
             classifierVersion = classifierVersion,
         )
     }
@@ -85,7 +94,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
     private companion object {
         @OptIn(ExperimentalEncodingApi::class)
         fun MealDraftJson.Companion.from(d: MealDraft) = MealDraftJson(
-            crewId = d.crewId.value,
+            audienceCrewIds = d.audienceCrewIds.map { it.value },
             authorId = d.authorId.value,
             dayIso = d.day.date.toString(),
             zoneId = d.day.zone.id,
@@ -98,6 +107,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             longitude = d.coordinates?.longitude,
             ingredients = d.ingredients.map { it.value },
             detectedIngredients = d.detectedIngredients.map { it.value },
+            detectedDishSlug = d.detectedDishSlug,
             classifierVersion = d.classifierVersion,
         )
     }

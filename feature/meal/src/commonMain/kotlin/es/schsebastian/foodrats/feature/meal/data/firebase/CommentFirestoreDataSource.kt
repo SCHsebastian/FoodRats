@@ -7,9 +7,15 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class CommentFirestoreDataSource(private val firestore: FirebaseFirestore) {
+/**
+ * The only Firestore-touching implementation of [CommentFirestore]. Targets the
+ * `crews/{crewId}/meals/{mealId}/comments` subcollection, ordered by `createdAtEpochMs` ascending.
+ */
+internal class CommentFirestoreDataSource(
+    private val firestore: FirebaseFirestore,
+) : CommentFirestore {
 
-    fun observe(crewId: CrewId, mealId: MealId): Flow<List<CommentDto>> =
+    override fun observe(crewId: CrewId, mealId: MealId): Flow<List<CommentDto>> =
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId.value)
             .collection("comments")
@@ -17,14 +23,14 @@ class CommentFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .snapshots
             .map { snap -> snap.documents.map { d -> d.data<CommentDto>().copy(id = d.id) } }
 
-    suspend fun create(crewId: CrewId, mealId: MealId, dto: CommentDto) {
+    override suspend fun create(crewId: CrewId, mealId: MealId, dto: CommentDto) {
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId.value)
             .collection("comments")
             .add(dto)
     }
 
-    suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String) {
+    override suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String) {
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId.value)
             .collection("comments").document(commentId)

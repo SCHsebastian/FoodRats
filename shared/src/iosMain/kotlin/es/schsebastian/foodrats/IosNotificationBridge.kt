@@ -26,7 +26,9 @@ object IosNotificationBridge {
         val koin = KoinPlatform.getKoin()
         val mapper = koin.get<PushPayloadMapper>()
         val bus = koin.get<NotificationBus>()
-        val reminder = mapper.toReminder(data) ?: return
-        scope.launch { bus.publish(reminder) }
+        scope.launch {
+            val reminder = mapper.toReminder(data) ?: return@launch
+            bus.publish(reminder)
+        }
     }
 }

@@ -6,12 +6,18 @@
     <string name="stats_tab_month">Mes</string>
     <string name="stats_tab_historic">Histórico</string>
 
-    <string name="stats_hero_personal_streak_singular">%1$d día de racha</string>
-    <string name="stats_hero_personal_streak_plural">%1$d días de racha</string>
-    <string name="stats_hero_crew_streak_singular">Crew: %1$d día</string>
-    <string name="stats_hero_crew_streak_plural">Crew: %1$d días</string>
-    <string name="stats_hero_plates_today_singular">%1$d plato hoy</string>
-    <string name="stats_hero_plates_today_plural">%1$d platos hoy</string>
+    <plurals name="stats_hero_personal_streak">
+        <item quantity="one">%1$d día de racha</item>
+        <item quantity="other">%1$d días de racha</item>
+    </plurals>
+    <plurals name="stats_hero_crew_streak">
+        <item quantity="one">Crew: %1$d día</item>
+        <item quantity="other">Crew: %1$d días</item>
+    </plurals>
+    <plurals name="stats_hero_plates_today">
+        <item quantity="one">%1$d plato hoy</item>
+        <item quantity="other">%1$d platos hoy</item>
+    </plurals>
     <string name="stats_hero_i_posted_today">Has subido hoy ✓</string>
     <string name="stats_hero_no_streak">Sin racha — sube tu primer plato</string>
 
@@ -22,13 +28,17 @@
     <string name="stats_summary_total_plates_label">Platos</string>
     <string name="stats_summary_avg_per_day_label">Por día</string>
 
+    <string name="stats_plate_photo_format">Foto de %1$s</string>
+
     <string name="stats_best_plate_title">Mejor plato</string>
     <string name="stats_best_plate_score_format">%1$s ★</string>
     <string name="stats_best_plate_author_format">de %1$s</string>
 
     <string name="stats_most_voted_plate_title">Plato más votado</string>
-    <string name="stats_most_voted_plate_voters_singular">%1$d votante</string>
-    <string name="stats_most_voted_plate_voters_plural">%1$d votantes</string>
+    <plurals name="stats_most_voted_plate_voters">
+        <item quantity="one">%1$d votante</item>
+        <item quantity="other">%1$d votantes</item>
+    </plurals>
 
     <string name="stats_cooks_section_title">Cocineros</string>
     <string name="stats_best_cook_title">Mejor cocinero</string>
@@ -48,6 +58,33 @@
     <string name="stats_cook_award_needs_more_singular">Falta %1$d plato para entrar</string>
     <string name="stats_cook_award_needs_more_plural">Faltan %1$d platos para entrar</string>
 
+    <string name="stats_collection_title">Colección</string>
+
+    <string name="stats_passport_title">Pasaporte de cocinas</string>
+    <string name="stats_passport_progress_format">%1$d / %2$d</string>
+    <string name="stats_passport_locked_label">Bloqueada</string>
+    <string name="stats_passport_collected_on_format">Conseguida %1$s</string>
+
+    <string name="stats_bingo_title">Pokédex de ingredientes</string>
+    <string name="stats_bingo_progress_format">%1$d / %2$d</string>
+    <string name="stats_bingo_locked_label">Bloqueado</string>
+    <string name="stats_bingo_collected_on_format">Capturado %1$s</string>
+    <string name="stats_bingo_mystery_glyph">?</string>
+    <string name="stats_bingo_mystery_name">???</string>
+    <string name="stats_bingo_index_format">#%1$s</string>
+    <string name="stats_bingo_category_vegetable">Verduras</string>
+    <string name="stats_bingo_category_fruit">Frutas</string>
+    <string name="stats_bingo_category_meat">Carnes</string>
+    <string name="stats_bingo_category_fish">Pescados y mariscos</string>
+    <string name="stats_bingo_category_dairy">Lácteos</string>
+    <string name="stats_bingo_category_grain">Cereales</string>
+    <string name="stats_bingo_category_legume">Legumbres</string>
+    <string name="stats_bingo_category_sauce">Salsas</string>
+    <string name="stats_bingo_category_spice">Especias</string>
+    <string name="stats_bingo_category_sweet">Dulces</string>
+    <string name="stats_bingo_category_beverage">Bebidas</string>
+    <string name="stats_bingo_category_other">Otros</string>
+
     <string name="stats_empty_headline">Sin estadísticas todavía</string>
     <string name="stats_empty_subtext">Sube una comida para empezar a sumar.</string>
     <string name="stats_error_no_active_crew">Elige una crew para ver sus stats.</string>
@@ -55,4 +92,12 @@
     <string name="stats_error_unauthorized">No eres miembro de esta crew.</string>
     <string name="stats_error_crew_not_found">Crew no encontrada.</string>
     <string name="stats_error_unavailable">No se pudieron cargar las stats. Inténtalo otra vez.</string>
+
+    <!-- Entrada al resumen semanal en historias (roadmap §2.4) -->
+    <string name="stats_weekly_recap_cta">Ver tu semana</string>
+
+    <!-- Compartir un premio / racha en Instagram Stories (spec §10) -->
+    <string name="stats_share_award">Compartir</string>
+    <!-- Pastilla de puntuación en la tarjeta del premio compartido (media ★ · número). -->
+    <string name="stats_share_score_format">%1$s ★ · %2$d</string>
 </resources>

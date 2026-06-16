@@ -30,12 +30,32 @@ kotest = "5.9.1"
 navCompose = "2.9.2"
 okio = "3.9.1"
 konsist = "0.17.3"
+firebaseBom = "33.5.1"
 googleServices = "4.4.2"
 firebaseCrashlyticsPlugin = "3.0.2"
 roborazzi = "1.40.0"
 androidxWork = "2.10.0"
 androidxLifecycleProcess = "2.9.0"
 coil = "3.4.0"
+# MediaPipe Tasks Vision — on-device food classifier (:feature:meal-ai).
+# 0.10.35 ships 16-KB-page-aligned native libs — required for Play submissions
+# targeting Android 15+ since 2025-11-01. Earlier pins (e.g. 0.10.14) emitted
+# 4-KB-aligned (align 2**12) LOAD segments and are rejected by Play; 0.10.35's are
+# all align 2**14 (16 KB) — verified across all four ABIs (see roadmap §0.3 /
+# docs/session/reports/w0-16kb-alignment.md). NB: in 0.10.35 the native lib was
+# renamed `libmediapipe_tasks_vision_jni.so` → `libmediapipe_tasks_jni.so` and moved
+# from tasks-vision into the transitive `tasks-core` AAR. Keep in lockstep with the
+# iOS MediaPipeTasksVision cocoapod pin in iosApp/Podfile.
+mediapipeTasksVision = "0.10.35"
+# Baseline Profiles + startup macrobenchmarks (:baselineprofile, roadmap §5.3).
+# benchmark + baselineprofile MUST track AGP — AGP 9.x (the 1.4.x line targets AGP 8.x and
+# rejects :androidApp here with "not a supported android module"; the 1.5.0-alpha line is the
+# one that recognises AGP 9's variant API). uiautomator drives the cold-start journey;
+# profileinstaller ships the generated profile inside the release APK/AAB at runtime.
+androidxBenchmark = "1.5.0-alpha06"
+androidxBaselineprofile = "1.5.0-alpha06"
+androidxUiautomator = "2.3.0"
+androidxProfileinstaller = "1.4.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -88,8 +108,23 @@ imagepickerkmp = { module = "io.github.ismoy:imagepickerkmp", version.ref = "ima
 firebase-auth      = { module = "dev.gitlive:firebase-auth",      version.ref = "gitliveFirebase" }
 firebase-firestore = { module = "dev.gitlive:firebase-firestore", version.ref = "gitliveFirebase" }
 firebase-storage   = { module = "dev.gitlive:firebase-storage",   version.ref = "gitliveFirebase" }
+# Callable Cloud Functions (mintPlateUrls) for membership-checked signed image URLs.
+# Used only by core:data's FirebaseImageUrlResolver — kept out of the firebase-gitlive
+# bundle so the other Firebase modules don't pull it transitively.
+firebase-functions = { module = "dev.gitlive:firebase-functions", version.ref = "gitliveFirebase" }
 firebase-messaging = { module = "dev.gitlive:firebase-messaging", version.ref = "gitliveFirebase" }
 firebase-common    = { module = "dev.gitlive:firebase-common",    version.ref = "gitliveFirebase" }
+# Firebase BOM — pins the com.google.firebase:* artifacts the GitLive KMP wrappers
+# pull in transitively on Android. Applied via `platform(libs.firebase.bom)` in every
+# Firebase-touching module's androidMain (was a hardcoded literal repeated in 5 files).
+firebase-bom       = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics" }
+# Firebase Analytics (GA4) — no GitLive KMP binding; native SDK reached from androidMain only
+# (FirebaseAnalyticsTracker), iOS bridged via Swift (mirrors Crashlytics). Pinned by the BOM above.
+firebase-analytics   = { module = "com.google.firebase:firebase-analytics" }
+# Remote Config — backs the FeatureFlagPort kill-switch (no GitLive KMP binding; native SDK
+# reached from androidMain only). Version pinned by the BOM above.
+firebase-config      = { module = "com.google.firebase:firebase-config" }
 
 androidx-credentials                    = { module = "androidx.credentials:credentials",                          version.ref = "credentials" }
 androidx-credentials-play-services-auth = { module = "androidx.credentials:credentials-play-services-auth",       version.ref = "credentials" }
@@ -112,6 +147,40 @@ coil-core          = { module = "io.coil-kt.coil3:coil",               version.r
 coil-compose       = { module = "io.coil-kt.coil3:coil-compose",       version.ref = "coil" }
 coil-network-ktor3 = { module = "io.coil-kt.coil3:coil-network-ktor3", version.ref = "coil" }
 
+# MediaPipe Tasks Vision (Android). Pulls tasks-core transitively, which carries the
+# 16-KB-aligned libmediapipe_tasks_jni.so — see version note above.
+mediapipe-tasks-vision = { module = "com.google.mediapipe:tasks-vision", version.ref = "mediapipeTasksVision" }
+
+# Baseline Profiles + startup macrobenchmark stack (:baselineprofile module, roadmap §5.3).
+androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro-junit4", version.ref = "androidxBenchmark" }
+androidx-test-uiautomator       = { module = "androidx.test.uiautomator:uiautomator",     version.ref = "androidxUiautomator" }
+# profileinstaller is normally pulled transitively, but :androidApp pins it explicitly so the
+# generated Baseline Profile is installed at first run on devices without Play Cloud profiles.
+androidx-profileinstaller       = { module = "androidx.profileinstaller:profileinstaller", version.ref = "androidxProfileinstaller" }
+
+[bundles]
+# NB: dashed bundle names nest in the generated accessor, exactly like libraries —
+# `feature-ui` is reached as `libs.bundles.feature.ui` (NOT `featureUi`).
+#
+# The identical Compose UI + Koin + lifecycle stack every feature module's commonMain
+# declares. Collapses an ~10-line block repeated across all 8 feature modules.
+feature-ui = [
+    "compose-runtime", "compose-foundation", "compose-material3", "compose-ui",
+    "compose-components-resources",
+    "koin-core", "koin-compose", "koin-compose-viewmodel",
+    "androidx-lifecycle-viewmodelCompose", "androidx-lifecycle-runtimeCompose",
+]
+# The kotlinx trio every feature carries.  -> libs.bundles.kotlinx.common
+kotlinx-common = ["kotlinx-coroutines-core", "kotlinx-serialization-json", "kotlinx-datetime"]
+# GitLive Firebase KMP bindings, declared together by Firebase-touching modules. -> libs.bundles.firebase.gitlive
+firebase-gitlive = ["firebase-common", "firebase-auth", "firebase-firestore", "firebase-storage"]
+# commonTest stack shared by feature modules.  -> libs.bundles.feature.test
+feature-test = ["kotlin-test", "kotest-assertions-core", "turbine", "kotlinx-coroutines-test", "koin-test"]
+# androidHostTest base for non-Compose feature modules (Koin/VM logic on the host). -> libs.bundles.feature.hosttest
+feature-hosttest = ["kotlin-testJunit", "junit", "koin-test", "kotlinx-coroutines-test", "turbine"]
+# androidHostTest stack for modules with Robolectric Compose UI tests. -> libs.bundles.compose.hosttest
+compose-hosttest = ["kotlin-testJunit", "junit", "androidx-testExt-junit", "compose-ui-test-junit4", "robolectric"]
+
 [plugins]
 androidApplication             = { id = "com.android.application",                       version.ref = "agp" }
 androidMultiplatformLibrary    = { id = "com.android.kotlin.multiplatform.library",      version.ref = "agp" }
@@ -121,3 +190,7 @@ kotlinMultiplatform            = { id = "org.jetbrains.kotlin.multiplatform",   
 kotlinxSerialization           = { id = "org.jetbrains.kotlin.plugin.serialization",     version.ref = "kotlin" }
 googleServices                 = { id = "com.google.gms.google-services",                version.ref = "googleServices" }
 firebaseCrashlytics            = { id = "com.google.firebase.crashlytics",                version.ref = "firebaseCrashlyticsPlugin" }
+# androidTest (com.android.test) hosts the macrobenchmark module; baselineprofile wires
+# generation into :androidApp and consumes the result into the release build (roadmap §5.3).
+androidTest                    = { id = "com.android.test",                              version.ref = "agp" }
+androidxBaselineprofile        = { id = "androidx.baselineprofile",                      version.ref = "androidxBaselineprofile" }

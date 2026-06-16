@@ -4,5 +4,37 @@
     <string name="nav_settings_cta">Settings</string>
     <string name="nav_tab_feed">Feed</string>
     <string name="nav_tab_stats">Stats</string>
+    <string name="nav_tab_passport">Passport</string>
     <string name="nav_profile_cta">Your Profile</string>
+    <string name="consent_title">Help us improve FoodRats</string>
+    <string name="consent_body">Turn on anonymous usage analytics so we can see which features crews actually use and fix what\'s broken. We measure events, counts and screens — never your photos, descriptions, comments, crew names or location.</string>
+    <string name="consent_privacy_note">No advertising, no tracking across other apps, no selling your data. You can change this anytime in Settings.</string>
+    <string name="consent_allow">Allow analytics</string>
+    <string name="consent_deny">No thanks</string>
+
+    <!-- Weekly recap story (roadmap §2.4) -->
+    <string name="recap_entry_cta">See your week</string>
+    <string name="recap_close">Close recap</string>
+    <string name="recap_progress">Recap progress</string>
+    <string name="recap_cover_title">Your week in food</string>
+    <string name="recap_cover_subtitle">A quick recap of your crew\'s week</string>
+    <string name="recap_top_meal_title">Plate of the week</string>
+    <string name="recap_top_meal_author">by %1$s</string>
+    <string name="recap_top_meal_score">%1$s ★ · %2$d votes</string>
+    <string name="recap_best_cook_title">Best cook</string>
+    <string name="recap_best_cook_subtitle">%1$s · %2$s ★ average</string>
+    <string name="recap_most_prolific_title">Most prolific</string>
+    <string name="recap_most_prolific_subtitle">%1$s posted %2$d plates</string>
+    <string name="recap_streak_title">You\'re on a roll</string>
+    <string name="recap_streak_subtitle">%1$d-day posting streak</string>
+    <string name="recap_badges_title">New badges this week</string>
+    <string name="recap_cuisines_title">Cuisine passport</string>
+    <string name="recap_cuisines_subtitle">%1$d of %2$d cuisines collected</string>
+    <string name="recap_your_week_title">Your week</string>
+    <string name="recap_your_week_streak">%1$d-day streak</string>
+    <string name="recap_your_week_cuisines">%1$d cuisines</string>
+    <string name="recap_your_week_ingredients">%1$d ingredients</string>
+    <string name="recap_empty_title">A quiet week</string>
+    <string name="recap_empty_subtitle">No plates yet — your crew\'s recap will fill up as you post.</string>
+    <string name="recap_share_cta">Share this recap</string>
 </resources>

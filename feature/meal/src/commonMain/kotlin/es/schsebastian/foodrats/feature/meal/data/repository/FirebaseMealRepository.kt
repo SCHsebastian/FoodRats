@@ -1,14 +1,16 @@
 package es.schsebastian.foodrats.feature.meal.data.repository
 
-import dev.gitlive.firebase.auth.FirebaseAuth
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
+import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.meal.DraftIngredients
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealKind
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
@@ -17,12 +19,17 @@ import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.data.firebase.CrewMemberLookup
+import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseFault
+import es.schsebastian.foodrats.feature.meal.data.firebase.toFirebaseFault
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
-import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestoreDataSource
-import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
+import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
+import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
+import es.schsebastian.foodrats.feature.meal.data.firebase.toDiscriminator
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
 import es.schsebastian.foodrats.feature.meal.data.firebase.toMealWithRatings
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
@@ -53,15 +60,17 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
 
 internal class FirebaseMealRepository(
-    private val firestore: MealFirestoreDataSource,
-    private val storage: PlateStorageDataSource,
+    private val firestore: MealFirestore,
+    private val storage: PlateStorage,
     private val drafts: MealDraftLocalStore,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: MealErrorMapper,
     private val clock: Clock,
-    private val auth: FirebaseAuth,
+    private val authorIdentity: MealAuthorIdentity,
     private val zone: TimeZone,
     private val accountRead: AccountReadPort,
+    private val imageUrls: ImageUrlPort,
+    private val cuisineRead: CuisineReadPort,
 ) : MealRepository {
 
     // CoroutineExceptionHandler is mandatory: when sign-out revokes the auth token,
@@ -97,12 +106,32 @@ internal class FirebaseMealRepository(
                         val ids = dtos.flatMap { dto ->
                             listOfNotNull(dto.authorId) + dto.ratings.keys
                         }.mapNotNull { (AccountId.of(it) as? Result.Ok)?.value }.toSet()
+                        // Resolve plate AND thumbnail PATHS → signed URLs once per dto change
+                        // (avatars are resolved upstream by AccountReadPort, so the lookup below
+                        // already carries signed avatar URLs). Thumbnails share the crew prefix, so
+                        // `mintPlateUrls` authorizes them in the same batch — no callable change
+                        // (roadmap §5.1 handoff). Cache absorbs re-resolution on scroll.
+                        val signedUrls = imageUrls
+                            .resolve(
+                                crewId,
+                                dtos.flatMap { listOfNotNull(it.platePath, it.thumbnailPath) },
+                            )
+                            .getOrNull().orEmpty()
                         accountRead.observeMany(ids).map { identities ->
                             val lookup = identities.entries.mapNotNull { (id, acc) ->
                                 acc?.let { id.value to CrewMemberLookup(acc.displayName, acc.avatarUrl) }
                             }.toMap()
                             dtos.mapNotNull { dto ->
-                                (dto.toMealWithRatings(lookup) as? Result.Ok)?.value
+                                (dto.toMealWithRatings(lookup) as? Result.Ok)?.value?.let { mwr ->
+                                    val plateUrl = dto.platePath?.let { signedUrls[it] } ?: ""
+                                    val thumbUrl = dto.thumbnailPath?.let { signedUrls[it] } ?: ""
+                                    mwr.copy(
+                                        meal = mwr.meal.copy(
+                                            photoUrl = plateUrl,
+                                            thumbnailUrl = thumbUrl,
+                                        ),
+                                    )
+                                }
                             }
                         }
                     }
@@ -127,11 +156,21 @@ internal class FirebaseMealRepository(
     }
 
     private fun currentAccountId(): AccountId? {
-        val uid = auth.currentUser?.uid ?: return null
+        val uid = authorIdentity.current()?.uid ?: return null
         val result = AccountId.of(uid)
         return if (result is Result.Ok) result.value else null
     }
 
+    /**
+     * Fans a single composed plate out to every crew in [MealDraft.audienceCrewIds] —
+     * one meal document plus one image copy per crew. Per-crew copies are mandatory, not
+     * a convenience: a crew-member can only mint a signed read URL for a plate stored
+     * under *their* crew (`mintPlateUrls`), so a shared cross-crew object would be
+     * unviewable; and per-crew ownership keeps deletion ref-count-free (each crew reclaims
+     * its own blob via `onMealDeleted`). The deterministic per-crew meal id makes the whole
+     * fan-out idempotent: a crew already holding this (day, slot) is skipped, so a retry
+     * after a partial failure writes only the crews it hadn't reached.
+     */
     override suspend fun publish(draft: MealDraft): Result<Meal, MealError> =
         withContext(dispatchers.io) {
             runCatching<Result<Meal, MealError>> {
@@ -139,35 +178,98 @@ internal class FirebaseMealRepository(
                     ?: return@runCatching Result.failure(MealError.Validation.NoPhoto)
                 val slot = draft.slot
                     ?: return@runCatching Result.failure(MealError.Publish.NoSlotSelected)
-                if (draft.ingredients.size > MAX_INGREDIENTS ||
-                    draft.detectedIngredients.size > MAX_INGREDIENTS
-                ) {
+                if (draft.ingredients.size > MAX_INGREDIENTS) {
                     return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
                 }
-                val mealId = MealId.forDaySlot(draft.crewId, draft.authorId, draft.day, slot)
-                val photoUrl = storage.upload(draft.crewId, mealId.value, plate)
-                val currentUser = auth.currentUser
-                val dto = MealDto(
-                    id = mealId.value,
-                    authorId = draft.authorId.value,
-                    authorName = currentUser?.displayName.orEmpty(),
-                    authorAvatarUrl = currentUser?.photoURL,
-                    crewId = draft.crewId.value,
-                    dayKey = draft.day.toKey(),
-                    slot = slot.key(),
-                    photoUrl = photoUrl,
-                    dishName = draft.dish?.value,
-                    description = draft.description.value,
-                    latitude = draft.coordinates?.latitude,
-                    longitude = draft.coordinates?.longitude,
-                    publishedAtEpochMs = clock.now().toEpochMilliseconds(),
-                    ingredients = draft.ingredients.map { it.value },
-                    detectedIngredients = draft.detectedIngredients.map { it.value },
-                    classifierVersion = draft.classifierVersion,
-                )
-                firestore.write(dto, mealId.value)
-                @Suppress("UNCHECKED_CAST")
-                dto.toDomain() as Result<Meal, MealError>
+                if (draft.audienceCrewIds.isEmpty()) {
+                    return@runCatching Result.failure(MealError.Publish.NoCrewSelected)
+                }
+                val author = draft.authorId
+                val dayKey = draft.day.toKey()
+                // Skip crews where this (day, slot) is already posted — keeps a retry from
+                // re-writing crews a prior attempt succeeded on (and the create rule would
+                // reject the duplicate anyway).
+                val freeCrews = draft.audienceCrewIds.filter { crewId ->
+                    !firestore.mealExists(crewId, author, dayKey, slot)
+                }
+                if (freeCrews.isEmpty()) {
+                    return@runCatching Result.failure(MealError.Publish.AlreadyPostedToday)
+                }
+                val currentAuthor = authorIdentity.current()
+                // Resolve the cuisine ONCE for the whole fan-out from the detected dish. Advisory:
+                // a missing/unmapped dish OR a lookup fault yields null (cuisine just stays
+                // unstamped) — it must NEVER block publishing. Stays inside this publish
+                // withContext (the single IO boundary); loadDishCuisine itself does no extra hop
+                // beyond its own, which is fine — it's still one logical publish operation.
+                val cuisineSlug = draft.detectedDishSlug
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { runCatching { cuisineRead.loadDishCuisine(it) }.getOrNull() }
+                var representative: Meal? = null
+                var anyFailed = false
+                var anyAlreadyExists = false
+                var lastFault: Throwable? = null
+                for (crewId in freeCrews) {
+                    val mealId = MealId.forDaySlot(crewId, author, draft.day, slot)
+                    // Upload OUTSIDE the try: a storage failure must surface as PhotoUploadFailed
+                    // (mapped below), aborting the fan-out — a retry re-does the unwritten crews.
+                    val platePath = storage.upload(crewId, mealId.value, plate)
+                    val dto = MealDto(
+                        id = mealId.value,
+                        authorId = author.value,
+                        authorName = currentAuthor?.displayName.orEmpty(),
+                        crewId = crewId.value,
+                        dayKey = dayKey,
+                        slot = slot.key(),
+                        platePath = platePath,
+                        dishName = draft.dish?.value,
+                        description = draft.description.value,
+                        latitude = draft.coordinates?.latitude,
+                        longitude = draft.coordinates?.longitude,
+                        publishedAtEpochMs = clock.now().toEpochMilliseconds(),
+                        // Only the user-confirmed ingredients are persisted. The raw
+                        // classifier detection (`draft.detectedIngredients`) is a compose-time
+                        // picker seed and is intentionally NOT written to the Meal.
+                        ingredients = draft.ingredients.map { it.value },
+                        classifierVersion = draft.classifierVersion,
+                        cuisine = cuisineSlug?.value,
+                        // Stamp Solo — the draft carries no kind yet (spec §4.3); every published
+                        // meal is Solo. Branch on draft.kind only when the Together build ships.
+                        kind = MealKind.Solo.toDiscriminator(),
+                    )
+                    try {
+                        firestore.write(dto, mealId.value)
+                        if (representative == null) {
+                            representative = (dto.toDomain() as? Result.Ok)?.value
+                        }
+                    } catch (t: Throwable) {
+                        if (t.toFirebaseFault() == FirebaseFault.AlreadyExists) {
+                            // Raced the mealExists pre-check; this crew already holds the slot. The
+                            // deterministic path means our upload just overwrote the existing blob,
+                            // so DON'T delete it — it backs the live doc.
+                            anyAlreadyExists = true
+                        } else {
+                            anyFailed = true
+                            lastFault = t
+                            FrLog.w("MealRepo", t) { "fan-out write failed for crew ${crewId.value}: ${t.message}" }
+                            runCatching { storage.delete(crewId, mealId.value) }
+                                .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed: ${it.message}" } }
+                        }
+                    }
+                }
+                val rep = representative
+                when {
+                    rep != null && !anyFailed -> Result.success(rep)
+                    // Partial success → keep the draft so the coordinator retries the failed crews
+                    // (already-written ones are skipped above). Eventual full delivery beats
+                    // silently dropping the plate from some of the chosen crews.
+                    rep != null               -> Result.failure(MealError.Publish.PublishUnavailable)
+                    // Nothing written and a real fault hit → surface it through the mapper so the
+                    // PERMISSION_DENIED / UNAVAILABLE / ALREADY_EXISTS classification matches the
+                    // single-crew path.
+                    anyFailed                 -> throw lastFault!!
+                    // Every targeted crew already had this slot (raced the pre-check) → already posted.
+                    else                      -> Result.failure(MealError.Publish.AlreadyPostedToday)
+                }
             }.fold(
                 onSuccess = { it },
                 onFailure = { Result.failure(errorMapper.mapPublish(it)) },
@@ -203,6 +305,21 @@ internal class FirebaseMealRepository(
         )
     }
 
+    override suspend fun takenSlotsPerCrew(
+        crewIds: Set<CrewId>,
+        day: MealDay,
+    ): Result<Map<CrewId, Set<MealSlot>>, MealError.Read> = withContext(dispatchers.io) {
+        runCatching<Result<Map<CrewId, Set<MealSlot>>, MealError.Read>> {
+            val authorId = currentAccountId()
+                ?: return@runCatching Result.failure(MealError.Read.Unauthorized)
+            val dayKey = day.toKey()
+            Result.success(crewIds.associateWith { crewId -> firestore.takenSlots(crewId, authorId, dayKey) })
+        }.fold(
+            onSuccess = { it },
+            onFailure = { Result.failure(MealError.Read.NotFound) },
+        )
+    }
+
     override suspend fun delete(
         crewId: CrewId,
         mealId: MealId,
@@ -211,14 +328,48 @@ internal class FirebaseMealRepository(
             firestore.deleteMeal(crewId, mealId.value)
             Result.success(Unit) as Result<Unit, MealDeleteError>
         }.getOrElse { t ->
-            val msg = t.message.orEmpty().lowercase()
-            val mapped = when {
-                "permission" in msg -> MealDeleteError.NotAuthorOrOwner
-                "not-found" in msg || "not found" in msg -> MealDeleteError.NotFound
-                else -> MealDeleteError.Unavailable
+            val mapped = when (t.toFirebaseFault()) {
+                FirebaseFault.PermissionDenied,
+                FirebaseFault.Unauthenticated -> MealDeleteError.NotAuthorOrOwner
+                FirebaseFault.NotFound -> MealDeleteError.NotFound
+                FirebaseFault.Unavailable,
+                FirebaseFault.AlreadyExists,
+                FirebaseFault.StorageFailure,
+                is FirebaseFault.Unknown -> MealDeleteError.Unavailable
             }
             Result.failure(mapped)
         }
+    }
+
+    override suspend fun deleteFromAllCrews(
+        crewIds: Set<CrewId>,
+        authorId: AccountId,
+        day: MealDay,
+        slot: MealSlot,
+    ): Result<Unit, MealDeleteError> = withContext(dispatchers.io) {
+        if (crewIds.isEmpty()) return@withContext Result.success(Unit)
+        // Deleting a non-existent doc is a no-op success in Firestore, so a crew that never
+        // held a copy (e.g. it wasn't in the publish audience) is harmlessly skipped. We only
+        // fail the whole action if a real error (permission / unavailable) hits a crew — for the
+        // author path that should never be permission, leaving transient Unavailable as retryable.
+        var lastError: MealDeleteError? = null
+        for (crewId in crewIds) {
+            val mealId = MealId.forDaySlot(crewId, authorId, day, slot).value
+            runCatching { firestore.deleteMeal(crewId, mealId) }
+                .onFailure { t ->
+                    when (t.toFirebaseFault()) {
+                        FirebaseFault.PermissionDenied,
+                        FirebaseFault.Unauthenticated -> lastError = MealDeleteError.NotAuthorOrOwner
+                        FirebaseFault.NotFound -> Unit
+                        FirebaseFault.Unavailable,
+                        FirebaseFault.AlreadyExists,
+                        FirebaseFault.StorageFailure,
+                        is FirebaseFault.Unknown -> lastError = MealDeleteError.Unavailable
+                    }
+                    FrLog.w("MealRepo", t) { "fan-out delete failed for crew ${crewId.value}: ${t.message}" }
+                }
+        }
+        lastError?.let { Result.failure(it) } ?: Result.success(Unit)
     }
 
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> =
@@ -277,23 +428,26 @@ internal class FirebaseMealRepository(
     override suspend fun rate(
         crewId: CrewId,
         mealId: MealId,
+        raterId: AccountId,
         score: Score,
     ): Result<Unit, RateError> = withContext(dispatchers.io) {
-        val raterUid = auth.currentUser?.uid
-            ?: return@withContext Result.failure(RateError.Unauthorized)
+        // Defense in depth: the rater identity is the explicit [raterId] from the domain,
+        // but a live auth token is still required (and the txn + rules re-check self-vote /
+        // already-rated authoritatively).
+        if (authorIdentity.current()?.uid == null) return@withContext Result.failure(RateError.Unauthorized)
         runCatching<Result<Unit, RateError>> {
             val outcome = firestore.rateMeal(
                 crewId = crewId,
                 mealId = mealId.value,
-                raterUid = raterUid,
+                raterUid = raterId.value,
                 score = score.value,
                 nowEpochMs = clock.now().toEpochMilliseconds(),
             )
             when (outcome) {
-                MealFirestoreDataSource.RateOutcome.Ok -> Result.success(Unit)
-                MealFirestoreDataSource.RateOutcome.MealNotFound -> Result.failure(RateError.RateUnavailable)
-                MealFirestoreDataSource.RateOutcome.SelfRating -> Result.failure(RateError.CannotRateOwnMeal)
-                MealFirestoreDataSource.RateOutcome.AlreadyRated -> Result.failure(RateError.AlreadyRated)
+                MealFirestore.RateOutcome.Ok -> Result.success(Unit)
+                MealFirestore.RateOutcome.MealNotFound -> Result.failure(RateError.RateUnavailable)
+                MealFirestore.RateOutcome.SelfRating -> Result.failure(RateError.CannotRateOwnMeal)
+                MealFirestore.RateOutcome.AlreadyRated -> Result.failure(RateError.AlreadyRated)
             }
         }.fold(
             onSuccess = { it },

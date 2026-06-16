@@ -45,6 +45,9 @@ class ProfileErrorToStringKeyTest {
     @Test fun delete_unavailable_maps_to_backend_key() =
         assertEquals(AuthStringKey.DeleteAccountErrorBackend, ProfileError.Delete.Unavailable.toStringKey())
 
-    @Test fun delete_ownership_maps_to_ownership_key() =
-        assertEquals(AuthStringKey.DeleteAccountErrorOwnership, ProfileError.Delete.OwnerOfActiveCrew.toStringKey())
+    @Test fun delete_owner_reassign_failed_maps_to_ownership_key() =
+        assertEquals(AuthStringKey.DeleteAccountErrorOwnership, ProfileError.Delete.OwnerReassignFailed.toStringKey())
+
+    @Test fun export_unavailable_maps_to_export_backend_key() =
+        assertEquals(AuthStringKey.ExportDataErrorBackend, ProfileError.Export.Unavailable.toStringKey())
 }

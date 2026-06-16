@@ -29,33 +29,15 @@ kotlin {
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.kotlinx.datetime)
+            implementation(libs.bundles.feature.ui)
+            implementation(libs.bundles.kotlinx.common)
         }
         commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotest.assertions.core)
-            implementation(libs.turbine)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.koin.test)
+            implementation(libs.bundles.feature.test)
         }
         val androidHostTest by getting {
             dependencies {
-                implementation(libs.kotlin.testJunit)
-                implementation(libs.junit)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.turbine)
+                implementation(libs.bundles.feature.hosttest)
             }
         }
         androidMain.dependencies {
@@ -63,9 +45,10 @@ kotlin {
             // If direct Firebase usage is added in this module, add the BOM here too:
             // implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
             implementation(libs.koin.android)
-            // On-device classifier runtime. Keep the version in sync with the iOS
-            // MediaPipeTasksVision cocoapod (plan T16).
-            implementation("com.google.mediapipe:tasks-vision:0.10.14")
+            // On-device classifier runtime. Version hoisted to the catalog
+            // (libs.versions.mediapipeTasksVision); keep it in sync with the iOS
+            // MediaPipeTasksVision cocoapod pin in iosApp/Podfile (plan T16).
+            implementation(libs.mediapipe.tasks.vision)
         }
         iosMain.dependencies { }
     }

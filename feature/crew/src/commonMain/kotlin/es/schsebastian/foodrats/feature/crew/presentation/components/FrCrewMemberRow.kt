@@ -35,6 +35,7 @@ fun FrCrewMemberRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
+        // decorative — the adjacent display-name label carries the identity for screen readers.
         FrAvatar(initials = displayName.take(2), imageUrl = account?.avatarUrl)
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
             FrText(

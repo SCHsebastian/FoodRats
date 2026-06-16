@@ -1,6 +1,10 @@
 package es.schsebastian.foodrats.feature.auth.presentation.signin
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.AuthMethod
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -11,6 +15,7 @@ import kotlinx.coroutines.launch
 class SignInViewModel(
     private val auth: AuthRepository,
     private val tokenRegistration: TokenRegistrationPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<SignInState, SignInIntent, SignInEffect>(SignInState()) {
 
     override suspend fun handle(intent: SignInIntent) = when (intent) {
@@ -27,7 +32,7 @@ class SignInViewModel(
 
     private suspend fun doGoogle() {
         update { it.copy(isLoading = true, error = null) }
-        emitFromResult(auth.signInWithGoogle())
+        emitFromResult(auth.signInWithGoogle(), AuthMethod.GOOGLE, isSignUp = false)
     }
 
     private suspend fun doEmailSubmit() {
@@ -40,22 +45,25 @@ class SignInViewModel(
             return
         }
         update { it.copy(isLoading = true, error = null, emailError = null, passwordError = null) }
+        val isSignUp = s.mode == SignInMode.SignUp
         val r = when (s.mode) {
             SignInMode.SignIn -> auth.signInWithEmail(s.email, s.password)
             SignInMode.SignUp -> auth.signUpWithEmail(s.email, s.password)
         }
-        emitFromResult(r)
+        emitFromResult(r, AuthMethod.EMAIL, isSignUp)
     }
 
-    private suspend fun emitFromResult(r: Result<*, AuthError>) {
+    private suspend fun emitFromResult(r: Result<*, AuthError>, method: AuthMethod, isSignUp: Boolean) {
         when (r) {
             is Result.Ok  -> {
                 update { it.copy(isLoading = false, error = null) }
+                analytics.track(if (isSignUp) AnalyticsEvent.SignedUp(method) else AnalyticsEvent.LoggedIn(method))
                 viewModelScope.launch { tokenRegistration.registerCurrentDeviceToken() }
                 emit(SignInEffect.SignedIn)
             }
             is Result.Err -> {
                 val err = r.error
+                analytics.track(AnalyticsEvent.SignInFailed(method, err::class.simpleName ?: "Unknown"))
                 update {
                     when (err) {
                         AuthError.EmailPassword.InvalidEmail,

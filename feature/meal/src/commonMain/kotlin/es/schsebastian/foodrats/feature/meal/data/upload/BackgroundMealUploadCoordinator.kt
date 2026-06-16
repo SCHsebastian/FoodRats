@@ -2,24 +2,35 @@ package es.schsebastian.foodrats.feature.meal.data.upload
 
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.Keys
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.analytics.PublishSource
+import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.MealUploadQueueSnapshot
 import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
-import es.schsebastian.foodrats.core.domain.notifications.StreakNotificationPort
+import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
+import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraftStatus
+import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -41,22 +52,38 @@ import kotlinx.coroutines.sync.withLock
 class BackgroundMealUploadCoordinator(
     private val repository: MealRepository,
     private val publishMeal: PublishMealUseCase,
-    private val streakNotifications: StreakNotificationPort,
     private val prefs: AppPreferences,
     private val scheduler: MealUploadScheduler,
-) : MealUploadCoordinator, MealUploadProgressPort {
+    private val dispatchers: DispatcherProvider,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
+    // Offline-first durable queue (roadmap §5.2). Nullable so existing direct
+    // construction in tests stays green; when bound, the coordinator durably
+    // enqueues each draft and lets [retryRunner] drain it on connectivity-return,
+    // and publishes the aggregate count through [queue].
+    private val draftQueue: DraftQueuePort? = null,
+    private val retryRunner: DraftRetryRunner? = null,
+) : MealUploadCoordinator, MealUploadProgressPort, QueuedUploadActionsPort {
 
     private val _status = MutableStateFlow<MealUploadStatus>(MealUploadStatus.Idle)
     override val status: StateFlow<MealUploadStatus> = _status.asStateFlow()
 
     private val scope: CoroutineScope = CoroutineScope(
         SupervisorJob() +
-            Dispatchers.Default +
+            dispatchers.default +
             CoroutineExceptionHandler { _, t ->
                 FrLog.w("MealUpload", t) { "upload scope uncaught: ${t.message}" }
                 _status.value = MealUploadStatus.Failed(errorKey = ERROR_UNKNOWN)
             },
     )
+
+    /**
+     * Cross-feature aggregate of the durable queue (pending / terminal-failed),
+     * for the feed top bar. Derived live from [DraftQueuePort.observe]; the empty
+     * snapshot when no durable queue is bound (e.g. in a unit test).
+     */
+    override val queue: StateFlow<MealUploadQueueSnapshot> =
+        (draftQueue?.observe()?.map { DraftRetryRunner.snapshotOf(it) } ?: MutableStateFlow(MealUploadQueueSnapshot.EMPTY))
+            .stateIn(scope, SharingStarted.Eagerly, MealUploadQueueSnapshot.EMPTY)
 
     private val mutex = Mutex()
     private var inFlight: Job? = null
@@ -73,16 +100,56 @@ class BackgroundMealUploadCoordinator(
                 runUploadIfPending()
             }
         }
+        // Wire the durable-queue retry runner's triggers (connectivity-return +
+        // new pending entries) onto the app-lifetime upload scope.
+        retryRunner?.start(scope)
     }
 
     override fun enqueueDraftUpload() {
         scope.launch {
+            // Durably enqueue the current draft so an offline / process-death
+            // session never loses the plate; the retry runner drains it idempotently
+            // (same deterministic MealId → overwrite, never duplicate). This runs in
+            // addition to the immediate single-upload fast path below — a race is a
+            // harmless overwrite of the same Firestore doc.
+            draftQueue?.let { q ->
+                val draft = runCatching { repository.observeDraft().first() }.getOrNull()
+                if (draft != null) q.enqueue(draft)
+            }
             mutex.withLock {
                 prefs.set(Keys.MealUploadPending, true)
                 if (inFlight?.isActive == true) return@withLock
                 inFlight = scope.launch { doUpload() }
             }
             scheduler.schedule()
+        }
+    }
+
+    /**
+     * Re-arm every terminal `Failed(retryable = false)` entry back to `Pending`
+     * (roadmap §5.2 feed-top-bar retry). Flipping the status to Pending makes the
+     * [retryRunner]'s queue-observer trigger a fresh drain pass; the deterministic
+     * `MealId` means the re-publish overwrites, never duplicates.
+     */
+    override suspend fun retryFailed() {
+        val q = draftQueue ?: return
+        val terminal = runCatching { q.observe().first() }.getOrNull().orEmpty()
+            .filter { (it.status as? QueuedDraftStatus.Failed)?.retryable == false }
+        for (entry in terminal) {
+            q.updateStatus(entry.id, QueuedDraftStatus.Pending)
+        }
+    }
+
+    /**
+     * Drop every terminal `Failed(retryable = false)` entry from the queue — the
+     * user has abandoned those plates (roadmap §5.2 feed-top-bar dismiss).
+     */
+    override suspend fun dismissFailed() {
+        val q = draftQueue ?: return
+        val terminal = runCatching { q.observe().first() }.getOrNull().orEmpty()
+            .filter { (it.status as? QueuedDraftStatus.Failed)?.retryable == false }
+        for (entry in terminal) {
+            q.remove(entry.id)
         }
     }
 
@@ -125,11 +192,28 @@ class BackgroundMealUploadCoordinator(
                 prefs.clear(Keys.MealUploadPending)
                 scheduler.cancel()
                 _status.value = MealUploadStatus.Succeeded
-                // Streak nudge is best-effort — the upload already succeeded.
-                runCatching { streakNotifications.scheduleStreakNudge() }
-                    .onFailure { FrLog.w("MealUpload", it) { "streak nudge skipped: ${it.message}" } }
+                // meal_published fires on the TRUE outcome (publish Result Ok), not at enqueue —
+                // this is the funnel-conversion + publishing-depth event. No PII (slot/counts only).
+                draft.slot?.let { slot ->
+                    analytics.track(
+                        AnalyticsEvent.MealPublished(
+                            slot = slot,
+                            ingredientCount = draft.ingredients.size,
+                            hasDescription = draft.description.value.isNotBlank(),
+                            audienceCrewCount = draft.audienceCrewIds.size,
+                            source = PublishSource.UNKNOWN,
+                        ),
+                    )
+                }
+                // No local streak nudge is scheduled here. The server-side `streakNudge` Cloud
+                // Function (roadmap §1.1) is now the single "go post" channel — a per-crew,
+                // social-proof push to non-posters. Scheduling the local DailyInactivityWorker too
+                // would double-nudge the user every day, so the client schedule call was removed.
+                // The worker + LocalReminderScheduler + StreakNotificationPort all remain defined
+                // and bindable, just no longer triggered — re-adding one call here restores it.
             }
             is Result.Err -> {
+                analytics.track(AnalyticsEvent.MealPublishFailed(errorLeaf = r.error::class.simpleName ?: "Unknown"))
                 // Leave the pending flag set so WorkManager backoff retries
                 // (Android) or the next-launch resume (iOS) try again.
                 _status.value = MealUploadStatus.Failed(errorKey = r.error.uploadErrorKey())
@@ -151,6 +235,7 @@ class BackgroundMealUploadCoordinator(
 private fun MealError.uploadErrorKey(): String = when (this) {
     MealError.Publish.AlreadyPostedToday -> "meal.error.alreadyPosted"
     MealError.Publish.NoSlotSelected     -> "meal.error.noSlot"
+    MealError.Publish.NoCrewSelected     -> "meal.error.noCrewSelected"
     MealError.Publish.NotToday           -> "meal.error.notToday"
     MealError.Publish.PublishUnavailable -> "meal.error.publishUnavailable"
     MealError.Publish.PhotoUploadFailed  -> "meal.error.photoUploadFailed"

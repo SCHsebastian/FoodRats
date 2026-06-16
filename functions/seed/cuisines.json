@@ -1,0 +1,16 @@
+[
+  { "slug": "american", "names": { "en": "American", "es": "Estadounidense" }, "iconKey": "american" },
+  { "slug": "italian", "names": { "en": "Italian", "es": "Italiana" }, "iconKey": "italian" },
+  { "slug": "french", "names": { "en": "French", "es": "Francesa" }, "iconKey": "french" },
+  { "slug": "mexican", "names": { "en": "Mexican", "es": "Mexicana" }, "iconKey": "mexican" },
+  { "slug": "spanish", "names": { "en": "Spanish", "es": "Española" }, "iconKey": "spanish" },
+  { "slug": "greek", "names": { "en": "Greek", "es": "Griega" }, "iconKey": "greek" },
+  { "slug": "middle_eastern", "names": { "en": "Middle Eastern", "es": "De Oriente Medio" }, "iconKey": "middle_eastern" },
+  { "slug": "japanese", "names": { "en": "Japanese", "es": "Japonesa" }, "iconKey": "japanese" },
+  { "slug": "chinese", "names": { "en": "Chinese", "es": "China" }, "iconKey": "chinese" },
+  { "slug": "korean", "names": { "en": "Korean", "es": "Coreana" }, "iconKey": "korean" },
+  { "slug": "thai", "names": { "en": "Thai", "es": "Tailandesa" }, "iconKey": "thai" },
+  { "slug": "vietnamese", "names": { "en": "Vietnamese", "es": "Vietnamita" }, "iconKey": "vietnamese" },
+  { "slug": "indian", "names": { "en": "Indian", "es": "India" }, "iconKey": "indian" },
+  { "slug": "british", "names": { "en": "British", "es": "Británica" }, "iconKey": "british" }
+]

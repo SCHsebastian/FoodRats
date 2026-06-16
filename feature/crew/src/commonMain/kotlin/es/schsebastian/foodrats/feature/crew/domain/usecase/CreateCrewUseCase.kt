@@ -2,8 +2,10 @@ package es.schsebastian.foodrats.feature.crew.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewName
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 
 class CreateCrewUseCase(private val repo: CrewRepository) {
@@ -12,10 +14,7 @@ class CreateCrewUseCase(private val repo: CrewRepository) {
         founder: AccountId,
         founderDisplayName: String,
     ): Result<Crew, CrewError> {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty()) return Result.failure(CrewError.Validation.NameBlank)
-        if (trimmed.length > MAX_NAME_LEN) return Result.failure(CrewError.Validation.NameTooLong)
-        return repo.create(trimmed, founder, founderDisplayName)
+        val crewName = CrewName.of(name).getOrElse { return Result.failure(it) }
+        return repo.create(crewName.value, founder, founderDisplayName)
     }
-    companion object { const val MAX_NAME_LEN = 40 }
 }

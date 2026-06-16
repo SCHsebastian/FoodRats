@@ -1,9 +1,13 @@
 package es.schsebastian.foodrats.feature.ingredient.di
 
+import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.feature.ingredient.data.deviceLanguageTag
+import es.schsebastian.foodrats.feature.ingredient.data.firebase.CuisineDataSource
+import es.schsebastian.foodrats.feature.ingredient.data.firebase.CuisineFirestoreDataSource
+import es.schsebastian.foodrats.feature.ingredient.data.firebase.CuisineRepository
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientDataSource
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientFirestoreDataSource
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientRepository
@@ -53,4 +57,25 @@ val ingredientModule = module {
     factoryOf(::ObserveCatalogUseCase)
     factoryOf(::SearchIngredientsUseCase)
     viewModelOf(::SelectIngredientsViewModel)
+}
+
+/**
+ * Wires the cuisine catalog read path — the EXACT shape of [ingredientModule], over the SAME
+ * app-lifetime [AppScope] (bound by [ingredientModule], shared in the merged Koin graph) so the
+ * `cuisines` snapshot listener stays warm. Binds the single [CuisineReadPort]
+ * ([CuisineRepository]) consumed by the meal publish stamp (`:feature:meal`) and the stats passport
+ * grid (`:feature:stats`). Registered in `shared` `appModules` alongside `ingredientModule`.
+ */
+val cuisineModule = module {
+    single<CuisineDataSource> { CuisineFirestoreDataSource(get()) }
+    single {
+        val language = get<LocalePort>().locale
+            .map { locale -> if (locale == AppLocale.System) deviceLanguageTag() else locale.tag }
+        CuisineRepository(
+            datasource = get(),
+            dispatchers = get(),
+            language = language,
+            scope = get(AppScope),
+        )
+    } bind CuisineReadPort::class
 }

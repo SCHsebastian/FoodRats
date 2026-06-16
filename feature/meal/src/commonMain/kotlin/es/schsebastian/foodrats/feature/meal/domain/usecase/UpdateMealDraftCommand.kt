@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
 sealed interface UpdateMealDraftCommand {
@@ -15,13 +16,20 @@ sealed interface UpdateMealDraftCommand {
     /** Pass `null` to clear an attached coordinate pair. */
     data class SetCoordinates(val coordinates: Coordinates?) : UpdateMealDraftCommand
 
+    /** Sets which crews the plate will be shared with (the publish audience). */
+    data class SetAudience(val crewIds: Set<CrewId>) : UpdateMealDraftCommand
+
     /**
-     * Records a fresh classifier run: seeds both the detected set and the
-     * (user-editable) selected set, overwriting any prior manual edits, and
-     * stamps the classifier version. Issued once per captured photo.
+     * Records a fresh classifier run: overwrites the detected set, the detected dish
+     * slug, and stamps the classifier version. Issued once per captured photo. Does NOT
+     * touch the user-confirmed `ingredients` list — the detected set is only the ingredient
+     * picker's initial selection; confirmation is the user's explicit act, recorded by
+     * [SetIngredients]. The [dishSlug] is the `dishCuisineMap` key; the publish path resolves
+     * it to a `Meal.cuisine` via `CuisineReadPort.loadDishCuisine` (roadmap §2.2 stamp-at-publish).
      */
     data class SetDetected(
         val detected: List<IngredientSlug>,
+        val dishSlug: String,
         val version: String,
     ) : UpdateMealDraftCommand
 

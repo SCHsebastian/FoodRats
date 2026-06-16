@@ -12,8 +12,12 @@ fun AccountDto.toAccount(): Account? {
         id = id,
         handle = handle ?: "",
         displayName = displayName ?: "",
-        email = email,
-        avatarUrl = avatarUrl,
+        // Email no longer lives on the public account doc (PII; see AccountDto).
+        // It is owned by Firebase Auth; surface it from there if ever displayed.
+        email = null,
+        // Carries the avatar PATH at this layer; FirestoreAccountReadDataSource resolves it
+        // to a signed URL before the Account reaches any consumer.
+        avatarUrl = avatarPath,
         dataConsentVersion = dataConsentVersion,
         dataConsentGrantedAt = dataConsentGrantedAtEpochMs?.let { Instant.fromEpochMilliseconds(it) },
     )

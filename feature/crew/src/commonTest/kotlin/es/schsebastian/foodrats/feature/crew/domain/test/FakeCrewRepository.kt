@@ -17,15 +17,23 @@ class FakeCrewRepository(
     val crews = MutableStateFlow(initial)
     var nextCreate: Result<Crew, CrewError>? = null
     var nextJoin: Result<Crew, CrewError>? = null
+    /** When set, overrides the default findByCode behavior (lookup by code in [crews]). */
+    var nextFindByCode: Result<Crew, CrewError>? = null
     var nextLeave: Result<Unit, CrewError>? = null
     /** When set, overrides the default rename behavior (ownership check + mutation). */
     var nextRename: Result<Unit, CrewError>? = null
     /** When set, overrides the default delete behavior (ownership check + mutation). */
     var nextDelete: Result<Unit, CrewError>? = null
+    /** When set, overrides the default setBlindVoting behavior (ownership check + mutation). */
+    var nextSetBlindVoting: Result<Unit, CrewError>? = null
+    /** When set, overrides the default removeMember behavior (ownership/self/membership checks + mutation). */
+    var nextRemoveMember: Result<Unit, CrewError>? = null
 
     var lastRename: Pair<CrewId, String>? = null
     var lastMemberRename: Triple<CrewId, AccountId, String>? = null
     var lastDelete: CrewId? = null
+    var lastSetBlindVoting: Pair<CrewId, Boolean>? = null
+    var lastRemoveMember: Triple<CrewId, AccountId, AccountId>? = null
 
     override suspend fun create(
         name: String,
@@ -45,6 +53,12 @@ class FakeCrewRepository(
         val r = nextJoin ?: error("nextJoin not stubbed")
         if (r is Result.Ok) crews.value = crews.value + r.value
         return r
+    }
+
+    override suspend fun findByCode(code: CrewCode): Result<Crew, CrewError> {
+        nextFindByCode?.let { return it }
+        return crews.value.firstOrNull { it.code == code }?.let { Result.success(it) }
+            ?: Result.failure(CrewError.Invite.CodeUnknown)
     }
 
     override suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> {
@@ -86,6 +100,40 @@ class FakeCrewRepository(
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
         lastDelete = crewId
         crews.value = crews.value.filterNot { it.id == crewId }
+        return Result.success(Unit)
+    }
+
+    override suspend fun setBlindVoting(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        enabled: Boolean,
+    ): Result<Unit, CrewError> {
+        nextSetBlindVoting?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        lastSetBlindVoting = Pair(crewId, enabled)
+        crews.value = crews.value.map { if (it.id == crewId) it.copy(blindVoting = enabled) else it }
+        return Result.success(Unit)
+    }
+
+    override suspend fun removeMember(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        target: AccountId,
+    ): Result<Unit, CrewError> {
+        nextRemoveMember?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.RemoveMember.NotOwner)
+        if (target == requestedBy) return Result.failure(CrewError.RemoveMember.CannotRemoveSelf)
+        if (crew.members.none { it.accountId == target }) {
+            return Result.failure(CrewError.RemoveMember.MemberNotFound)
+        }
+        lastRemoveMember = Triple(crewId, requestedBy, target)
+        crews.value = crews.value.map {
+            if (it.id == crewId) it.copy(members = it.members.filterNot { m -> m.accountId == target }) else it
+        }
         return Result.success(Unit)
     }
 

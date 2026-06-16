@@ -4,12 +4,17 @@ import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.app.navigation.DeepLinkBus
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.app.navigation.parseDeepLink
+import es.schsebastian.foodrats.app.navigation.requiresSession
+import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
+import es.schsebastian.foodrats.core.domain.analytics.needsDecision
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -30,6 +35,7 @@ class RootNavViewModel(
     private val session: SessionProvider,
     private val activeCrew: ActiveCrewProvider,
     private val notifications: NotificationsPreferencePort,
+    private val consent: ConsentPort,
     private val deepLinks: DeepLinkBus,
 ) : MviViewModel<RootNavState, RootNavIntent, RootNavEffect>(RootNavState()) {
 
@@ -46,11 +52,25 @@ class RootNavViewModel(
             // (no placeholder null during auth restore). Until session.current emits, this combine
             // produces nothing and the app stays on Splash — so a logged-in user goes Splash → Main
             // without flashing SignIn. `sess == null` therefore means a real signed-out state.
-            combine(session.current, activeCrew.current, notifications.prompted) { sess, crewId, prompted ->
+            // The consent decision is settled-state: `needsDecision` is true for an unrecorded
+            // (Unknown) decision OR a stored decision below the current consent-schema version, and
+            // FALSE for a current-version Denied — so an explicit decline does NOT re-prompt. Bumping
+            // AnalyticsConfig.CURRENT_CONSENT_VERSION re-arms it for free. Gated after crew so consent
+            // is the last onboarding step before Main.
+            val consentNeeded = consent.decision
+                .map { it.needsDecision }
+                .distinctUntilChanged()
+            combine(
+                session.current,
+                activeCrew.current,
+                notifications.prompted,
+                consentNeeded,
+            ) { sess, crewId, prompted, needsConsent ->
                 when {
                     sess == null   -> RootStage.NeedsSignIn
                     !prompted      -> RootStage.NeedsNotificationPermission
                     crewId == null -> RootStage.NeedsCrew
+                    needsConsent   -> RootStage.NeedsConsent
                     else           -> RootStage.Ready
                 }
             }.collect { nextStage -> navLock.withLock { applyStage(nextStage) } }
@@ -72,6 +92,7 @@ class RootNavViewModel(
             RootStage.NeedsSignIn                 -> emit(RootNavEffect.NavigateTopLevel(Route.SignIn))
             RootStage.NeedsNotificationPermission -> emit(RootNavEffect.NavigateTopLevel(Route.NotificationPermission))
             RootStage.NeedsCrew                   -> emit(RootNavEffect.NavigateTopLevel(Route.CrewPicker))
+            RootStage.NeedsConsent                -> emit(RootNavEffect.NavigateTopLevel(Route.Consent))
             RootStage.Ready                       -> emitReady()
         }
     }
@@ -98,7 +119,7 @@ class RootNavViewModel(
                 }
                 navLock.withLock {
                     val ready = currentState.stage == RootStage.Ready
-                    if (route is Route.Public || ready) {
+                    if (!route.requiresSession() || ready) {
                         FrLog.d(FrLog.Tags.RootNav) { "deep link → navigate now: ${route::class.simpleName}" }
                         emit(RootNavEffect.NavigateDeepLink(route))
                     } else {

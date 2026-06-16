@@ -2,6 +2,10 @@ package es.schsebastian.foodrats.feature.crew.presentation.picker
 
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.JoinMethod
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -20,6 +24,7 @@ class CrewPickerViewModel(
     private val joinCrew: JoinCrewByCodeUseCase,
     private val switchActive: SwitchActiveCrewUseCase,
     private val accountRead: AccountReadPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<CrewPickerState, CrewPickerIntent, CrewPickerEffect>(CrewPickerState()) {
 
     private suspend fun myDisplayName(accountId: AccountId): String =
@@ -55,6 +60,7 @@ class CrewPickerViewModel(
         when (val r = createCrew(state.createInput, account, myDisplayName(account))) {
             is Result.Ok  -> {
                 update { it.copy(isCreating = false, showCreateForm = false, createInput = "") }
+                analytics.track(AnalyticsEvent.CrewCreated(r.value.id))
                 switchActive(r.value.id)
                 emit(CrewPickerEffect.CrewSelected(r.value.id))
             }
@@ -69,6 +75,7 @@ class CrewPickerViewModel(
         when (val r = joinCrew(state.joinInput, account, myDisplayName(account))) {
             is Result.Ok  -> {
                 update { it.copy(isJoining = false, showJoinForm = false, joinInput = "") }
+                analytics.track(AnalyticsEvent.CrewJoined(r.value.id, JoinMethod.INVITE_CODE))
                 switchActive(r.value.id)
                 emit(CrewPickerEffect.CrewSelected(r.value.id))
             }

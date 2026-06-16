@@ -21,6 +21,12 @@ import foodrats.feature.auth.generated.resources.auth_delete_account_warning_irr
 import foodrats.feature.auth.generated.resources.auth_delete_account_warning_meals
 import foodrats.feature.auth.generated.resources.auth_delete_account_warning_ratings
 import foodrats.feature.auth.generated.resources.auth_error_account_disabled
+import foodrats.feature.auth.generated.resources.auth_export_data_error_backend
+import foodrats.feature.auth.generated.resources.auth_export_data_in_flight
+import foodrats.feature.auth.generated.resources.auth_export_data_ready_cta
+import foodrats.feature.auth.generated.resources.auth_export_data_ready_subtitle
+import foodrats.feature.auth.generated.resources.auth_export_data_row
+import foodrats.feature.auth.generated.resources.auth_export_data_subtitle
 import foodrats.feature.auth.generated.resources.auth_error_email_in_use
 import foodrats.feature.auth.generated.resources.auth_error_email_invalid
 import foodrats.feature.auth.generated.resources.auth_error_missing_server_client_id
@@ -37,6 +43,12 @@ import foodrats.feature.auth.generated.resources.auth_mode_signin_cta
 import foodrats.feature.auth.generated.resources.auth_mode_signup_cta
 import foodrats.feature.auth.generated.resources.auth_or_divider
 import foodrats.feature.auth.generated.resources.auth_profile_account_section
+import foodrats.feature.auth.generated.resources.auth_profile_achievements_row
+import foodrats.feature.auth.generated.resources.auth_profile_achievements_section
+import foodrats.feature.auth.generated.resources.auth_profile_achievements_subtitle
+import foodrats.feature.auth.generated.resources.auth_profile_analytics_row
+import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_off
+import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_on
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_empty_bytes
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_uploading
 import foodrats.feature.auth.generated.resources.auth_profile_backend_unavailable
@@ -124,6 +136,9 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileChangeAvatarCta(Res.string.auth_profile_change_avatar_cta),
     ProfileAvatarUploading(Res.string.auth_profile_avatar_uploading),
     ProfileAccountSection(Res.string.auth_profile_account_section),
+    ProfileAchievementsSection(Res.string.auth_profile_achievements_section),
+    ProfileAchievementsRow(Res.string.auth_profile_achievements_row),
+    ProfileAchievementsSubtitle(Res.string.auth_profile_achievements_subtitle),
     ProfileSignOutCta(Res.string.auth_profile_sign_out_cta),
     ProfileSignOutFailed(Res.string.auth_profile_sign_out_failed),
     ProfileDisplayNameBlank(Res.string.auth_profile_display_name_blank),
@@ -153,8 +168,19 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileNotificationsPermissionDeniedForever(Res.string.auth_profile_notifications_permission_denied_forever),
     ProfileNotificationsOpenSystemSettingsCta(Res.string.auth_profile_notifications_open_system_settings_cta),
 
+    ProfileAnalyticsRow(Res.string.auth_profile_analytics_row),
+    ProfileAnalyticsSubtitleOn(Res.string.auth_profile_analytics_subtitle_on),
+    ProfileAnalyticsSubtitleOff(Res.string.auth_profile_analytics_subtitle_off),
+
     ProfileDeleteAccountRow(Res.string.auth_profile_delete_account_row),
     ProfileDeleteAccountSubtitle(Res.string.auth_profile_delete_account_subtitle),
+
+    ExportDataRow(Res.string.auth_export_data_row),
+    ExportDataSubtitle(Res.string.auth_export_data_subtitle),
+    ExportDataInFlight(Res.string.auth_export_data_in_flight),
+    ExportDataReadySubtitle(Res.string.auth_export_data_ready_subtitle),
+    ExportDataReadyCta(Res.string.auth_export_data_ready_cta),
+    ExportDataErrorBackend(Res.string.auth_export_data_error_backend),
 
     DeleteAccountTitle(Res.string.auth_delete_account_title),
     DeleteAccountIntro(Res.string.auth_delete_account_intro),

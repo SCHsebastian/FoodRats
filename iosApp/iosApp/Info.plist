@@ -4,6 +4,14 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- Privacy / consent defaults: GA4 starts with collection OFF until the user grants consent
+	     (IosAnalyticsTracker.applyConsent → setAnalyticsCollectionEnabled(true) via the bridge).
+	     Screen views are tracked manually (NavGraph.TrackScreenViews), so disable the SDK's
+	     automatic screen reporting to avoid double-counting. (human.md §D) -->
+	<key>FIREBASE_ANALYTICS_COLLECTION_ENABLED</key>
+	<false/>
+	<key>FirebaseAutomaticScreenReportingEnabled</key>
+	<false/>
 	<key>NSCameraUsageDescription</key>
 	<string>FoodRats uses the camera to capture your daily meal.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
@@ -41,6 +49,16 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+	</array>
+	<!--
+	  Lets the shareable story-card flow query Instagram before opening it
+	  (instagram-stories://share). Without this, canOpenURL always returns false
+	  and every share falls back to the system sheet. (Shareable story cards, spec §6.2.)
+	-->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>instagram-stories</string>
+		<string>instagram</string>
 	</array>
 	<!--
 	  Tells iOS the app supports English and Spanish. Required for the

@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.di
 import es.schsebastian.foodrats.core.domain.account.AccountDeletionPort
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.account.AccountWritePort
+import es.schsebastian.foodrats.core.domain.account.DataExportPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -14,13 +15,15 @@ import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAccountSnapsh
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAuthDataSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountDocStore
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountReadDataSource
+import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAccountDeletionPort
+import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseDataExportPort
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountWriter
-import es.schsebastian.foodrats.feature.auth.data.firebase.StubAccountDeletionPort
 import es.schsebastian.foodrats.feature.auth.data.repository.AuthSignOutPort
 import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
@@ -36,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
 import org.koin.dsl.module
 
@@ -62,12 +66,15 @@ val authModule = module {
             ),
         )
     }
-    single<AccountReadPort> { FirestoreAccountReadDataSource(source = get()) }
+    single<AccountReadPort> {
+        FirestoreAccountReadDataSource(source = get(), imageUrls = get(), activeCrew = get())
+    }
     singleOf(::AvatarStorageDataSource)
     single<AccountWritePort> {
         FirestoreAccountWriter(firestore = get(), avatarStorage = get(), dispatchers = get())
     }
-    single<AccountDeletionPort> { StubAccountDeletionPort() }
+    single<AccountDeletionPort> { FirebaseAccountDeletionPort(dispatchers = get()) }
+    single<DataExportPort> { FirebaseDataExportPort(dispatchers = get()) }
     factoryOf(::UpdateMyDisplayNameUseCase)
     factoryOf(::UpdateMyAvatarUseCase)
     factoryOf(::SetThemeModeUseCase)
@@ -75,7 +82,31 @@ val authModule = module {
     factoryOf(::SetNotificationsEnabledUseCase)
     factoryOf(::EnableNotificationsUseCase)
     factoryOf(::DeleteMyAccountUseCase)
-    viewModelOf(::SignInViewModel)
-    viewModelOf(::ProfileViewModel)
+    factoryOf(::ExportMyDataUseCase)
+    viewModel { SignInViewModel(auth = get(), tokenRegistration = get(), analytics = get()) }
+    // Explicit (not viewModelOf): the `analytics` ctor param defaults to NoopAnalyticsTracker,
+    // and viewModelOf would let that default short-circuit graph resolution instead of injecting
+    // the real tracker. See the analytics-base convention in CLAUDE.md.
+    viewModel {
+        ProfileViewModel(
+            accountRead = get(),
+            session = get(),
+            themePort = get(),
+            localePort = get(),
+            notificationsPort = get(),
+            updateDisplayName = get(),
+            updateAvatar = get(),
+            signOut = get(),
+            setThemeMode = get(),
+            setLocale = get(),
+            setNotificationsEnabled = get(),
+            enableNotifications = get(),
+            notificationPermission = get(),
+            deleteMyAccount = get(),
+            exportMyData = get(),
+            consent = get(),
+            analytics = get(),
+        )
+    }
     viewModelOf(::TopBarAvatarViewModel)
 }

@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.meal.data.firebase
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -33,20 +34,30 @@ class MealDtoMapperTest {
 
     private fun baseDto() = MealDto(
         id = "m-1", authorId = "a-1", authorName = "Sam", crewId = "c-1",
-        dayKey = "2026-05-16", photoUrl = "https://x.png", dishName = "Pizza",
+        dayKey = "2026-05-16", platePath = "crews/c-1/meals/m-1.jpg", dishName = "Pizza",
         publishedAtEpochMs = 1_731_000_000_000,
     )
 
-    @Test fun round_trips_all_new_fields() {
+    @Test fun round_trips_confirmed_ingredients_and_version() {
         val meal = baseMeal().copy(
-            ingredients = listOf(IngredientSlug("tomato"), IngredientSlug("pasta")),
-            detectedIngredients = listOf(IngredientSlug("tomato"), IngredientSlug("cheese")),
+            ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!),
             classifierVersion = "food101-v1",
         )
         val back = (MealDto.from(meal).toDomain() as Result.Ok).value
         assertEquals(meal.ingredients, back.ingredients)
-        assertEquals(meal.detectedIngredients, back.detectedIngredients)
         assertEquals("food101-v1", back.classifierVersion)
+    }
+
+    @Test fun detected_ingredients_are_not_persisted() {
+        // The raw classifier detection is a compose-time picker seed only; it must
+        // never survive the DTO round-trip onto a published Meal.
+        val meal = baseMeal().copy(
+            ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!),
+            detectedIngredients = listOf(IngredientSlug.of("cheese").getOrNull()!!, IngredientSlug.of("bacon").getOrNull()!!),
+        )
+        val back = (MealDto.from(meal).toDomain() as Result.Ok).value
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), back.ingredients)
+        assertTrue(back.detectedIngredients.isEmpty())
     }
 
     @Test fun preserves_unknown_slugs() {
@@ -57,5 +68,33 @@ class MealDtoMapperTest {
     @Test fun blanks_dropped() {
         val back = (baseDto().copy(ingredients = listOf("", "tomato")).toDomain() as Result.Ok).value
         assertEquals(1, back.ingredients.size)
+    }
+
+    @Test fun reads_thumbhash_and_thumbnail_path_from_dto() {
+        val dto = baseDto().copy(
+            thumbHash = "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+            thumbnailPath = "crews/c-1/meals/m-1_thumb.jpg",
+        )
+        val meal = (dto.toDomain() as Result.Ok).value
+        assertEquals("1QcSHQRnh493V4dIh4eXh1h4kJUI", meal.thumbHash)
+        // The path is carried as-is on `thumbnailUrl` at this layer; the feed enrichment resolves
+        // it to a signed URL before display (same contract as photoUrl/platePath).
+        assertEquals("crews/c-1/meals/m-1_thumb.jpg", meal.thumbnailUrl)
+    }
+
+    @Test fun tolerates_absent_thumbhash_on_old_docs() {
+        // Pre-pipeline doc: both fields absent → null hash, empty thumbnail (never a read failure).
+        val meal = (baseDto().toDomain() as Result.Ok).value
+        assertEquals(null, meal.thumbHash)
+        assertEquals("", meal.thumbnailUrl)
+    }
+
+    @Test fun round_trips_thumbhash_but_never_mints_thumbnail_path() {
+        // The client never claims a thumbnail it didn't generate (server-owned), so `from` carries
+        // the hash through but leaves thumbnailPath null.
+        val meal = baseMeal().copy(thumbHash = "1QcSHQRnh493V4dIh4eXh1h4kJUI")
+        val dto = MealDto.from(meal)
+        assertEquals("1QcSHQRnh493V4dIh4eXh1h4kJUI", dto.thumbHash)
+        assertEquals(null, dto.thumbnailPath)
     }
 }

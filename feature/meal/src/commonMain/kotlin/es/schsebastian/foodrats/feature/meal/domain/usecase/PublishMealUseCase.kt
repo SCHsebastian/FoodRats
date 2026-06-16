@@ -20,11 +20,20 @@ class PublishMealUseCase(
         val slot = draft.slot ?: return Result.failure(MealError.Publish.NoSlotSelected)
         if (draft.plate == null) return Result.failure(MealError.Validation.NoPhoto)
         if (draft.dish == null)  return Result.failure(MealError.Validation.Blank)
+        if (draft.audienceCrewIds.isEmpty()) return Result.failure(MealError.Publish.NoCrewSelected)
 
-        val takenResult = repository.hasMealForSlot(draft.crewId, today, slot)
-        if (takenResult is Result.Err) return Result.failure(takenResult.error)
-        val taken = (takenResult as Result.Ok).value
-        if (taken) return Result.failure(MealError.Publish.AlreadyPostedToday)
+        // A slot is "already posted today" only when it's taken in EVERY selected crew —
+        // i.e. there is no crew left to receive this plate. While any selected crew is
+        // still free, publishing proceeds and the repository fans the plate out to just
+        // the free ones (the deterministic per-crew meal id keeps it idempotent on retry).
+        var anyFree = false
+        for (crewId in draft.audienceCrewIds) {
+            when (val r = repository.hasMealForSlot(crewId, today, slot)) {
+                is Result.Ok  -> if (!r.value) anyFree = true
+                is Result.Err -> return Result.failure(r.error)
+            }
+        }
+        if (!anyFree) return Result.failure(MealError.Publish.AlreadyPostedToday)
 
         return repository.publish(draft).also {
             if (it is Result.Ok) repository.clearDraft()

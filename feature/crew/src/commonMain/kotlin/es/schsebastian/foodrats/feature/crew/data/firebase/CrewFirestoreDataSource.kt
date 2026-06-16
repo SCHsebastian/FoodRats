@@ -2,7 +2,6 @@ package es.schsebastian.foodrats.feature.crew.data.firebase
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
-import es.schsebastian.foodrats.core.domain.crew.CrewMemberView
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -10,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewSize
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -31,7 +31,7 @@ class CrewFirestoreDataSource(
     private val codeGenerator: CrewCodeGenerator,
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
-) {
+) : CrewDataSource {
 
     // CoroutineExceptionHandler is mandatory here: any uncaught exception inside the
     // `shareIn` upstream (e.g. Firestore PERMISSION_DENIED after sign-out token revoke)
@@ -59,7 +59,7 @@ class CrewFirestoreDataSource(
      * as receiver (not a parameter). `tx.get(ref)` is a suspend call inside the lambda.
      * `tx.set(ref, dto)` / `tx.delete(ref)` are synchronous.
      */
-    suspend fun createCrew(
+    override suspend fun createCrew(
         name: String,
         founder: AccountId,
         founderDisplayName: String,
@@ -79,7 +79,7 @@ class CrewFirestoreDataSource(
                     createdAtEpochMs = nowMs,
                     memberIds = listOf(founder.value),
                     members = mapOf(
-                        founder.value to MemberDto(founderDisplayName, null, nowMs),
+                        founder.value to MemberDto(joinedAtEpochMs = nowMs),
                     ),
                 )
                 firestore.runTransaction {
@@ -96,7 +96,7 @@ class CrewFirestoreDataSource(
         throw CodeCollisionExhaustedException
     }
 
-    suspend fun joinByCode(
+    override suspend fun joinByCode(
         code: CrewCode,
         joiner: AccountId,
         joinerDisplayName: String,
@@ -113,16 +113,18 @@ class CrewFirestoreDataSource(
             if (!crewSnap.exists) throw NotFoundException
             val crew = crewSnap.data<CrewDto>()
             if (joiner.value in crew.memberIds) throw AlreadyMemberException
-            if (crew.memberIds.size >= 8) throw FullException
+            // Authoritative, atomic cap check — must stay INSIDE the transaction to avoid a
+            // TOCTOU race. References CrewSize.MAX so the 3..8 invariant has one source of truth.
+            if (!CrewSize.canAdd(crew.memberIds.size)) throw FullException
             val updatedMemberIds = crew.memberIds + joiner.value
-            val updatedMembers = crew.members + (joiner.value to MemberDto(joinerDisplayName, null, nowMs))
+            val updatedMembers = crew.members + (joiner.value to MemberDto(joinedAtEpochMs = nowMs))
             val updated = crew.copy(memberIds = updatedMemberIds, members = updatedMembers)
             set(crewRef, updated)
             updated
         }
     }
 
-    suspend fun leave(crewId: CrewId, leaver: AccountId) {
+    override suspend fun leave(crewId: CrewId, leaver: AccountId) {
         val crewRef = crewsCol.document(crewId.value)
         firestore.runTransaction {
             val crewSnap = get(crewRef)
@@ -141,12 +143,28 @@ class CrewFirestoreDataSource(
         }
     }
 
-    fun observeMyCrews(accountId: AccountId): Flow<List<CrewDto>> =
+    override suspend fun removeMember(crewId: CrewId, target: AccountId): Unit =
+        withContext(dispatchers.io) {
+            val crewRef = crewsCol.document(crewId.value)
+            firestore.runTransaction {
+                val crewSnap = get(crewRef)
+                if (!crewSnap.exists) throw NotFoundException
+                val crew = crewSnap.data<CrewDto>()
+                if (target.value !in crew.memberIds) throw NotMemberException
+                // The owner can never remove themselves (enforced by the repository + rules), so the
+                // remaining set is always non-empty — no crew-deletion branch needed here, unlike `leave`.
+                val remainingIds = crew.memberIds - target.value
+                val remainingMembers = crew.members - target.value
+                set(crewRef, crew.copy(memberIds = remainingIds, members = remainingMembers))
+            }
+        }
+
+    override fun observeMyCrews(accountId: AccountId): Flow<List<CrewDto>> =
         crewsCol.where { "memberIds" contains accountId.value }
             .snapshots
             .map { snap -> snap.documents.map { it.data<CrewDto>() } }
 
-    fun observeCrew(crewId: CrewId): Flow<CrewDto?> = flow {
+    override fun observeCrew(crewId: CrewId): Flow<CrewDto?> = flow {
         val shared = crewSharedFlowsLock.withLock {
             crewSharedFlows.getOrPut(crewId.value) {
                 crewsCol.document(crewId.value).snapshots
@@ -166,25 +184,26 @@ class CrewFirestoreDataSource(
         emitAll(shared)
     }
 
-    /** Cold flow projecting the members map from the live crew document. */
-    fun observeMembersRaw(crewId: CrewId): Flow<List<CrewMemberView>> =
-        observeCrew(crewId).map { dto ->
-            dto?.members?.entries?.map { (uid, m) ->
-                CrewMemberView(
-                    accountUid = uid,
-                    displayName = m.displayName.orEmpty(),
-                    avatarUrl = m.avatarUrl,
-                )
-            } ?: emptyList()
-        }
-
     /** Single-shot read of a crew; returns null on not-found or error. */
-    suspend fun fetchOnce(crewId: CrewId): Crew? =
+    override suspend fun fetchOnce(crewId: CrewId): Crew? =
         observeCrew(crewId)
             .map { dto -> if (dto == null) null else (dto.toDomain() as? Result.Ok)?.value }
             .first()
 
-    suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> =
+    /** Single-shot resolve of a crew via its invite code: code doc → crew id → crew doc. */
+    override suspend fun fetchByCode(code: CrewCode): Crew = withContext(dispatchers.io) {
+        val codeSnap = codesCol.document(code.value).get()
+        if (!codeSnap.exists) throw CodeUnknownException
+        val crewId = codeSnap.data<CrewCodeDto>().crewId ?: throw NotFoundException
+        val crewSnap = crewsCol.document(crewId).get()
+        if (!crewSnap.exists) throw NotFoundException
+        when (val r = crewSnap.data<CrewDto>().toDomain()) {
+            is Result.Ok  -> r.value
+            is Result.Err -> throw NotFoundException
+        }
+    }
+
+    override suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
                 crewsCol.document(crewId.value).update("name" to newName)
@@ -192,13 +211,21 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
-    suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> =
+    override suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
                 firestore.batch().apply {
                     delete(crewsCol.document(crewId.value))
                     delete(codesCol.document(code.value))
                 }.commit()
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    override suspend fun setBlindVoting(crewId: CrewId, enabled: Boolean): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("blindVoting" to enabled)
                 Result.success(Unit)
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }

@@ -2,9 +2,79 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import { DateTime } from "luxon";
-import { sendToCrew } from "../fcm/push";
+import { sendToCrew, digestDeepLink } from "../fcm/push";
 import { KEY_WEEKLY_DIGEST, FALLBACK } from "../i18n/keys";
-import { computeAwards, MealInput, Awards } from "../stats/computeWindow";
+import { computeAwards, ratingAggregatesFrom, MealInput, Awards } from "../stats/computeWindow";
+import { paginateCrews, firestoreCrewPager } from "./crewScan";
+
+// Re-exported so existing importers (and tests) keep their import path stable; the bounded
+// crew-scan now lives in `./crewScan` and is shared with `streakNudge`.
+export { paginateCrews, CREWS_PAGE_SIZE } from "./crewScan";
+export type { CrewPage, ListCrewPage, ProcessCrew } from "./crewScan";
+
+/** The previous-week ISO day-key window the digest aggregates over. */
+export interface DigestWindow {
+  prevStartKey: string;
+  prevEndKey: string;
+}
+
+/** Derive the previous calendar-week window (Mon..Sun) from `now`. */
+export function digestWindow(now: DateTime): DigestWindow {
+  const thisMonday = now.startOf("week");
+  const prevWeekStart = thisMonday.minus({ weeks: 1 });
+  const prevWeekEnd = thisMonday.minus({ milliseconds: 1 });
+  return {
+    prevStartKey: prevWeekStart.toFormat("yyyy-LL-dd"),
+    prevEndKey: prevWeekEnd.toFormat("yyyy-LL-dd"),
+  };
+}
+
+/**
+ * Compute the awards for one crew over the digest window and fan out the digest
+ * push. Output is identical to the old inline body — only the iteration changed.
+ */
+export async function processCrewDigest(crewId: string, window: DigestWindow): Promise<void> {
+  const mealsSnap = await getFirestore()
+    .collection(`crews/${crewId}/meals`)
+    .where("dayKey", ">=", window.prevStartKey)
+    .where("dayKey", "<=", window.prevEndKey)
+    .get();
+  if (mealsSnap.empty) return;
+
+  const meals: MealInput[] = mealsSnap.docs.map((d) => {
+    const data = d.data();
+    // Recompute from the per-rater `ratings` map — never trust the client-writable
+    // `ratingSum`/`voterCount` fields (un-boundable on the vote update path).
+    const { ratingSum, voterCount } = ratingAggregatesFrom(data.ratings);
+    return {
+      authorId: (data.authorId as string) ?? "",
+      authorName: (data.authorName as string) ?? "Someone",
+      dishName: (data.dishName as string) ?? "a meal",
+      ratingSum,
+      voterCount,
+      publishedAtEpochMs: (data.publishedAtEpochMs as number) ?? 0,
+    };
+  });
+
+  const awards = computeAwards(meals);
+  const bodyParts = formatAwards(awards);
+  if (bodyParts.length === 0) return;
+
+  await sendToCrew(crewId, null, {
+    kind: "WeeklyDigest",
+    key: KEY_WEEKLY_DIGEST,
+    notificationTitle: FALLBACK.weeklyDigestTitle,
+    notificationBody: FALLBACK.weeklyDigestBody(bodyParts),
+    data: {
+      crewId,
+      weekStartIso: window.prevStartKey,
+      // Deep link to the in-app swipeable recap (roadmap §2.4). The apps forward data.link to the
+      // DeepLinkBus on tap; parseDeepLink maps /digest/{weekStart} → Route.WeeklyStory.
+      link: digestDeepLink(window.prevStartKey),
+      ...flattenAwardsToData(awards),
+    },
+  });
+}
 
 export const weeklyDigest = onSchedule(
   {
@@ -13,53 +83,13 @@ export const weeklyDigest = onSchedule(
     region: "europe-west3",
   },
   async () => {
-    const now = DateTime.utc();
-    const thisMonday = now.startOf("week");
-    const prevWeekStart = thisMonday.minus({ weeks: 1 });
-    const prevWeekEnd = thisMonday.minus({ milliseconds: 1 });
-    const prevStartKey = prevWeekStart.toFormat("yyyy-LL-dd");
-    const prevEndKey = prevWeekEnd.toFormat("yyyy-LL-dd");
+    const window = digestWindow(DateTime.utc());
+    logger.info(`weeklyDigest: window ${window.prevStartKey}..${window.prevEndKey}`);
 
-    logger.info(`weeklyDigest: window ${prevStartKey}..${prevEndKey}`);
-
-    const crewsSnap = await getFirestore().collection("crews").get();
-    for (const crewDoc of crewsSnap.docs) {
-      const crewId = crewDoc.id;
-      const mealsSnap = await getFirestore()
-        .collection(`crews/${crewId}/meals`)
-        .where("dayKey", ">=", prevStartKey)
-        .where("dayKey", "<=", prevEndKey)
-        .get();
-      if (mealsSnap.empty) continue;
-
-      const meals: MealInput[] = mealsSnap.docs.map((d) => {
-        const data = d.data();
-        return {
-          authorId: (data.authorId as string) ?? "",
-          authorName: (data.authorName as string) ?? "Someone",
-          dishName: (data.dishName as string) ?? "a meal",
-          ratingSum: (data.ratingSum as number) ?? 0,
-          voterCount: (data.voterCount as number) ?? 0,
-          publishedAtEpochMs: (data.publishedAtEpochMs as number) ?? 0,
-        };
-      });
-
-      const awards = computeAwards(meals);
-      const bodyParts = formatAwards(awards);
-      if (bodyParts.length === 0) continue;
-
-      await sendToCrew(crewId, null, {
-        kind: "WeeklyDigest",
-        key: KEY_WEEKLY_DIGEST,
-        notificationTitle: FALLBACK.weeklyDigestTitle,
-        notificationBody: FALLBACK.weeklyDigestBody(bodyParts),
-        data: {
-          crewId,
-          weekStartIso: prevStartKey,
-          ...flattenAwardsToData(awards),
-        },
-      });
-    }
+    const processed = await paginateCrews(firestoreCrewPager(), (crewId) =>
+      processCrewDigest(crewId, window),
+    );
+    logger.info(`weeklyDigest: processed ${processed} crews`);
   },
 );
 

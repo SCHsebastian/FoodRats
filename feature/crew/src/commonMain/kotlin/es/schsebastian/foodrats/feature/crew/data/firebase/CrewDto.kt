@@ -11,4 +11,8 @@ data class CrewDto(
     val createdAtEpochMs: Long? = null,
     val memberIds: List<String> = emptyList(),
     val members: Map<String, MemberDto> = emptyMap(),  // accountId -> MemberDto
+    // Owner-settable crew policy: when true, a meal's author identity is masked from a
+    // crewmate until they've cast their own score. Defaults false; old docs without the
+    // field deserialize to false (pre-launch — no migration).
+    val blindVoting: Boolean = false,
 )

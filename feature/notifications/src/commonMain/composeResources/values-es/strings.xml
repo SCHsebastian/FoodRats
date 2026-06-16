@@ -23,4 +23,6 @@
     <string name="notifications_weekly_digest_body">Pulsa para ver el resumen</string>
     <string name="notifications_inactivity_title">¿Hambre?</string>
     <string name="notifications_inactivity_body">Aún no has publicado ninguna comida hoy. Saca una antes de la cena.</string>
+    <string name="notifications_social_nudge_title">Tu crew está comiendo 👀</string>
+    <string name="notifications_social_nudge_body">%1$d de %2$d compañeros ya han publicado hoy — te toca</string>
 </resources>

@@ -25,7 +25,7 @@ class StartMealDraftUseCaseTest {
         val repo = FakeMealRepository()
         val useCase = StartMealDraftUseCase(repo, clock, zone)
 
-        val result = useCase(crew, account)
+        val result = useCase(account, setOf(crew))
 
         assertTrue(result is Result.Ok)
         assertEquals(expectedDay, (result as Result.Ok).value.day)

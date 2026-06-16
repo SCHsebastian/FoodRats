@@ -1,7 +1,10 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import androidx.lifecycle.viewModelScope
-import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.location.LocationError
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
@@ -9,6 +12,7 @@ import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -28,12 +32,13 @@ import kotlinx.datetime.toLocalDateTime
 class ComposePlateViewModel(
     private val updateDraft: UpdateMealDraftUseCase,
     private val repository: MealRepository,
-    private val activeCrew: ActiveCrewProvider,
+    private val crewMembership: CrewMembershipPort,
     private val uploadCoordinator: MealUploadCoordinator,
     private val locationProvider: LocationProvider,
     private val classifyPlate: ClassifyDraftPlateUseCase,
     private val clock: Clock,
     private val zone: TimeZone,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<ComposePlateState, ComposePlateIntent, ComposePlateEffect>(ComposePlateState()) {
 
     // Content fingerprint of the last photo we kicked a classification off for.
@@ -41,8 +46,17 @@ class ComposePlateViewModel(
     // screen re-entry while still re-running when the user re-captures.
     private var lastClassifiedFingerprint: Int? = null
 
+    // Taken slots per crew across ALL the author's crews. The disabled set shown in the
+    // picker is the intersection over the *selected* crews: a slot is "used up" only when
+    // it's already posted in every crew the plate would go to. Loaded once the crew set is known.
+    private var perCrewTaken: Map<CrewId, Set<MealSlot>> = emptyMap()
+    // Auto-pick the default slot (avoiding taken) only on first load; later audience
+    // changes recompute the disabled set but don't yank a slot the user explicitly chose,
+    // unless that slot has since become taken everywhere.
+    private var slotInitialized = false
+
     init {
-        viewModelScope.launch { loadTakenSlots() }
+        analytics.track(AnalyticsEvent.MealComposerOpened)
         repository.observeDraft().onEach { draft ->
             update {
                 it.copy(
@@ -50,16 +64,19 @@ class ComposePlateViewModel(
                     coordinates = draft?.coordinates,
                     draftIngredients = draft?.ingredients ?: emptyList(),
                     detectedIngredients = draft?.detectedIngredients ?: emptyList(),
+                    selectedCrewIds = draft?.audienceCrewIds ?: emptySet(),
                     canContinue = computeCanContinue(
                         dish = it.dish,
                         descriptionTooLong = it.descriptionTooLong,
                         photo = draft?.plate?.photoBytes,
                         slot = it.selectedSlot,
                         taken = it.takenSlots,
+                        audience = draft?.audienceCrewIds ?: emptySet(),
                     ),
                 )
             }
         }.launchIn(viewModelScope)
+        viewModelScope.launch { loadCrewsAndSlots() }
     }
 
     /**
@@ -77,14 +94,29 @@ class ComposePlateViewModel(
         lastClassifiedFingerprint = fingerprint
         update { it.copy(classifying = true, classifierError = null) }
         viewModelScope.launch {
+            val startedAt = clock.now()
             when (val r = classifyPlate(bytes)) {
                 is Result.Ok -> {
-                    updateDraft(UpdateMealDraftCommand.SetDetected(r.value.ingredients, r.value.version))
+                    // Advisory telemetry: only when the classifier actually ran (kill-switch off
+                    // yields an empty version). detected≠confirmed, so `detected_count` here is the
+                    // model's raw suggestion count, before the user edits it in the picker.
+                    if (r.value.version.isNotEmpty()) {
+                        analytics.track(
+                            AnalyticsEvent.PlateClassified(
+                                detectedCount = r.value.ingredients.size,
+                                latencyMs = (clock.now() - startedAt).inWholeMilliseconds,
+                                classifierVersion = r.value.version,
+                            ),
+                        )
+                    }
+                    // Detected ≠ confirmed: stamp ONLY the detected set. The confirmed
+                    // `draftIngredients` stays driven by observeDraft and remains empty
+                    // until the user confirms in the picker — detections are just its seed.
+                    updateDraft(UpdateMealDraftCommand.SetDetected(r.value.ingredients, r.value.dishSlug, r.value.version))
                     update {
                         it.copy(
                             classifying = false,
                             detectedIngredients = r.value.ingredients,
-                            draftIngredients = r.value.ingredients,
                         )
                     }
                 }
@@ -93,31 +125,58 @@ class ComposePlateViewModel(
         }
     }
 
-    private suspend fun loadTakenSlots() {
-        val crewId = activeCrew.current.first() ?: return
-        val now = clock.now().toLocalDateTime(zone)
-        val today = MealDay.today(clock, zone)
-        val defaultSlot = MealSlot.defaultForHour(now.hour)
+    /**
+     * Loads the author's crews (the audience options), reconciles the selected audience
+     * against them, and loads per-crew taken slots. The crew list is observed live so a
+     * crew joined/left mid-compose is reflected.
+     */
+    private suspend fun loadCrewsAndSlots() {
+        val authorId = repository.observeDraft().first()?.authorId ?: return
+        crewMembership.observeMyCrews(authorId).onEach { crews ->
+            update { it.copy(availableCrews = crews) }
+            // Reconcile the chosen audience with the live crew set: drop crews the author
+            // left and, if that empties it (or the draft never seeded one), default to all.
+            val availableIds = crews.map { it.id }.toSet()
+            val current = currentState.selectedCrewIds
+            val effective = current.intersect(availableIds).ifEmpty { availableIds }
+            if (effective != current) {
+                updateDraft(UpdateMealDraftCommand.SetAudience(effective))
+                update { it.copy(selectedCrewIds = effective) }
+            }
+            perCrewTaken = when (val r = repository.takenSlotsPerCrew(availableIds, MealDay.today(clock, zone))) {
+                is Result.Ok  -> r.value
+                is Result.Err -> emptyMap()
+            }
+            recomputeTaken()
+        }.launchIn(viewModelScope)
+    }
 
-        val taken = when (val r = repository.takenSlotsFor(crewId, today)) {
-            is Result.Ok  -> r.value
-            is Result.Err -> emptySet()
-        }
+    /** Recomputes the disabled-slot set from the current audience and refreshes the selected slot. */
+    private suspend fun recomputeTaken() {
+        val selected = currentState.selectedCrewIds
+        val taken: Set<MealSlot> =
+            if (selected.isEmpty()) emptySet()
+            else selected.map { perCrewTaken[it] ?: emptySet() }.reduce { acc, s -> acc intersect s }
 
-        val selectedSlot = if (defaultSlot !in taken) {
-            defaultSlot
+        val slot = if (!slotInitialized) {
+            slotInitialized = true
+            val default = MealSlot.defaultForHour(clock.now().toLocalDateTime(zone).hour)
+            if (default !in taken) default else MealSlot.entries.firstOrNull { it !in taken } ?: default
         } else {
-            MealSlot.entries.firstOrNull { it !in taken } ?: defaultSlot
+            val cur = currentState.selectedSlot
+            if (cur !in taken) cur else MealSlot.entries.firstOrNull { it !in taken } ?: cur
         }
 
         update {
             it.copy(
                 takenSlots = taken,
-                selectedSlot = selectedSlot,
-                canContinue = computeCanContinue(it.dish, it.descriptionTooLong, it.photoBytes, selectedSlot, taken),
+                selectedSlot = slot,
+                canContinue = computeCanContinue(
+                    it.dish, it.descriptionTooLong, it.photoBytes, slot, taken, it.selectedCrewIds,
+                ),
             )
         }
-        updateDraft(UpdateMealDraftCommand.SetSlot(selectedSlot))
+        updateDraft(UpdateMealDraftCommand.SetSlot(slot))
     }
 
     override suspend fun handle(intent: ComposePlateIntent) {
@@ -127,7 +186,7 @@ class ComposePlateViewModel(
                     dish = intent.value,
                     error = null,
                     canContinue = computeCanContinue(
-                        intent.value, it.descriptionTooLong, it.photoBytes, it.selectedSlot, it.takenSlots,
+                        intent.value, it.descriptionTooLong, it.photoBytes, it.selectedSlot, it.takenSlots, it.selectedCrewIds,
                     ),
                 )
             }
@@ -138,7 +197,7 @@ class ComposePlateViewModel(
                         descriptionInput = intent.value,
                         descriptionTooLong = tooLong,
                         error = if (tooLong) MealError.Validation.DescriptionTooLong else null,
-                        canContinue = computeCanContinue(it.dish, tooLong, it.photoBytes, it.selectedSlot, it.takenSlots),
+                        canContinue = computeCanContinue(it.dish, tooLong, it.photoBytes, it.selectedSlot, it.takenSlots, it.selectedCrewIds),
                     )
                 }
             }
@@ -146,10 +205,31 @@ class ComposePlateViewModel(
                 update {
                     it.copy(
                         selectedSlot = intent.slot,
-                        canContinue = computeCanContinue(it.dish, it.descriptionTooLong, it.photoBytes, intent.slot, it.takenSlots),
+                        canContinue = computeCanContinue(it.dish, it.descriptionTooLong, it.photoBytes, intent.slot, it.takenSlots, it.selectedCrewIds),
                     )
                 }
                 updateDraft(UpdateMealDraftCommand.SetSlot(intent.slot))
+            }
+            is ComposePlateIntent.CrewToggled -> {
+                val sel = currentState.selectedCrewIds
+                val next = when {
+                    intent.crewId in sel && sel.size > 1 -> sel - intent.crewId
+                    intent.crewId in sel                 -> sel // keep at least one crew selected
+                    else                                 -> sel + intent.crewId
+                }
+                if (next != sel) {
+                    updateDraft(UpdateMealDraftCommand.SetAudience(next))
+                    update { it.copy(selectedCrewIds = next) }
+                    recomputeTaken()
+                }
+            }
+            ComposePlateIntent.AllCrewsSelected -> {
+                val all = currentState.availableCrews.map { it.id }.toSet()
+                if (all.isNotEmpty() && all != currentState.selectedCrewIds) {
+                    updateDraft(UpdateMealDraftCommand.SetAudience(all))
+                    update { it.copy(selectedCrewIds = all) }
+                    recomputeTaken()
+                }
             }
             ComposePlateIntent.RequestLocation -> requestLocation()
             ComposePlateIntent.ClearLocation -> {
@@ -203,6 +283,10 @@ class ComposePlateViewModel(
             update { it.copy(error = MealError.Validation.DescriptionTooLong) }
             return false
         }
+        if (state.selectedCrewIds.isEmpty()) {
+            update { it.copy(error = MealError.Publish.NoCrewSelected) }
+            return false
+        }
         updateDraft(UpdateMealDraftCommand.SetSlot(state.selectedSlot))
         updateDraft(UpdateMealDraftCommand.SetDish(dish))
         val r = updateDraft(UpdateMealDraftCommand.SetDescription(description))
@@ -219,8 +303,10 @@ class ComposePlateViewModel(
         photo: ByteArray?,
         slot: MealSlot,
         taken: Set<MealSlot>,
+        audience: Set<CrewId>,
     ): Boolean = dish.isNotBlank() &&
         !descriptionTooLong &&
         photo != null &&
-        slot !in taken
+        slot !in taken &&
+        audience.isNotEmpty()
 }

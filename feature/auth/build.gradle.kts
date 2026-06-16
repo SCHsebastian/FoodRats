@@ -30,48 +30,31 @@ kotlin {
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
-            implementation(libs.firebase.common)
-            implementation(libs.firebase.auth)
-            implementation(libs.firebase.firestore)
-            implementation(libs.firebase.storage)
+            implementation(libs.bundles.feature.ui)
+            implementation(libs.bundles.kotlinx.common)
+            implementation(libs.bundles.firebase.gitlive)
+            // GitLive Functions binding — the `deleteAccount` callable backing
+            // FirebaseAccountDeletionPort. Not part of the firebase-gitlive bundle
+            // (same as :core:data, which pulls it in standalone for FirebaseImageUrlResolver).
+            implementation(libs.firebase.functions)
             // Avatar picker (gallery) — mirrors :feature:crew. If iOS link breaks on
             // material-icons-extended, add the same exclude noted in CLAUDE.md.
             implementation(libs.imagepickerkmp)
             implementation(libs.coil.compose)
         }
         commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotest.assertions.core)
-            implementation(libs.turbine)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.koin.test)
+            implementation(libs.bundles.feature.test)
         }
         androidMain.dependencies {
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
-            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+            implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.androidx.credentials)
             implementation(libs.androidx.credentials.play.services.auth)
             implementation(libs.google.id)
         }
         val androidHostTest by getting {
             dependencies {
-                implementation(libs.kotlin.testJunit)
-                implementation(libs.junit)
-                implementation(libs.koin.test)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.turbine)
+                implementation(libs.bundles.feature.hosttest)
             }
         }
     }

@@ -87,6 +87,86 @@ class FeedMealUiTest {
         assertEquals("Tortilla, just a bit runny", ui.description)
     }
 
+    @Test fun blind_voting_off_author_never_masked() {
+        val ui = MealWithRatings(sampleMeal, emptyList())
+            .toFeedUi(viewerId, today, blindVoting = false)
+        assertFalse(ui.authorMasked)
+    }
+
+    @Test fun blind_voting_on_not_voted_not_author_masked() {
+        val ui = MealWithRatings(sampleMeal, emptyList())
+            .toFeedUi(viewerId, today, blindVoting = true)
+        assertTrue(ui.authorMasked)
+    }
+
+    @Test fun blind_voting_on_after_voting_revealed() {
+        val ui = MealWithRatings(sampleMeal, listOf(rating(viewerId, 5)))
+            .toFeedUi(viewerId, today, blindVoting = true)
+        assertFalse(ui.authorMasked)
+    }
+
+    @Test fun blind_voting_on_own_meal_revealed() {
+        val ui = MealWithRatings(sampleMeal, emptyList())
+            .toFeedUi(authorId, today, blindVoting = true)
+        assertFalse(ui.authorMasked)
+    }
+
+    @Test fun blind_voting_on_window_closed_revealed() {
+        val twoLater = MealDay(LocalDate.parse("2026-05-21"), zone)
+        val ui = MealWithRatings(sampleMeal, emptyList())
+            .toFeedUi(viewerId, twoLater, blindVoting = true)
+        assertFalse(ui.authorMasked)
+    }
+
+    @Test fun reactions_default_to_empty() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(0, ui.reactionCount)
+        assertFalse(ui.viewerReacted)
+    }
+
+    @Test fun day_emote_is_the_reaction_glyph() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        // The react affordance renders ui.dayEmote (the meal-day's DailyEmote) — deterministic.
+        assertEquals(
+            es.schsebastian.foodrats.core.domain.meal.DailyEmote.forDay(mealDay),
+            ui.dayEmote,
+        )
+    }
+
+    @Test fun with_reactions_merges_count_and_viewer_flag() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+            .withReactions(count = 3, viewerReacted = true)
+        assertEquals(3, ui.reactionCount)
+        assertTrue(ui.viewerReacted)
+    }
+
+    @Test fun thumbnail_and_thumbhash_flow_into_feed_ui() {
+        val withThumb = sampleMeal.copy(
+            thumbnailUrl = "https://example.com/p_thumb.jpg",
+            thumbHash = "1QcSHQRnh493V4dIh4eXh1h4kJUI",
+        )
+        val ui = MealWithRatings(withThumb, emptyList()).toFeedUi(viewerId, today)
+        assertEquals("https://example.com/p_thumb.jpg", ui.thumbnailUrl)
+        assertEquals("1QcSHQRnh493V4dIh4eXh1h4kJUI", ui.thumbHash)
+        assertEquals("https://example.com/p.jpg", ui.photoUrl)
+    }
+
+    @Test fun feed_image_url_prefers_thumbnail_when_present() {
+        val withThumb = sampleMeal.copy(thumbnailUrl = "https://example.com/p_thumb.jpg")
+        val ui = MealWithRatings(withThumb, emptyList()).toFeedUi(viewerId, today)
+        // Feed cards load the small/fast thumbnail; detail still loads photoUrl (full).
+        assertEquals("https://example.com/p_thumb.jpg", ui.feedImageUrl)
+        assertEquals("https://example.com/p.jpg", ui.photoUrl)
+    }
+
+    @Test fun feed_image_url_falls_back_to_full_when_no_thumbnail() {
+        // Pre-pipeline meal (or the few-seconds window before the thumbnail exists).
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals("", ui.thumbnailUrl)
+        assertNull(ui.thumbHash)
+        assertEquals("https://example.com/p.jpg", ui.feedImageUrl)
+    }
+
     @Test fun average_computed_from_ratings() {
         val ui = MealWithRatings(
             sampleMeal,

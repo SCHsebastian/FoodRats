@@ -25,6 +25,8 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Elevation
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 
 /** What [FrFeedDayHeader] animates between. [sortKey] (an ISO date) drives the slide direction. */
 private data class DayLabel(val primary: String, val secondary: String, val sortKey: String)
@@ -68,6 +70,7 @@ fun FrFeedDayHeader(
             FrIconButton(
                 icon = FrIcons.ChevronLeft,
                 onClick = onPrev,
+                contentDescription = resolve(FeedStringKey.PrevDay),
                 enabled = canGoPrev,
             )
             AnimatedContent(
@@ -108,6 +111,7 @@ fun FrFeedDayHeader(
             FrIconButton(
                 icon = FrIcons.ChevronRight,
                 onClick = onNext,
+                contentDescription = resolve(FeedStringKey.NextDay),
                 enabled = canGoNext,
             )
         }

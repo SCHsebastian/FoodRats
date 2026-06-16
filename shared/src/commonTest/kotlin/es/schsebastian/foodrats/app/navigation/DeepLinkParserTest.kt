@@ -39,6 +39,55 @@ class DeepLinkParserTest {
     }
 
     @Test
+    fun https_digest_link_maps_to_weekly_story() {
+        assertEquals(
+            Route.WeeklyStory(weekStart = "2026-06-08", fromNotification = true),
+            parseDeepLink("https://foodrats.app/digest/2026-06-08"),
+        )
+    }
+
+    @Test
+    fun custom_scheme_digest_link_maps_to_weekly_story() {
+        assertEquals(
+            Route.WeeklyStory(weekStart = "2026-06-08", fromNotification = true),
+            parseDeepLink("foodrats://app/digest/2026-06-08"),
+        )
+    }
+
+    @Test
+    fun digest_link_missing_week_returns_null() {
+        assertNull(parseDeepLink("https://foodrats.app/digest"))
+    }
+
+    @Test
+    fun https_invite_link_maps_to_invite_preview() {
+        assertEquals(
+            Route.InvitePreview(code = "AB2K9P"),
+            parseDeepLink("https://foodrats.app/invite/AB2K9P"),
+        )
+    }
+
+    @Test
+    fun custom_scheme_invite_link_maps_to_invite_preview() {
+        assertEquals(
+            Route.InvitePreview(code = "AB2K9P"),
+            parseDeepLink("foodrats://app/invite/AB2K9P"),
+        )
+    }
+
+    @Test
+    fun invite_link_missing_code_returns_null() {
+        assertNull(parseDeepLink("https://foodrats.app/invite"))
+    }
+
+    @Test
+    fun invite_url_builder_round_trips_through_the_parser() {
+        val url = DeepLinks.inviteUrl("AB2K9P")
+        assertEquals("https://foodrats.app/invite/AB2K9P", url)
+        assertEquals(Route.InvitePreview(code = "AB2K9P"), parseDeepLink(url))
+    }
+
+    @Test
     fun query_and_fragment_are_ignored() {
         assertEquals(
             Route.CrewSettings(crewId = "crew-7"),

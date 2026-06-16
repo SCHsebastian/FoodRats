@@ -1,8 +1,16 @@
+import org.gradle.api.tasks.testing.Test
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidMultiplatformLibrary)
+}
+
+// The androidHostTest suite runs the whole-project Konsist architecture scan
+// (ArchitectureFitnessTest + KonsistRulesTest), which loads every module's AST into the
+// forked test JVM. The 512m default test heap OOMs on it; give it real headroom.
+tasks.withType<Test>().configureEach {
+    maxHeapSize = "2g"
 }
 
 kotlin {

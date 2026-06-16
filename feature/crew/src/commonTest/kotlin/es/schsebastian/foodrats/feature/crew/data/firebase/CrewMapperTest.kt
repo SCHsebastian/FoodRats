@@ -25,8 +25,8 @@ class CrewMapperTest {
         createdAtEpochMs = 1_700_000_000_000L,
         memberIds = listOf("uid-1", "uid-2"),
         members = mapOf(
-            "uid-1" to MemberDto("Sam", null, 1_700_000_000_000L),
-            "uid-2" to MemberDto("Pat", "https://x/y.png", 1_700_000_500_000L),
+            "uid-1" to MemberDto(joinedAtEpochMs = 1_700_000_000_000L),
+            "uid-2" to MemberDto(joinedAtEpochMs = 1_700_000_500_000L),
         ),
     )
 
@@ -57,9 +57,21 @@ class CrewMapperTest {
         )
     }
 
+    @Test fun toDomain_defaults_blindVoting_to_false_when_absent() {
+        val r = validDto.toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(false, r.value.blindVoting)
+    }
+
+    @Test fun toDomain_carries_blindVoting_true_when_set() {
+        val r = validDto.copy(blindVoting = true).toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(true, r.value.blindVoting)
+    }
+
     @Test fun toDomain_skips_member_entries_with_missing_accountId_join_data() {
         // memberIds in but no matching members map entry — drop silently.
-        val dto = validDto.copy(members = mapOf("uid-1" to MemberDto("Sam", null, 1L)))
+        val dto = validDto.copy(members = mapOf("uid-1" to MemberDto(joinedAtEpochMs = 1L)))
         val r = dto.toDomain()
         assertIs<Result.Ok<Crew>>(r)
         assertEquals(1, r.value.members.size)

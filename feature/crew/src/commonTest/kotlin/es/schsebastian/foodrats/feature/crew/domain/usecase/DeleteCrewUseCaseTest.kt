@@ -35,7 +35,7 @@ class DeleteCrewUseCaseTest {
 
     private val ownerId = aid("uid-owner")
     private val crewId = cid("c-1")
-    private val sampleCrew = Crew(
+    private val sampleCrew = Crew.of(
         id = crewId,
         name = "My Crew",
         code = (CrewCode.of("ABCD23") as Result.Ok).value,

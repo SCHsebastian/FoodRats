@@ -58,7 +58,7 @@ fun FrBestPlatePodium(
     ) {
         AsyncImage(
             model = award.photoUrl,
-            contentDescription = null,
+            contentDescription = resolve(StatsStringKey.PlatePhotoFormat, award.dish.value),
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
         )

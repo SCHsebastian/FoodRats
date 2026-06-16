@@ -2,11 +2,15 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Avatars — one image per account, addressed by uid. Owner-only writes; any
-    // signed-in user can read (avatars surface in crew member rows + feed cards
-    // for everyone in the crew, so a single shared read policy is simplest).
+    // Avatars — one image per account, addressed by uid. Owner-only writes.
+    //
+    // Direct reads are DENIED (#15): a download-token URL bypasses these rules entirely
+    // (anyone with the `?token=…` string can fetch). Clients no longer mint tokens — they
+    // store the object path and read via short-lived, membership-checked V4 signed URLs
+    // from the `mintPlateUrls` callable, which sign with the service account and so are not
+    // subject to these read rules.
     match /avatars/{filename} {
-      allow read: if request.auth != null;
+      allow read: if false;
       allow write: if request.auth != null
                    && filename == request.auth.uid + ".jpg"
                    && request.resource.size < 1 * 1024 * 1024
@@ -18,15 +22,42 @@ service firebase.storage {
     // Meal plate photos. Path is `crews/{crewId}/meals/{mealId}.jpg`, with
     // mealId = `<crewId>_<uid>_<dayKey>_<slot>` (see MealId.forDaySlot).
     // We enforce author identity by parsing the uid out of mealId so the rule
-    // doesn't need to read Firestore. Membership in the crew is enforced
-    // separately by the matching Firestore rule on the meal doc — without
-    // that doc the photo is orphaned and unreferenced.
+    // doesn't need to read Firestore.
+    //
+    // Direct reads are DENIED (#15) — same rationale as avatars above. The
+    // `mintPlateUrls` callable verifies crew membership before signing a read URL, so a
+    // non-member (or a logged-out holder of an old token URL) can no longer fetch a plate.
+    //
+    // Thumbnails (`<mealId>_thumb.jpg`) are written ONLY by the `onPlateImageFinalized`
+    // Cloud Function via the Admin SDK (which bypasses these rules). The explicit
+    // `_thumb.jpg` suffix exclusion below blocks any client from writing/overwriting a
+    // thumbnail — a `<crewId>_<uid>_..._thumb.jpg` name would otherwise match the author
+    // pattern and slip through.
     match /crews/{crewId}/meals/{filename} {
-      allow read: if request.auth != null;
+      allow read: if false;
       allow write: if request.auth != null
                    && filename.matches(crewId + '_' + request.auth.uid + '_.*\\.jpg')
+                   && !filename.matches('.*_thumb\\.jpg')
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/jpe?g');
+      // Author-scoped delete. `allow write` nominally covers delete, but its size/contentType
+      // clauses reference `request.resource`, which is NULL on a delete — so they can never be
+      // satisfied and delete would always 403. This explicit rule lets the author reclaim their
+      // OWN plate: best-effort orphan cleanup when a publish's Firestore write fails after the
+      // upload succeeded (FirebaseMealRepository). Scoped exactly like `write` (the filename
+      // embeds the author uid); thumbnails are server-owned (Admin SDK) and excluded.
+      allow delete: if request.auth != null
+                    && filename.matches(crewId + '_' + request.auth.uid + '_.*\\.jpg')
+                    && !filename.matches('.*_thumb\\.jpg');
+    }
+
+    // GDPR data-export archives (Art. 20). Written ONLY by the `exportMyData` callable via the
+    // Admin SDK (which bypasses these rules), and the user downloads via the short-lived V4 signed
+    // URL that callable mints (signed reads also bypass rules). The explicit owner-only read here
+    // is defense-in-depth — a user may read only their OWN export object, and no client may write.
+    match /exports/{uid}/{filename} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
     }
 
     // Default: deny.

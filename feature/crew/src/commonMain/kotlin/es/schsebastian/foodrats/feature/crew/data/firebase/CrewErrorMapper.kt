@@ -4,17 +4,15 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 
 class CrewErrorMapper {
     /**
-     * Map an arbitrary backend [Throwable] to a typed CrewError. We bucket by message-substring
-     * because GitLive Firebase doesn't expose typed FirebaseException subtypes uniformly across
-     * Android + iOS. Substrings come from real Firestore SDK error messages on each platform.
+     * Map an arbitrary backend [Throwable] to a typed [CrewError]. Raw throwables are first
+     * classified into a typed [CrewFault] by [toCrewFault] (the single message-inspection
+     * seam — see [CrewFault]); this mapper then translates **by fault type**, never by
+     * message, so a Firebase SDK wording change touches only `toCrewFault`.
      */
-    fun map(t: Throwable): CrewError {
-        val msg = (t.message.orEmpty()).lowercase()
-        return when {
-            "permission" in msg || "permission_denied" in msg -> CrewError.Backend.PermissionDenied
-            "network"    in msg || "unavailable"        in msg -> CrewError.Backend.Network
-            "not found"  in msg || "no document"        in msg -> CrewError.Membership.NotFound
-            else                                                 -> CrewError.Backend.Unavailable
-        }
+    fun map(t: Throwable): CrewError = when (t.toCrewFault()) {
+        CrewFault.PermissionDenied -> CrewError.Backend.PermissionDenied
+        CrewFault.Network -> CrewError.Backend.Network
+        CrewFault.NotFound -> CrewError.Membership.NotFound
+        CrewFault.Unavailable -> CrewError.Backend.Unavailable
     }
 }

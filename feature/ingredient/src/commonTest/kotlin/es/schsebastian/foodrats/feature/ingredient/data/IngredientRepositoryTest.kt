@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.ingredient.data
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.DishIngredientMapDto
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientDataSource
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientDto
@@ -33,7 +34,7 @@ class IngredientRepositoryTest {
             // Consume initial emptyMap if present, then find the non-empty item
             var snapshot = awaitItem()
             if (snapshot.isEmpty()) snapshot = awaitItem()
-            assertEquals(setOf(IngredientSlug("tomato")), snapshot.keys)
+            assertEquals(setOf(IngredientSlug.of("tomato").getOrNull()!!), snapshot.keys)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -51,7 +52,7 @@ class IngredientRepositoryTest {
         repo.observeCatalog().test {
             var result = awaitItem()
             if (result.isEmpty()) result = awaitItem()
-            assertEquals(setOf(IngredientSlug("carrot")), result.keys)
+            assertEquals(setOf(IngredientSlug.of("carrot").getOrNull()!!), result.keys)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -60,7 +61,7 @@ class IngredientRepositoryTest {
     fun suggestForDish_returns_default_ingredients() = runTest {
         val repo = repoWith(dishMap = mapOf("lasagna" to listOf("pasta", "tomato")))
         val slugs = repo.suggestForDish("lasagna")
-        assertEquals(listOf(IngredientSlug("pasta"), IngredientSlug("tomato")), slugs)
+        assertEquals(listOf(IngredientSlug.of("pasta").getOrNull()!!, IngredientSlug.of("tomato").getOrNull()!!), slugs)
     }
 
     @Test
@@ -73,7 +74,7 @@ class IngredientRepositoryTest {
     fun suggestForDish_skips_blank_slug_entries() = runTest {
         val repo = repoWith(dishMap = mapOf("pizza" to listOf("dough", "", "cheese")))
         val slugs = repo.suggestForDish("pizza")
-        assertEquals(listOf(IngredientSlug("dough"), IngredientSlug("cheese")), slugs)
+        assertEquals(listOf(IngredientSlug.of("dough").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), slugs)
     }
 
     @Test
@@ -93,9 +94,9 @@ class IngredientRepositoryTest {
             while (snap.size < 2) snap = awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
-        val result = repo.findBySlugs(setOf(IngredientSlug("tomato")))
+        val result = repo.findBySlugs(setOf(IngredientSlug.of("tomato").getOrNull()!!))
         assertEquals(1, result.size)
-        assertEquals(IngredientSlug("tomato"), result.first().slug)
+        assertEquals(IngredientSlug.of("tomato").getOrNull()!!, result.first().slug)
     }
 
     // ---- helpers ----

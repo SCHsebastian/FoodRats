@@ -1,6 +1,9 @@
 package es.schsebastian.foodrats.feature.auth.presentation.signin
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AuthMethod
+import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationError
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
@@ -130,6 +133,41 @@ class SignInViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals("signUp", repo.lastMode)
+    }
+
+    @Test fun google_sign_in_success_tracks_login() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = SignInViewModel(FakeAuthRepository(Result.success(sampleSession)), NoopTokenRegistrationPort, analytics)
+        vm.onIntent(SignInIntent.ContinueWithGoogle)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.LoggedIn(AuthMethod.GOOGLE)), analytics.events.toList())
+    }
+
+    @Test fun google_sign_in_failure_tracks_sign_in_failed_with_error_leaf() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = SignInViewModel(
+            FakeAuthRepository(Result.failure(AuthError.GoogleSignIn.NetworkUnavailable)),
+            NoopTokenRegistrationPort,
+            analytics,
+        )
+        vm.onIntent(SignInIntent.ContinueWithGoogle)
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SignInFailed(AuthMethod.GOOGLE, "NetworkUnavailable")),
+            analytics.events.toList(),
+        )
+    }
+
+    @Test fun email_sign_up_success_tracks_sign_up() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            emailSignUpResult = Result.success(sampleSession),
+        )
+        val vm = SignInViewModel(repo, NoopTokenRegistrationPort, analytics)
+        vm.onIntent(SignInIntent.ToggleMode)
+        vm.onIntent(SignInIntent.UpdateEmail("new@rat.com"))
+        vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.onIntent(SignInIntent.SubmitEmail)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.SignedUp(AuthMethod.EMAIL)), analytics.events.toList())
     }
 
     @Test fun wrong_credentials_maps_to_passwordError() = runTest {

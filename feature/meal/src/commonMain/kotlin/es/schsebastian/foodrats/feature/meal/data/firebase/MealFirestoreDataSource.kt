@@ -8,14 +8,14 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
+internal class MealFirestoreDataSource(private val firestore: FirebaseFirestore) : MealFirestore {
 
     /** Returns a new auto-generated document ID within the crew's meals collection. */
     fun newId(crewId: CrewId): String =
         firestore.collection("crews").document(crewId.value).collection("meals").document.id
 
     /** Writes (or overwrites) a MealDto document to Firestore using the given document ID. */
-    suspend fun write(dto: MealDto, docId: String = dto.id!!) {
+    override suspend fun write(dto: MealDto, docId: String) {
         firestore
             .collection("crews")
             .document(dto.crewId!!)
@@ -36,7 +36,7 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
      * `dayKey` is `YYYY-MM-DD`, so lexicographic compare matches chronological order;
      * a single-field range query needs no composite index.
      */
-    fun observeForRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<List<MealDto>> =
+    override fun observeForRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<List<MealDto>> =
         firestore.collection("crews").document(crewId.value).collection("meals")
             .where {
                 ("dayKey" greaterThanOrEqualTo from.toKey()) and
@@ -46,7 +46,7 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .map { snap -> snap.documents.map { it.data<MealDto>() } }
 
     /** Returns true if a meal document exists for the given crew/author/day/slot combination. */
-    suspend fun mealExists(
+    override suspend fun mealExists(
         crewId: CrewId,
         authorId: AccountId,
         dayKey: String,
@@ -63,7 +63,7 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
     }
 
     /** Returns the set of slots already taken for the given crew/author/day. One Firestore round-trip. */
-    suspend fun takenSlots(
+    override suspend fun takenSlots(
         crewId: CrewId,
         authorId: AccountId,
         dayKey: String,
@@ -83,7 +83,7 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
 
     /** Deletes a meal document. Subcollections (comments, ratings) are swept by the
      *  onMealDeleted Cloud Function, since Firestore deletes do not cascade. */
-    suspend fun deleteMeal(crewId: CrewId, mealId: String) {
+    override suspend fun deleteMeal(crewId: CrewId, mealId: String) {
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId)
             .delete()
@@ -107,21 +107,21 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
      * rules; the transaction here covers the read-modify-write cycle for the ratings
      * map plus its denormalized `ratingSum` / `voterCount` aggregates.
      */
-    suspend fun rateMeal(
+    override suspend fun rateMeal(
         crewId: CrewId,
         mealId: String,
         raterUid: String,
         score: Int,
         nowEpochMs: Long,
-    ): RateOutcome {
+    ): MealFirestore.RateOutcome {
         val ref = firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId)
         return firestore.runTransaction {
             val snap = get(ref)
-            if (!snap.exists) return@runTransaction RateOutcome.MealNotFound
+            if (!snap.exists) return@runTransaction MealFirestore.RateOutcome.MealNotFound
             val dto = snap.data<MealDto>()
-            if (raterUid == dto.authorId) return@runTransaction RateOutcome.SelfRating
-            if (dto.ratings.containsKey(raterUid)) return@runTransaction RateOutcome.AlreadyRated
+            if (raterUid == dto.authorId) return@runTransaction MealFirestore.RateOutcome.SelfRating
+            if (dto.ratings.containsKey(raterUid)) return@runTransaction MealFirestore.RateOutcome.AlreadyRated
             val newRatings = dto.ratings + (raterUid to RatingEntryDto(score = score, atMs = nowEpochMs))
             val newSum = newRatings.values.sumOf { it.score }
             update(ref, mapOf(
@@ -129,14 +129,7 @@ class MealFirestoreDataSource(private val firestore: FirebaseFirestore) {
                 "ratingSum" to newSum,
                 "voterCount" to newRatings.size,
             ))
-            RateOutcome.Ok
+            MealFirestore.RateOutcome.Ok
         }
-    }
-
-    sealed interface RateOutcome {
-        data object Ok : RateOutcome
-        data object MealNotFound : RateOutcome
-        data object SelfRating : RateOutcome
-        data object AlreadyRated : RateOutcome
     }
 }

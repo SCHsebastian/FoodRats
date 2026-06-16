@@ -43,8 +43,10 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.time.SystemClock
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.toFixed
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
+import es.schsebastian.foodrats.feature.meal.presentation.components.CrewAudiencePicker
 import es.schsebastian.foodrats.feature.meal.presentation.components.DailyEmoteBadge
 import es.schsebastian.foodrats.feature.meal.presentation.components.FrIngredientsRow
 import es.schsebastian.foodrats.feature.meal.presentation.components.LocationPickerRow
@@ -71,7 +73,7 @@ fun ComposePlateScreen(
     val today = remember { MealDay.today(SystemClock(), TimeZone.currentSystemDefault()) }
     val emote = remember(today) { DailyEmote.forDay(today) }
     val coordinatesLabel = state.coordinates?.let { coords ->
-        resolve(MealStringKey.ComposeCoordinatesFormat, coords.latitude, coords.longitude)
+        resolve(MealStringKey.ComposeCoordinatesFormat, coords.latitude.toFixed(5), coords.longitude.toFixed(5))
     }
 
     LaunchedEffect(Unit) {
@@ -124,6 +126,22 @@ fun ComposePlateScreen(
                         taken = state.takenSlots,
                         onSelect = { slot -> vm.onIntent(ComposePlateIntent.SelectSlot(slot)) },
                     )
+                }
+
+                // Audience picker: pick which crews this plate is shared with. Hidden when
+                // the author has a single crew (nothing to choose) — it's then implicit.
+                if (state.showCrewPicker) {
+                    AnimatedFormItem(delay = Motion.short + Motion.quick) {
+                        CrewAudiencePicker(
+                            title = resolve(MealStringKey.ComposeAudienceLabel),
+                            allLabel = resolve(MealStringKey.ComposeAudienceAll),
+                            crews = state.availableCrews,
+                            selectedCrewIds = state.selectedCrewIds,
+                            onAllClick = { vm.onIntent(ComposePlateIntent.AllCrewsSelected) },
+                            onCrewClick = { vm.onIntent(ComposePlateIntent.CrewToggled(it)) },
+                            modifier = Modifier.padding(top = Spacing.md),
+                        )
+                    }
                 }
 
                 AnimatedFormItem(delay = Motion.short + Motion.quick) {

@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.core.data.share
 
 import android.content.Context
 import android.content.Intent
+import es.schsebastian.foodrats.core.domain.share.ShareController
 
 class ShareControllerAndroid(private val applicationContext: Context) : ShareController {
     override fun shareText(text: String) {

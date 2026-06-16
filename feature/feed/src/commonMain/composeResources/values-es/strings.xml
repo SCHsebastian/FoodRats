@@ -20,6 +20,14 @@
     <string name="feed_slot_lunch">Almuerzo</string>
     <string name="feed_slot_dinner">Cena</string>
     <string name="feed_no_votes_yet">Sin votos aún</string>
+    <string name="feed_blind_author">Oculto hasta que puntúes</string>
+    <string name="feed_reaction_cta">Reaccionar</string>
+    <string name="feed_reaction_count">%1$d</string>
+    <string name="feed_reactions_label">%1$d reacciones</string>
+    <string name="feed_reaction_error_offline">Sin conexión a internet. Inténtalo cuando vuelvas a estar en línea.</string>
+    <string name="feed_reaction_error_unauthorized">No puedes reaccionar a este plato</string>
+    <string name="feed_reaction_error_meal_not_found">Este plato ya no está aquí.</string>
+    <string name="feed_reaction_error_unavailable">No se pudo reaccionar. Inténtalo de nuevo.</string>
     <string name="feed_average_heading">Promedio</string>
     <string name="feed_rate_this_meal">Puntúa este plato</string>
     <string name="feed_your_vote">Tu voto: %1$d ★</string>
@@ -30,6 +38,7 @@
     <string name="feed_voter_score_compact">%1$d ★</string>
     <string name="feed_crew_score_label">Puntuación de la cuadrilla</string>
     <string name="feed_location_label">Ubicación</string>
+    <string name="feed_location_map_cta">Abrir ubicación en mapas</string>
     <string name="feed_ingredients_heading">Ingredientes</string>
     <string name="feed_ingredient_separator">,</string>
     <string name="feed_rate_error_cannot_rate_own_meal">No puedes puntuar tu propio plato</string>
@@ -61,4 +70,11 @@
     <string name="feed_delete_comment_confirm_title">¿Eliminar este comentario?</string>
     <string name="feed_delete_confirm_cta">Eliminar</string>
     <string name="feed_delete_cancel_cta">Cancelar</string>
+    <!-- Compartir un plato en Instagram Stories (spec §10). -->
+    <string name="feed_share_meal">Compartir</string>
+    <!-- Indicador de la cola de publicación offline en la barra superior del feed (roadmap §5.2). -->
+    <string name="feed_queue_pending">%1$d esperando para publicar</string>
+    <string name="feed_queue_failed">%1$d no se pudieron publicar</string>
+    <string name="feed_queue_retry_cta">Reintentar</string>
+    <string name="feed_queue_dismiss_cta">Descartar</string>
 </resources>

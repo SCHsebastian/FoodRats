@@ -30,44 +30,27 @@ kotlin {
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
-            implementation(libs.compose.runtime)
-            implementation(libs.compose.foundation)
-            implementation(libs.compose.material3)
-            implementation(libs.compose.ui)
-            implementation(libs.compose.components.resources)
-            implementation(libs.koin.core)
-            implementation(libs.koin.compose)
-            implementation(libs.koin.compose.viewmodel)
-            implementation(libs.androidx.lifecycle.viewmodelCompose)
-            implementation(libs.androidx.lifecycle.runtimeCompose)
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.serialization.json)
+            implementation(libs.bundles.feature.ui)
+            implementation(libs.bundles.kotlinx.common)
+            // Only 2 of the 4 GitLive Firebase deps are needed here — keep explicit, don't use the bundle.
             implementation(libs.firebase.common)
             implementation(libs.firebase.firestore)
-            implementation(libs.kotlinx.datetime)
         }
         commonTest.dependencies {
-            implementation(libs.kotlin.test)
-            implementation(libs.kotest.assertions.core)
-            implementation(libs.turbine)
-            implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.koin.test)
+            implementation(libs.bundles.feature.test)
         }
         val androidHostTest by getting {
             dependencies {
-                implementation(libs.kotlin.testJunit)
-                implementation(libs.junit)
+                implementation(libs.bundles.compose.hosttest)
+                // Not in compose.hosttest — needed for coroutine-test + Turbine flows here.
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.turbine)
-                implementation(libs.androidx.testExt.junit)
-                implementation(libs.compose.ui.test.junit4)
-                implementation(libs.robolectric)
             }
         }
         androidMain.dependencies {
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively
             // by dev.gitlive wrappers (firebase-firestore, firebase-common).
-            implementation(project.dependencies.platform("com.google.firebase:firebase-bom:33.5.1"))
+            implementation(project.dependencies.platform(libs.firebase.bom))
             implementation(libs.koin.android)
         }
         iosMain.dependencies { }

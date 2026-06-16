@@ -1,17 +1,40 @@
 {
-  "firestore": { "rules": "firestore.rules" },
+  "firestore": { "rules": "firestore.rules", "indexes": "firestore.indexes.json" },
   "storage": [
     { "target": "default", "rules": "storage.rules" }
   ],
+  "hosting": {
+    "public": "website",
+    "ignore": ["firebase.json", "**/node_modules/**", "**/.DS_Store"],
+    "cleanUrls": true,
+    "appAssociation": "AUTO",
+    "headers": [
+      {
+        "source": "/.well-known/apple-app-site-association",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      },
+      {
+        "source": "/.well-known/assetlinks.json",
+        "headers": [{ "key": "Content-Type", "value": "application/json" }]
+      }
+    ]
+  },
   "functions": [
     {
       "source": "functions",
       "codebase": "default",
-      "runtime": "nodejs20",
+      "runtime": "nodejs22",
       "predeploy": [
         "pnpm --prefix \"$RESOURCE_DIR\" run lint",
         "pnpm --prefix \"$RESOURCE_DIR\" run build"
       ]
     }
-  ]
+  ],
+  "remoteconfig": { "template": "remoteconfig.template.json" },
+  "emulators": {
+    "firestore": { "port": 8080 },
+    "storage": { "port": 9199 },
+    "ui": { "enabled": false },
+    "singleProjectMode": true
+  }
 }

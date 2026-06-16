@@ -8,12 +8,18 @@
     <string name="stats_tab_historic">All time</string>
 
     <!-- Hero card -->
-    <string name="stats_hero_personal_streak_singular">%1$d day streak</string>
-    <string name="stats_hero_personal_streak_plural">%1$d-day streak</string>
-    <string name="stats_hero_crew_streak_singular">Crew: %1$d day</string>
-    <string name="stats_hero_crew_streak_plural">Crew: %1$d days</string>
-    <string name="stats_hero_plates_today_singular">%1$d plate today</string>
-    <string name="stats_hero_plates_today_plural">%1$d plates today</string>
+    <plurals name="stats_hero_personal_streak">
+        <item quantity="one">%1$d day streak</item>
+        <item quantity="other">%1$d-day streak</item>
+    </plurals>
+    <plurals name="stats_hero_crew_streak">
+        <item quantity="one">Crew: %1$d day</item>
+        <item quantity="other">Crew: %1$d days</item>
+    </plurals>
+    <plurals name="stats_hero_plates_today">
+        <item quantity="one">%1$d plate today</item>
+        <item quantity="other">%1$d plates today</item>
+    </plurals>
     <string name="stats_hero_i_posted_today">You posted today ✓</string>
     <string name="stats_hero_no_streak">No streak yet — post your first plate</string>
 
@@ -26,6 +32,9 @@
     <string name="stats_summary_total_plates_label">Plates</string>
     <string name="stats_summary_avg_per_day_label">Per day</string>
 
+    <!-- Plate photo (accessibility content description) -->
+    <string name="stats_plate_photo_format">Photo of %1$s</string>
+
     <!-- Best plate -->
     <string name="stats_best_plate_title">Top plate</string>
     <string name="stats_best_plate_score_format">%1$s ★</string>
@@ -33,8 +42,10 @@
 
     <!-- Most-voted plate -->
     <string name="stats_most_voted_plate_title">Most rated plate</string>
-    <string name="stats_most_voted_plate_voters_singular">%1$d voter</string>
-    <string name="stats_most_voted_plate_voters_plural">%1$d voters</string>
+    <plurals name="stats_most_voted_plate_voters">
+        <item quantity="one">%1$d voter</item>
+        <item quantity="other">%1$d voters</item>
+    </plurals>
 
     <!-- Cooks -->
     <string name="stats_cooks_section_title">Cooks</string>
@@ -58,6 +69,39 @@
     <string name="stats_cook_award_needs_more_singular">%1$d more plate to qualify</string>
     <string name="stats_cook_award_needs_more_plural">%1$d more plates to qualify</string>
 
+    <!-- Collection tab (cuisine passport + ingredient pokédex) -->
+    <string name="stats_collection_title">Collection</string>
+
+    <!-- Cuisine passport -->
+    <string name="stats_passport_title">Cuisine passport</string>
+    <string name="stats_passport_progress_format">%1$d / %2$d</string>
+    <string name="stats_passport_locked_label">Locked</string>
+    <string name="stats_passport_collected_on_format">Collected %1$s</string>
+
+    <!-- Ingredient pokédex -->
+    <string name="stats_bingo_title">Ingredient Pokédex</string>
+    <string name="stats_bingo_progress_format">%1$d / %2$d</string>
+    <string name="stats_bingo_locked_label">Locked</string>
+    <string name="stats_bingo_collected_on_format">Caught %1$s</string>
+    <!-- Pokédex reveal mechanic: locked cells hide the ingredient behind a silhouette. -->
+    <string name="stats_bingo_mystery_glyph">?</string>
+    <string name="stats_bingo_mystery_name">???</string>
+    <!-- Dex number; the index is zero-padded in code and passed as a string. -->
+    <string name="stats_bingo_index_format">#%1$s</string>
+    <!-- Pokédex category section headers. -->
+    <string name="stats_bingo_category_vegetable">Vegetables</string>
+    <string name="stats_bingo_category_fruit">Fruit</string>
+    <string name="stats_bingo_category_meat">Meat</string>
+    <string name="stats_bingo_category_fish">Fish &amp; Seafood</string>
+    <string name="stats_bingo_category_dairy">Dairy</string>
+    <string name="stats_bingo_category_grain">Grains</string>
+    <string name="stats_bingo_category_legume">Legumes</string>
+    <string name="stats_bingo_category_sauce">Sauces</string>
+    <string name="stats_bingo_category_spice">Spices</string>
+    <string name="stats_bingo_category_sweet">Sweets</string>
+    <string name="stats_bingo_category_beverage">Beverages</string>
+    <string name="stats_bingo_category_other">Other</string>
+
     <!-- Empty / errors -->
     <string name="stats_empty_headline">No stats yet</string>
     <string name="stats_empty_subtext">Post a meal to get the numbers rolling.</string>
@@ -66,4 +110,12 @@
     <string name="stats_error_unauthorized">You aren't a member of this crew.</string>
     <string name="stats_error_crew_not_found">Crew not found.</string>
     <string name="stats_error_unavailable">Couldn't load stats. Try again.</string>
+
+    <!-- Weekly recap story entry (roadmap §2.4) -->
+    <string name="stats_weekly_recap_cta">See your week</string>
+
+    <!-- Share an award / streak to Instagram Stories (spec §10) -->
+    <string name="stats_share_award">Share</string>
+    <!-- On-card score pill for the shared award (avg ★ · count). -->
+    <string name="stats_share_score_format">%1$s ★ · %2$d</string>
 </resources>

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
@@ -19,10 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.catalog.components.CatalogScene
+import es.schsebastian.foodrats.catalog.components.CatalogSceneSplit
 import es.schsebastian.foodrats.catalog.components.CatalogSectionHeader
 import es.schsebastian.foodrats.catalog.registry.CatalogEntry
 import es.schsebastian.foodrats.catalog.registry.CatalogGroup
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
+import es.schsebastian.foodrats.core.designsystem.atoms.FrBadge
+import es.schsebastian.foodrats.core.designsystem.atoms.FrBadgeTier
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
@@ -38,10 +42,13 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSparkline
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSpacer
+import es.schsebastian.foodrats.core.designsystem.atoms.FrStoryProgressBar
+import es.schsebastian.foodrats.core.designsystem.atoms.FrStoryScaffold
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
@@ -71,10 +78,107 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — plate + ears at three sizes") { LogoStory() },
     CatalogEntry("atom.card",          CatalogGroup.ATOMS, "FrCard",          "Rounded surface container — static or clickable with press lift") { CardStory() },
     CatalogEntry("atom.sparkline",     CatalogGroup.ATOMS, "FrSparkline",     "Tiny inline trend chart for stat tiles") { SparklineStory() },
+    CatalogEntry("atom.qrcode",        CatalogGroup.ATOMS, "FrQrCode",        "Pure-Kotlin QR encoder rendered on Canvas — shareable invite link") { QrCodeStory() },
     CatalogEntry("atom.flamebadge",    CatalogGroup.ATOMS, "FrFlameBadge",    "🔥 streak pill on the streakHot semantic color") { FlameBadgeStory() },
     CatalogEntry("atom.glasspill",     CatalogGroup.ATOMS, "FrGlassPill",     "Translucent circular overlay for in-photo back / close") { GlassPillStory() },
     CatalogEntry("atom.switch",        CatalogGroup.ATOMS, "FrSwitch",        "Brand-colored toggle — on / off / disabled") { SwitchStory() },
+    CatalogEntry("atom.badge",         CatalogGroup.ATOMS, "FrBadge",         "Achievement badge — earned (vivid) vs locked (dimmed + progress ring), tiers") { BadgeStory() },
+    CatalogEntry("atom.storyprogress", CatalogGroup.ATOMS, "FrStoryProgressBar", "Instagram-Stories segmented progress header — one pill per scene, active pill fills") { StoryProgressBarStory() },
+    CatalogEntry("atom.storyscaffold", CatalogGroup.ATOMS, "FrStoryScaffold",  "Full-screen story chrome — progress header, close, tap-prev / tap-next zones, hold-to-pause, overlay action slot") { StoryScaffoldStory() },
 )
+
+@Composable
+private fun StoryScaffoldStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        CatalogScene(label = "Scene 2 of 4 @ 60% (sized to a phone-shaped frame)") {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(480.dp),
+            ) {
+                FrStoryScaffold(
+                    segmentCount = 4,
+                    currentIndex = 1,
+                    currentProgress = 0.6f,
+                    onPrev = {},
+                    onNext = {},
+                    onClose = {},
+                    progressContentDescription = "Story progress",
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        FrText(text = "Scene content", color = MaterialTheme.colorScheme.onPrimary)
+                    }
+                }
+            }
+        }
+        CatalogScene(label = "With an overlay action slot — the button gets the tap, not the advance zone") {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(480.dp),
+            ) {
+                FrStoryScaffold(
+                    segmentCount = 4,
+                    currentIndex = 3,
+                    currentProgress = 1f,
+                    onPrev = {},
+                    onNext = {},
+                    onClose = {},
+                    progressContentDescription = "Story progress",
+                    action = { FrButton(label = "Share this recap", onClick = {}) },
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.secondary),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        FrText(text = "Your week", color = MaterialTheme.colorScheme.onSecondary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoryProgressBarStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        CatalogScene(label = "5 scenes · scene 3 @ 40% (over dark surface)") {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.scrim)
+                    .padding(Spacing.md),
+            ) {
+                FrStoryProgressBar(segmentCount = 5, currentIndex = 2, currentProgress = 0.4f)
+            }
+        }
+        CatalogScene(label = "First scene starting · last scene complete (brand tint)") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FrStoryProgressBar(
+                    segmentCount = 4,
+                    currentIndex = 0,
+                    currentProgress = 0.05f,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    fillColor = MaterialTheme.colorScheme.primary,
+                )
+                FrStoryProgressBar(
+                    segmentCount = 4,
+                    currentIndex = 3,
+                    currentProgress = 1f,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    fillColor = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+    }
+}
 
 @Composable
 private fun SwitchStory() {
@@ -87,6 +191,44 @@ private fun SwitchStory() {
             FrSwitch(checked = on, onCheckedChange = { on = it })
             FrSwitch(checked = false, onCheckedChange = {})
             FrSwitch(checked = true, onCheckedChange = {}, enabled = false)
+        }
+    }
+}
+
+@Composable
+private fun BadgeStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        CatalogSceneSplit(label = "Earned (vivid) vs locked (dimmed + progress ring)") {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                FrBadge(
+                    icon = FrIcons.Trophy,
+                    title = "First Plate",
+                    earned = true,
+                    progressFraction = 1f,
+                    caption = "Earned May 4",
+                )
+                FrBadge(
+                    icon = FrIcons.Restaurant,
+                    title = "Home Cook",
+                    earned = false,
+                    progressFraction = 0.6f,
+                    caption = "30 / 50",
+                )
+            }
+        }
+        CatalogScene(label = "Tiers — Bronze / Silver / Gold (earned)") {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                FrBadge(icon = FrIcons.Eco, title = "Bronze", earned = true, progressFraction = 1f, tier = FrBadgeTier.Bronze)
+                FrBadge(icon = FrIcons.Eco, title = "Silver", earned = true, progressFraction = 1f, tier = FrBadgeTier.Silver)
+                FrBadge(icon = FrIcons.Eco, title = "Gold", earned = true, progressFraction = 1f, tier = FrBadgeTier.Gold)
+            }
+        }
+        CatalogScene(label = "Locked progress sweep — 10% / 50% / 90%") {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                FrBadge(icon = FrIcons.Sun, title = "Early Bird", earned = false, progressFraction = 0.1f, caption = "1 / 10")
+                FrBadge(icon = FrIcons.Moon, title = "Night Owl", earned = false, progressFraction = 0.5f, caption = "5 / 10")
+                FrBadge(icon = FrIcons.Flame, title = "On a Roll", earned = false, progressFraction = 0.9f, caption = "9 / 10")
+            }
         }
     }
 }
@@ -513,6 +655,18 @@ private fun SparklineStory() {
         }
         CatalogScene(label = "Single point → flat mid-line") {
             FrSparkline(data = listOf(5f), width = 140.dp, height = 40.dp)
+        }
+    }
+}
+
+@Composable
+private fun QrCodeStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Invite link") {
+            FrQrCode(content = "https://foodrats.app/invite/AB2K9P", size = 200.dp)
+        }
+        CatalogScene(label = "Smaller (140dp)") {
+            FrQrCode(content = "https://foodrats.app/invite/AB2K9P", size = 140.dp)
         }
     }
 }

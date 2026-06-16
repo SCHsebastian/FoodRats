@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Screen chrome -->
+    <string name="achievements_screen_title">Badges</string>
+    <string name="achievements_earned_section_title">Earned</string>
+    <string name="achievements_locked_section_title">Locked</string>
+    <string name="achievements_progress_format">%1$d / %2$d</string>
+    <string name="achievements_earned_on_format">Earned %1$s</string>
+    <string name="achievements_unlocked_toast">Badge unlocked!</string>
+    <string name="achievements_celebration_title">New badge!</string>
+    <string name="achievements_celebration_ack">Nice!</string>
+    <string name="achievements_detail_locked_label">Locked</string>
+    <string name="achievements_detail_close_cta">Close</string>
+    <string name="achievements_empty_subtext">Publish meals to start earning badges.</string>
+
+    <!-- first_plate -->
+    <string name="achievements_first_plate_title">First Plate</string>
+    <string name="achievements_first_plate_desc">Publish your first meal.</string>
+
+    <!-- meals_10 / meals_50 / meals_100 -->
+    <string name="achievements_meals_10_title">Getting Cooking</string>
+    <string name="achievements_meals_10_desc">Publish 10 meals.</string>
+    <string name="achievements_meals_50_title">Home Cook</string>
+    <string name="achievements_meals_50_desc">Publish 50 meals.</string>
+    <string name="achievements_meals_100_title">Centurion Cook</string>
+    <string name="achievements_meals_100_desc">Publish 100 meals.</string>
+
+    <!-- ingredients_25 / ingredients_50 / ingredients_100 (user-confirmed only) -->
+    <string name="achievements_ingredients_25_title">Ingredient Explorer</string>
+    <string name="achievements_ingredients_25_desc">Use 25 different ingredients.</string>
+    <string name="achievements_ingredients_50_title">Pantry Raider</string>
+    <string name="achievements_ingredients_50_desc">Use 50 different ingredients.</string>
+    <string name="achievements_ingredients_100_title">Spice Master</string>
+    <string name="achievements_ingredients_100_desc">Use 100 different ingredients.</string>
+
+    <!-- streak_personal_7 / 30 / 100 -->
+    <string name="achievements_streak_personal_7_title">On a Roll</string>
+    <string name="achievements_streak_personal_7_desc">Keep a 7-day personal streak.</string>
+    <string name="achievements_streak_personal_30_title">Unstoppable</string>
+    <string name="achievements_streak_personal_30_desc">Keep a 30-day personal streak.</string>
+    <string name="achievements_streak_personal_100_title">Iron Streak</string>
+    <string name="achievements_streak_personal_100_desc">Keep a 100-day personal streak.</string>
+
+    <!-- streak_crew_7 / 30 -->
+    <string name="achievements_streak_crew_7_title">Crew on Fire</string>
+    <string name="achievements_streak_crew_7_desc">Keep a 7-day crew streak.</string>
+    <string name="achievements_streak_crew_30_title">Inseparable Crew</string>
+    <string name="achievements_streak_crew_30_desc">Keep a 30-day crew streak.</string>
+
+    <!-- best_cook -->
+    <string name="achievements_best_cook_title">Top Chef</string>
+    <string name="achievements_best_cook_desc">Hold the highest average score.</string>
+
+    <!-- early_bird_10 / night_owl_10 -->
+    <string name="achievements_early_bird_10_title">Early Bird</string>
+    <string name="achievements_early_bird_10_desc">Publish 10 breakfasts.</string>
+    <string name="achievements_night_owl_10_title">Night Owl</string>
+    <string name="achievements_night_owl_10_desc">Publish 10 dinners.</string>
+
+    <!-- Errors -->
+    <string name="achievements_error_not_signed_in">You\'re not signed in.</string>
+    <string name="achievements_error_no_active_crew">Pick a crew to see your badges.</string>
+    <string name="achievements_error_unauthorized">You\'re not allowed to see these.</string>
+    <string name="achievements_error_unavailable">Couldn\'t load badges. Try again.</string>
+</resources>

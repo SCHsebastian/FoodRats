@@ -6,4 +6,14 @@
     <string name="common_continue">Continue</string>
     <string name="common_back">Back</string>
     <string name="common_open_settings">Open Settings</string>
+    <!-- Shareable story cards (spec §10): on-card chrome reused by feed + stats. -->
+    <string name="share_card_brand_footer">FoodRats</string>
+    <string name="share_card_award_best_meal">Best meal</string>
+    <string name="share_card_award_best_cook">Best cook</string>
+    <string name="share_card_streak_headline">%1$d-day streak 🔥</string>
+    <string name="share_card_streak_subline">Keep it cooking</string>
+    <!-- Share-outcome toasts (spec §10). -->
+    <string name="share_succeeded">Shared to your story</string>
+    <string name="share_opened_sheet">Opening share…</string>
+    <string name="share_failed">Couldn\'t share right now.</string>
 </resources>

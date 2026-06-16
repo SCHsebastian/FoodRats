@@ -85,7 +85,7 @@ Carga estos secrets (en el environment correspondiente, o repo-wide los comunes)
 | `ANDROID_KEYSTORE_BASE64` | ambos | `base64 -i upload.jks` |
 | `ANDROID_KEYSTORE_PASSWORD` / `ANDROID_KEY_ALIAS` / `ANDROID_KEY_PASSWORD` | ambos | de la upload key |
 | `PLAY_SERVICE_ACCOUNT_JSON` | ambos | `base64 -i play-service-account.json` |
-| `GOOGLESERVICE_INFO_PLIST` | ambos | `base64 -i iosApp/iosApp/GoogleService-Info.plist` |
+| `GOOGLE_SERVICE_INFO_PLIST` | ambos | `base64 -i iosApp/iosApp/GoogleService-Info.plist` |
 | `ASC_KEY_ID` / `ASC_ISSUER_ID` | ambos | de la API key |
 | `ASC_KEY_P8` | ambos | `base64 -i AuthKey_XXXX.p8` |
 | `MATCH_GIT_URL` | ambos | URL del repo privado de match |
@@ -94,10 +94,62 @@ Carga estos secrets (en el environment correspondiente, o repo-wide los comunes)
 
 > En macOS `base64 -i fichero` no añade saltos de línea. En Linux usa `base64 -w0 fichero`.
 
+#### Restricción de la Maps API key (acción obligatoria)
+
+La feed inyecta una clave de Static Maps vía la propiedad Gradle `googleMapsApiKey`
+(→ `BuildConfig.MAPS_API_KEY`, ver `androidApp/build.gradle.kts` y
+`feature/feed/.../MapsApiKey.kt`). Esa clave **se embebe en el APK/AAB**, así que un
+extractor puede leerla — la única defensa real es restringirla en Google Cloud Console.
+Antes de publicar:
+
+1. **Google Cloud Console → APIs & Services → Credentials →** la Maps API key.
+2. **Application restrictions → Android apps:** añade el package name `es.schsebastian.foodrats`
+   con la **huella SHA-1** del certificado de firma. Usa el SHA-1 de la *app key* de Play
+   App Signing (Play Console → Setup → App integrity) **y** el de la upload key, para que
+   tanto los builds firmados por Google como los locales/CI funcionen.
+3. **API restrictions → Restrict key:** déjala limitada **solo a la Static Maps API**
+   (la única que la app llama). Nada más.
+
+> No es un secreto que se pueda esconder; el control de daños es la restricción
+> package + SHA-1 + API. Una clave sin restringir filtrada deja la cuota (y la factura)
+> abierta a cualquiera.
+
+#### `GOOGLE_SERVER_CLIENT_ID` — es un id OAuth público, no un secreto
+
+El web client id de OAuth (`GOOGLE_SERVER_CLIENT_ID` / propiedad `googleServerClientId`,
+→ `BuildConfig.GOOGLE_SERVER_CLIENT_ID`) es **público por diseño**: se envía al
+dispositivo y aparece en cada petición de Sign-In. No hace falta rotarlo ni ocultarlo;
+está en la tabla de secrets solo por comodidad de inyección. **No lo "arregles"** tratándolo
+como credencial sensible — el secreto correspondiente es el *client secret*, que esta app
+no usa (flujo Sign-In nativo).
+
 ### 5. Protección de ramas y tags
 
 - **Branch protection en `main`:** requerir PR, ≥1 review, check `CI` en verde, rama actualizada; prohibir push directo.
 - **Tag protection rule** para `v*`: solo maintainers crean tags de release.
+
+### 6. Firma de URLs de imágenes — `mintPlateUrls` (#15)
+
+Las fotos de plato y los avatares ya **no** se sirven con URLs de token público
+(`getDownloadUrl()`): las reglas de Storage las deniegan (`read: if false`). El cliente
+guarda la *ruta* del objeto y la resuelve a una URL firmada V4 de corta duración (15 min)
+con la callable `mintPlateUrls` (región `europe-west3`), que verifica pertenencia a la crew
+antes de firmar.
+
+- **IAM (obligatorio):** la firma V4 con `getSignedUrl()` necesita el permiso
+  `iam.serviceAccounts.signBlob`. Concede a la service account de la función el rol
+  **Service Account Token Creator** (`roles/iam.serviceAccountTokenCreator`) sobre sí misma.
+  Sin esto `getSignedUrl` lanza en runtime y **no carga ninguna imagen**.
+  ```bash
+  gcloud iam service-accounts add-iam-policy-binding \
+    foodrats-de4ec@appspot.gserviceaccount.com \
+    --member="serviceAccount:foodrats-de4ec@appspot.gserviceaccount.com" \
+    --role="roles/iam.serviceAccountTokenCreator" --project foodrats-de4ec
+  ```
+- **iOS:** añade el producto **FirebaseFunctions** al target en Xcode (SPM), igual que
+  FirebaseAuth/Firestore/Storage — el binding KMP de GitLive lo necesita en link/runtime.
+- **Deploy:** la callable va con el resto de funciones (`pnpm --dir functions run deploy`);
+  las reglas, con `pnpm dlx firebase-tools deploy --only storage --project foodrats-de4ec`.
 
 ---
 

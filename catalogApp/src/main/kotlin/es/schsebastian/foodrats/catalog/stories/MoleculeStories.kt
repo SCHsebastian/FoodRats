@@ -29,6 +29,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScorePicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSegmented
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsDivider
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRow
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRowTone
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSection
@@ -52,6 +53,7 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.avatarpicker",   CatalogGroup.MOLECULES, "FrAvatarPicker",     "Avatar preview + change-avatar button (initials fallback, busy state)") { AvatarPickerStory() },
     CatalogEntry("molecule.settings-section", CatalogGroup.MOLECULES, "FrSettingsSection", "Grouped settings card with header + rounded surface") { SettingsSectionStory() },
     CatalogEntry("molecule.settings-row",     CatalogGroup.MOLECULES, "FrSettingsRow",     "Settings row: icon + title + subtitle + trailing slot") { SettingsRowStory() },
+    CatalogEntry("molecule.settings-picker",  CatalogGroup.MOLECULES, "FrSettingsPicker",  "Bottom-sheet radio picker (id/label options)") { SettingsPickerStory() },
     CatalogEntry("molecule.segmented",        CatalogGroup.MOLECULES, "FrSegmented",       "Single-select segmented pill row") { SegmentedStory() },
     CatalogEntry("molecule.votebars",         CatalogGroup.MOLECULES, "FrVoteBars",        "Vote-distribution histogram (scores 1..10)") { VoteBarsStory() },
 )
@@ -268,9 +270,13 @@ private fun StarRatingStory() {
 @Composable
 private fun ConfirmDialogStory() {
     var open by remember { mutableStateOf(false) }
+    var ackOpen by remember { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        CatalogScene(label = "Open dialog (tap to preview)") {
+        CatalogScene(label = "Confirm/dismiss (tap to preview)") {
             FrButton(label = "Show confirm dialog", onClick = { open = true })
+        }
+        CatalogScene(label = "Single-action acknowledge (no dismissLabel)") {
+            FrButton(label = "Show acknowledge dialog", onClick = { ackOpen = true })
         }
         if (open) {
             FrConfirmDialog(
@@ -280,6 +286,15 @@ private fun ConfirmDialogStory() {
                 dismissLabel = "Cancel",
                 onConfirm = { open = false },
                 onDismiss = { open = false },
+            )
+        }
+        if (ackOpen) {
+            FrConfirmDialog(
+                title = "New badge!",
+                message = "First Plate\nBadge unlocked!",
+                confirmLabel = "Nice!",
+                onConfirm = { ackOpen = false },
+                onDismiss = { ackOpen = false },
             )
         }
     }
@@ -391,6 +406,28 @@ private fun SettingsRowStory() {
                     onClick = {},
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPickerStory() {
+    var open by remember { mutableStateOf(false) }
+    var selected by remember { mutableStateOf("system") }
+    val options = listOf("system" to "System default", "light" to "Light", "dark" to "Dark")
+    CatalogScene(label = "Bottom-sheet radio picker") {
+        FrButton(label = "Open picker (selected: $selected)", onClick = { open = true })
+        if (open) {
+            FrSettingsPicker(
+                title = "Theme",
+                options = options,
+                selectedId = selected,
+                onDismiss = { open = false },
+                onSelect = {
+                    selected = it
+                    open = false
+                },
+            )
         }
     }
 }

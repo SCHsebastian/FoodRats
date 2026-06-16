@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.mutablePreferencesOf
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -34,22 +35,29 @@ class MealDraftLocalStoreTest {
     @Test fun round_trips_ingredient_fields() = runTest {
         val store = MealDraftLocalStore(AppPreferences(FakeDataStore()))
         val draft = MealDraft(
-            crewId = (CrewId.of("crew-1") as Result.Ok).value,
+            audienceCrewIds = setOf(
+                (CrewId.of("crew-1") as Result.Ok).value,
+                (CrewId.of("crew-2") as Result.Ok).value,
+            ),
             authorId = (AccountId.of("acc-1") as Result.Ok).value,
             day = MealDay(LocalDate(2026, 5, 24), TimeZone.UTC),
             plate = null,
             dish = null,
             description = Description.EMPTY,
-            ingredients = listOf(IngredientSlug("tomato"), IngredientSlug("pasta")),
-            detectedIngredients = listOf(IngredientSlug("tomato"), IngredientSlug("cheese")),
+            ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!),
+            detectedIngredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!),
             classifierVersion = "food101-v1",
         )
 
         store.save(draft)
         val restored = store.observe().first()!!
 
-        assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("pasta")), restored.ingredients)
-        assertEquals(listOf(IngredientSlug("tomato"), IngredientSlug("cheese")), restored.detectedIngredients)
+        assertEquals(
+            setOf((CrewId.of("crew-1") as Result.Ok).value, (CrewId.of("crew-2") as Result.Ok).value),
+            restored.audienceCrewIds,
+        )
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!), restored.ingredients)
+        assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!), restored.detectedIngredients)
         assertEquals("food101-v1", restored.classifierVersion)
     }
 }

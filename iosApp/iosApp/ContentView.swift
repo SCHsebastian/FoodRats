@@ -32,6 +32,29 @@ struct ComposeView: UIViewControllerRepresentable {
                 MediaPipeClassifierBridge.classify(jpeg: jpeg as Data) { labels, errorCode in
                     completion(labels, errorCode)
                 }
+            },
+            share: { text in
+                ShareBridge.shareText(text)
+            },
+            storyShare: { pngBytes in
+                // KotlinByteArray -> Data, then hand to the Stories / fallback presenter.
+                let data = pngBytes.toData()
+                return KotlinInt(value: StoryShareBridge.shareToStories(data))
+            },
+            analyticsLogEvent: { name, params in
+                AnalyticsBridge.logEvent(name: name, params: params)
+            },
+            analyticsSetUserId: { accountId in
+                AnalyticsBridge.setUserId(accountId)
+            },
+            analyticsSetUserProperty: { name, value in
+                AnalyticsBridge.setUserProperty(name: name, value: value)
+            },
+            analyticsSetConsent: { granted in
+                AnalyticsBridge.setConsent(granted: granted)
+            },
+            analyticsReset: {
+                AnalyticsBridge.resetData()
             }
         )
     }

@@ -2,25 +2,29 @@
   "name": "foodrats-functions",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": "20" },
+  "engines": {
+    "node": "22"
+  },
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
     "seed:catalog": "tsx scripts/seed-catalog.ts",
-    "deploy": "firebase deploy --only functions --project foodrats-de4ec",
-    "logs": "firebase functions:log --project foodrats-de4ec"
+    "deploy": "pnpm dlx firebase-tools deploy --only functions --project foodrats-de4ec",
+    "logs": "pnpm dlx firebase-tools functions:log --project foodrats-de4ec"
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^3.4.5",
     "firebase-admin": "^12.5.0",
     "firebase-functions": "^6.0.1",
-    "luxon": "^3.5.0"
+    "luxon": "^3.5.0",
+    "sharp": "^0.35.1",
+    "thumbhash": "^0.1.1"
   },
   "devDependencies": {
     "@types/luxon": "^3.4.2",
-    "@types/node": "^20.14.10",
+    "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "eslint": "^8.57.0",
