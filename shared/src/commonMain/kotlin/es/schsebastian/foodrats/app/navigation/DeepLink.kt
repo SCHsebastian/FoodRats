@@ -21,12 +21,13 @@ object DeepLinks {
     const val SEGMENT_INVITE = "invite" // /invite/{code}           → Route.InvitePreview
 
     /**
-     * Canonical shareable invite URL for [code], e.g. `https://foodrats.app/invite/AB2K9P`. Uses the
-     * Universal/App-Links host so a recipient without the app installed still hits the (user-hosted)
-     * web unfurl page, while an installed app intercepts it (autoVerify). The single source of truth
-     * for the URL a crew member shares — must mirror the [parseDeepLink] `invite` arm exactly.
+     * Canonical shareable invite URL for [code], e.g. `foodrats://app/invite/AB2K9P`. Deliberately the
+     * **custom app scheme**, not the `https` Universal/App-Links host: a custom-scheme link only resolves
+     * when the FoodRats app is installed — there is no web fallback, so a recipient without the app gets
+     * nothing rather than a browser page. This is the "app-installed-only" invite contract. The single
+     * source of truth for the URL a crew member shares — must mirror the [parseDeepLink] `invite` arm exactly.
      */
-    fun inviteUrl(code: String): String = "$WEB_SCHEME://$WEB_HOST/$SEGMENT_INVITE/$code"
+    fun inviteUrl(code: String): String = "$APP_SCHEME://$APP_HOST/$SEGMENT_INVITE/$code"
 }
 
 /**

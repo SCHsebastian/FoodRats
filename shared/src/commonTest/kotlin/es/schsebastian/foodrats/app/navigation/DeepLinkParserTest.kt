@@ -81,9 +81,10 @@ class DeepLinkParserTest {
     }
 
     @Test
-    fun invite_url_builder_round_trips_through_the_parser() {
+    fun invite_url_builder_uses_app_scheme_and_round_trips_through_the_parser() {
         val url = DeepLinks.inviteUrl("AB2K9P")
-        assertEquals("https://foodrats.app/invite/AB2K9P", url)
+        // App-installed-only invite: custom scheme, no https web fallback.
+        assertEquals("foodrats://app/invite/AB2K9P", url)
         assertEquals(Route.InvitePreview(code = "AB2K9P"), parseDeepLink(url))
     }
 
