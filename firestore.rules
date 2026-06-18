@@ -289,8 +289,20 @@ service cloud.firestore {
       allow read:   if request.auth != null;
       allow create: if request.auth != null
                     && !exists(/databases/$(database)/documents/crewCodes/$(code))
-                    // Only a current member of the target crew may mint a code for it.
-                    && request.auth.uid in get(/databases/$(database)/documents/crews/$(request.resource.data.crewId)).data.memberIds;
+                    && (
+                      // Crew-creation path: the crew + its first code are written in ONE
+                      // transaction, so the crew doc does not exist in committed state yet
+                      // and a get() here would return null. The crews/{id} create rule
+                      // already enforces founder-only + memberIds.size()==1, so a code whose
+                      // crew is being created in the same commit is legitimate. A code minted
+                      // for a crewId that never gets created is an inert orphan (joinByCode
+                      // resolves the crew doc and 404s). The crewId is a random 20-char
+                      // auto-id, so it can't be aimed at someone else's future crew.
+                      !exists(/databases/$(database)/documents/crews/$(request.resource.data.crewId))
+                      ||
+                      // Existing crew: only a current member may mint a new code for it.
+                      request.auth.uid in get(/databases/$(database)/documents/crews/$(request.resource.data.crewId)).data.memberIds
+                    );
       allow delete: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/crews/$(resource.data.crewId)).data.memberIds;
     }
