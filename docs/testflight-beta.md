@@ -13,12 +13,102 @@ sin acceso a tu cuenta).
 - (Existe un grupo interno vacío "Amigos" de un intento previo; puedes ignorarlo
   o borrarlo — no se usa en el camino externo.)
 
-## Bloqueo actual: hace falta una build primero
+## ⚠️ Bloqueo de subida (2026-06-18): build firmada con certificado de **desarrollo**
 
-App Store Connect **no muestra la sección de Pruebas externas hasta que subes y
-procesa una primera build**. Por eso ahora mismo no se puede crear el grupo
-externo ni añadir a los testers. Secuencia correcta: **subir build → aparece
-Pruebas externas → crear grupo + añadir emails → enviar a Beta App Review**.
+App Store Connect rechaza la build en validación final:
+
+> **Invalid Signature (90035)** — `FoodRats.app/Frameworks/openssl_grpc.framework`
+> "is not properly signed... **distribution certificate**."
+
+### Causa real (diagnosticada localmente 2026-06-18 — NO es un bug de Firebase/gRPC)
+
+El mensaje dice la verdad literal: la app está firmada con un **certificado de
+desarrollo**, no de distribución. Verificado en el Mac contra el `.xcarchive` que
+falló:
+
+```
+$ security find-identity -v -p codesigning
+  1) … "Apple Development: schsebastiancardonahenao@gmail.com (VJ94JW69JQ)"
+  # ← ese es el ÚNICO identity. NO existe ningún "Apple Distribution".
+
+$ codesign -dv --verbose=2 ".../FoodRats.app/Frameworks/openssl_grpc.framework"
+  Authority=Apple Development: schsebastiancardonahenao@gmail.com (VJ94JW69JQ)
+  # ← y lo mismo para el binario principal y los 10 frameworks: TODOS "Apple Development".
+
+$ ls ~/Library/MobileDevice/Provisioning\ Profiles/   → no existe (0 perfiles)
+```
+
+El archive se firmó entero con **Apple Development** (el `CODE_SIGN_IDENTITY` de la
+config Release del target resolvía a "Apple Development", y no hay ningún cert ni
+perfil de distribución en la máquina para re-firmar al exportar). App Store valida
+los binarios firmados-de-desarrollo **uno a uno**, por eso al "re-firmar"
+`openssl_grpc` saltaba luego `GoogleAppMeasurementIdentitySupport` y después el
+binario principal: **no eran fallos distintos, era el mismo fallo (firma de
+desarrollo) recorriendo binario tras binario.** `openssl_grpc`/`grpccpp` solo eran
+los primeros que el validador encuentra.
+
+`firebase-ios-sdk 12.13.0` / `grpc-binary 1.69.1` es una combinación **correctamente
+firmada** (Firebase firma sus binarios desde 10.24.0); no era ese el problema, así
+que el build phase "Re-sign gRPC Frameworks" se **revirtió** (era un parche a un
+síntoma inexistente y, encima, usaba `--timestamp=none`, que por sí solo provoca
+90035 en distribución — App Store exige timestamp seguro). `project.pbxproj` quedó
+limpio.
+
+### Cómo arreglarlo: conseguir firma de **distribución** (requiere tu Apple ID)
+
+El bloqueo se reduce a una cosa: **no hay certificado Apple Distribution + perfil
+App Store en este Mac.** Crear un cert de distribución exige autenticarse en Apple,
+así que esto necesita tu Apple ID / clave ASC. Es lo mismo del **Paso 0a-2** de más
+abajo. Tres caminos:
+
+1. **Xcode GUI con firma automática (lo más simple para esta subida puntual).**
+   Xcode → *Settings ▸ Accounts* → añade tu Apple ID (equipo `2AH7L26L78`). Luego
+   *Product ▸ Archive* → Organizer → *Distribute App ▸ App Store Connect ▸ Upload*
+   con **"Automatically manage signing"** marcado: Xcode **crea sobre la marcha** el
+   cert *Apple Distribution* + el perfil App Store y firma el export con ellos. (Lo
+   que falló antes: se subió un export firmado-de-desarrollo porque no había Apple ID
+   logueado capaz de emitir el cert de distribución.) Deja `CODE_SIGN_IDENTITY` de
+   Release como está ("Apple Development") — el paso *Distribute* re-firma a
+   distribución; no lo cambies a "Apple Distribution" o el *Archive* fallará al no
+   existir aún el cert.
+2. **fastlane `match` (appstore) — camino CI/reproducible.** `bundle exec fastlane
+   ios rotate_signing` (con `ASC_KEY_ID/ASC_ISSUER_ID/ASC_KEY_PATH` + `MATCH_GIT_URL`
+   + `MATCH_PASSWORD`) materializa el cert+perfil de distribución desde el repo
+   privado de certs; luego `bundle exec fastlane ios beta` firma y sube. Requiere la
+   clave ASC y el repo de match (no están en este Mac). Ojo: aquí **sí** se firma con
+   `CODE_SIGN_IDENTITY=Apple Distribution` (lo fija `build_ios` en el `Fastfile`, porque
+   `match` ya instaló ese cert) — la regla "déjalo en Apple Development" del punto 1 es
+   **solo** para el *Archive* manual de Xcode, donde el cert aún no existe.
+3. **Export headless (puedo hacerlo yo si me pasas la clave ASC).** Con el `.p8` +
+   `ASC_KEY_ID` + `ASC_ISSUER_ID` corro
+   `xcodebuild -exportArchive -allowProvisioningUpdates -authenticationKeyPath … `
+   sobre el `.xcarchive`: emite cert+perfil de distribución y produce un IPA
+   firmado-de-distribución, verificable al instante con
+   `codesign -dv --verbose=2 …` (debe decir `Authority=Apple Distribution`).
+
+Para re-verificar en segundos tras cualquier intento (el "loop local" correcto):
+```bash
+ARCH=~/Library/Developer/Xcode/Archives/<fecha>/<archive>.xcarchive
+APP="$ARCH/Products/Applications/FoodRats.app"
+codesign -dv --verbose=2 "$APP" 2>&1 | grep Authority   # debe ser Apple Distribution, NO Development
+```
+
+Tras conseguir firma de distribución: re-archive → *Distribute App → App Store
+Connect*. Cuando la build procese en TestFlight, avísame y añado a los 5 amigos.
+
+## Ruta crítica (orden, de principio a fin)
+
+Un solo hilo. El bloqueo **actual** es el de arriba (firma de distribución); el resto
+son consecuencias suyas, no bloqueos paralelos:
+
+1. **Conseguir firma Apple Distribution** (sección de arriba) — Xcode auto-signing
+   o `fastlane ios rotate_signing`. ← **bloqueo actual**, todo lo demás depende de esto.
+2. **Subir la primera build** (Paso 1) → verificar `codesign … Authority=Apple Distribution`.
+3. **Que procese en TestFlight** (App Store Connect no muestra *Pruebas externas*
+   hasta que una primera build sube y procesa — por eso aún no se puede crear el
+   grupo externo).
+4. **Crear grupo externo + añadir los 5 emails** (Paso 3).
+5. **Beta App Review** con Sign in with Apple (Paso 4) → aprobación → invitaciones.
 
 ## Amigos a añadir (en cuanto haya build)
 
@@ -88,8 +178,11 @@ tu Mac.
 
 1. Abre `iosApp/iosApp.xcworkspace` (el workspace, no el `.xcodeproj`).
 2. Esquema **iosApp**, destino **Any iOS Device (arm64)**.
-3. Número de build: `MARKETING_VERSION` = `1.0`, `CURRENT_PROJECT_VERSION` = `1`.
-   El **build number debe subir en cada subida** (1, 2, 3…).
+3. Número de build (solo subida **manual**): `MARKETING_VERSION` = `1.0`,
+   `CURRENT_PROJECT_VERSION` = `1`. El **build number debe subir en cada subida**
+   (1, 2, 3…). Por la lane `fastlane ios beta` / CI **no los toques a mano**: los
+   inyecta `scripts/ci/compute_version.sh beta` (`MARKETING_VERSION`/`CURRENT_PROJECT_VERSION`
+   vía `xcargs`), con `CFBundleVersion` monotónico = `BASE_BETA + run_number`.
 4. *Product → Archive* (dispara el Gradle del framework KMP; ten un JDK 21 a mano).
 5. Organizer → *Distribute App → App Store Connect → Upload* (firma automática,
    equipo `2AH7L26L78`).
@@ -173,7 +266,11 @@ Sin un camino de login funcional, Apple rechaza la build externa por no poder pa
       si subes a mano, Xcode auto al *Archive* con `-allowProvisioningUpdates`
 - [ ] **Firebase console** → Authentication → Sign-in method → **habilitar Apple**
       (sin esto el botón Apple falla en runtime)
-- [ ] Subir build (Xcode Organizer o `fastlane ios beta`)
+- [ ] **Tener cert Apple Distribution + perfil App Store** (Xcode auto-signing al
+      *Distribute*, o `fastlane ios rotate_signing`). Sin esto el archive sale
+      firmado-de-desarrollo → rechazo 90035. ← bloqueo actual
+- [ ] Subir build (Xcode Organizer o `fastlane ios beta`) — verificar
+      `codesign -dv … | grep Authority` ⇒ **Apple Distribution**
 - [ ] Esperar a que procese en TestFlight
 - [ ] Cumplimiento de exportación (o `ITSAppUsesNonExemptEncryption=NO`)
 - [ ] Crear grupo externo y añadir los 5 emails
