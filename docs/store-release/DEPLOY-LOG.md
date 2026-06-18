@@ -11,7 +11,9 @@ schsebastiancardonahenao@gmail.com). All non-destructive (no data deletion).
 | Firestore indexes (`--only firestore:indexes`) | ✅ DONE | authorId collection-group overrides deployed (covers human.md §C). |
 | Storage rules (`--only storage`) | ✅ DONE | Released to firebase.storage. |
 | Hosting (`--only hosting`) | ✅ DONE | Verified live (HTTP 200): /account-deletion, /.well-known/apple-app-site-association, /.well-known/assetlinks.json. assetlinks SHA-256 still placeholders (need Play console). |
-| Catalog seed (`seed:catalog`) | ❌ USER STEP | Needs Application Default Credentials. Run: `gcloud auth application-default login` then `pnpm --dir functions seed:catalog`. Until run, ingredient picker + cuisine passport read empty (app still works). |
+| Catalog seed (`seed:catalog`) | ✅ DONE (2026-06-18) | User ran `gcloud auth application-default login` + `pnpm --dir functions seed:catalog`. Output: "Wrote 226 ingredients + 101 dish maps + 14 cuisines + 101 dish-cuisine maps to foodrats-de4ec". Ingredient picker + cuisine passport now have data. |
+
+**Backend is 100% deployed — human.md blocks A, B, C are all complete.** Only account/console/device gates remain (RELEASE-CHECKLIST.md phases 1–6).
 
 ## Runtime SA note (important)
 The Gen-2 functions runtime SA is `475840003160-compute@developer.gserviceaccount.com`.

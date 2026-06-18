@@ -7,6 +7,12 @@ task that surfaced each in parentheses. **This file is appended to as new tasks 
 
 > Suggested order: **(A) deploy backend → (B) cloud IAM → (C) indexes → (D) store/privacy → (E) on-device smoke.**
 
+> **✅ 2026-06-18 — Blocks A, B, C are ALL DONE on prod foodrats-de4ec** (functions, firestore rules+indexes,
+> storage rules, hosting, IAM Token Creator on the Gen-2 compute SA, catalog seed). Evidence:
+> `docs/store-release/DEPLOY-LOG.md`. CI is green on `develop`; the R8 release AAB builds.
+> Remaining = blocks **D (store/privacy)** + **E (on-device smoke)** + accounts/signing — see
+> `docs/store-release/RELEASE-CHECKLIST.md`.
+
 ---
 
 ## A. Deploys (run from repo root; use `pnpm dlx firebase-tools`)

@@ -31,4 +31,7 @@ Goal (user): "completa todo lo restante para poder subir la app a app store y pl
   4. `feature/stats/.../ObserveStatsUseCase.kt` — `dayTicker()` infinite `flow{while(true){emit;delay}}` spun 100% CPU forever under runTest+FixedClock (virtual-time advance). REVERTED stats-01 dayTicker; KEPT stats-02 HistoricResult error-surfacing. Removed rollover test + MutableClock/RecordingRead helpers; kept SplitRangeRead + historic_error test.
 - Codeable store-prep DONE (independent of build): `docs/store-release/LISTING-COPY.md` (en/es Play+ASC copy), `docs/store-release/RELEASE-CHECKLIST.md` (master from-scratch runbook).
 - firestore.indexes.json already declares authorId collection-group overrides (covers human.md §C).
+- Backend DEPLOYED to prod foodrats-de4ec: functions (9 ops), firestore rules+indexes, storage rules, hosting (HTTP-200 verified), IAM Token Creator on compute SA. Docs commit 31e6b15.
+- **R8/minified release AAB verified**: `:androidApp:bundleRelease -PcrashlyticsMappingUpload=false` → BUILD SUCCESSFUL in 1m15s, 32M AAB produced (unsigned fallback). The biggest codeable store-push risk is cleared.
+- **CI was RED on 740e746**: `ArchitectureFitnessTest.feature_ui_has_no_hardcoded_text_literals` flagged my `AnalyticsValue.Text("1")` in a presentation-package TEST (rule scanned test sources despite its "production code" intent; passed locally only due to stale Gradle cache of the Konsist task). Fixed `ea49ccc`: exclude `/src/*Test/` paths. Verified with `--rerun-tasks` → BUILD SUCCESSFUL. CI re-run watching.
 </content>
