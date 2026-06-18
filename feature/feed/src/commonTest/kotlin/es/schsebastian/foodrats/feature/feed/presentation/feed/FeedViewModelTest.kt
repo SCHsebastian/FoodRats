@@ -346,8 +346,8 @@ class FeedViewModelTest {
         assertEquals("m-1", reactionPort.toggleCalls.first().mealId)
         assertEquals("daily_glyph", reactionPort.toggleCalls.first().kind)
         assertEquals(
-            listOf<AnalyticsEvent>(AnalyticsEvent.MealReacted((MealId.of("m-1") as Result.Ok).value, "daily_glyph")),
-            analytics.events.toList(),
+            listOf(AnalyticsEvent.MealReacted((MealId.of("m-1") as Result.Ok).value, "daily_glyph")),
+            analytics.events.filterIsInstance<AnalyticsEvent.MealReacted>(),
         )
     }
 
@@ -378,7 +378,8 @@ class FeedViewModelTest {
             assertEquals(false, meal.viewerReacted)
             cancelAndIgnoreRemainingEvents()
         }
-        assertTrue(analytics.events.isEmpty()) // Removed never tracks (CHARTER rule 9)
+        // Removed never tracks a reaction (CHARTER rule 9); FeedDayViewed from the initial load is unrelated.
+        assertTrue(analytics.events.none { it is AnalyticsEvent.MealReacted })
     }
 
     @Test fun react_failure_populates_reactError() = runTest {
@@ -449,6 +450,64 @@ class FeedViewModelTest {
         runCurrent()
         assertEquals(1, actions.dismissCount)
         assertEquals(0, actions.retryCount)
+    }
+
+    // --- feed_day_viewed analytics (once per distinct loaded day) ---------------
+
+    @Test fun feed_day_viewed_fires_once_on_initial_load() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(analytics = analytics)
+        vm.state.test {
+            var s = awaitItem()
+            if (s.isLoading) s = awaitItem()
+            assertEquals(1, s.meals.size)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0)),
+            analytics.events.toList(),
+        )
+    }
+
+    @Test fun feed_day_viewed_fires_per_prev_and_next_navigation() = runTest {
+        val active = FakeActiveCrewProvider(initial = crew)
+        val yesterday = "2026-05-15"
+        val port = FakeMealReadPort(perDay = mapOf(
+            (crew to "2026-05-16") to listOf(sampleMealWithRatings),
+            (crew to yesterday) to emptyList(),
+        ))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(active = active, port = port, analytics = analytics)
+        runCurrent()
+        vm.onIntent(FeedIntent.PrevDay) // -> yesterday (offset 1, 0 meals)
+        runCurrent()
+        vm.onIntent(FeedIntent.NextDay) // -> back to today (offset 0, 1 meal)
+        runCurrent()
+        assertEquals(
+            listOf<AnalyticsEvent>(
+                AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0),
+                AnalyticsEvent.FeedDayViewed(mealCount = 0, dayOffset = 1),
+                AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0),
+            ),
+            analytics.events.toList(),
+        )
+    }
+
+    @Test fun feed_day_viewed_does_not_refire_on_rate_re_emission() = runTest {
+        val ratingPort = FakeMealRatingPort()
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ratingPort = ratingPort, analytics = analytics)
+        runCurrent()
+        // A rate re-runs the feed Ok branch for the SAME day — must not re-fire feed_day_viewed.
+        vm.onIntent(FeedIntent.RateMeal("m-1", 4))
+        runCurrent()
+        assertEquals(
+            listOf<AnalyticsEvent>(
+                AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0),
+                AnalyticsEvent.MealRated((MealId.of("m-1") as Result.Ok).value, 4),
+            ),
+            analytics.events.toList(),
+        )
     }
 
     @Test fun published_queued_draft_is_not_double_rendered() = runTest {

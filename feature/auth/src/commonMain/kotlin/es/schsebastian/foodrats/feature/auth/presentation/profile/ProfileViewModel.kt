@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.analytics.isAnalyticsGranted
@@ -314,14 +315,20 @@ class ProfileViewModel(
 
     private suspend fun doSetTheme(mode: ThemeMode) {
         when (val r = setThemeMode(mode)) {
-            is Result.Ok -> update { it.copy(themePickerOpen = false, themeError = null) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.THEME))
+                update { it.copy(themePickerOpen = false, themeError = null) }
+            }
             is Result.Err -> update { it.copy(themePickerOpen = false, themeError = r.error.toStringKey()) }
         }
     }
 
     private suspend fun doSetLocale(locale: AppLocale) {
         when (val r = setLocale(locale)) {
-            is Result.Ok -> update { it.copy(localePickerOpen = false, localeError = null) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.LANGUAGE))
+                update { it.copy(localePickerOpen = false, localeError = null) }
+            }
             is Result.Err -> update { it.copy(localePickerOpen = false, localeError = r.error.toStringKey()) }
         }
     }
@@ -333,7 +340,8 @@ class ProfileViewModel(
         update { it.copy(notificationsEnabled = enabled, notificationsError = null) }
         val r = if (enabled) enableNotifications() else setNotificationsEnabled(false)
         when (r) {
-            is Result.Ok  -> Unit
+            is Result.Ok  ->
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.NOTIFICATIONS, enabled = enabled))
             is Result.Err -> update {
                 it.copy(
                     // Roll the switch back to its pre-toggle position so the UI matches what
@@ -369,8 +377,13 @@ class ProfileViewModel(
     }
 
     private suspend fun doSetReminders(times: List<LocalTime>) {
+        // Shared by add/edit (doApplyReminderHour) and remove (doRemoveReminder); the single Ok-branch
+        // emission covers every reminder change. No target VALUE on the event — only that it changed.
         when (val r = setMealReminders(times)) {
-            is Result.Ok -> update { it.copy(reminderError = null) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.MEAL_REMINDERS))
+                update { it.copy(reminderError = null) }
+            }
             is Result.Err -> update { it.copy(reminderError = r.error.toStringKey()) }
         }
     }

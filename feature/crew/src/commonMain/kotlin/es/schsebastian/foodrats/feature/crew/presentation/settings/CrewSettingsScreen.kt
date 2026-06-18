@@ -159,7 +159,10 @@ fun CrewSettingsScreen(
                     CrewHeroCard(
                         crew = crew,
                         onCopy = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
-                        onShareLink = { share.shareText(shareMessage) },
+                        onShareLink = {
+                            vm.onIntent(CrewSettingsIntent.ShareLinkTapped)
+                            share.shareText(shareMessage)
+                        },
                         onShowQr = { showQr = true },
                     )
                 }

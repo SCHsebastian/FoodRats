@@ -37,7 +37,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlinx.datetime.daysUntil
 import kotlinx.datetime.toLocalDateTime
 import es.schsebastian.foodrats.core.domain.meal.MealDay as DomainMealDay
 
@@ -65,6 +67,13 @@ class FeedViewModel(
 
     /** Deduped per-meal reaction flows: at most one active listener per unique mealId. */
     private val reactionFlows = mutableMapOf<MealId, SharedFlow<MealReactions?>>()
+
+    /**
+     * Last day for which [AnalyticsEvent.FeedDayViewed] was emitted. The feed Ok branch re-emits on
+     * every rate/react read-model change while the cursor sits on the same day; this guards so the
+     * event fires once per *distinct* loaded day (initial / prev / next), never on those re-emissions.
+     */
+    private var lastTrackedFeedDay: LocalDate? = null
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val blindVotingFlow =
@@ -103,6 +112,18 @@ class FeedViewModel(
                                 .distinctBy { it.mealId }
                         }
                         update { it.copy(isLoading = false, meals = uis, error = null, blindVoting = blind) }
+                        // Once per distinct loaded day (initial / prev / next) — not on the rate/react
+                        // re-emission of the same day. day_offset = days before today (0 = today).
+                        val loadedDay = currentState.day?.day?.date
+                        if (loadedDay != null && loadedDay != lastTrackedFeedDay) {
+                            lastTrackedFeedDay = loadedDay
+                            analytics.track(
+                                AnalyticsEvent.FeedDayViewed(
+                                    mealCount = uis.size,
+                                    dayOffset = loadedDay.daysUntil(today),
+                                ),
+                            )
+                        }
                     }
                     is Result.Err -> update { it.copy(isLoading = false, error = r.error, blindVoting = blind) }
                 }

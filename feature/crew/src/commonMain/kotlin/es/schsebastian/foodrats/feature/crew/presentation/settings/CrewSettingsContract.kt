@@ -35,6 +35,13 @@ sealed interface CrewSettingsIntent : MviIntent {
     data class CrewNameChanged(val value: String) : CrewSettingsIntent
     data object SaveCrewName : CrewSettingsIntent
     data class ToggleBlindVoting(val enabled: Boolean) : CrewSettingsIntent
+
+    /**
+     * The user tapped Share invite link. The Composable still fires the system share sheet directly
+     * (it owns the [ShareController] + the localized message); this intent exists so the analytics
+     * fire lives in the ViewModel, never in the UI layer.
+     */
+    data object ShareLinkTapped : CrewSettingsIntent
     data object SwitchCrew : CrewSettingsIntent
     data object Leave : CrewSettingsIntent
     data object RequestDelete : CrewSettingsIntent

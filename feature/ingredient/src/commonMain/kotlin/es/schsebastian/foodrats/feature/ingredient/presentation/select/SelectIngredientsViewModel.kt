@@ -1,6 +1,9 @@
 package es.schsebastian.foodrats.feature.ingredient.presentation.select
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDraftIngredientsPort
@@ -18,6 +21,7 @@ import kotlinx.coroutines.launch
 class SelectIngredientsViewModel(
     private val observeCatalog: ObserveCatalogUseCase,
     private val draftIngredients: MealDraftIngredientsPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<SelectIngredientsState, SelectIngredientsIntent, SelectIngredientsEffect>(
     initial = SelectIngredientsState(),
 ) {
@@ -45,6 +49,12 @@ class SelectIngredientsViewModel(
         is SelectIngredientsIntent.ToggleCategory -> toggleCategory(intent.category)
         SelectIngredientsIntent.ConfirmAndExit -> {
             draftIngredients.setIngredients(currentState.selected.toList())
+            analytics.track(
+                AnalyticsEvent.IngredientsConfirmed(
+                    detectedCount = currentState.detected.size,
+                    confirmedCount = currentState.selected.size,
+                ),
+            )
             emit(SelectIngredientsEffect.NavigateBack)
         }
     }

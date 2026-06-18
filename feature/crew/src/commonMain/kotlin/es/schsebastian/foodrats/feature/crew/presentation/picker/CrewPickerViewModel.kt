@@ -43,7 +43,11 @@ class CrewPickerViewModel(
         is CrewPickerIntent.JoinInputChanged   -> update { it.copy(joinInput = intent.value) }
         CrewPickerIntent.SubmitCreate         -> doCreate()
         CrewPickerIntent.SubmitJoin           -> doJoin()
-        is CrewPickerIntent.PickCrew          -> { switchActive(intent.crewId); emit(CrewPickerEffect.CrewSelected(intent.crewId)) }
+        is CrewPickerIntent.PickCrew          -> {
+            switchActive(intent.crewId)
+            analytics.track(AnalyticsEvent.CrewSwitched(intent.crewId))
+            emit(CrewPickerEffect.CrewSelected(intent.crewId))
+        }
         CrewPickerIntent.DismissError         -> update { it.copy(error = null) }
     }
 

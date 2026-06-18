@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -71,6 +72,7 @@ class CrewSettingsViewModel(
         is CrewSettingsIntent.CrewNameChanged -> update { it.copy(editingCrewName = intent.value) }
         CrewSettingsIntent.SaveCrewName -> doSaveCrewName()
         is CrewSettingsIntent.ToggleBlindVoting -> doToggleBlindVoting(intent.enabled)
+        CrewSettingsIntent.ShareLinkTapped -> analytics.track(AnalyticsEvent.CrewInviteShared(crewId))
         CrewSettingsIntent.SwitchCrew -> emit(CrewSettingsEffect.NavigateToCrewPicker)
         CrewSettingsIntent.Leave -> doLeave()
         CrewSettingsIntent.RequestDelete -> update { it.copy(showDeleteConfirm = true) }
@@ -84,7 +86,10 @@ class CrewSettingsViewModel(
         val name = currentState.editingCrewName
         update { it.copy(isSavingCrewName = true, error = null) }
         when (val r = renameCrew(crewId, name)) {
-            is Result.Ok -> update { it.copy(isSavingCrewName = false) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.CrewRenamed(crewId))
+                update { it.copy(isSavingCrewName = false) }
+            }
             is Result.Err -> update { it.copy(isSavingCrewName = false, error = r.error) }
         }
     }
@@ -94,7 +99,10 @@ class CrewSettingsViewModel(
         when (val r = setBlindVoting(crewId, enabled)) {
             // On success the crew listener re-emits with the new flag — state.crew is the
             // single source of truth for the switch's checked position; no local copy here.
-            is Result.Ok -> update { it.copy(isSavingBlindVoting = false) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.BLIND_VOTING, enabled = enabled))
+                update { it.copy(isSavingBlindVoting = false) }
+            }
             is Result.Err -> update { it.copy(isSavingBlindVoting = false, error = r.error) }
         }
     }
@@ -103,7 +111,11 @@ class CrewSettingsViewModel(
         val account = session.current.first()?.accountId ?: return
         update { it.copy(isLeaving = true, error = null) }
         when (val r = leaveCrew(crewId, account)) {
-            is Result.Ok -> { update { it.copy(isLeaving = false) }; emit(CrewSettingsEffect.Left) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.CrewLeft(crewId))
+                update { it.copy(isLeaving = false) }
+                emit(CrewSettingsEffect.Left)
+            }
             is Result.Err -> update { it.copy(isLeaving = false, error = r.error) }
         }
     }
@@ -111,7 +123,11 @@ class CrewSettingsViewModel(
     private suspend fun doDelete() {
         update { it.copy(isDeleting = true, showDeleteConfirm = false, error = null) }
         when (val r = deleteCrew(crewId)) {
-            is Result.Ok -> { update { it.copy(isDeleting = false) }; emit(CrewSettingsEffect.Deleted) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.CrewDeleted(crewId))
+                update { it.copy(isDeleting = false) }
+                emit(CrewSettingsEffect.Deleted)
+            }
             is Result.Err -> update { it.copy(isDeleting = false, error = r.error) }
         }
     }
