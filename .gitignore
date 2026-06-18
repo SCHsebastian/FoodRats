@@ -22,6 +22,14 @@ node_modules/
 # Final committed docs go under docs/specs/ or docs/architecture/.
 docs/superpowers/
 
+# Claude-generated working docs — session ledgers, reviews, research, roadmap.
+# Kept locally (archived outside the repo) but not tracked. Authoritative docs
+# (specs/, cicd-runbook, store-release/, analytics/, testflight-*) stay tracked.
+docs/session/
+docs/reviews/
+docs/research/
+docs/roadmap/
+
 # Git worktrees created by superpowers workflows.
 .worktrees/
 
