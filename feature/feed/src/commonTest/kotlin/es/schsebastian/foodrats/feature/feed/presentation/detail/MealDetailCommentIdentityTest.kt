@@ -34,6 +34,7 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvid
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
 import kotlinx.coroutines.Dispatchers
@@ -137,6 +138,7 @@ class MealDetailCommentIdentityTest {
             accountReadPort = accountPort,
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
+            blindVoting = FakeCrewBlindVotingPort(),
             session = session,
             clock = FixedClock(),
             zone = zone,
@@ -252,6 +254,7 @@ class MealDetailCommentIdentityTest {
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
+            blindVoting = FakeCrewBlindVotingPort(),
             session = session,
             clock = FixedClock(),
             zone = zone,
@@ -323,6 +326,7 @@ class MealDetailCommentIdentityTest {
             accountReadPort = accountPort,
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
+            blindVoting = FakeCrewBlindVotingPort(),
             session = session,
             clock = FixedClock(),
             zone = zone,

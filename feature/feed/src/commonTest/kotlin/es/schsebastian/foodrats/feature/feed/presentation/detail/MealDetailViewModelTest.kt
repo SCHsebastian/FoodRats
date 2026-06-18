@@ -28,6 +28,7 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvid
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
 import kotlinx.coroutines.Dispatchers
@@ -105,6 +106,7 @@ class MealDetailViewModelTest {
         commentPort: FakeMealCommentPort = FakeMealCommentPort(),
         deletePort: MealDeletePort = FakeMealDeletePort(),
         deleteMyMealPort: MealDeletePort = FakeMealDeletePort(),
+        blindVoting: FakeCrewBlindVotingPort = FakeCrewBlindVotingPort(),
     ): MealDetailViewModel {
         val readPort = FakeMealReadPort(
             perDay = mapOf((crew to day.toKey()) to listOf(MealWithRatings(mealBy(mealAuthor), emptyList()))),
@@ -120,6 +122,7 @@ class MealDetailViewModelTest {
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
+            blindVoting = blindVoting,
             session = session,
             clock = clock,
             zone = zone,
@@ -156,6 +159,32 @@ class MealDetailViewModelTest {
         val vm = newSut(mealAuthor = authorId, owner = authorId)
         vm.state.test {
             assertFalse(expectMostRecentItem().canDeleteMeal)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // --- blind-voting author masking (regression: detail leaked the cook) -------
+
+    @Test fun author_masked_in_detail_when_blind_voting_on_and_viewer_has_not_voted() = runTest {
+        val vm = newSut(mealAuthor = authorId, blindVoting = FakeCrewBlindVotingPort(blindVoting = true))
+        vm.state.test {
+            assertTrue(expectMostRecentItem().meal!!.authorMasked)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun author_not_masked_in_detail_when_blind_voting_off() = runTest {
+        val vm = newSut(mealAuthor = authorId, blindVoting = FakeCrewBlindVotingPort(blindVoting = false))
+        vm.state.test {
+            assertFalse(expectMostRecentItem().meal!!.authorMasked)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun own_meal_never_masked_in_detail_even_with_blind_voting_on() = runTest {
+        val vm = newSut(mealAuthor = viewerId, blindVoting = FakeCrewBlindVotingPort(blindVoting = true))
+        vm.state.test {
+            assertFalse(expectMostRecentItem().meal!!.authorMasked)
             cancelAndIgnoreRemainingEvents()
         }
     }
