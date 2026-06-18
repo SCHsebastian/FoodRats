@@ -19,11 +19,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.theme.LocalMinotaurMode
+import es.schsebastian.foodrats.core.designsystem.theme.fur
 import es.schsebastian.foodrats.core.designsystem.tokens.Elevation
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
@@ -70,17 +74,20 @@ fun FrCard(
     } else {
         Modifier
     }
+    val minotaur = LocalMinotaurMode.current
+    val furSemantic = LocalFrSemanticColors.current
     Surface(
         modifier = modifier
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
             }
+            .fur(minotaur, shape)
             .then(clickModifier),
         shape = shape,
-        color = MaterialTheme.colorScheme.surface,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        shadowElevation = elevation,
+        color = if (minotaur) Color.Transparent else MaterialTheme.colorScheme.surface,
+        contentColor = if (minotaur) furSemantic.onFur else MaterialTheme.colorScheme.onSurface,
+        shadowElevation = if (minotaur) 0.dp else elevation,
     ) {
         Column(
             modifier = Modifier.padding(contentPadding),

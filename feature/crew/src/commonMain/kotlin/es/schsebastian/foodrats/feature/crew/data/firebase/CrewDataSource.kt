@@ -24,7 +24,6 @@ interface CrewDataSource {
     suspend fun createCrew(
         name: String,
         founder: AccountId,
-        founderDisplayName: String,
         nowMs: Long,
     ): CrewDto
 
@@ -35,7 +34,6 @@ interface CrewDataSource {
     suspend fun joinByCode(
         code: CrewCode,
         joiner: AccountId,
-        joinerDisplayName: String,
         nowMs: Long,
     ): CrewDto
 

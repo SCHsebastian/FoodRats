@@ -80,6 +80,23 @@ private class FakeCuisineRead(private val catalog: Map<CuisineSlug, Cuisine> = e
 
 private class FixedClock(val instant: Instant) : Clock { override fun now() = instant }
 
+/**
+ * Serves the current window (any range spanning < ~60 days) and the historic 365-day window from
+ * SEPARATE flows, so the historic read can fail while the current one stays OK. The historic range
+ * is the one whose span exceeds 300 days.
+ */
+private class SplitRangeRead(
+    current: List<MealWithRatings>,
+) : MealReadPort {
+    val currentFlow = MutableStateFlow<Result<List<MealWithRatings>, MealReadError>>(Result.success(current))
+    val historicFlow = MutableStateFlow<Result<List<MealWithRatings>, MealReadError>>(Result.success(emptyList()))
+    override fun observeFeed(crewId: CrewId, day: MealDay) = error("unused")
+    override fun observeRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<Result<List<MealWithRatings>, MealReadError>> {
+        val span = to.date.toEpochDays() - from.date.toEpochDays()
+        return if (span > 300) historicFlow else currentFlow
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class ObserveStatsUseCaseTest {
 
@@ -267,6 +284,37 @@ class ObserveStatsUseCaseTest {
         )
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Read.Unauthorized), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // stats-02: a Historic-window read failure surfaces as StatsSnapshot.historicError instead of
+    // being swallowed into a null historic window (which the UI can't tell from "not loaded yet").
+    @Test fun historic_error_surfaces_as_historicError_not_swallowed() = runTest {
+        val mine = makeMeal(me, today)
+        // Current window OK throughout; only the historic 365-day read fails.
+        val read = SplitRangeRead(listOf(mine))
+        read.historicFlow.value = Result.failure(MealReadError.Unavailable)
+        val historicFlag = MutableStateFlow(false)
+        val uc = ObserveStatsUseCase(
+            FakeActive(crewId),
+            FakeSession(Session(me, null)),
+            read,
+            FakeIngredientRead(),
+            FakeCuisineRead(),
+            clock,
+            zone,
+        )
+        uc(historicFlag, flowOf(0)).test {
+            val r1 = awaitItem()
+            assertIs<Result.Ok<StatsSnapshot>>(r1)
+            assertNull(r1.value.historicError)
+            // Open Historic → the failed 365-day read must surface, not vanish into a null window.
+            historicFlag.value = true
+            val r2 = expectMostRecentItem()
+            assertIs<Result.Ok<StatsSnapshot>>(r2)
+            assertEquals(StatsError.Read.Unavailable, r2.value.historicError)
+            assertNull(r2.value.historic)
             cancelAndIgnoreRemainingEvents()
         }
     }

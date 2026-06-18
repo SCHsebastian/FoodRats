@@ -165,23 +165,6 @@ fun CatalogSpecRow(
     }
 }
 
-/** Compact pill used to tag scenes (e.g. "Theme: Light"). Catalog-chrome, not part of the DS. */
-@Composable
-fun CatalogTag(text: String, modifier: Modifier = Modifier) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(Radius.pill),
-        color = MaterialTheme.colorScheme.secondaryContainer,
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
-            modifier = Modifier.padding(horizontal = Spacing.sm, vertical = 2.dp),
-        )
-    }
-}
-
 /** Coloured swatch used in the Colors foundation page. */
 @Composable
 fun CatalogSwatch(

@@ -1,11 +1,29 @@
 package es.schsebastian.foodrats.core.presentation.mvi
 
 import app.cash.turbine.test
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class MviViewModelTest {
+
+    private val testDispatcher = UnconfinedTestDispatcher()
+
+    @BeforeTest
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+    }
+
+    @AfterTest
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
 
     private data class CounterState(val value: Int = 0) : MviState
     private sealed interface CounterIntent : MviIntent {
@@ -26,7 +44,7 @@ class MviViewModelTest {
         vm.state.test {
             assertEquals(0, awaitItem().value)
             vm.onIntent(CounterIntent.Increment)
-            assertEquals(1, awaitItem().value)
+            assertEquals(1, expectMostRecentItem().value)
         }
     }
 

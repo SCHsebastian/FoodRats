@@ -100,6 +100,10 @@ class ArchitectureFitnessTest {
         Konsist.scopeFromProject()
             .files
             .filter { file -> file.hasPackage("..feature..presentation..") }
+            // Production UI only — the rule is about user-facing app copy. Test source sets
+            // (commonTest / androidHostTest / …) legitimately hold string literals (assertions,
+            // fixtures, `AnalyticsValue.Text("…")`) and are not user-visible.
+            .filterNot { file -> file.path.contains(Regex("/src/[^/]*[Tt]est/")) }
             .assertFalse { file ->
                 file.functions(includeNested = true, includeLocal = true)
                     .filterNot(::isPreviewOrSample)

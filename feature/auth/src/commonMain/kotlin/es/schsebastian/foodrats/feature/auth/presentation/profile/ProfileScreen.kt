@@ -36,13 +36,16 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSectionTon
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
 import io.github.ismoy.imagepickerkmp.domain.models.MimeType
 import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
 import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
+import kotlinx.datetime.LocalTime
 import kotlinx.io.readByteArray
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -67,7 +70,7 @@ fun ProfileScreen(
                 picker.reset()
             }
             is ImagePickerResult.Error -> {
-                println("[ProfileScreen] avatar picker error: ${r.exception.message}")
+                FrLog.w(FrLog.Tags.Auth) { "[ProfileScreen] avatar picker error: ${r.exception.message}" }
                 picker.reset()
             }
             is ImagePickerResult.Dismissed,
@@ -77,14 +80,20 @@ fun ProfileScreen(
     }
 
     if (state.deleteScreenOpen) {
+        // Locale-correct confirmation phrase: resolve the SAME template the screen displays
+        // (en "DELETE %1$s" / es "BORRAR %1$s") so a Spanish user types "BORRAR <name>", not the
+        // English "DELETE <name>". Trim because the template leaves a trailing space when no
+        // account/name is loaded yet (the field is disabled in that case anyway).
+        val displayName = state.account?.displayName?.trim().orEmpty()
+        val expectedPhrase = resolve(AuthStringKey.DeleteAccountPhraseTemplate, displayName).trim()
         DeleteAccountScreen(
             state = state,
             onBack = { vm.onIntent(ProfileIntent.CloseDeleteAccount) },
             onConfirmationChanged = { vm.onIntent(ProfileIntent.DeleteConfirmationChanged(it)) },
             onRequestDialog = { vm.onIntent(ProfileIntent.RequestDeleteDialog) },
             onDialogDismiss = { vm.onIntent(ProfileIntent.DeleteDialogDismiss) },
-            onDialogConfirm = { vm.onIntent(ProfileIntent.DeleteDialogConfirm) },
-            expectedPhrase = vm.expectedDeletePhrase(),
+            onDialogConfirm = { phrase -> vm.onIntent(ProfileIntent.DeleteDialogConfirm(phrase)) },
+            expectedPhrase = expectedPhrase,
         )
         return
     }
@@ -151,7 +160,31 @@ fun ProfileScreen(
             },
         )
     }
+
+    if (state.reminderPickerOpen) {
+        val selectedHour = state.reminderEditingIndex
+            ?.let { state.reminderTimes.getOrNull(it)?.hour?.toString() }
+            .orEmpty()
+        FrSettingsPicker(
+            title = resolve(AuthStringKey.ProfileRemindersPickerTitle),
+            options = reminderHourOptions(),
+            selectedId = selectedHour,
+            onDismiss = { vm.onIntent(ProfileIntent.ReminderPickerDismiss) },
+            onSelect = { id -> vm.onIntent(ProfileIntent.ReminderHourSelected(id.toInt())) },
+        )
+    }
 }
+
+/** 24-hour `HH:mm` label — pure/locale-neutral, used for both the row and the picker options. */
+private fun formatReminderTime(time: LocalTime): String {
+    val hh = time.hour.toString().padStart(2, '0')
+    val mm = time.minute.toString().padStart(2, '0')
+    return "$hh:$mm"
+}
+
+/** Picker options: every whole hour 00:00..23:00, id = the hour, label = `HH:00`. */
+private fun reminderHourOptions(): List<Pair<String, String>> =
+    (0..23).map { hour -> hour.toString() to formatReminderTime(LocalTime(hour = hour, minute = 0)) }
 
 @Composable
 private fun GeneralSection(
@@ -282,6 +315,50 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
                         .padding(horizontal = Spacing.md, vertical = Spacing.xs),
                 )
             }
+            Spacer(Modifier.height(Spacing.xs))
+        }
+
+        FrSettingsDivider()
+
+        // Meal reminders — up to 3 daily nudges at user-chosen hours. Tap a time to change it,
+        // the trash to remove it; "Add reminder" appears until the max is reached.
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileRemindersRow),
+            subtitle = resolve(AuthStringKey.ProfileRemindersSubtitle),
+            icon = FrIcons.Notifications,
+        )
+        if (state.reminderTimes.isEmpty()) {
+            FrText(
+                text = resolve(AuthStringKey.ProfileRemindersEmpty),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+        } else {
+            state.reminderTimes.forEachIndexed { index, time ->
+                FrSettingsRow(
+                    title = formatReminderTime(time),
+                    onClick = { vm.onIntent(ProfileIntent.ReminderEditOpen(index)) },
+                    trailing = {
+                        FrIconButton(
+                            icon = FrIcons.Delete,
+                            onClick = { vm.onIntent(ProfileIntent.ReminderRemove(index)) },
+                            contentDescription = resolve(AuthStringKey.ProfileRemindersRemoveCta),
+                        )
+                    },
+                )
+            }
+        }
+        if (state.reminderTimes.size < MealReminderSchedulePort.MAX_REMINDERS) {
+            FrButton(
+                label = resolve(AuthStringKey.ProfileRemindersAddCta),
+                onClick = { vm.onIntent(ProfileIntent.ReminderAddOpen) },
+                variant = FrButtonVariant.Secondary,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            )
+        }
+        state.reminderError?.let {
+            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
             Spacer(Modifier.height(Spacing.xs))
         }
 

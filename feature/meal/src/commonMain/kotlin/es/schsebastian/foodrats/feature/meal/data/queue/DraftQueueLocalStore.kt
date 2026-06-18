@@ -24,6 +24,8 @@ import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.Serializable
@@ -43,15 +45,22 @@ import kotlinx.serialization.serializer
  *
  * This is a pure (de)serialization + read/modify/write helper. It holds NO
  * `withContext` — the IO boundary lives in [DraftQueueRepository], which owns the
- * one `withContext(dispatchers.io)` per public method (CLAUDE.md rule). The
- * underlying DataStore edit is itself atomic, so a concurrent read/modify/write
- * is serialized by DataStore.
+ * one `withContext(dispatchers.io)` per public method (CLAUDE.md rule).
+ *
+ * A single DataStore `set` is atomic, but the read-modify-write in [mutate] spans
+ * a `read()` and a separate `set()`: two concurrent mutations (e.g. an enqueue
+ * racing a retry status flip) could both read the same `current` and the later
+ * write would clobber the earlier one (lost update). A per-instance [Mutex]
+ * serializes the whole read-modify-write so the writes compose instead of racing.
  */
 @OptIn(ExperimentalEncodingApi::class)
 class DraftQueueLocalStore(
     private val prefs: AppPreferences,
     private val json: Json = Json,
 ) {
+
+    /** Serializes the read-modify-write in [mutate] against itself. */
+    private val mutateLock = Mutex()
 
     /** Observe the full queue, newest-last by `createdAt`. Empty when nothing queued or unparseable. */
     fun observe(): Flow<List<QueuedDraft>> = prefs.observe(Keys.DraftQueueJson).map { raw ->
@@ -76,8 +85,12 @@ class DraftQueueLocalStore(
         current.filterNot { it.id == id }
     }
 
-    /** Atomic read-modify-write of the whole list through one DataStore string key. */
-    private suspend fun mutate(transform: (List<QueuedDraft>) -> List<QueuedDraft>) {
+    /**
+     * Atomic read-modify-write of the whole list through one DataStore string key.
+     * Held under [mutateLock] so concurrent mutations serialize and compose rather
+     * than racing (a later write clobbering an earlier one — lost update).
+     */
+    private suspend fun mutate(transform: (List<QueuedDraft>) -> List<QueuedDraft>) = mutateLock.withLock {
         val current = read()
         val next = transform(current).sortedBy { it.createdAt }
         prefs.set(Keys.DraftQueueJson, json.encodeToString(serializer<List<QueuedDraftJson>>(), next.map { it.toJson() }))

@@ -5,3 +5,11 @@ PRODUCT_BUNDLE_IDENTIFIER=es.schsebastian.foodrats$(TEAM_ID)
 
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0
+
+// Apply the app's entitlements at code-signing time. Without this the .entitlements file is an
+// orphan (Associated Domains / Universal Links never take effect and aps-environment is absent
+// from the signed build). Path is relative to SRCROOT (iosApp/). Scoped to the app target only
+// because Config.xcconfig is its base configuration; MealAiVision uses the Pods xcconfigs.
+// NOTE: the App ID + provisioning profile must enable Associated Domains + Push Notifications.
+// Local Automatic signing adds them; CI `match` profiles must be regenerated to include them.
+CODE_SIGN_ENTITLEMENTS=iosApp/iosApp.entitlements

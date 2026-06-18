@@ -4,6 +4,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.PublishSource
+import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -113,6 +116,44 @@ class DraftRetryRunnerTest {
         assertEquals(1, repo.publishCount)
         assertTrue(q.observe().first().isEmpty(), "successful entry must be reconciled (removed)")
         assertEquals(draft().slot, repo.publishedDrafts.single().slot)
+    }
+
+    /** The queue is the single publish executor, so the true `meal_published` event is emitted here
+     *  (relocated from the coordinator) on a successful drain — exactly once, with no PII. */
+    @Test
+    fun successful_drain_emits_meal_published_analytics() = runTest {
+        val q = queue()
+        q.enqueue(draft())
+        val analytics = RecordingAnalyticsTracker()
+        val repo = ScriptedPublishRepository(ArrayDeque(listOf(Result.Ok(true))))
+        val runner = DraftRetryRunner(q, repo, AlwaysOnline(), DraftRetryPolicy(), analytics)
+
+        runner.runOnce(scope = null)
+
+        val expected: AnalyticsEvent = AnalyticsEvent.MealPublished(
+            slot = MealSlot.Lunch,
+            ingredientCount = 0,
+            hasDescription = false,
+            audienceCrewCount = 1,
+            source = PublishSource.UNKNOWN,
+        )
+        assertEquals(expected, analytics.events.single())
+    }
+
+    /** AlreadyPostedToday is idempotency-success: the draft's slot is already published (e.g. the
+     *  coordinator's fast path won the double-fire race), so the entry is reconciled (removed),
+     *  NOT marked failed — otherwise the feed bar would show a phantom failed upload / spin a retry. */
+    @Test
+    fun pending_then_already_posted_today_removes_the_entry() = runTest {
+        val q = queue()
+        q.enqueue(draft())
+        val repo = ScriptedPublishRepository(ArrayDeque(listOf(Result.Err(MealError.Publish.AlreadyPostedToday))))
+        val runner = DraftRetryRunner(q, repo, AlwaysOnline(), DraftRetryPolicy())
+
+        val drained = runner.runOnce(scope = null)
+
+        assertTrue(drained, "an already-posted draft must drain (goal already met)")
+        assertTrue(q.observe().first().isEmpty(), "already-posted entry must be removed, not failed")
     }
 
     @Test

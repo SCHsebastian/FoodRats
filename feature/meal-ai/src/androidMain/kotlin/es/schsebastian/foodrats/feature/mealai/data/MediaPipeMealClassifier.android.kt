@@ -70,6 +70,8 @@ internal actual class MediaPipeMealClassifier(
                 Result.Ok(labels)
             } catch (t: Throwable) {
                 Result.Err(ClassifierError.Run.InferenceFailed)
+            } finally {
+                bmp.recycle()
             }
         }
 }

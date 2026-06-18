@@ -56,6 +56,8 @@ androidxBenchmark = "1.5.0-alpha06"
 androidxBaselineprofile = "1.5.0-alpha06"
 androidxUiautomator = "2.3.0"
 androidxProfileinstaller = "1.4.1"
+# Android 12+ SplashScreen API (branded launch screen). Backport for <12.
+androidxCoreSplashscreen = "1.0.1"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -157,6 +159,7 @@ androidx-test-uiautomator       = { module = "androidx.test.uiautomator:uiautoma
 # profileinstaller is normally pulled transitively, but :androidApp pins it explicitly so the
 # generated Baseline Profile is installed at first run on devices without Play Cloud profiles.
 androidx-profileinstaller       = { module = "androidx.profileinstaller:profileinstaller", version.ref = "androidxProfileinstaller" }
+androidx-core-splashscreen      = { module = "androidx.core:core-splashscreen",            version.ref = "androidxCoreSplashscreen" }
 
 [bundles]
 # NB: dashed bundle names nest in the generated accessor, exactly like libraries —

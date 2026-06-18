@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.account.AccountDeletionError
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.core.domain.account.DataExportError
 import es.schsebastian.foodrats.core.domain.preferences.LocalePreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.ThemePreferenceError
 
@@ -44,11 +45,13 @@ sealed interface ProfileError {
         data object PermissionDeniedForever : Notifications
     }
 
+    sealed interface Reminders : ProfileError {
+        data object PersistFailed : Reminders
+    }
+
     sealed interface Delete : ProfileError {
         data object PhraseMismatch : Delete
 
-        /** Dead-but-kept one release (stub-era outcome); removed in a follow-up. See spec §10. */
-        data object NotImplemented : Delete
         data object Unavailable : Delete
 
         /** Transient, retryable: server couldn't reassign an owned crew. Replaces OwnerOfActiveCrew. */
@@ -80,9 +83,12 @@ internal fun NotificationsPreferenceError.toProfileError(): ProfileError = when 
     NotificationsPreferenceError.Persist.Unavailable -> ProfileError.Notifications.PersistFailed
 }
 
+internal fun MealReminderPreferenceError.toProfileError(): ProfileError = when (this) {
+    MealReminderPreferenceError.Persist.Unavailable -> ProfileError.Reminders.PersistFailed
+}
+
 internal fun AccountDeletionError.toProfileError(): ProfileError = when (this) {
     AccountDeletionError.Validation.PhraseMismatch -> ProfileError.Delete.PhraseMismatch
-    AccountDeletionError.Backend.NotImplemented -> ProfileError.Delete.NotImplemented
     AccountDeletionError.Backend.Unavailable -> ProfileError.Delete.Unavailable
     AccountDeletionError.Deletion.OwnerReassignFailed -> ProfileError.Delete.OwnerReassignFailed
 }

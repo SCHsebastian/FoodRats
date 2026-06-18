@@ -20,19 +20,33 @@ class SignInViewModel(
 
     override suspend fun handle(intent: SignInIntent) = when (intent) {
         SignInIntent.ContinueWithGoogle -> doGoogle()
-        SignInIntent.DismissError       -> update { it.copy(error = null, emailError = null, passwordError = null) }
+        SignInIntent.ContinueWithApple  -> doApple()
+        SignInIntent.DismissError       -> update { it.copy(error = null, emailError = null, passwordError = null, appleComingSoon = false) }
         SignInIntent.SubmitEmail        -> doEmailSubmit()
         SignInIntent.ToggleMode         -> update {
             val next = if (it.mode == SignInMode.SignIn) SignInMode.SignUp else SignInMode.SignIn
-            it.copy(mode = next, error = null, emailError = null, passwordError = null)
+            it.copy(mode = next, error = null, emailError = null, passwordError = null, appleComingSoon = false)
         }
-        is SignInIntent.UpdateEmail     -> update { it.copy(email = intent.value, emailError = null, error = null) }
-        is SignInIntent.UpdatePassword  -> update { it.copy(password = intent.value, passwordError = null, error = null) }
+        is SignInIntent.UpdateEmail     -> update { it.copy(email = intent.value, emailError = null, error = null, appleComingSoon = false) }
+        is SignInIntent.UpdatePassword  -> update { it.copy(password = intent.value, passwordError = null, error = null, appleComingSoon = false) }
     }
 
     private suspend fun doGoogle() {
-        update { it.copy(isLoading = true, error = null) }
+        update { it.copy(isLoading = true, error = null, appleComingSoon = false) }
         emitFromResult(auth.signInWithGoogle(), AuthMethod.GOOGLE, isSignUp = false)
+    }
+
+    private suspend fun doApple() {
+        update { it.copy(isLoading = true, error = null, appleComingSoon = false) }
+        val r = auth.signInWithApple()
+        // The flow is wired but "being built": the platform client returns NotYetAvailable, which
+        // we surface as a friendly notice (not the red error banner) and don't log as a failure.
+        // Real Apple errors (future) fall through to the normal error path.
+        if (r is Result.Err && r.error == AuthError.AppleSignIn.NotYetAvailable) {
+            update { it.copy(isLoading = false, appleComingSoon = true) }
+            return
+        }
+        emitFromResult(r, AuthMethod.APPLE, isSignUp = false)
     }
 
     private suspend fun doEmailSubmit() {

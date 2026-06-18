@@ -77,6 +77,12 @@ class FakeCrewOwnerPort(private val owner: AccountId? = null) : CrewOwnerPort {
     override fun observeOwner(crewId: CrewId) = flowOf(owner)
 }
 
+/** Crew-owner port whose owner can change at runtime, to exercise reactive RBAC. */
+class MutableCrewOwnerPort(initial: AccountId? = null) : CrewOwnerPort {
+    val owner = MutableStateFlow(initial)
+    override fun observeOwner(crewId: CrewId): Flow<AccountId?> = owner
+}
+
 class FakeMealDeletePort : MealDeletePort {
     var result: Result<Unit, MealDeleteError> = Result.success(Unit)
     override suspend fun delete(crewId: CrewId, mealId: MealId) = result
@@ -295,6 +301,45 @@ class MealDetailCommentIdentityTest {
         vm.state.test {
             val s = expectMostRecentItem()
             assertEquals(CommentError.Read.Unavailable, s.commentReadError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun comment_deletability_updates_when_crew_owner_changes() = runTest {
+        // Regression (feed-02): owner was snapshotted once at subscription, so a crew-owner
+        // handover never re-derived comment-row deletability. With owner derived reactively,
+        // a row authored by someone else becomes deletable the moment the viewer becomes owner.
+        val commentPort = FakeMealCommentPort()
+        val accountPort = FakeAccountReadPort()
+        val active = FakeActiveCrewProvider(initial = crew)
+        val session = FakeSessionProvider(Session(viewerId, crew))
+        val ownerPort = MutableCrewOwnerPort(initial = null)
+        val vm = MealDetailViewModel(
+            mealId = "meal-1",
+            dayIso = "2026-05-20",
+            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
+            rateMeal = RateMealUseCase(FakeMealRatingPort()),
+            commentPort = commentPort,
+            accountReadPort = accountPort,
+            ingredientRead = FakeIngredientReadPort(),
+            activeCrew = active,
+            session = session,
+            clock = FixedClock(),
+            zone = zone,
+            deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
+            deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
+            deleteComment = DeleteCommentUseCase(commentPort),
+            crewOwner = ownerPort,
+            storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
+        )
+        commentPort.emit(listOf(commentFrom("u-other", "hi")))
+        accountPort.set(accountId("u-other"), Account(accountId("u-other"), "h", "Other", null, null))
+        vm.state.test {
+            // Viewer is neither author nor owner yet -> not deletable.
+            assertFalse(expectMostRecentItem().commentRows.single().canDelete)
+            // Viewer becomes the crew owner -> the SAME row must now be deletable.
+            ownerPort.owner.value = viewerId
+            assertTrue(awaitItem().commentRows.single().canDelete)
             cancelAndIgnoreRemainingEvents()
         }
     }

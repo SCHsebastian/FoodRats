@@ -36,7 +36,6 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
-import kotlin.math.round
 
 @Composable
 fun FrBestPlatePodium(
@@ -106,7 +105,7 @@ fun FrBestPlatePodium(
             verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
         ) {
             FrText(
-                text = resolve(StatsStringKey.BestPlateScoreFormat, formatScore(score)),
+                text = resolve(StatsStringKey.BestPlateScoreFormat, formatOneDecimal(score)),
                 color = semantic.onScrim,
                 style = FrTextStyles.statNumber,
             )
@@ -122,11 +121,4 @@ fun FrBestPlatePodium(
             )
         }
     }
-}
-
-private fun formatScore(v: Float): String {
-    val r = round(v * 10f) / 10f
-    val whole = r.toInt()
-    val tenths = ((r - whole) * 10f).toInt()
-    return "$whole.${if (tenths < 0) -tenths else tenths}"
 }

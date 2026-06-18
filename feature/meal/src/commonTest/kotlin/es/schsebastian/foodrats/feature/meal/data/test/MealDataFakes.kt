@@ -31,6 +31,12 @@ internal class FakeMealFirestore : MealFirestore {
     var rateFault: Throwable? = null
     var rateOutcome: MealFirestore.RateOutcome = MealFirestore.RateOutcome.Ok
     var existingSlots: Set<MealSlot> = emptySet()
+    // When non-null, `mealExists` reports these slots AFTER a write has thrown — models a
+    // concurrent publish that created the doc between the free-slot pre-check and this rejected
+    // write (the double-fire race). Lets a test assert the orphan-cleanup is skipped for a blob
+    // that now backs a live doc.
+    var existingSlotsAfterWriteFault: Set<MealSlot>? = null
+    private var writeFaultRaised = false
 
     data class WriteCall(val dto: MealDto, val docId: String)
     val writes = mutableListOf<WriteCall>()
@@ -53,7 +59,10 @@ internal class FakeMealFirestore : MealFirestore {
         authorId: AccountId,
         dayKey: String,
         slot: MealSlot,
-    ): Boolean = slot in existingSlots
+    ): Boolean {
+        val slots = if (writeFaultRaised) (existingSlotsAfterWriteFault ?: existingSlots) else existingSlots
+        return slot in slots
+    }
 
     override suspend fun takenSlots(crewId: CrewId, authorId: AccountId, dayKey: String): Set<MealSlot> =
         existingSlots
@@ -64,7 +73,7 @@ internal class FakeMealFirestore : MealFirestore {
     }
 
     override suspend fun write(dto: MealDto, docId: String) {
-        writeFault?.let { throw it }
+        writeFault?.let { writeFaultRaised = true; throw it }
         writes += WriteCall(dto, docId)
     }
 

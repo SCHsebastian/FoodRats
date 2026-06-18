@@ -1,28 +1,46 @@
 package es.schsebastian.foodrats.core.designsystem.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 
 @Composable
 fun FoodRatsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    minotaur: Boolean = false,
+    onMinotaurToggle: (Boolean) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     val colors = if (darkTheme) FoodRatsDarkColors else FoodRatsLightColors
     val semantic = if (darkTheme) FoodRatsDarkSemanticColors else FoodRatsLightSemanticColors
     val fontFamily = rememberFrFontFamily()
     val typography = rememberFoodRatsTypography(fontFamily)
+    var minotaurOn by rememberSaveable(minotaur) { mutableStateOf(minotaur) }
     CompositionLocalProvider(
         LocalFrSemanticColors provides semantic,
         LocalFrFontFamily provides fontFamily,
+        LocalMinotaurMode provides minotaurOn,
     ) {
         MaterialTheme(
             colorScheme = colors,
             typography = typography,
             shapes = FoodRatsShapes,
-            content = content,
-        )
+        ) {
+            Box(
+                modifier = Modifier.minotaurUnlockGesture {
+                    minotaurOn = !minotaurOn
+                    onMinotaurToggle(minotaurOn)
+                },
+            ) {
+                content()
+            }
+        }
     }
 }

@@ -38,7 +38,6 @@ class FakeCrewRepository(
     override suspend fun create(
         name: String,
         founder: AccountId,
-        founderDisplayName: String,
     ): Result<Crew, CrewError> {
         val r = nextCreate ?: error("nextCreate not stubbed")
         if (r is Result.Ok) crews.value = crews.value + r.value
@@ -48,7 +47,6 @@ class FakeCrewRepository(
     override suspend fun joinByCode(
         code: CrewCode,
         joiner: AccountId,
-        joinerDisplayName: String,
     ): Result<Crew, CrewError> {
         val r = nextJoin ?: error("nextJoin not stubbed")
         if (r is Result.Ok) crews.value = crews.value + r.value

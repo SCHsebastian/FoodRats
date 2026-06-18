@@ -30,19 +30,19 @@ class CreateCrewUseCaseTest {
 
     @Test fun blank_name_returns_NameBlank() = runTest {
         val repo = FakeCrewRepository()
-        val r = CreateCrewUseCase(repo).invoke("   ", founderId, "Sam")
+        val r = CreateCrewUseCase(repo).invoke("   ", founderId)
         assertEquals(Result.failure(CrewError.Validation.NameBlank), r)
     }
 
     @Test fun overlong_name_returns_NameTooLong() = runTest {
         val repo = FakeCrewRepository()
-        val r = CreateCrewUseCase(repo).invoke("x".repeat(41), founderId, "Sam")
+        val r = CreateCrewUseCase(repo).invoke("x".repeat(41), founderId)
         assertEquals(Result.failure(CrewError.Validation.NameTooLong), r)
     }
 
     @Test fun valid_name_delegates_to_repo() = runTest {
         val repo = FakeCrewRepository().apply { nextCreate = Result.success(sampleCrew) }
-        val r = CreateCrewUseCase(repo).invoke("  Test Crew  ", founderId, "Sam")
+        val r = CreateCrewUseCase(repo).invoke("  Test Crew  ", founderId)
         assertIs<Result.Ok<Crew>>(r)
         assertEquals(sampleCrew, r.value)
     }

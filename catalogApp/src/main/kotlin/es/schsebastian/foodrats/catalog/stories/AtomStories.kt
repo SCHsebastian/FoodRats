@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -54,6 +56,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
+import es.schsebastian.foodrats.core.designsystem.theme.LocalMinotaurMode
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
@@ -77,6 +80,7 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.uploadprogress", CatalogGroup.ATOMS, "FrUploadProgressBar", "Top-of-screen indeterminate bar that slides in while uploads run") { UploadProgressBarStory() },
     CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — plate + ears at three sizes") { LogoStory() },
     CatalogEntry("atom.card",          CatalogGroup.ATOMS, "FrCard",          "Rounded surface container — static or clickable with press lift") { CardStory() },
+    CatalogEntry("atom.card.fur",      CatalogGroup.ATOMS, "FrCard (Minotaur)", "Hidden Minotaur mode — furry edge via LocalMinotaurMode") { MinotaurCardStory() },
     CatalogEntry("atom.sparkline",     CatalogGroup.ATOMS, "FrSparkline",     "Tiny inline trend chart for stat tiles") { SparklineStory() },
     CatalogEntry("atom.qrcode",        CatalogGroup.ATOMS, "FrQrCode",        "Pure-Kotlin QR encoder rendered on Canvas — shareable invite link") { QrCodeStory() },
     CatalogEntry("atom.flamebadge",    CatalogGroup.ATOMS, "FrFlameBadge",    "🔥 streak pill on the streakHot semantic color") { FlameBadgeStory() },
@@ -705,6 +709,26 @@ private fun GlassPillStory() {
             ) {
                 FrGlassPill(icon = FrIcons.Back, onClick = {}, contentDescription = "Back")
                 FrGlassPill(icon = FrIcons.Close, onClick = {}, contentDescription = "Close")
+            }
+        }
+    }
+}
+
+@Composable
+private fun MinotaurCardStory() {
+    CatalogScene(label = "Minotaur mode ON — furry pelt + neon rim") {
+        CompositionLocalProvider(LocalMinotaurMode provides true) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.scrim)
+                    .padding(vertical = Spacing.xxl, horizontal = Spacing.xl),
+                contentAlignment = Alignment.Center,
+            ) {
+                FrCard(modifier = Modifier.width(220.dp)) {
+                    FrText("Furry card", style = MaterialTheme.typography.titleMedium)
+                    FrText("3-finger long-press unlocks this app-wide", style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }

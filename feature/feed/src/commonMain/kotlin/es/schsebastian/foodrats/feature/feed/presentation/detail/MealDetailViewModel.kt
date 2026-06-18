@@ -44,9 +44,11 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
@@ -138,8 +140,19 @@ class MealDetailViewModel(
             update { it.copy(commentsLoading = false, commentReadError = CommentError.Read.Unavailable) }
             return@launch
         }
-        val viewerId = session.current.first()?.accountId
-        val ownerId = activeCrew.current.first()?.let { crewOwner.observeOwner(it).first() }
+        // Viewer + owner are derived REACTIVELY (not snapshotted once at subscription) so
+        // comment-row deletability tracks a sign-in/account change or a crew-owner handover
+        // instead of going stale for the lifetime of the screen.
+        val viewerIdFlow = session.current
+            .map { it?.accountId }
+            .distinctUntilChanged()
+        val ownerIdFlow = activeCrew.current
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(null) else crewOwner.observeOwner(crewId)
+            }
+            .distinctUntilChanged()
+        val rbacFlow = combine(viewerIdFlow, ownerIdFlow) { viewerId, ownerId -> viewerId to ownerId }
+
         val commentsFlow = activeCrew.current
             .flatMapLatest { crewId ->
                 if (crewId == null) flowOf<Result<List<MealComment>, CommentError.Read>>(
@@ -152,8 +165,9 @@ class MealDetailViewModel(
         // and feeds a single terminal collect. A nested `collect` inside the outer
         // collector (the old shape) suspended the outer collector forever on the first
         // batch, freezing the comment stream — new comments never arrived.
-        commentsFlow
-            .flatMapLatest { r ->
+        combine(commentsFlow, rbacFlow) { r, rbac -> r to rbac }
+            .flatMapLatest { (r, rbac) ->
+                val (viewerId, ownerId) = rbac
                 when (r) {
                     is Result.Err -> flowOf(CommentRowsResult.Err(r.error))
                     is Result.Ok -> {

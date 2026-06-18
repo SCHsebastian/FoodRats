@@ -27,13 +27,13 @@ class JoinCrewByCodeUseCaseTest {
 
     @Test fun malformed_code_returns_CodeMalformed_without_calling_repo() = runTest {
         val repo = FakeCrewRepository()
-        val r = JoinCrewByCodeUseCase(repo).invoke("xx", joinerId, "Pat")
+        val r = JoinCrewByCodeUseCase(repo).invoke("xx", joinerId)
         assertEquals(Result.failure(CrewError.Validation.CodeMalformed), r)
     }
 
     @Test fun valid_code_delegates_to_repo() = runTest {
         val repo = FakeCrewRepository().apply { nextJoin = Result.success(crew) }
-        val r = JoinCrewByCodeUseCase(repo).invoke("ABCD23", joinerId, "Pat")
+        val r = JoinCrewByCodeUseCase(repo).invoke("ABCD23", joinerId)
         assertIs<Result.Ok<Crew>>(r)
         assertEquals(crew, r.value)
     }

@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectTapGestures
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
@@ -117,7 +118,7 @@ fun FrStoryScaffold(
             )
             IconButton(
                 onClick = onClose,
-                colors = IconButtonDefaults.iconButtonColors(contentColor = Color.White),
+                colors = IconButtonDefaults.iconButtonColors(contentColor = LocalFrSemanticColors.current.onScrim),
                 modifier = Modifier.align(Alignment.TopEnd),
             ) {
                 Icon(imageVector = FrIcons.Close, contentDescription = closeContentDescription ?: "Close")

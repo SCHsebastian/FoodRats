@@ -33,6 +33,7 @@ kotlin {
             implementation(projects.core.domain)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
+            implementation(libs.kotlinx.datetime)
             implementation(libs.androidx.datastore.preferences)
             implementation(libs.bundles.firebase.gitlive)
             // Callable Cloud Functions binding — backs FirebaseImageUrlResolver (mintPlateUrls).
@@ -61,6 +62,8 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.testJunit)
                 implementation(libs.junit)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.androidx.activity.compose)
             }
         }
         androidMain.dependencies {

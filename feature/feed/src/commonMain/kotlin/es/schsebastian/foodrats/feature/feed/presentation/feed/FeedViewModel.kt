@@ -147,6 +147,9 @@ class FeedViewModel(
                 if (crewId == null || viewerId == null || parsed.isEmpty()) {
                     flowOf(emptyMap<String, ReactionUi>())
                 } else {
+                    // Evict listeners for meals no longer visible so the cache can't grow
+                    // unbounded across day navigation / crew switches.
+                    reactionFlows.keys.retainAll(parsed.toSet())
                     val perMealFlows = parsed.map { mealId ->
                         reactionFlows.getOrPut(mealId) {
                             reactions.observe(crewId, mealId)

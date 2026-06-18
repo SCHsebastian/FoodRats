@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.core.domain.telemetry
 
+import kotlin.concurrent.Volatile
+
 /**
  * Production sink for [FrLog] warnings/errors. Implemented in the data layer and
  * wired at app boot (release builds only) so `:core:domain` stays free of vendor
@@ -57,13 +59,14 @@ object FrLog {
         const val ActiveCrew = "ActiveCrew"
         const val RootNav    = "RootNav"
         const val Prefs      = "Prefs"
+        const val Notifications = "Notifications"
         const val Lifecycle  = "Lifecycle"
         /** Prefix used by [es.schsebastian.foodrats.core.presentation.mvi.MviViewModel] — full tag is `MVI/<VmClassName>`. */
         const val Mvi        = "MVI"
     }
 
     /** Master switch — when false, nothing logs regardless of per-tag state. */
-    var enabled: Boolean = true
+    @Volatile var enabled: Boolean = true
 
     /**
      * Production observability sink — null in debug (println-only). Installed at app
@@ -71,7 +74,7 @@ object FrLog {
      * function references it; assign through [installFrLogSink], not directly, off
      * call sites. Receives only warnings/errors ([w]), never debug spam ([d]).
      */
-    var sink: FrLogSink? = null
+    @Volatile var sink: FrLogSink? = null
 
     /** Tags explicitly turned off; unknown tags default to ENABLED (under the master switch). */
     @PublishedApi

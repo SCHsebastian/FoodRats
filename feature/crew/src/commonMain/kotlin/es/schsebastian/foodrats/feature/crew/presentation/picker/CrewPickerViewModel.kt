@@ -1,12 +1,10 @@
 package es.schsebastian.foodrats.feature.crew.presentation.picker
 
 import androidx.lifecycle.viewModelScope
-import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.JoinMethod
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
-import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -23,12 +21,8 @@ class CrewPickerViewModel(
     private val createCrew: CreateCrewUseCase,
     private val joinCrew: JoinCrewByCodeUseCase,
     private val switchActive: SwitchActiveCrewUseCase,
-    private val accountRead: AccountReadPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<CrewPickerState, CrewPickerIntent, CrewPickerEffect>(CrewPickerState()) {
-
-    private suspend fun myDisplayName(accountId: AccountId): String =
-        accountRead.observe(accountId).first()?.displayName.orEmpty()
 
     init {
         viewModelScope.launch {
@@ -57,7 +51,7 @@ class CrewPickerViewModel(
         val state = currentState
         val account = session.current.first()?.accountId ?: return
         update { it.copy(isCreating = true, error = null) }
-        when (val r = createCrew(state.createInput, account, myDisplayName(account))) {
+        when (val r = createCrew(state.createInput, account)) {
             is Result.Ok  -> {
                 update { it.copy(isCreating = false, showCreateForm = false, createInput = "") }
                 analytics.track(AnalyticsEvent.CrewCreated(r.value.id))
@@ -72,7 +66,7 @@ class CrewPickerViewModel(
         val state = currentState
         val account = session.current.first()?.accountId ?: return
         update { it.copy(isJoining = true, error = null) }
-        when (val r = joinCrew(state.joinInput, account, myDisplayName(account))) {
+        when (val r = joinCrew(state.joinInput, account)) {
             is Result.Ok  -> {
                 update { it.copy(isJoining = false, showJoinForm = false, joinInput = "") }
                 analytics.track(AnalyticsEvent.CrewJoined(r.value.id, JoinMethod.INVITE_CODE))

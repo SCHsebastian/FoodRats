@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.data.analytics.AnalyticsIdentityBinder
 import es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver
 import es.schsebastian.foodrats.core.data.preferences.ConsentRepository
 import es.schsebastian.foodrats.core.data.preferences.LocaleRepository
+import es.schsebastian.foodrats.core.data.preferences.MealReminderScheduleRepository
 import es.schsebastian.foodrats.core.data.preferences.NotificationsPreferenceRepository
 import es.schsebastian.foodrats.core.data.preferences.ThemeModeRepository
 import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
@@ -17,6 +18,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -44,6 +46,9 @@ val coreDataModule = module {
     single<LocalePort> { LocaleRepository(prefs = get(), dispatchers = get()) }
     single<NotificationsPreferencePort> {
         NotificationsPreferenceRepository(prefs = get(), dispatchers = get())
+    }
+    single<MealReminderSchedulePort> {
+        MealReminderScheduleRepository(prefs = get(), dispatchers = get())
     }
     single { Firebase.auth }
     single { Firebase.firestore }

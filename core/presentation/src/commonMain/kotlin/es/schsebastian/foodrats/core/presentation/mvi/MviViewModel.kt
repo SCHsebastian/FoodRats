@@ -46,4 +46,9 @@ abstract class MviViewModel<S : MviState, I : MviIntent, E : MviEffect>(
         FrLog.d(logTag) { "effect $effect" }
         _effects.send(effect)
     }
+
+    override fun onCleared() {
+        super.onCleared()
+        _effects.close()
+    }
 }

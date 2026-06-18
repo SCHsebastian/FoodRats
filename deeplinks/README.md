@@ -8,15 +8,32 @@ FoodRats opens to a specific screen from a URL on both platforms. The Kotlin + S
 The route discriminator is always the **first path segment** (so parsing is scheme/host-agnostic —
 see `shared/.../app/navigation/DeepLink.kt`):
 
+The web host is the **live** Firebase Hosting domain `foodrats-de4ec.web.app` (it serves the
+association files + `/invite` landing). `foodrats.app` is a future vanity domain — not used until
+it's mapped as a Hosting custom domain (see docs/store-release/PUBLICATION.md).
+
 | URL | Route |
 |---|---|
-| `https://foodrats.app/meal/{mealId}/{dayIso}` | `Route.MealDetail` |
-| `https://foodrats.app/crew/{crewId}` | `Route.CrewSettings` |
+| `https://foodrats-de4ec.web.app/meal/{mealId}/{dayIso}` | `Route.MealDetail` |
+| `https://foodrats-de4ec.web.app/crew/{crewId}` | `Route.CrewSettings` |
+| `https://foodrats-de4ec.web.app/invite/{code}` | `Route.InvitePreview` |
 | `foodrats://app/meal/{mealId}/{dayIso}` | `Route.MealDetail` (custom-scheme fallback) |
 | `foodrats://app/crew/{crewId}` | `Route.CrewSettings` (custom-scheme fallback) |
+| `foodrats://app/invite/{code}` | `Route.InvitePreview` (custom-scheme fallback) |
 
 Unrecognised URLs are a no-op (parser returns null). All deep-link targets are `Route.Protected`,
 so a link opened while signed-out is **stashed and resumed after sign-in** (`RootNavViewModel`).
+
+### Invites are web-capable (since 2026-06-18)
+
+`DeepLinks.inviteUrl(code)` emits the **https** form on the live Firebase Hosting domain
+(`foodrats-de4ec.web.app`, not the not-yet-hosting `foodrats.app`), reversing the earlier
+"app-installed-only" custom-scheme contract. A recipient **with** the app opens it via
+App/Universal Links (or, before link verification is live, the landing page's "Open in app"
+custom-scheme button); a recipient **without** the app lands on the static page at
+`website/invite/index.html` (download CTAs + the invite code). The page reads the code from the
+path and must stay in sync with the parser's `invite` arm. Served via a Hosting `rewrite`
+(`/invite/** → /invite/index.html`) — static files, including `/.well-known/*`, still win over it.
 
 ## How it flows (already implemented)
 
@@ -46,9 +63,11 @@ and resumed after sign-in — same intercept-then-resume path as web links.
 ## Deploy steps (NOT code — must be done by a human)
 
 ### 1. Host the association files at the domain root, over HTTPS, no redirects
-- `https://foodrats.app/.well-known/apple-app-site-association` ← this folder's `apple-app-site-association`
-  - Serve as `Content-Type: application/json`, **no `.json` extension**.
-- `https://foodrats.app/.well-known/assetlinks.json` ← this folder's `assetlinks.json`
+Already wired: `website/.well-known/` holds both files and `firebase.json` serves them with
+`Content-Type: application/json` (no `.json` extension for AASA). After `firebase deploy --only
+hosting` they're live at:
+- `https://foodrats-de4ec.web.app/.well-known/apple-app-site-association`
+- `https://foodrats-de4ec.web.app/.well-known/assetlinks.json`
 
 ### 2. Fill in the Android cert fingerprints in `assetlinks.json`
 Play App Signing is used, so include **both** the Play app-signing key and the upload key SHA-256:
@@ -60,11 +79,13 @@ Verify after deploy:
 `https://developers.google.com/digital-asset-links/tools/generator` or
 `adb shell pm verify-app-links --re-verify es.schsebastian.foodrats`.
 
-### 3. Wire the iOS Associated Domains entitlement (one-time, in Xcode)
-- `iosApp/iosApp/iosApp.entitlements` already declares `applinks:foodrats.app`.
-- In Xcode → target `iosApp` → **Signing & Capabilities** → **+ Capability → Associated Domains**
-  (this sets `CODE_SIGN_ENTITLEMENTS = iosApp/iosApp.entitlements` and registers the capability on
-  the App ID). Build with `-allowProvisioningUpdates` so the profile picks it up.
+### 3. iOS Associated Domains entitlement
+- `iosApp/iosApp/iosApp.entitlements` declares `applinks:foodrats-de4ec.web.app`, and
+  `CODE_SIGN_ENTITLEMENTS` is now wired in `iosApp/Configuration/Config.xcconfig` — no manual Xcode
+  step needed.
+- The App ID + provisioning profile must still **enable the Associated Domains + Push capabilities**.
+  Local Automatic signing adds them; CI `fastlane match` profiles must be regenerated
+  (`match appstore --force`) or distribution signing fails on the now-present entitlements.
 - AASA is fetched by Apple's CDN at install; test with the link on a real device (Notes → tap link).
 
 The custom scheme (`foodrats://app/...`) needs **no** entitlement — it's already registered in
@@ -72,7 +93,7 @@ The custom scheme (`foodrats://app/...`) needs **no** entitlement — it's alrea
 
 ## Local testing
 
-- **Android:** `adb shell am start -a android.intent.action.VIEW -d "https://foodrats.app/meal/abc/2026-05-26" es.schsebastian.foodrats`
+- **Android:** `adb shell am start -a android.intent.action.VIEW -d "https://foodrats-de4ec.web.app/meal/abc/2026-05-26" es.schsebastian.foodrats`
   (use `foodrats://app/meal/abc/2026-05-26` to test the custom scheme without App Links verification).
 - **iOS sim:** `xcrun simctl openurl booted "foodrats://app/crew/c-1"` (custom scheme; Universal
   Links require the hosted AASA + a real device for full verification).

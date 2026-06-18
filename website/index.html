@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FoodRats — a private table for your crew</title>
+  <meta name="description" content="FoodRats is a closed-group meal-sharing app for crews of 3–8. Post your plate, see what your people are eating, rack up streaks. No calories, no diets, no strangers." />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="FoodRats" />
+  <meta property="og:title" content="FoodRats — a private table for your crew" />
+  <meta property="og:description" content="Share the food you're proud of with a tiny crew of friends. No calories, no diets, no strangers." />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="FoodRats — a private table for your crew" />
+  <meta name="twitter:description" content="Share the food you're proud of with a tiny crew of friends. No calories, no diets, no strangers." />
+
+  <style>
+    :root {
+      --bg: #E8E6DE;        /* concrete */
+      --surface: #ffffff;
+      --ink: #1B1C19;       /* charcoal-olive */
+      --muted: #5b5e54;
+      --primary: #4F6E2B;   /* deep olive */
+      --primary-d: #3f581f;
+      --ember: #B0561E;     /* ember copper */
+      --rust: #7A3826;      /* rust tertiary */
+      --line: #d8d6cc;
+      --chip: #f1efe8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    a { color: var(--primary); }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 0 20px; }
+
+    /* Hero */
+    header.hero {
+      background:
+        radial-gradient(1200px 400px at 80% -10%, rgba(176, 86, 30, 0.10), transparent 60%),
+        radial-gradient(900px 360px at 0% 0%, rgba(79, 110, 43, 0.12), transparent 55%);
+      padding: 64px 0 52px;
+      border-bottom: 1px solid var(--line);
+    }
+    .brand { font-weight: 800; letter-spacing: -0.02em; color: var(--primary); font-size: 22px; }
+    .hero h1 { font-size: 44px; line-height: 1.1; letter-spacing: -0.02em; margin: 22px 0 12px; max-width: 16ch; }
+    .hero p.lede { font-size: 19px; color: var(--muted); margin: 0 0 8px; max-width: 52ch; }
+    .hero p.lede.es { font-size: 15px; opacity: 0.85; }
+    .cta { margin-top: 28px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .store {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 13px 20px; border-radius: 13px; text-decoration: none; font-weight: 700; font-size: 15px;
+      background: var(--ink); color: #fff; border: 1px solid var(--ink);
+    }
+    .store.alt { background: var(--surface); color: var(--ink); border-color: var(--line); }
+    .store:hover { opacity: 0.92; }
+    .store svg { width: 22px; height: 22px; }
+    .badge {
+      display: inline-block; margin-top: 22px; background: var(--chip); border: 1px solid var(--line);
+      border-radius: 999px; padding: 4px 14px; font-size: 13px; font-weight: 600; color: var(--rust);
+    }
+
+    /* Sections */
+    section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+    section h2 { font-size: 28px; letter-spacing: -0.01em; margin: 0 0 8px; }
+    section .sub { color: var(--muted); margin: 0 0 32px; max-width: 56ch; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .feature {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px;
+    }
+    .feature .ic {
+      width: 42px; height: 42px; border-radius: 11px; display: grid; place-items: center;
+      background: var(--chip); margin-bottom: 14px;
+    }
+    .feature .ic svg { width: 24px; height: 24px; }
+    .feature h3 { margin: 0 0 6px; font-size: 17px; }
+    .feature p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; counter-reset: step; }
+    .step { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 24px; position: relative; }
+    .step::before {
+      counter-increment: step; content: counter(step);
+      position: absolute; top: -14px; left: 22px;
+      width: 30px; height: 30px; border-radius: 999px; background: var(--primary); color: #fff;
+      display: grid; place-items: center; font-weight: 800; font-size: 15px;
+    }
+    .step h3 { margin: 8px 0 6px; font-size: 17px; }
+    .step p { margin: 0; color: var(--muted); font-size: 14px; }
+
+    .manifesto { text-align: center; }
+    .manifesto h2 { font-size: 30px; max-width: 22ch; margin: 0 auto 14px; }
+    .manifesto p { color: var(--muted); max-width: 60ch; margin: 0 auto; font-size: 16px; }
+    .pillrow { margin-top: 26px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+    .pill { background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 8px 16px; font-size: 14px; font-weight: 600; }
+    .pill .x { color: var(--rust); }
+
+    footer { padding: 40px 0 64px; color: var(--muted); font-size: 13px; }
+    footer .row { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; }
+
+    @media (max-width: 720px) {
+      .hero h1 { font-size: 34px; }
+      .grid, .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap">
+      <div class="brand">FoodRats</div>
+      <h1>A private table for your crew.</h1>
+      <p class="lede">Share the food you're proud of with a tiny group of friends — your crew of 3 to 8. See what everyone's eating, cheer it on, keep your streak alive.</p>
+      <p class="lede es" lang="es">Comparte tu comida con tu cuadrilla de 3 a 8 personas. Sin calorías, sin dietas, sin desconocidos.</p>
+      <div class="cta">
+        <a class="store" id="playBtn" href="#" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#A8BC85" d="M3.6 1.8 13 11.2l-2.6 2.6L3.6 1.8zm-.5 1 .1 18.4 9-9.2-9.1-9.2zm11.4 6.8 3 1.7c.9.5.9 1.8 0 2.3l-3 1.7-2.8-2.8 2.8-2.6zM4 22.2 13.4 12.8l2.6 2.6L4 22.2z"/></svg>
+          Google Play
+        </a>
+        <a class="store alt" id="appStoreBtn" href="#" rel="noopener">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#1B1C19" d="M16.4 12.6c0-2 1.6-2.9 1.7-3-1-1.4-2.4-1.6-2.9-1.6-1.2-.1-2.4.7-3 .7-.6 0-1.6-.7-2.6-.7-1.3 0-2.6.8-3.3 2-1.4 2.4-.4 6 1 8 .7 1 1.5 2 2.5 2 1 0 1.4-.6 2.6-.6s1.6.6 2.6.6 1.7-1 2.4-2c.7-1.1 1-2.1 1-2.2-.1 0-1.9-.7-2-2.4zM14.6 6.3c.5-.7.9-1.6.8-2.5-.8 0-1.8.5-2.4 1.2-.5.6-.9 1.5-.8 2.4.9.1 1.8-.4 2.4-1.1z"/></svg>
+          App Store
+        </a>
+      </div>
+      <span class="badge">Coming soon to both stores</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="wrap">
+      <h2>What you get</h2>
+      <p class="sub">FoodRats is built for one thing: keeping a small group of friends close around food.</p>
+      <div class="grid">
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4F6E2B" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4zM9 2 7.2 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.2L15 2H9z"/></svg></div>
+          <h3>Post your plate</h3>
+          <p>Snap the meal, add a line about it, share it to one crew or several. That's the whole ritual.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#B0561E" d="M16 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-8 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.7 0-8 1.3-8 4v3h10v-3c0-1 .4-1.9 1-2.6A13 13 0 0 0 8 13zm8 0c-.4 0-.8 0-1.3.1 1.4 1 2.3 2.3 2.3 3.9v3h7v-3c0-2.7-5.3-4-8-4z"/></svg></div>
+          <h3>A feed that's only your people</h3>
+          <p>No strangers, no algorithm, no ads. Just today's meals from the crew you chose.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#D45A14" d="M12 2c1 3-1 4-1 6a3 3 0 0 0 6 0c0-.7-.2-1.3-.5-1.9C18.6 7.6 20 10.6 20 14a8 8 0 1 1-16 0c0-3 1.4-5.7 3.6-7.5C7.2 8 7 9 7 10c0 .7.6 1 1 .5C9 9 9 6 12 2z"/></svg></div>
+          <h3>Streaks &amp; leaderboards</h3>
+          <p>Keep your posting streak hot and see who's topping the crew's week — friendly, not competitive.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4F6E2B" d="M12 17.3 6.2 21l1.5-6.6L2 9.7l6.7-.6L12 3l3.3 6.1 6.7.6-5.7 4.7L17.8 21z"/></svg></div>
+          <h3>Rate without the pressure</h3>
+          <p>Give a plate a quiet score. Blind voting keeps it honest and kind.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#B0561E" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2c1.5 0 3 .4 4.3 1.2L13 8.5l-1.8-1L8 9.8 6.2 7.4A8 8 0 0 1 12 4zM4 12c0-.7.1-1.4.3-2L7 13l3-1 2 1.2-1 3.4 2 2.4A8 8 0 0 1 4 12zm12.7 6.4-1-3.2 2.6-2.4 1.5.7A8 8 0 0 1 16.7 18.4z"/></svg></div>
+          <h3>Cuisine passport</h3>
+          <p>Every dish stamps your passport. Watch your crew's map of flavors fill in over time.</p>
+        </div>
+        <div class="feature">
+          <div class="ic"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#7A3826" d="M12 1 3 5v6c0 5.5 3.8 10.7 9 12 5.2-1.3 9-6.5 9-12V5l-9-4zm0 2.2 7 3.1V11c0 4.3-2.9 8.4-7 9.8C7.9 19.4 5 15.3 5 11V6.3l7-3.1zm-1 4.8v4h2V8h-2zm0 6v2h2v-2h-2z"/></svg></div>
+          <h3>Yours, privately</h3>
+          <p>On-device meal recognition, no public profile, and one-tap account &amp; data deletion. Always.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2>How it works</h2>
+      <p class="sub">Three steps, then it's just a habit.</p>
+      <div class="steps">
+        <div class="step">
+          <h3>Start or join a crew</h3>
+          <p>Make a crew and share the invite link, or tap a friend's link to join theirs. 3–8 people, that's it.</p>
+        </div>
+        <div class="step">
+          <h3>Post what you eat</h3>
+          <p>A photo and a few words. Choose which crews see it. Done in seconds, even offline.</p>
+        </div>
+        <div class="step">
+          <h3>Keep the table warm</h3>
+          <p>React, score, and chase streaks. A weekly recap card sums up the crew's best plates.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="manifesto">
+    <div class="wrap">
+      <h2>Food, not numbers.</h2>
+      <p>FoodRats isn't a diet tracker. There are no calories, no macros, no "good" and "bad" food, and no audience full of strangers. It's just the meals you're proud of, shared with a handful of people who actually care.</p>
+      <div class="pillrow">
+        <span class="pill"><span class="x">✕</span> No calorie counting</span>
+        <span class="pill"><span class="x">✕</span> No public followers</span>
+        <span class="pill"><span class="x">✕</span> No ads or algorithm</span>
+        <span class="pill"><span class="x">✕</span> No diet shaming</span>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <div class="brand">FoodRats</div>
+      <p>A closed-group meal-sharing app for crews of 3–8. Made by Sebastián Cardona.</p>
+      <div class="row">
+        <a href="/privacy">Privacy Policy</a>
+        <a href="/account-deletion">Delete your account &amp; data</a>
+        <a href="mailto:schsebastiancardonahenao@gmail.com?subject=FoodRats">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    var PLAY_URL = "https://play.google.com/store/apps/details?id=es.schsebastian.foodrats";
+    var APP_STORE_URL = "https://apps.apple.com/app/foodrats/id6781682875";
+    document.getElementById("playBtn").setAttribute("href", PLAY_URL);
+    document.getElementById("appStoreBtn").setAttribute("href", APP_STORE_URL);
+  </script>
+</body>
+</html>

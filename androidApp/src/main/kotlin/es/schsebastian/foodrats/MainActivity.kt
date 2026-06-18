@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import es.schsebastian.foodrats.app.navigation.DeepLinkBus
 import es.schsebastian.foodrats.app.root.FoodRatsApp
 import es.schsebastian.foodrats.core.data.location.LocationPermissionLauncherHolder
@@ -21,6 +22,9 @@ class MainActivity : ComponentActivity() {
     private val deepLinkBus: DeepLinkBus by inject()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Install the branded SplashScreen (Theme.FoodRats.Splash) before super.onCreate; it
+        // hands off to postSplashScreenTheme once the first frame is ready.
+        installSplashScreen()
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 

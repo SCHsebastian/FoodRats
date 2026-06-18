@@ -19,8 +19,8 @@ internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Notifications.PersistFailed -> AuthStringKey.ProfileNotificationsPersistFailed
     ProfileError.Notifications.PermissionDenied -> AuthStringKey.ProfileNotificationsPermissionDenied
     ProfileError.Notifications.PermissionDeniedForever -> AuthStringKey.ProfileNotificationsPermissionDeniedForever
+    ProfileError.Reminders.PersistFailed -> AuthStringKey.ProfileRemindersPersistFailed
     ProfileError.Delete.PhraseMismatch -> AuthStringKey.DeleteAccountErrorPhrase
-    ProfileError.Delete.NotImplemented -> AuthStringKey.DeleteAccountErrorNotImplemented
     ProfileError.Delete.Unavailable -> AuthStringKey.DeleteAccountErrorBackend
     ProfileError.Delete.OwnerReassignFailed -> AuthStringKey.DeleteAccountErrorOwnership
     ProfileError.Export.Unavailable -> AuthStringKey.ExportDataErrorBackend

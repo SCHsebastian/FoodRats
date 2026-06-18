@@ -10,12 +10,17 @@ fun AuthError.toStringKey(): AuthStringKey = when (this) {
     AuthError.GoogleSignIn.NetworkUnavailable       -> AuthStringKey.ErrorNetwork
     AuthError.GoogleSignIn.MissingServerClientId    -> AuthStringKey.ErrorMissingServerClientId
     AuthError.GoogleSignIn.UnknownClientFailure     -> AuthStringKey.ErrorUnknown
+    AuthError.AppleSignIn.NotYetAvailable           -> AuthStringKey.ErrorAppleComingSoon
+    AuthError.AppleSignIn.UserCancelled             -> AuthStringKey.ErrorUserCancelled
+    AuthError.AppleSignIn.NetworkUnavailable        -> AuthStringKey.ErrorNetwork
+    AuthError.AppleSignIn.InvalidResponse           -> AuthStringKey.ErrorUnknown
+    AuthError.AppleSignIn.UnknownClientFailure      -> AuthStringKey.ErrorUnknown
     AuthError.EmailPassword.InvalidEmail            -> AuthStringKey.ErrorEmailInvalid
     AuthError.EmailPassword.WeakPassword            -> AuthStringKey.ErrorPasswordTooShort
     AuthError.EmailPassword.EmailAlreadyInUse       -> AuthStringKey.ErrorEmailInUse
     AuthError.EmailPassword.WrongCredentials        -> AuthStringKey.ErrorWrongCredentials
     AuthError.Firebase.NotSignedIn                  -> AuthStringKey.ErrorUnknown
-    AuthError.Firebase.TokenExpired                 -> AuthStringKey.ErrorUnknown
+    AuthError.Firebase.TokenExpired                 -> AuthStringKey.ErrorSessionExpired
     AuthError.Firebase.AccountDisabled              -> AuthStringKey.ErrorAccountDisabled
     AuthError.Firebase.Unavailable                  -> AuthStringKey.ErrorUnknown
 }

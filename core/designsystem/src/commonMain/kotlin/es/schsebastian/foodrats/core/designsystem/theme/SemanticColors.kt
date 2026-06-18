@@ -28,6 +28,11 @@ data class FrSemanticColors(
     val onCelebration: Color,
     val streakHot: Color,
     val onStreakHot: Color,
+    /** Minotaur-mode fur tint (hidden cosmetic easter egg). */
+    val fur: Color,
+    val onFur: Color,
+    /** Neon-green rim/glow for the Minotaur-mode pelt. */
+    val furGlow: Color,
     /** Black scrim for the protection gradient under white-on-photo text. Theme-independent. */
     val scrim: Color,
     /** Foreground (white) for text/icons that sit on a photo or [scrim]. Theme-independent. */
@@ -47,6 +52,9 @@ internal val FoodRatsLightSemanticColors = FrSemanticColors(
     onCelebration = Color(0xFFFFFFFF),
     streakHot     = Color(0xFFD45A14),   // forge orange
     onStreakHot   = Color(0xFFFFFFFF),
+    fur           = Color(0xFF6E4B2A),   // minotaur brown
+    onFur         = Color(0xFFE8D9C0),   // cream
+    furGlow       = Color(0xFF35E84A),   // minotaur neon green
     scrim         = Color(0xFF000000),
     onScrim       = Color(0xFFFFFFFF),
 )
@@ -64,6 +72,9 @@ internal val FoodRatsDarkSemanticColors = FrSemanticColors(
     onCelebration = Color(0xFF3B1D00),
     streakHot     = Color(0xFFFB923C),   // forge ember
     onStreakHot   = Color(0xFF3A1A00),
+    fur           = Color(0xFF8A6238),   // lighter minotaur brown
+    onFur         = Color(0xFFECE0CC),   // cream ink on dark fur
+    furGlow       = Color(0xFF5CFF73),   // minotaur neon green
     scrim         = Color(0xFF000000),
     onScrim       = Color(0xFFFFFFFF),
 )

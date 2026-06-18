@@ -8,6 +8,11 @@
 #
 # Required env per platform is documented in docs/cicd-runbook.md.
 
+# App Store Connect numeric app Apple ID (NOT the bundle id — that's es.schsebastian.foodrats).
+# Passed to the iOS upload lanes so App-Store-Connect-API-key auth resolves the app directly
+# instead of looking it up by bundle id. Public (it's the id in the App Store URL), not a secret.
+ASC_APP_ID = "6781682875".freeze
+
 default_platform(:android)
 
 # ---------------------------------------------------------------------------
@@ -67,6 +72,7 @@ platform :ios do
     build_ios
     upload_to_testflight(
       api_key: lane_context[SharedValues::APP_STORE_CONNECT_API_KEY],
+      apple_id: ASC_APP_ID,
       skip_waiting_for_build_processing: true,
     )
   end
@@ -78,12 +84,34 @@ platform :ios do
     build_ios
     upload_to_app_store(
       api_key: lane_context[SharedValues::APP_STORE_CONNECT_API_KEY],
+      apple_id: ASC_APP_ID,
       submit_for_review: true,
       phased_release: true,
       precheck_include_in_app_purchases: false,
       skip_metadata: true,
       skip_screenshots: true,
       force: true,
+    )
+  end
+
+  desc "Regenerate the App Store signing assets (distribution cert + provisioning profile) and " \
+       "push them to the private match repo. Run this from a developer machine whenever the App " \
+       "ID's capabilities change (e.g. after enabling Sign in with Apple) so the distribution " \
+       "profile is re-issued with the new entitlements. The beta/release lanes consume these " \
+       "read-only.\n\n" \
+       "Non-interactive: authenticates to App Store Connect with the ASC API key (no Apple ID / " \
+       "2FA prompt). Unlike the readonly Matchfile default, this lane writes (readonly: false, " \
+       "force: true).\n\n" \
+       "Required env: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH (the .p8), MATCH_GIT_URL (private " \
+       "certs repo), MATCH_PASSWORD (repo encryption passphrase). See docs/cicd-runbook.md."
+  lane :rotate_signing do
+    asc_api_key
+    sync_code_signing(
+      type: "appstore",
+      app_identifier: "es.schsebastian.foodrats",
+      readonly: false,
+      force: true,
+      api_key: lane_context[SharedValues::APP_STORE_CONNECT_API_KEY],
     )
   end
 

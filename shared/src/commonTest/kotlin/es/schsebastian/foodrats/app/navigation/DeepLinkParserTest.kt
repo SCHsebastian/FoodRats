@@ -81,9 +81,11 @@ class DeepLinkParserTest {
     }
 
     @Test
-    fun invite_url_builder_round_trips_through_the_parser() {
+    fun invite_url_builder_uses_https_hosting_host_and_round_trips_through_the_parser() {
         val url = DeepLinks.inviteUrl("AB2K9P")
-        assertEquals("https://foodrats.app/invite/AB2K9P", url)
+        // Web-capable invite: https on the live Firebase Hosting domain so a recipient without the
+        // app lands on website/invite/, while the app intercepts it via App/Universal Links.
+        assertEquals("https://foodrats-de4ec.web.app/invite/AB2K9P", url)
         assertEquals(Route.InvitePreview(code = "AB2K9P"), parseDeepLink(url))
     }
 

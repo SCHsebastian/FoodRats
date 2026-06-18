@@ -111,7 +111,7 @@ sealed interface AnalyticsEvent {
         override val name = "share"
         override val params = mapOf(
             "content_type" to text("streak"),
-            "item_id" to count(streakDays),
+            "item_id" to text(streakDays.toString()),
         )
     }
 

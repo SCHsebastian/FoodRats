@@ -242,10 +242,20 @@ internal class FirebaseMealRepository(
                             representative = (dto.toDomain() as? Result.Ok)?.value
                         }
                     } catch (t: Throwable) {
-                        if (t.toFirebaseFault() == FirebaseFault.AlreadyExists) {
-                            // Raced the mealExists pre-check; this crew already holds the slot. The
-                            // deterministic path means our upload just overwrote the existing blob,
-                            // so DON'T delete it — it backs the live doc.
+                        // `.set()` OVERWRITES — it never throws ALREADY_EXISTS — so same-slot
+                        // uniqueness is enforced ONLY by the create rule's `!exists(...)`, whose
+                        // rejection surfaces as PERMISSION_DENIED, not ALREADY_EXISTS. A
+                        // concurrent / retried / double-fired publish of the SAME draft therefore
+                        // lands here with a LIVE doc already owning this deterministic blob (our
+                        // upload just overwrote it). Reclaiming the blob in that case would strip
+                        // the image off a published meal — the "image uploaded then vanishes" bug.
+                        // So before treating the blob as an orphan, confirm no live doc exists: if
+                        // one does (or the check is inconclusive), it's a benign duplicate — leave
+                        // the blob intact and report AlreadyPostedToday.
+                        val docExists = t.toFirebaseFault() == FirebaseFault.AlreadyExists ||
+                            runCatching { firestore.mealExists(crewId, author, dayKey, slot) }
+                                .getOrDefault(true)
+                        if (docExists) {
                             anyAlreadyExists = true
                         } else {
                             anyFailed = true

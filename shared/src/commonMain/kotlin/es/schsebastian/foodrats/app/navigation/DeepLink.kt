@@ -2,16 +2,25 @@ package es.schsebastian.foodrats.app.navigation
 
 /**
  * The external URL contract for the app. Hosted association files must match this exactly:
- *  - `https://foodrats.app/…`  → Android App Links (autoVerify) + iOS Universal Links
- *  - `foodrats://app/…`        → custom-scheme fallback
+ *  - `https://foodrats-de4ec.web.app/…` → Android App Links (autoVerify) + iOS Universal Links
+ *  - `foodrats://app/…`                 → custom-scheme fallback
  *
  * The route discriminator is always the **first path segment**, so parsing is scheme- and
  * host-agnostic. That is why the custom scheme uses host `app`: `foodrats://app/meal/…` and
- * `https://foodrats.app/meal/…` both yield the path segments `[meal, …]`.
+ * `https://foodrats-de4ec.web.app/meal/…` both yield the path segments `[meal, …]`.
  */
 object DeepLinks {
     const val WEB_SCHEME = "https"
-    const val WEB_HOST = "foodrats.app"
+
+    /**
+     * The LIVE Universal/App-Links host: the Firebase Hosting domain that actually serves the web
+     * pages + association files today (`.well-known/apple-app-site-association`, `assetlinks.json`,
+     * the `/invite` landing — all deployed from `website/`). The vanity domain `foodrats.app` is
+     * NOT used yet: it hosts nothing, so it can't verify. Switch this to `foodrats.app` (and re-add
+     * it to the manifest/entitlements) only once it's mapped as a Firebase Hosting custom domain
+     * serving the same `.well-known` files — see docs/store-release/PUBLICATION.md.
+     */
+    const val WEB_HOST = "foodrats-de4ec.web.app"
     const val APP_SCHEME = "foodrats"
     const val APP_HOST = "app"
 
@@ -21,10 +30,13 @@ object DeepLinks {
     const val SEGMENT_INVITE = "invite" // /invite/{code}           → Route.InvitePreview
 
     /**
-     * Canonical shareable invite URL for [code], e.g. `https://foodrats.app/invite/AB2K9P`. Uses the
-     * Universal/App-Links host so a recipient without the app installed still hits the (user-hosted)
-     * web unfurl page, while an installed app intercepts it (autoVerify). The single source of truth
-     * for the URL a crew member shares — must mirror the [parseDeepLink] `invite` arm exactly.
+     * Canonical shareable invite URL for [code], e.g. `https://foodrats-de4ec.web.app/invite/AB2K9P`.
+     * Deliberately the **https** Universal/App-Links host (not the custom `foodrats://` scheme) so the
+     * link degrades gracefully: a recipient **with** the app opens it via App/Universal Links (or the
+     * landing page's "Open in app" custom-scheme button before link verification is live), and a
+     * recipient **without** the app lands on the `website/invite/` page (download + invite code)
+     * instead of a dead link. The single source of truth for the URL a crew member shares — must
+     * mirror the [parseDeepLink] `invite` arm and `website/invite/index.html` exactly.
      */
     fun inviteUrl(code: String): String = "$WEB_SCHEME://$WEB_HOST/$SEGMENT_INVITE/$code"
 }

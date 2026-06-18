@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Notification small-icon tint + brand accent. Iron & Ember olive primary
+         (core/designsystem Colors.kt OliveLight #4F6E2B). -->
+    <color name="notification_accent">#FF4F6E2B</color>
+    <!-- System-splash + pre-Compose window background. Light = Concrete surface
+         (Colors.kt Concrete #E8E6DE); dark override in values-night. -->
+    <color name="splash_background">#FFE8E6DE</color>
+</resources>

@@ -6,8 +6,6 @@
     <string name="notifications_permission_skip">Not now</string>
     <string name="notifications_permission_settings">Open settings</string>
     <string name="notifications_permission_save_failed">Couldn't save your choice. Try again.</string>
-    <string name="notifications_streak_title">Don't break the streak</string>
-    <string name="notifications_streak_body">Post your meal before midnight!</string>
     <string name="notifications_error_denied">Notifications are off.</string>
     <string name="notifications_error_denied_forever">Notifications are off. Turn them on in Settings.</string>
     <string name="notifications_error_unavailable">Couldn't access notification settings.</string>

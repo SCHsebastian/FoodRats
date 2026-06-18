@@ -15,8 +15,10 @@ import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
-import es.schsebastian.foodrats.feature.meal.domain.error.MealError
+import es.schsebastian.foodrats.feature.meal.data.queue.uploadErrorKey
+import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraftStatus
+import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
@@ -28,26 +30,33 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 /**
- * Coordinator that runs meal uploads as background work that survives:
- *   1. The composer screen leaving the back stack (in-process app scope).
- *   2. The process itself being killed mid-upload — the [Keys.MealUploadPending]
- *      flag is persisted to DataStore on enqueue and stays set until the
- *      publish succeeds. On Android, a [MealUploadScheduler] enqueues a
- *      WorkManager job in addition to the in-process scope; on iOS the
- *      scheduler is a no-op and the auto-resume on the next [init]
- *      handles the "app got killed" case.
+ * Coordinator that runs meal uploads as background work that survives the composer leaving the
+ * back stack and the process being killed mid-upload.
  *
- * Both [MealUploadCoordinator] (write side) and [MealUploadProgressPort]
- * (read side for Feed + Stats) are implemented here so Koin holds a single
- * instance.
+ * SINGLE EXECUTOR: when the durable [draftQueue] is bound (production), it is the *only* publisher.
+ * [enqueueDraftUpload] just enqueues the draft; [DraftRetryRunner] drains it exactly once
+ * (deterministic `MealId` → idempotent) and owns retries, offline backoff, connectivity-resume and
+ * the true publish-outcome analytics. This coordinator then merely MIRRORS the queue into the
+ * single-upload [status] flow (the Feed "uploading" indicator) and the [queue] aggregate. There is
+ * no second in-process publish — an earlier design ran [doUpload] concurrently with the queue and
+ * the loser's create rejection deleted the live plate (the "image vanishes" bug).
+ *
+ * FALLBACK: when no durable queue is bound (e.g. unit tests), [doUpload] is the in-process executor,
+ * resumed across process death via the [Keys.MealUploadPending] flag.
+ *
+ * Both [MealUploadCoordinator] (write side) and [MealUploadProgressPort] (read side for Feed +
+ * Stats) are implemented here so Koin holds a single instance.
  */
 class BackgroundMealUploadCoordinator(
     private val repository: MealRepository,
@@ -89,39 +98,51 @@ class BackgroundMealUploadCoordinator(
     private var inFlight: Job? = null
 
     init {
-        // Auto-resume after process death: if the persisted flag is set, the
-        // previous session's upload didn't finish, so kick it off now. On
-        // Android this races (harmlessly) with the WorkManager-spawned retry —
-        // the mutex serialises them and the second caller sees inFlight active.
-        scope.launch {
-            val pending = runCatching { prefs.observe(Keys.MealUploadPending).first() }.getOrNull()
-            if (pending == true) {
-                FrLog.d("MealUpload") { "resuming pending upload from previous session" }
-                runUploadIfPending()
+        val q = draftQueue
+        if (q != null) {
+            // Durable mode (single executor). Mirror the queue into the single-upload [status]
+            // flow so the Feed "uploading" indicator works without this coordinator publishing.
+            // The retry runner drains persisted Pending entries on launch (process-death resume)
+            // and on connectivity-return — no legacy single-flag resume needed.
+            q.observe()
+                .map(::deriveStatus)
+                .distinctUntilChanged()
+                .onEach { _status.value = it }
+                .launchIn(scope)
+            retryRunner?.start(scope)
+        } else {
+            // Fallback (no durable queue): auto-resume the in-process single-flag upload after
+            // process death — the mutex serialises it with the WorkManager-spawned retry.
+            scope.launch {
+                val pending = runCatching { prefs.observe(Keys.MealUploadPending).first() }.getOrNull()
+                if (pending == true) {
+                    FrLog.d("MealUpload") { "resuming pending upload from previous session" }
+                    runUploadIfPending()
+                }
             }
         }
-        // Wire the durable-queue retry runner's triggers (connectivity-return +
-        // new pending entries) onto the app-lifetime upload scope.
-        retryRunner?.start(scope)
     }
 
     override fun enqueueDraftUpload() {
         scope.launch {
-            // Durably enqueue the current draft so an offline / process-death
-            // session never loses the plate; the retry runner drains it idempotently
-            // (same deterministic MealId → overwrite, never duplicate). This runs in
-            // addition to the immediate single-upload fast path below — a race is a
-            // harmless overwrite of the same Firestore doc.
-            draftQueue?.let { q ->
+            val q = draftQueue
+            if (q != null) {
+                // SINGLE executor: durably enqueue the draft and let [DraftRetryRunner] publish it
+                // exactly once. The durable entry (incl. plate bytes) is itself the process-death /
+                // offline safety net, so no separate in-process publish + pending flag is needed —
+                // running both is what previously let the loser delete the live plate.
                 val draft = runCatching { repository.observeDraft().first() }.getOrNull()
                 if (draft != null) q.enqueue(draft)
+                scheduler.schedule()
+            } else {
+                // Fallback: in-process single-flag upload (no durable queue bound, e.g. unit tests).
+                mutex.withLock {
+                    prefs.set(Keys.MealUploadPending, true)
+                    if (inFlight?.isActive == true) return@withLock
+                    inFlight = scope.launch { doUpload() }
+                }
+                scheduler.schedule()
             }
-            mutex.withLock {
-                prefs.set(Keys.MealUploadPending, true)
-                if (inFlight?.isActive == true) return@withLock
-                inFlight = scope.launch { doUpload() }
-            }
-            scheduler.schedule()
         }
     }
 
@@ -154,12 +175,14 @@ class BackgroundMealUploadCoordinator(
     }
 
     /**
-     * Re-entry point used by Android's [MealUploadWorker]. Joins any
-     * in-process upload (so we don't run the publish twice) and otherwise
-     * runs it. Returns whether the upload eventually succeeded — the worker
-     * uses that to decide between `Result.success` and `Result.retry`.
+     * Re-entry point used by Android's [MealUploadWorker]. In durable mode the worker drains the
+     * queue itself via [DraftRetryRunner.runOnce], so this legacy single-flag path has nothing to
+     * do — report "done" so it doesn't gate the worker's success on a path that never runs. In the
+     * fallback (no durable queue) it joins/runs the in-process upload and reports whether it
+     * succeeded, so the worker can choose `Result.success` vs `Result.retry`.
      */
     suspend fun resumeFromBackgroundWorker(): Boolean {
+        if (draftQueue != null) return true
         val deferred = mutex.withLock {
             val pending = runCatching { prefs.observe(Keys.MealUploadPending).first() }.getOrNull()
             if (pending != true) return true
@@ -168,6 +191,25 @@ class BackgroundMealUploadCoordinator(
         }
         deferred?.join()
         return _status.value is MealUploadStatus.Succeeded
+    }
+
+    /**
+     * Map the durable-queue contents to the single-upload [status] (durable mode): any entry still
+     * working → Uploading; otherwise the most recent terminal failure → Failed; otherwise Idle.
+     * A successful publish removes its entry, so the empty queue reads as Idle (the Feed only acts
+     * on Uploading; the [queue] aggregate carries failed/pending counts for the top bar).
+     */
+    private fun deriveStatus(entries: List<QueuedDraft>): MealUploadStatus {
+        val anyActive = entries.any { e ->
+            when (val s = e.status) {
+                QueuedDraftStatus.Pending, QueuedDraftStatus.Uploading -> true
+                is QueuedDraftStatus.Failed -> s.retryable
+                QueuedDraftStatus.Succeeded -> false
+            }
+        }
+        if (anyActive) return MealUploadStatus.Uploading
+        val terminal = entries.firstNotNullOfOrNull { (it.status as? QueuedDraftStatus.Failed)?.takeIf { f -> !f.retryable } }
+        return if (terminal != null) MealUploadStatus.Failed(terminal.errorKey) else MealUploadStatus.Idle
     }
 
     private suspend fun runUploadIfPending() {
@@ -212,6 +254,15 @@ class BackgroundMealUploadCoordinator(
                 // The worker + LocalReminderScheduler + StreakNotificationPort all remain defined
                 // and bindable, just no longer triggered — re-adding one call here restores it.
             }
+            // Idempotency-success: this draft's (crew, day, slot) is already published — the
+            // durable-queue drain (or a prior attempt) won the publish race. The upload goal is
+            // met, so clear the pending flag and report success instead of leaving it set to spin
+            // a WorkManager retry loop that can only ever re-hit AlreadyPostedToday.
+            is Result.Err if r.error == MealError.Publish.AlreadyPostedToday -> {
+                prefs.clear(Keys.MealUploadPending)
+                scheduler.cancel()
+                _status.value = MealUploadStatus.Succeeded
+            }
             is Result.Err -> {
                 analytics.track(AnalyticsEvent.MealPublishFailed(errorLeaf = r.error::class.simpleName ?: "Unknown"))
                 // Leave the pending flag set so WorkManager backoff retries
@@ -225,30 +276,4 @@ class BackgroundMealUploadCoordinator(
         const val ERROR_UNKNOWN = "meal.upload.unknown"
         const val ERROR_NO_DRAFT = "meal.upload.no_draft"
     }
-}
-
-/**
- * Token the presentation layer maps to a `MealStringKey` via
- * `MealErrorMapper.uploadErrorKeyToStringKey`. Domain doesn't know about
- * `StringKey`, so we pass an opaque marker.
- */
-private fun MealError.uploadErrorKey(): String = when (this) {
-    MealError.Publish.AlreadyPostedToday -> "meal.error.alreadyPosted"
-    MealError.Publish.NoSlotSelected     -> "meal.error.noSlot"
-    MealError.Publish.NoCrewSelected     -> "meal.error.noCrewSelected"
-    MealError.Publish.NotToday           -> "meal.error.notToday"
-    MealError.Publish.PublishUnavailable -> "meal.error.publishUnavailable"
-    MealError.Publish.PhotoUploadFailed  -> "meal.error.photoUploadFailed"
-    MealError.Validation.Blank           -> "meal.error.blank"
-    MealError.Validation.NoPhoto         -> "meal.error.noPhoto"
-    MealError.Validation.TooLong         -> "meal.error.tooLong"
-    MealError.Validation.DescriptionTooLong -> "meal.error.descriptionTooLong"
-    MealError.Validation.TooManyIngredients -> "meal.error.tooManyIngredients"
-    MealError.Validation.OutOfRange      -> "meal.error.outOfRange"
-    MealError.Read.Unauthorized          -> "meal.error.readUnauthorized"
-    MealError.Read.CrewNotFound          -> "meal.error.readCrewNotFound"
-    MealError.Read.NotFound              -> "meal.error.readNotFound"
-    MealError.Location.PermissionDenied  -> "meal.error.locationPermission"
-    MealError.Location.Unavailable       -> "meal.error.locationUnavailable"
-    MealError.Location.Timeout           -> "meal.error.locationTimeout"
 }

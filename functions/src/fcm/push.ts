@@ -60,10 +60,11 @@ export async function sendToCrew(
   const tokensByUid = await Promise.all(
     memberIds.map(async (uid) => ({ uid, tokens: await readTokens(uid) })),
   );
-  for (const { uid, tokens } of tokensByUid) {
-    if (tokens.length === 0) continue;
-    await sendToTokens(uid, tokens, payload);
-  }
+  await Promise.all(
+    tokensByUid
+      .filter(({ tokens }) => tokens.length > 0)
+      .map(({ uid, tokens }) => sendToTokens(uid, tokens, payload)),
+  );
 }
 
 async function sendToTokens(

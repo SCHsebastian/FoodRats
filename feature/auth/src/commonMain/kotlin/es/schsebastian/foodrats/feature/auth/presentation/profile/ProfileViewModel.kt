@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.analytics.isAnalyticsGranted
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
@@ -27,6 +28,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAcco
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
@@ -38,6 +40,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import kotlinx.datetime.LocalTime
 
 data class ProfileState(
     val account: Account? = null,
@@ -58,6 +61,13 @@ data class ProfileState(
     val localeError: StringKey? = null,
     val notificationsEnabled: Boolean = true,
     val notificationsError: StringKey? = null,
+
+    // Meal reminders — the user-configurable daily nudge times (max 3). The hour picker
+    // edits/adds a slot; [reminderEditingIndex] is null when adding, else the slot being edited.
+    val reminderTimes: List<LocalTime> = emptyList(),
+    val reminderPickerOpen: Boolean = false,
+    val reminderEditingIndex: Int? = null,
+    val reminderError: StringKey? = null,
 
     // Analytics consent — reflects ConsentPort.decision; the user can withdraw or
     // re-grant at any time (GDPR Art. 7(3)). True only for a current-version grant.
@@ -94,6 +104,15 @@ sealed interface ProfileIntent : MviIntent {
     data class NotificationsToggled(val enabled: Boolean) : ProfileIntent
     data object OpenNotificationSystemSettings : ProfileIntent
 
+    /** Open the hour picker to edit the reminder at [index]. */
+    data class ReminderEditOpen(val index: Int) : ProfileIntent
+    /** Open the hour picker to add a new reminder. */
+    data object ReminderAddOpen : ProfileIntent
+    data object ReminderPickerDismiss : ProfileIntent
+    /** Apply the chosen hour (minute is always 0) to the slot being edited, or add it. */
+    data class ReminderHourSelected(val hour: Int) : ProfileIntent
+    data class ReminderRemove(val index: Int) : ProfileIntent
+
     data class AnalyticsConsentToggled(val enabled: Boolean) : ProfileIntent
 
     data object ExportMyData : ProfileIntent
@@ -104,7 +123,14 @@ sealed interface ProfileIntent : MviIntent {
     data class DeleteConfirmationChanged(val value: String) : ProfileIntent
     data object RequestDeleteDialog : ProfileIntent
     data object DeleteDialogDismiss : ProfileIntent
-    data object DeleteDialogConfirm : ProfileIntent
+
+    /**
+     * Confirm deletion. [expectedPhrase] is the locale-resolved confirmation phrase the
+     * screen displayed (e.g. "DELETE Ana" / "BORRAR Ana"); the VM compares the user's typed
+     * input against it. Carrying it from the UI keeps the phrase in one language — the one
+     * the user actually saw — instead of a hardcoded English constant.
+     */
+    data class DeleteDialogConfirm(val expectedPhrase: String) : ProfileIntent
 }
 
 sealed interface ProfileEffect : MviEffect
@@ -116,11 +142,13 @@ class ProfileViewModel(
     themePort: ThemeModePort,
     localePort: LocalePort,
     notificationsPort: NotificationsPreferencePort,
+    mealRemindersPort: MealReminderSchedulePort,
     private val updateDisplayName: UpdateMyDisplayNameUseCase,
     private val updateAvatar: UpdateMyAvatarUseCase,
     private val signOut: SignOutPort,
     private val setThemeMode: SetThemeModeUseCase,
     private val setLocale: SetLocaleUseCase,
+    private val setMealReminders: SetMealRemindersUseCase,
     private val setNotificationsEnabled: SetNotificationsEnabledUseCase,
     private val enableNotifications: EnableNotificationsUseCase,
     private val notificationPermission: NotificationPermissionPort,
@@ -160,6 +188,13 @@ class ProfileViewModel(
             }.collect {}
         }
         viewModelScope.launch {
+            // Single source of truth: the persisted times drive the UI; doApplyReminderHour /
+            // ReminderRemove only persist, then this collector reflects the new list.
+            mealRemindersPort.times.onEach { times ->
+                update { it.copy(reminderTimes = times) }
+            }.collect {}
+        }
+        viewModelScope.launch {
             // The switch reflects the observed decision (single source of truth): true only for a
             // current-version grant; an Unknown/Denied/stale decision reads as off.
             consent.decision
@@ -193,6 +228,15 @@ class ProfileViewModel(
 
             is ProfileIntent.NotificationsToggled -> doSetNotifications(intent.enabled)
             ProfileIntent.OpenNotificationSystemSettings -> notificationPermission.openSystemSettings()
+
+            is ProfileIntent.ReminderEditOpen ->
+                update { it.copy(reminderPickerOpen = true, reminderEditingIndex = intent.index, reminderError = null) }
+            ProfileIntent.ReminderAddOpen ->
+                update { it.copy(reminderPickerOpen = true, reminderEditingIndex = null, reminderError = null) }
+            ProfileIntent.ReminderPickerDismiss ->
+                update { it.copy(reminderPickerOpen = false, reminderEditingIndex = null) }
+            is ProfileIntent.ReminderHourSelected -> doApplyReminderHour(intent.hour)
+            is ProfileIntent.ReminderRemove -> doRemoveReminder(intent.index)
 
             is ProfileIntent.AnalyticsConsentToggled -> doSetAnalyticsConsent(intent.enabled)
 
@@ -230,7 +274,7 @@ class ProfileViewModel(
                 update { it.copy(deleteDialogOpen = true) }
             ProfileIntent.DeleteDialogDismiss ->
                 update { it.copy(deleteDialogOpen = false) }
-            ProfileIntent.DeleteDialogConfirm -> doDeleteAccount()
+            is ProfileIntent.DeleteDialogConfirm -> doDeleteAccount(intent.expectedPhrase)
         }
     }
 
@@ -303,6 +347,34 @@ class ProfileViewModel(
         }
     }
 
+    private suspend fun doApplyReminderHour(hour: Int) {
+        val newTime = LocalTime(hour = hour, minute = 0)
+        val current = currentState.reminderTimes
+        val editingIndex = currentState.reminderEditingIndex
+        val updated = when (editingIndex) {
+            null -> current + newTime
+            else -> current.toMutableList().also { if (editingIndex in it.indices) it[editingIndex] = newTime }
+        }
+        val normalized = updated
+            .distinct()
+            .sortedWith(compareBy({ it.hour }, { it.minute }))
+            .take(MealReminderSchedulePort.MAX_REMINDERS)
+        update { it.copy(reminderPickerOpen = false, reminderEditingIndex = null) }
+        doSetReminders(normalized)
+    }
+
+    private suspend fun doRemoveReminder(index: Int) {
+        val newList = currentState.reminderTimes.filterIndexed { i, _ -> i != index }
+        doSetReminders(newList)
+    }
+
+    private suspend fun doSetReminders(times: List<LocalTime>) {
+        when (val r = setMealReminders(times)) {
+            is Result.Ok -> update { it.copy(reminderError = null) }
+            is Result.Err -> update { it.copy(reminderError = r.error.toStringKey()) }
+        }
+    }
+
     private suspend fun doSetAnalyticsConsent(enabled: Boolean) {
         // The switch's checked state is driven solely by the observed ConsentPort.decision
         // collector above — never write analyticsConsentGranted here. We only persist the decision;
@@ -350,8 +422,7 @@ class ProfileViewModel(
         }
     }
 
-    private suspend fun doDeleteAccount() {
-        val expected = expectedDeletePhrase()
+    private suspend fun doDeleteAccount(expected: String) {
         update { it.copy(isDeletingAccount = true, deleteDialogOpen = false, deleteError = null) }
         when (val r = deleteMyAccount(currentState.deleteConfirmation, expected)) {
             is Result.Ok -> {
@@ -396,26 +467,5 @@ class ProfileViewModel(
                 )
             }
         }
-    }
-
-    /**
-     * Phrase the user must type to confirm deletion. Built from the current
-     * display name; falls back to "DELETE" if no account is loaded yet (the UI
-     * disables the field in that case).
-     */
-    fun expectedDeletePhrase(): String {
-        val name = currentState.account?.displayName?.trim().orEmpty()
-        return if (name.isEmpty()) DELETE_VERB else "$DELETE_VERB $name"
-    }
-
-    companion object {
-        /**
-         * The English imperative verb used in the confirmation phrase. The
-         * Spanish locale builds "BORRAR <name>" via the same template
-         * resource (the localized template lives in strings.xml); we keep the
-         * source-of-truth comparison in English for now to avoid a circular
-         * dependency on the resolver in the VM layer.
-         */
-        const val DELETE_VERB = "DELETE"
     }
 }

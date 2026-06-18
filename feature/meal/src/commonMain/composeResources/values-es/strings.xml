@@ -46,4 +46,9 @@
     <string name="meal_publish_confirm_title">¿Publicar esta comida?</string>
     <string name="meal_publish_confirm_message">Tu foto y los detalles se compartirán con los grupos que elijas. La subida se hace en segundo plano — puedes seguir usando la app.</string>
     <string name="meal_publish_confirm_cta">Publicar</string>
+
+    <string name="meal_capture_session_error">No se ha podido cargar tu sesión. Inténtalo otra vez.</string>
+    <string name="meal_capture_no_crews">Únete o crea un grupo antes de publicar una comida.</string>
+    <string name="meal_capture_draft_failed">No se ha podido iniciar tu comida. Inténtalo otra vez.</string>
+    <string name="meal_capture_photo_failed">No se ha podido guardar tu foto. Inténtalo otra vez.</string>
 </resources>

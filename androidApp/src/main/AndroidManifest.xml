@@ -31,20 +31,21 @@
         <activity android:name=".MainActivity"
                   android:exported="true"
                   android:launchMode="singleTop"
-                  android:theme="@android:style/Theme.Material.NoActionBar">
+                  android:theme="@style/Theme.FoodRats.Splash">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Verified App Links: https://foodrats.app/... (autoVerify against the hosted
-                 /.well-known/assetlinks.json). See deeplinks/ for the contract + association files. -->
+            <!-- Verified App Links against the LIVE Firebase Hosting domain, which actually serves
+                 /.well-known/assetlinks.json (deployed from website/). The vanity domain foodrats.app
+                 is intentionally NOT listed — it hosts nothing yet, so autoVerify would perpetually
+                 fail for it. Re-add a `<data host="foodrats.app"/>` line once it's mapped as a custom
+                 domain serving the same .well-known files (docs/store-release/PUBLICATION.md). -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="foodrats.app"/>
-                <!-- Firebase Hosting domain (serves /.well-known/assetlinks.json today). -->
                 <data android:scheme="https" android:host="foodrats-de4ec.web.app"/>
             </intent-filter>
 
@@ -79,6 +80,23 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"/>
         </provider>
+
+        <!-- FCM display defaults for *notification-type* messages the system shows while the app
+             is backgrounded. Data messages (the server's meal-post/comment/reminder pushes) are
+             handled in FoodRatsFirebaseMessagingService.onMessageReceived and never use these.
+             default_notification_icon MUST be a monochrome silhouette — a full-color launcher icon
+             renders as a white square in the status bar. The channel points at the existing
+             "fr_nudge" channel (NotificationChannels.NUDGE_ID); add a dedicated general channel if
+             the server ever starts sending notification-type messages. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_stat_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_accent" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="fr_nudge" />
 
         <!-- Privacy / consent defaults: GA4 starts with collection OFF and Consent Mode DENIED.
              The app flips both on only when the user grants consent

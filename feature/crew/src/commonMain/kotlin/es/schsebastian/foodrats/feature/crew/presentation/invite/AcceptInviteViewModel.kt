@@ -1,12 +1,10 @@
 package es.schsebastian.foodrats.feature.crew.presentation.invite
 
 import androidx.lifecycle.viewModelScope
-import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.JoinMethod
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
-import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -30,7 +28,6 @@ class AcceptInviteViewModel(
     private val resolveCrew: ResolveCrewByCodeUseCase,
     private val joinCrew: JoinCrewByCodeUseCase,
     private val switchActive: SwitchActiveCrewUseCase,
-    private val accountRead: AccountReadPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<AcceptInviteState, AcceptInviteIntent, AcceptInviteEffect>(
     AcceptInviteState(code = code),
@@ -39,9 +36,6 @@ class AcceptInviteViewModel(
     init {
         viewModelScope.launch { resolve() }
     }
-
-    private suspend fun myDisplayName(accountId: AccountId): String =
-        accountRead.observe(accountId).first()?.displayName.orEmpty()
 
     override suspend fun handle(intent: AcceptInviteIntent) = when (intent) {
         AcceptInviteIntent.Resolve      -> resolve()
@@ -60,7 +54,7 @@ class AcceptInviteViewModel(
     private suspend fun join() {
         val account = session.current.first()?.accountId ?: return
         update { it.copy(isJoining = true, error = null) }
-        when (val r = joinCrew(currentState.code, account, myDisplayName(account))) {
+        when (val r = joinCrew(currentState.code, account)) {
             is Result.Ok  -> {
                 update { it.copy(isJoining = false) }
                 analytics.track(AnalyticsEvent.CrewJoined(r.value.id, JoinMethod.INVITE_LINK))

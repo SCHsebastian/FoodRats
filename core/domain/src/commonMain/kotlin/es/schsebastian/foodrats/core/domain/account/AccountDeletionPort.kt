@@ -34,12 +34,6 @@ sealed interface AccountDeletionError {
     }
 
     sealed interface Backend : AccountDeletionError {
-        /**
-         * Dead-but-kept one release: the stub-era "contact support" outcome. Removed in a
-         * follow-up once no shipped build still points at the stub. See spec §10.
-         */
-        data object NotImplemented : Backend
-
         /** The cascade could not complete; the session is still valid, so the user can retry. */
         data object Unavailable : Backend
     }

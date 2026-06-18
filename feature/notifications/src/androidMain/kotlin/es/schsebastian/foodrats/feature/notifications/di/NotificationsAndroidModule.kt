@@ -23,6 +23,6 @@ val notificationsAndroidModule = module {
             launcherHolder = get(),
         )
     }
-    single<LocalReminderScheduler> { AndroidLocalReminderScheduler(androidContext()) }
+    single<LocalReminderScheduler> { AndroidLocalReminderScheduler(androidContext(), get()) }
     single<FcmTokenProvider> { AndroidFcmTokenProvider() }
 }

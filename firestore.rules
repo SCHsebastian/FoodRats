@@ -168,6 +168,9 @@ service cloud.firestore {
                       && request.resource.data.ratings[request.auth.uid].score >= 1
                       && request.resource.data.ratings[request.auth.uid].score <= 5
                       && request.resource.data.voterCount == request.resource.data.ratings.size()
+                      // ratingSum must equal the old sum plus the voter's new score, preventing
+                      // a client from inflating or deflating the aggregate independently.
+                      && request.resource.data.ratingSum == resource.data.ratingSum + request.resource.data.ratings[request.auth.uid].score
                       && request.time.toMillis() - resource.data.publishedAtEpochMs < 172800000;
 
         // Delete: the meal's author OR the crew owner may delete it. Author = self-service,
@@ -285,7 +288,9 @@ service cloud.firestore {
     match /crewCodes/{code} {
       allow read:   if request.auth != null;
       allow create: if request.auth != null
-                    && !exists(/databases/$(database)/documents/crewCodes/$(code));
+                    && !exists(/databases/$(database)/documents/crewCodes/$(code))
+                    // Only a current member of the target crew may mint a code for it.
+                    && request.auth.uid in get(/databases/$(database)/documents/crews/$(request.resource.data.crewId)).data.memberIds;
       allow delete: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/crews/$(resource.data.crewId)).data.memberIds;
     }

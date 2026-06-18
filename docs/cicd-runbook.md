@@ -51,10 +51,15 @@ hacer una persona con acceso a las cuentas) y cómo se opera el día a día.
 1. Paga el Apple Developer Program (99 USD/año).
 2. Crea el **App ID** `es.schsebastian.foodrats` y el registro de app en App Store Connect.
 3. Crea una **App Store Connect API Key** (rol App Manager) y descarga el `.p8` (solo se puede una vez). Apunta Key ID e Issuer ID.
-4. Crea un **repo privado vacío** para `match` y genera los certificados desde tu Mac:
+4. Crea un **repo privado vacío** para `match` y genera/rota los certificados desde tu Mac
+   con la lane `rotate_signing` (no-interactiva: autentica con la ASC API key, sin Apple ID/2FA;
+   fuerza `readonly: false` para poder escribir, ya que el Matchfile es `readonly(true)`). Vuelve
+   a correrla cada vez que cambien las *capabilities* del App ID (p. ej. al activar Sign in with Apple):
    ```bash
-   bundle install
-   bundle exec fastlane match appstore   # MATCH_GIT_URL y MATCH_PASSWORD en el entorno
+   bundle install   # instala fastlane en vendor/bundle (sin sudo, ya gitignored)
+   ASC_KEY_ID=<key-id> ASC_ISSUER_ID=<issuer-id> ASC_KEY_PATH=</ruta/AuthKey_XXX.p8> \
+   MATCH_GIT_URL=<repo-privado> MATCH_PASSWORD=<passphrase> \
+     bundle exec fastlane ios rotate_signing
    ```
 
 ### 2. Pasos manuales de Xcode (commitea el `project.pbxproj`)

@@ -14,9 +14,7 @@ internal fun formatEpochDay(epochMs: Long): String {
     val date = Instant.fromEpochMilliseconds(epochMs)
         .toLocalDateTime(TimeZone.currentSystemDefault())
         .date
-    @Suppress("DEPRECATION")
     val month = date.monthNumber.toString().padStart(2, '0')
-    @Suppress("DEPRECATION")
     val day = date.dayOfMonth.toString().padStart(2, '0')
     return "${date.year}-$month-$day"
 }

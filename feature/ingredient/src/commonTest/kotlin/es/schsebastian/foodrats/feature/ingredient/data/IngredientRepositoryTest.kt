@@ -70,6 +70,28 @@ class IngredientRepositoryTest {
         assertEquals(emptyList(), repo.suggestForDish("ramen"))
     }
 
+    // ingredient-01: Firestore throw must degrade to empty list, not propagate
+    @Test
+    fun suggestForDish_returns_empty_when_datasource_throws() = runTest {
+        val throwingDs = object : IngredientDataSource {
+            override fun observeCatalog(): Flow<List<IngredientDto>> = MutableSharedFlow()
+            override suspend fun loadDishMap(dishSlug: String): DishIngredientMapDto? =
+                throw RuntimeException("network error")
+        }
+        val cache = object : CatalogCache {
+            override fun observe(): Flow<List<IngredientDto>> = flowOf(emptyList())
+            override suspend fun save(catalog: List<IngredientDto>) {}
+        }
+        val testDispatcher = UnconfinedTestDispatcher(testScheduler)
+        val dispatchers = object : DispatcherProvider {
+            override val main: CoroutineDispatcher = testDispatcher
+            override val io: CoroutineDispatcher = testDispatcher
+            override val default: CoroutineDispatcher = testDispatcher
+        }
+        val repo = IngredientRepository(throwingDs, cache, dispatchers, flowOf("en"), backgroundScope)
+        assertEquals(emptyList(), repo.suggestForDish("sushi"))
+    }
+
     @Test
     fun suggestForDish_skips_blank_slug_entries() = runTest {
         val repo = repoWith(dishMap = mapOf("pizza" to listOf("dough", "", "cheese")))

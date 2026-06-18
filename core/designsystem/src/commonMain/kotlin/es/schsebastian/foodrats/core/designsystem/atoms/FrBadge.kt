@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.theme.TierBronze
 import es.schsebastian.foodrats.core.designsystem.theme.TierGold
 import es.schsebastian.foodrats.core.designsystem.theme.TierSilver
@@ -71,10 +72,11 @@ fun FrBadge(
         animationSpec = tween(durationMillis = 400),
         label = "FrBadgeProgress",
     )
+    val semantic = LocalFrSemanticColors.current
     val ringColor = if (earned) tierColor(tier, tint) else tint
     val discColor = if (earned) tint else MaterialTheme.colorScheme.surfaceVariant
     val iconColor = if (earned) {
-        contentColorFor(tint)
+        contentColorFor(tint, semantic.onScrim, MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.onPrimary)
     } else {
         MaterialTheme.colorScheme.onSurfaceVariant
     }
@@ -150,15 +152,10 @@ fun FrBadge(
     }
 }
 
-@Composable
-private fun contentColorFor(tint: Color): Color {
-    // Earned discs use the brand tint; white reads on the saturated Iron & Ember tints used by the
+private fun contentColorFor(tint: Color, onScrim: Color, primaryColor: Color, onPrimary: Color): Color {
+    // Earned discs use the brand tint; onScrim reads on the saturated Iron & Ember tints used by the
     // achievement icon mapper. Falls back to onPrimary so it stays theme-aware for the default tint.
-    return if (tint == MaterialTheme.colorScheme.primary) {
-        MaterialTheme.colorScheme.onPrimary
-    } else {
-        Color.White
-    }
+    return if (tint == primaryColor) onPrimary else onScrim
 }
 
 private fun tierColor(tier: FrBadgeTier, fallback: Color): Color = when (tier) {

@@ -7,6 +7,12 @@ task that surfaced each in parentheses. **This file is appended to as new tasks 
 
 > Suggested order: **(A) deploy backend → (B) cloud IAM → (C) indexes → (D) store/privacy → (E) on-device smoke.**
 
+> **✅ 2026-06-18 — Blocks A, B, C are ALL DONE on prod foodrats-de4ec** (functions, firestore rules+indexes,
+> storage rules, hosting, IAM Token Creator on the Gen-2 compute SA, catalog seed). Evidence:
+> `docs/store-release/DEPLOY-LOG.md`. CI is green on `develop`; the R8 release AAB builds.
+> Remaining = blocks **D (store/privacy)** + **E (on-device smoke)** + accounts/signing — see
+> `docs/store-release/RELEASE-CHECKLIST.md`.
+
 ---
 
 ## A. Deploys (run from repo root; use `pnpm dlx firebase-tools`)
@@ -44,7 +50,7 @@ task that surfaced each in parentheses. **This file is appended to as new tasks 
 
 ## D3. Deep-linked invites — hosting & web unfurl (w3-deep-linked-invites-presentation)
 
-- [ ] **Host the well-known association files for the invite host** — `https://foodrats.app/.well-known/assetlinks.json` (Android App Links, with the Play/upload SHA-256 fingerprints) and `apple-app-site-association` (iOS Universal Links), and wire **Associated Domains** (`applinks:foodrats.app`) into the `iosApp` Xcode target. Until hosted, the `https://foodrats.app/invite/{code}` link still works via the `foodrats://app/invite/{code}` custom-scheme fallback, and tapping the https link opens the browser instead of the app. The contract files already live under `deeplinks/`; the invite arm adds no new host/scheme (path-only), so no manifest change was needed. (Shared with the meal/crew/digest deep links — same association files.)
+- [ ] **Finish the well-known association files (host is `foodrats-de4ec.web.app`, NOT `foodrats.app`).** The files are already hosted at `https://foodrats-de4ec.web.app/.well-known/` (served from `website/`), and the manifest + iOS entitlements now declare only that live host (`CODE_SIGN_ENTITLEMENTS` wired via `Config.xcconfig` — no Xcode step). Remaining: (a) fill the two real SHA-256 fingerprints in `website/.well-known/assetlinks.json` (Play app-signing + upload key) and redeploy hosting; (b) enable **Associated Domains + Push** on the App ID and regenerate `fastlane match appstore` profiles. `foodrats.app` is a future vanity domain — when mapped as a Firebase Hosting custom domain, re-add it to the manifest/entitlements + flip `DeepLinks.WEB_HOST`. (Shared with meal/crew/digest deep links — same association files.)
 - [ ] **Web unfurl / OG page for `/invite/{code}`** — the spec §3.2 "rich previews" wants a Firebase Hosting page (static or Cloud Function) at `/invite/{code}` that serves OG/Twitter meta (crew name) so the link unfurls in chat apps AND gives a recipient *without* the app a "get the app" landing page. NOT built in this task (the in-app rich preview screen IS built and live). Implement when ready; it's purely server/hosting.
 - [ ] **(No new third-party dependency)** — QR generation uses a self-contained pure-Kotlin encoder in `:core:designsystem` (`atoms/qr/`), not a library, so there is nothing to vet/add to `libs.versions.toml`. Noted here only so a future audit doesn't go looking for one.
 

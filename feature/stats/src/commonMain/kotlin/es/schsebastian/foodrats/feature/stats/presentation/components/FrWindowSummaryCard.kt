@@ -16,7 +16,6 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.WindowStats
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
-import kotlin.math.round
 
 /**
  * Window summary as a 2-column tile grid: total plates (with a meals-per-day trend sparkline)
@@ -60,11 +59,4 @@ fun FrWindowSummaryCard(
             modifier = Modifier.weight(1f),
         )
     }
-}
-
-private fun formatOneDecimal(v: Float): String {
-    val rounded = round(v * 10f) / 10f
-    val whole = rounded.toInt()
-    val tenths = ((rounded - whole) * 10f).toInt()
-    return "$whole.${if (tenths < 0) -tenths else tenths}"
 }

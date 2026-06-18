@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.feature.auth.data.firebase.AuthErrorMapper
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAuthDataSource
 import es.schsebastian.foodrats.feature.auth.data.firebase.toAccount
 import es.schsebastian.foodrats.feature.auth.data.firebase.toSession
+import es.schsebastian.foodrats.feature.auth.data.apple.AppleAuthClient
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.shareIn
 
 internal class FirebaseAuthRepository(
     private val googleClient: GoogleAuthClient,
+    private val appleClient: AppleAuthClient,
     private val firebase: FirebaseAuthDataSource,
     private val errorMapper: AuthErrorMapper,
     private val prefs: AppPreferences,
@@ -91,6 +93,22 @@ internal class FirebaseAuthRepository(
         }
     }
 
+    override suspend fun signInWithApple(): Result<Session, AuthError> {
+        // iOS returns a real AppleSignInToken (native ASAuthorization → Swift bridge); Android still
+        // returns AppleSignIn.NotYetAvailable here (no GitLive web-OAuth wrapper), which the ViewModel
+        // renders as a "coming soon" notice. Mirrors signInWithGoogle once a token is in hand.
+        val token = when (val r = appleClient.signIn()) {
+            is Result.Ok  -> r.value
+            is Result.Err -> return Result.failure(r.error)
+        }
+        return try {
+            val uid = firebase.signInWithApple(token)
+            finishSignIn(uid)
+        } catch (t: Throwable) {
+            Result.failure(errorMapper.mapFirebase(t))
+        }
+    }
+
     override suspend fun signInWithEmail(email: String, password: String): Result<Session, AuthError> {
         return try {
             val uid = firebase.signInWithEmail(email.trim(), password)
@@ -112,20 +130,7 @@ internal class FirebaseAuthRepository(
     private suspend fun finishSignIn(uid: String): Result<Session, AuthError> {
         val account = firebase.ensureAccountDoc(uid).toAccount()
             ?: return Result.failure(AuthError.Firebase.Unavailable)
-        // One-shot migration (2026-05-20): the prior build seeded every sign-in with
-        // activeCrewId = "test-crew-1" via the now-removed dev-crew hardcode. Users
-        // upgrading from that build still carry the legacy pref and get routed
-        // straight to Main → publish hits PERMISSION_DENIED because they're not in
-        // that crew's memberIds. Wipe the legacy value so the RootNavViewModel
-        // emits NeedsCrew → CrewPicker and the user can pick or create a real crew.
-        if (prefs.observe(Keys.ActiveCrewId).first() == LEGACY_DEV_CREW_ID) {
-            prefs.clear(Keys.ActiveCrewId)
-        }
         return Result.success(account.toSession())
-    }
-
-    private companion object {
-        const val LEGACY_DEV_CREW_ID = "test-crew-1"
     }
 
     override suspend fun signOut(): Result<Unit, AuthError> {
@@ -135,6 +140,8 @@ internal class FirebaseAuthRepository(
             firebase.signOut()
             FrLog.d(FrLog.Tags.SignOut) { "repo: → googleClient.signOut()" }
             googleClient.signOut()
+            FrLog.d(FrLog.Tags.SignOut) { "repo: → appleClient.signOut()" }
+            appleClient.signOut()
             // Clear both the session token AND the active crew so the next sign-in
             // lands on CrewPicker instead of silently inheriting the previous user's
             // crew (the active-crew flow re-derives from prefs at session-restore time).

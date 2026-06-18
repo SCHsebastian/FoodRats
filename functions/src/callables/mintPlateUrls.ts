@@ -20,6 +20,10 @@ import { logger } from "firebase-functions/v2";
 /** How long a minted URL stays valid. The client caches a little under this (≈12 min). */
 export const URL_TTL_MS = 15 * 60 * 1000;
 
+/** Maximum number of paths accepted in a single mintPlateUrls call. Requests above this
+ *  limit are silently truncated before the signing loop to cap Cloud Function CPU + cost. */
+export const MAX_PATHS = 200;
+
 export interface MintRequest {
   crewId: string;
   paths: string[];
@@ -85,7 +89,7 @@ export async function buildSignedUrls(
     throw new HttpsError("permission-denied", "Not a member of this crew.");
   }
   const expiresAtMs = deps.nowMs + URL_TTL_MS;
-  const allowed = authorizedPaths(crewId, crew.memberIds, request.paths ?? []);
+  const allowed = authorizedPaths(crewId, crew.memberIds, (request.paths ?? []).slice(0, MAX_PATHS));
   const signed = await Promise.all(allowed.map((p) => deps.sign(p, expiresAtMs)));
   const urls: Record<string, string> = {};
   allowed.forEach((p, i) => {

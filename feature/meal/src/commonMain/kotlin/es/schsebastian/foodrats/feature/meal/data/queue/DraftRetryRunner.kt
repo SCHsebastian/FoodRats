@@ -1,9 +1,14 @@
 package es.schsebastian.foodrats.feature.meal.data.queue
 
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.analytics.PublishSource
 import es.schsebastian.foodrats.core.domain.meal.MealUploadQueueSnapshot
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
+import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.QueueEntryId
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraftStatus
@@ -54,6 +59,11 @@ class DraftRetryRunner(
     private val publish: MealRepository,
     private val connectivity: ConnectivityMonitor,
     private val policy: DraftRetryPolicy = DraftRetryPolicy(),
+    // The durable queue is the single publish executor (the coordinator no longer publishes
+    // directly), so the true publish outcome is emitted HERE — `meal_published` on success,
+    // `meal_publish_failed` only when a draft is given up on (terminal). Default Noop keeps the
+    // direct-construction tests green. NO PII (slot/counts only).
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) {
     private val mutex = Mutex()
 
@@ -115,11 +125,26 @@ class DraftRetryRunner(
             is Result.Ok -> {
                 FrLog.d("DraftQueue") { "published queued draft ${entry.id.value}; removing" }
                 queue.remove(entry.id)
+                trackPublished(entry.draft)
+            }
+            // AlreadyPostedToday is idempotency-success for a durable queue: this draft's
+            // (crew, day, slot) is already published (e.g. a prior drain already posted it),
+            // so the goal is met. Reconcile by removing — never mark it failed (which would
+            // surface a phantom "upload failed" in the feed bar or spin a retry) and don't
+            // re-emit meal_published (the original publish already did).
+            is Result.Err if r.error == MealError.Publish.AlreadyPostedToday -> {
+                FrLog.d("DraftQueue") { "queued draft ${entry.id.value} already posted; removing" }
+                queue.remove(entry.id)
             }
             is Result.Err -> {
                 val newAttemptCount = entry.attemptCount + 1
                 val failed = DraftQueueTransitions.onFailure(newAttemptCount, r.error.uploadErrorKey(), policy)
                 queue.markFailed(entry.id, failed.errorKey, failed.retryable)
+                // Emit the failure event only when we give up (terminal) — a retryable attempt
+                // isn't a publish-failed outcome yet, and firing per-retry would over-count.
+                if (!failed.retryable) {
+                    analytics.track(AnalyticsEvent.MealPublishFailed(errorLeaf = r.error::class.simpleName ?: "Unknown"))
+                }
                 if (failed.retryable) {
                     val delayMs = policy.nextDelay(newAttemptCount)?.inWholeMilliseconds
                     FrLog.d("DraftQueue") {
@@ -131,6 +156,23 @@ class DraftRetryRunner(
                 }
             }
         }
+    }
+
+    /**
+     * `meal_published` fires on the TRUE publish outcome (a queue entry reconciled as Ok), the
+     * funnel-conversion + publishing-depth event. No PII — slot + counts only.
+     */
+    private fun trackPublished(draft: MealDraft) {
+        val slot = draft.slot ?: return
+        analytics.track(
+            AnalyticsEvent.MealPublished(
+                slot = slot,
+                ingredientCount = draft.ingredients.size,
+                hasDescription = draft.description.value.isNotBlank(),
+                audienceCrewCount = draft.audienceCrewIds.size,
+                source = PublishSource.UNKNOWN,
+            ),
+        )
     }
 
     /** Flip [id] back to Pending after [delayMs] so the next drain picks it up. */
@@ -161,8 +203,10 @@ class DraftRetryRunner(
 
 /**
  * Map a publish [MealError] to the opaque `errorKey` token the presentation layer
- * resolves to a `MealStringKey`. Mirrors `BackgroundMealUploadCoordinator`'s
- * private mapper so the queue and the single-upload path use identical tokens.
+ * resolves to a `MealStringKey`. The single source of truth shared by both the
+ * durable-queue retry path ([DraftRetryRunner]) and the single-upload fast path
+ * ([es.schsebastian.foodrats.feature.meal.data.upload.BackgroundMealUploadCoordinator]),
+ * so both emit identical tokens.
  */
 internal fun MealError.uploadErrorKey(): String = when (this) {
     MealError.Publish.AlreadyPostedToday -> "meal.error.alreadyPosted"

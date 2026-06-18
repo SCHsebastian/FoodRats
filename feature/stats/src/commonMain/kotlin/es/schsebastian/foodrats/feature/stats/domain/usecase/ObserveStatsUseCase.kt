@@ -63,6 +63,7 @@ class ObserveStatsUseCase(
                     sess == null   -> flowOf(Result.failure(StatsError.Session.NotSignedIn))
                     crewId == null -> flowOf(Result.failure(StatsError.Session.NoActiveCrew))
                     else -> {
+                        // `today` is captured per (re)start; a manual `epoch` refresh rebuilds it.
                         val today: LocalDate = clock.now().toLocalDateTime(zone).date
                         val (fromCurrent, _) = currentRangeFor(today)
                         val current = mealRead.observeRange(
@@ -70,18 +71,18 @@ class ObserveStatsUseCase(
                             MealDay(fromCurrent, zone),
                             MealDay(today, zone),
                         )
-                        val historic: Flow<List<MealWithRatings>?> = historicEnabled
+                        val historic: Flow<HistoricResult> = historicEnabled
                             .distinctUntilChanged()
                             .flatMapLatest { enabled ->
-                                if (!enabled) flowOf<List<MealWithRatings>?>(null)
+                                if (!enabled) flowOf(HistoricResult.Disabled)
                                 else mealRead.observeRange(
                                     crewId,
                                     MealDay(today.minus(DatePeriod(days = 365)), zone),
                                     MealDay(today, zone),
                                 ).map { r ->
                                     when (r) {
-                                        is Result.Ok  -> r.value
-                                        is Result.Err -> null
+                                        is Result.Ok  -> HistoricResult.Ok(r.value)
+                                        is Result.Err -> HistoricResult.Err(r.error.toStatsError())
                                     }
                                 }
                             }
@@ -101,12 +102,14 @@ class ObserveStatsUseCase(
 
     private fun compose(
         currentMeals: List<MealWithRatings>,
-        historicMeals: List<MealWithRatings>?,
+        historic: HistoricResult,
         today: LocalDate,
         accountId: AccountId,
         ingredientCatalog: Map<IngredientSlug, Ingredient>,
         cuisineCatalog: Map<CuisineSlug, Cuisine>,
     ): StatsSnapshot {
+        val historicMeals: List<MealWithRatings>? = (historic as? HistoricResult.Ok)?.meals
+        val historicError: StatsError? = (historic as? HistoricResult.Err)?.error
         val nameFor = ingredientNameResolver(ingredientCatalog)
         val weekFrom = startOfIsoWeek(today)
         val monthFrom = startOfMonth(today)
@@ -143,10 +146,23 @@ class ObserveStatsUseCase(
             week = computeWindow(weekMeals, weekWindow, nameFor),
             month = computeWindow(monthMeals, monthWindow, nameFor),
             historic = historicMeals?.let { computeWindow(it, historicWindow, nameFor) },
+            historicError = historicError,
             cuisinePassport = cuisinePassport,
             ingredientBingo = ingredientBingo,
         )
     }
+}
+
+/**
+ * Outcome of the Historic-tab 365-day read, threaded through the combine so a failure is surfaced
+ * (as [StatsSnapshot.historicError]) instead of being collapsed into `null` (which the UI can't
+ * tell apart from "not loaded yet" — that was the swallowed-error bug).
+ */
+private sealed interface HistoricResult {
+    /** The Historic tab has not been opened yet (sticky toggle is still false). */
+    data object Disabled : HistoricResult
+    data class Ok(val meals: List<MealWithRatings>) : HistoricResult
+    data class Err(val error: StatsError) : HistoricResult
 }
 
 private fun MealReadError.toStatsError() = when (this) {

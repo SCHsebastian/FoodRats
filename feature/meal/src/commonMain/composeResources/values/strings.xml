@@ -46,4 +46,9 @@
     <string name="meal_publish_confirm_title">Publish this meal?</string>
     <string name="meal_publish_confirm_message">Your photo and details will be shared with the crews you picked. The upload runs in the background — you can keep using the app.</string>
     <string name="meal_publish_confirm_cta">Publish</string>
+
+    <string name="meal_capture_session_error">Couldn't load your session. Try again.</string>
+    <string name="meal_capture_no_crews">Join or create a crew before posting a meal.</string>
+    <string name="meal_capture_draft_failed">Couldn't start your meal. Try again.</string>
+    <string name="meal_capture_photo_failed">Couldn't save your photo. Try again.</string>
 </resources>

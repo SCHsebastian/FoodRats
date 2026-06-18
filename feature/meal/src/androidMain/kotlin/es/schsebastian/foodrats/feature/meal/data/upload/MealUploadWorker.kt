@@ -16,13 +16,12 @@ import org.koin.core.component.inject
  * and reboots (with the `KEEP` unique-work policy so a re-enqueue can't pile
  * up workers, and a `NetworkType.CONNECTED` constraint so it fires on reconnect).
  * The worker:
- *  1. resumes the legacy single-flag upload (`resumeFromBackgroundWorker()`),
- *     sharing the coordinator's mutex so we never publish twice in parallel; and
+ *  1. calls `resumeFromBackgroundWorker()` — a no-op that reports "done" in durable mode (the
+ *     queue is the single executor), or runs the in-process upload in the no-queue fallback; and
  *  2. drains the durable [DraftRetryRunner] queue ([DraftRetryRunner.runOnce] with
  *     no scope, so it relies on WorkManager's backoff rather than scheduling its
  *     own in-process delay — the worker process may die between attempts).
- * Both publish through the same idempotent deterministic `MealId`, so the two
- * paths can never duplicate a meal.
+ * In durable mode (2) is the only publisher, so the worker can never duplicate a meal.
  *
  * `Result.retry` (→ WorkManager exponential backoff) iff anything is still
  * undrained; `Result.success` once both paths report done.

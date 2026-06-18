@@ -20,7 +20,6 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
-import kotlin.math.round
 
 @Composable
 fun FrRoastCard(
@@ -58,18 +57,11 @@ fun FrRoastCard(
             FrText(
                 text = resolve(
                     StatsStringKey.MostCriticizedMetricFormat,
-                    formatScore(award.averageScore.toFloat()),
+                    formatOneDecimal(award.averageScore.toFloat()),
                 ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = semantic.onWarning.copy(alpha = 0.9f),
             )
         }
     }
-}
-
-private fun formatScore(v: Float): String {
-    val r = round(v * 10f) / 10f
-    val whole = r.toInt()
-    val tenths = ((r - whole) * 10f).toInt()
-    return "$whole.${if (tenths < 0) -tenths else tenths}"
 }

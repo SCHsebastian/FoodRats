@@ -23,8 +23,6 @@ import foodrats.feature.notifications.generated.resources.notifications_permissi
 import foodrats.feature.notifications.generated.resources.notifications_permission_title
 import foodrats.feature.notifications.generated.resources.notifications_social_nudge_body
 import foodrats.feature.notifications.generated.resources.notifications_social_nudge_title
-import foodrats.feature.notifications.generated.resources.notifications_streak_body
-import foodrats.feature.notifications.generated.resources.notifications_streak_title
 import foodrats.feature.notifications.generated.resources.notifications_weekly_digest_body
 import foodrats.feature.notifications.generated.resources.notifications_weekly_digest_title
 import org.jetbrains.compose.resources.StringResource
@@ -36,8 +34,6 @@ enum class NotificationStringKey(override val resourceId: StringResource) : Stri
     PermissionSkip(Res.string.notifications_permission_skip),
     PermissionSettings(Res.string.notifications_permission_settings),
     PermissionSaveFailed(Res.string.notifications_permission_save_failed),
-    StreakTitle(Res.string.notifications_streak_title),
-    StreakBody(Res.string.notifications_streak_body),
     InactivityTitle(Res.string.notifications_inactivity_title),
     InactivityBody(Res.string.notifications_inactivity_body),
     NewCommentTitle(Res.string.notifications_new_comment_title),

@@ -55,16 +55,15 @@ class FakeCrewDataSource : CrewDataSource {
     var lastDelete: Pair<CrewId, CrewCode>? = null
     var lastSetBlindVoting: Pair<CrewId, Boolean>? = null
 
-    data class CreateCall(val name: String, val founder: AccountId, val founderDisplayName: String, val nowMs: Long)
-    data class JoinCall(val code: CrewCode, val joiner: AccountId, val joinerDisplayName: String, val nowMs: Long)
+    data class CreateCall(val name: String, val founder: AccountId, val nowMs: Long)
+    data class JoinCall(val code: CrewCode, val joiner: AccountId, val nowMs: Long)
 
     override suspend fun createCrew(
         name: String,
         founder: AccountId,
-        founderDisplayName: String,
         nowMs: Long,
     ): CrewDto {
-        lastCreate = CreateCall(name, founder, founderDisplayName, nowMs)
+        lastCreate = CreateCall(name, founder, nowMs)
         createThrows?.let { throw it }
         return createResult ?: error("createResult not stubbed")
     }
@@ -72,10 +71,9 @@ class FakeCrewDataSource : CrewDataSource {
     override suspend fun joinByCode(
         code: CrewCode,
         joiner: AccountId,
-        joinerDisplayName: String,
         nowMs: Long,
     ): CrewDto {
-        lastJoin = JoinCall(code, joiner, joinerDisplayName, nowMs)
+        lastJoin = JoinCall(code, joiner, nowMs)
         joinThrows?.let { throw it }
         return joinResult ?: error("joinResult not stubbed")
     }

@@ -3,6 +3,7 @@
     <string name="auth_signin_title">FoodRats</string>
     <string name="auth_signin_subtitle">Comida real con tu crew. Sin filtros.</string>
     <string name="auth_signin_continue_google">Continuar con Google</string>
+    <string name="auth_signin_continue_apple">Continuar con Apple</string>
     <string name="auth_signin_highlight_share">Captura el plato del día</string>
     <string name="auth_signin_highlight_rate">Puntúa lo que cocina tu grupo</string>
     <string name="auth_signin_highlight_feed">Mantén viva la racha</string>
@@ -14,6 +15,7 @@
     <string name="auth_toggle_to_signup">¿Sin cuenta? Regístrate</string>
     <string name="auth_toggle_to_signin">¿Ya tienes cuenta? Entra</string>
     <string name="auth_or_divider">o</string>
+    <string name="auth_error_apple_coming_soon">El inicio de sesión con Apple se está desarrollando — disponible pronto.</string>
     <string name="auth_error_user_cancelled">Inicio de sesión cancelado.</string>
     <string name="auth_error_no_google_accounts">No hay cuentas de Google en este dispositivo.</string>
     <string name="auth_error_play_services">Google Play Services no disponible.</string>
@@ -21,6 +23,7 @@
     <string name="auth_error_unknown">No se ha podido iniciar sesión. Inténtalo de nuevo.</string>
     <string name="auth_error_missing_server_client_id">El inicio de sesión con Google no está configurado. Añade googleServerClientId en ~/.gradle/gradle.properties y vuelve a compilar.</string>
     <string name="auth_error_account_disabled">Esta cuenta está deshabilitada.</string>
+    <string name="auth_error_session_expired">Tu sesión ha caducado. Inicia sesión de nuevo.</string>
     <string name="auth_error_email_invalid">Introduce un email válido.</string>
     <string name="auth_error_password_too_short">La contraseña debe tener al menos 6 caracteres.</string>
     <string name="auth_error_email_in_use">Ese email ya está en uso.</string>
@@ -69,6 +72,14 @@
     <string name="auth_profile_notifications_permission_denied_forever">Las notificaciones están bloqueadas. Actívalas en los ajustes del sistema para recibir avisos.</string>
     <string name="auth_profile_notifications_open_system_settings_cta">Abrir ajustes del sistema</string>
 
+    <string name="auth_profile_reminders_row">Recordatorios de comida</string>
+    <string name="auth_profile_reminders_subtitle">Recibe un aviso diario para publicar tu comida. Añade hasta 3 horas.</string>
+    <string name="auth_profile_reminders_empty">Sin recordatorios</string>
+    <string name="auth_profile_reminders_add_cta">Añadir recordatorio</string>
+    <string name="auth_profile_reminders_picker_title">Hora del recordatorio</string>
+    <string name="auth_profile_reminders_remove_cta">Quitar recordatorio</string>
+    <string name="auth_profile_reminders_persist_failed">No se pudieron guardar tus recordatorios. Inténtalo de nuevo.</string>
+
     <string name="auth_profile_analytics_row">Compartir datos de uso anónimos</string>
     <string name="auth_profile_analytics_subtitle_on">Activado: ayudas a mejorar FoodRats. Nunca se recopila contenido personal y puedes desactivarlo cuando quieras.</string>
     <string name="auth_profile_analytics_subtitle_off">Desactivado: no se recopilan datos de uso. Actívalo para ayudar a mejorar FoodRats; nunca se recopila contenido personal.</string>
@@ -98,7 +109,6 @@
     <string name="auth_delete_account_dialog_confirm">Eliminar para siempre</string>
     <string name="auth_delete_account_in_flight">Eliminando la cuenta…</string>
     <string name="auth_delete_account_error_phrase">La frase de confirmación no coincide. Escríbela exactamente.</string>
-    <string name="auth_delete_account_error_not_implemented">La eliminación de cuentas se está desplegando. Contacta con soporte para borrar tu cuenta hoy.</string>
     <string name="auth_delete_account_error_backend">No se pudo contactar con el servicio de eliminación. Inténtalo de nuevo.</string>
     <string name="auth_delete_account_error_ownership">No se pudo reasignar la propiedad de tu grupo. Inténtalo de nuevo.</string>
 </resources>

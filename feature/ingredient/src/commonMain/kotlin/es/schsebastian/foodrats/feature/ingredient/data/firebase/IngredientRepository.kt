@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class IngredientRepository(
@@ -35,9 +36,11 @@ class IngredientRepository(
                 cache.observe(),
                 datasource.observeCatalog()
                     .onEach { latest ->
-                        withContext(dispatchers.io) { cache.save(latest) }
+                        // ingredient-03: don't block the collecting flow on IO; fire-and-forget
+                        scope.launch { withContext(dispatchers.io) { cache.save(latest) } }
                     },
-            ),
+            )
+                .distinctUntilChanged(), // ingredient-06: suppress double-emit from cache+live
             language.distinctUntilChanged(),
         ) { list, lang -> list.mapNotNull { it.toDomain(lang) }.associateBy { it.slug } }
             .stateIn(scope, SharingStarted.WhileSubscribed(5_000), emptyMap())
@@ -47,9 +50,12 @@ class IngredientRepository(
     override suspend fun findBySlugs(slugs: Set<IngredientSlug>): List<Ingredient> =
         catalog.value.filterKeys { it in slugs }.values.toList()
 
+    // ingredient-01: catalog miss or transient Firestore throw degrades to no suggestions
     override suspend fun suggestForDish(dishSlug: String): List<IngredientSlug> =
         withContext(dispatchers.io) {
-            datasource.loadDishMap(dishSlug)?.defaultIngredients
+            runCatching { datasource.loadDishMap(dishSlug) }
+                .getOrNull()
+                ?.defaultIngredients
                 ?.mapNotNull { IngredientSlug.of(it).getOrNull() }
                 ?: emptyList()
         }

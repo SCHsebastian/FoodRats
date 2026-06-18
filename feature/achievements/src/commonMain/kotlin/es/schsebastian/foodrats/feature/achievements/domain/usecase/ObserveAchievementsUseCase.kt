@@ -94,11 +94,10 @@ class ObserveAchievementsUseCase(
                                     }
                                 }
                             }
-                        }
+                        }.debounce(400.milliseconds)
                     }
                 }
             }
-            .debounce(400.milliseconds)
 }
 
 private fun MealReadError.toAchievementError(): AchievementError = when (this) {
