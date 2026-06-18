@@ -8,6 +8,9 @@ name: Release (beta)
 on:
   push:
     branches: [main]
+  # Manual re-run (e.g. after adding signing secrets or fixing the self-hosted
+  # runner) without needing an empty commit to main.
+  workflow_dispatch:
 
 permissions:
   contents: read
