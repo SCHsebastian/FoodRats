@@ -14,11 +14,11 @@ Goal (user): "completa todo lo restante para poder subir la app a app store y pl
 - CLAUDE.md + feature CLAUDE.md edits; LegacyDevCrewMigration.kt deleted.
 
 ## Plan
-- [ ] P1 — Verify dirty tree green (host tests, assembleDebug, catalog, iOS link, functions). Fix breakage.
-- [ ] P1 — Commit logically (minotaur / crew / review-repairs / docs) + push.
-- [ ] P2 — Codeable store-prep: fastlane metadata (Play+ASC, en/es), verify privacy manifests, OG/unfurl page for /invite, version script sanity.
-- [ ] P3 — Deploys (attempt if creds): functions, rules, storage, hosting, seed, IAM. Else exact commands.
-- [ ] P4 — Consolidated from-scratch human runbook (accounts, signing, secrets, privacy declarations, on-device smoke, baseline profile).
+- [x] P1 — Verify dirty tree green. **BUILD SUCCESSFUL in 34s** (14 host suites + 2 assembleDebug + iOS link), functions 114/114. Fixed 5 auto-repair breakages.
+- [x] P1 — Committed `740e746` ("finalize & verify accumulated working tree") + pushed to origin/develop.
+- [x] P2 — Store-prep docs: LISTING-COPY.md (en/es) + RELEASE-CHECKLIST.md (master from-scratch runbook).
+- [~] P3 — Deploys: functions ✅, IAM Token Creator ✅; rules/indexes/storage/hosting in progress; seed = USER step (ADC). See DEPLOY-LOG.md.
+- [x] P4 — RELEASE-CHECKLIST.md is the consolidated from-scratch runbook (accounts/signing/secrets/privacy/smoke/baseline).
 
 ## Status log
 - (start) Mapped state; human.md + PUBLICATION.md + cicd-runbook.md are the gate sources.
