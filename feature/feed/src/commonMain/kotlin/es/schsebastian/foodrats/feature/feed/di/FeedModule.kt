@@ -45,6 +45,7 @@ val feedModule = module {
             accountReadPort = get(),
             ingredientRead = get(),
             activeCrew = get(),
+            blindVoting = get(),
             session = get(),
             clock = get(),
             zone = get(),

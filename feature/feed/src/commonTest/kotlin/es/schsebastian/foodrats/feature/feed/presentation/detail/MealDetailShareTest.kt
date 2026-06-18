@@ -25,6 +25,7 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvid
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
 import kotlinx.coroutines.Dispatchers
@@ -87,6 +88,7 @@ class MealDetailShareTest {
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
+            blindVoting = FakeCrewBlindVotingPort(),
             session = session,
             clock = clock,
             zone = zone,

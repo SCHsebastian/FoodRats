@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
@@ -63,6 +64,7 @@ class MealDetailViewModel(
     private val accountReadPort: AccountReadPort,
     private val ingredientRead: IngredientReadPort,
     private val activeCrew: ActiveCrewProvider,
+    private val blindVoting: CrewBlindVotingPort,
     private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
@@ -84,6 +86,21 @@ class MealDetailViewModel(
      */
     private var matchedMeal: Meal? = null
 
+    /**
+     * Live "is blind voting on?" for the active crew — mirrors [FeedViewModel.blindVotingFlow] so
+     * the detail screen masks the author identically to the feed (the leak was that detail never
+     * fed this into `toFeedUi`, defaulting `blindVoting` to false). Emits `false` when no crew.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val blindVotingFlow =
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(false)
+                else blindVoting.observeBlindVoting(crewId)
+            }
+            .distinctUntilChanged()
+
     init {
         val parsedDay = runCatching { LocalDate.parse(dayIso) }.getOrNull()
         if (parsedDay == null) {
@@ -96,7 +113,8 @@ class MealDetailViewModel(
                 combine(
                     observeFeed(flowOf(feedDay)),
                     ingredientRead.observeCatalog(),
-                ) { r, catalog -> r to catalog }.collect { (r, catalog) ->
+                    blindVotingFlow,
+                ) { r, catalog, blind -> Triple(r, catalog, blind) }.collect { (r, catalog, blind) ->
                     when (r) {
                         is Result.Ok -> {
                             val viewerId = session.current.first()?.accountId
@@ -111,6 +129,7 @@ class MealDetailViewModel(
                                             viewerId,
                                             todayMealDay,
                                             ingredientNames = matched.meal.ingredients.map(nameFor),
+                                            blindVoting = blind,
                                         )
                             val canDeleteMeal = match != null && viewerId != null &&
                                 (match.authorId == viewerId.value || ownerId == viewerId)

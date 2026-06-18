@@ -385,15 +385,21 @@ private fun LocationSection(meal: FeedMealUi) {
 
 @Composable
 private fun AuthorRow(meal: FeedMealUi) {
+    // Blind voting: while the crew hides who cooked until the viewer rates, the detail screen
+    // must mask the author exactly like the feed row — name → "Hidden until you rate", no avatar.
+    val authorLabel = if (meal.authorMasked) resolve(FeedStringKey.BlindAuthor) else meal.authorName
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         // decorative — the adjacent author-name label carries the identity for screen readers.
-        FrAvatar(initials = meal.authorName, imageUrl = meal.authorAvatarUrl)
+        FrAvatar(
+            initials = if (meal.authorMasked) "" else meal.authorName,
+            imageUrl = if (meal.authorMasked) null else meal.authorAvatarUrl,
+        )
         Column(modifier = Modifier.weight(1f)) {
-            FrText(text = meal.authorName, style = MaterialTheme.typography.titleMedium)
+            FrText(text = authorLabel, style = MaterialTheme.typography.titleMedium)
             FrText(
                 text = meal.dayEmote,
                 style = MaterialTheme.typography.bodySmall,
