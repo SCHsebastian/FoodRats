@@ -267,6 +267,27 @@ class FirebaseMealRepositoryTest {
         assertEquals(crew to mealId.value, f.storage.deletes.single())
     }
 
+    /** Regression: the double-fire publish race. A concurrent publish of the SAME draft creates
+     *  the doc between this attempt's free-slot pre-check and its write, so the write is rejected
+     *  by the `!exists` create rule (PERMISSION_DENIED). The just-overwritten blob now backs a LIVE
+     *  meal — it MUST NOT be deleted (the "image uploaded then vanishes" bug), and the outcome is
+     *  AlreadyPostedToday, not PublishUnavailable. */
+    @Test fun publish_write_rejected_but_doc_now_exists_keeps_plate_and_reports_already_posted() = runTest {
+        val f = Fixture().apply {
+            firestore.writeFault = RuntimeException("PERMISSION_DENIED: create rule !exists rejected the duplicate")
+            // The doc is absent at the pre-check but present once the write is rejected (the race).
+            firestore.existingSlotsAfterWriteFault = setOf(MealSlot.Lunch)
+        }
+        val repo = repository(f)
+
+        val result = repo.publish(draft())
+
+        assertEquals(1, f.storage.uploads.size)
+        // The blob backs the live doc — cleanup must be skipped.
+        assertEquals(emptyList(), f.storage.deletes)
+        assertEquals(Result.failure(MealError.Publish.AlreadyPostedToday), result)
+    }
+
     /** A PERMISSION_DENIED write fault is a publish failure, not a read failure (#8 fix). */
     @Test fun publish_permission_denied_write_fault_maps_to_publish_unavailable() = runTest {
         val f = Fixture().apply {

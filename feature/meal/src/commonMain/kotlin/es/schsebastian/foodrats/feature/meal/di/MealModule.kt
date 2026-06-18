@@ -138,6 +138,9 @@ val mealModule = module {
             publish = get<MealRepository>(),
             connectivity = get(),
             policy = get(),
+            // The queue is the single publish executor, so the true publish-outcome analytics
+            // (meal_published / meal_publish_failed) are emitted here, not in the coordinator.
+            analytics = get(),
         )
     }
 
