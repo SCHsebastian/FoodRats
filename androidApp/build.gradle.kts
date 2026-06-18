@@ -83,6 +83,14 @@ dependencies {
 // transform (stable since AGP 7.4) to drop the LIBRARY's copy from the merged
 // class set just before dexing, keeping OUR no-op as the sole definition. The
 // shutter stays muted; no runtime workaround.
+//
+// Selection is by CONTENT, not source order, so OUR class always wins
+// regardless of whether :core:presentation arrives as a dir or a jar: the
+// library's copy references `android/media/MediaActionSound` (it plays the
+// shutter); our no-op does not. We keep the copy WITHOUT that marker and drop
+// every copy WITH it. The task FAILS the build if it can't find our no-op or
+// can't find the library's copy — so a future library change can never silently
+// re-enable the shutter or leave a duplicate that breaks the dex merge.
 // ---------------------------------------------------------------------------
 @CacheableTask
 abstract class StripImagePickerShutterClass : DefaultTask() {
@@ -101,47 +109,92 @@ abstract class StripImagePickerShutterClass : DefaultTask() {
     fun strip() {
         val collidingEntry =
             "io/github/ismoy/imagepickerkmp/presentation/ui/utils/PlayShutterSoundKt.class"
-        // Our own no-op compiles to the same FQN inside :core:presentation's
-        // classes; keep the FIRST occurrence we see (project classes are fed
-        // before external jars) and drop every later duplicate of that one class.
-        var keptColliding = false
+        // The library's copy plays the shutter via android.media.MediaActionSound;
+        // our no-op shadow does not reference it. This byte marker is the
+        // order-independent discriminator between the two.
+        val libraryMarker = "android/media/MediaActionSound".toByteArray(Charsets.UTF_8)
+
+        var keptOurs = false
+        val droppedLibraryCopies = mutableListOf<String>()
         val seen = HashSet<String>()
 
         ZipOutputStream(output.get().asFile.outputStream().buffered()).use { out ->
-            // Project/module class directories first → our override wins.
+            fun writeEntry(name: String, bytes: ByteArray) {
+                out.putNextEntry(ZipEntry(name))
+                out.write(bytes)
+                out.closeEntry()
+            }
+            // Route every copy of the colliding class through a content check:
+            // drop the one that references MediaActionSound (library, plays the
+            // shutter), keep the one that doesn't (ours, muted). Anything else
+            // streams through with name-dedup.
+            fun consider(name: String, source: String, bytes: ByteArray) {
+                if (name == collidingEntry) {
+                    if (indexOf(bytes, libraryMarker) >= 0) {
+                        droppedLibraryCopies += source
+                        return
+                    }
+                    if (keptOurs) return
+                    keptOurs = true
+                    seen.add(name)
+                    logger.lifecycle(
+                        "StripImagePickerShutter: keeping muted no-op playShutterSound from $source",
+                    )
+                    writeEntry(name, bytes)
+                    return
+                }
+                if (!seen.add(name)) return
+                writeEntry(name, bytes)
+            }
+
             inputDirs.get().forEach { dir ->
                 val root = dir.asFile
                 root.walkTopDown().filter { it.isFile }.forEach { file ->
                     val name = file.relativeTo(root).invariantSeparatorsPath
-                    if (name == collidingEntry) {
-                        if (keptColliding) return@forEach
-                        keptColliding = true
-                    }
-                    if (!seen.add(name)) return@forEach
-                    out.putNextEntry(ZipEntry(name))
-                    file.inputStream().use { it.copyTo(out) }
-                    out.closeEntry()
+                    consider(name, "dir ${root.name}/$name", file.readBytes())
                 }
             }
             inputJars.get().forEach { jar ->
                 ZipInputStream(jar.asFile.inputStream().buffered()).use { zin ->
                     var entry = zin.nextEntry
                     while (entry != null) {
-                        val name = entry.name
                         if (!entry.isDirectory) {
-                            val drop = name == collidingEntry && keptColliding
-                            if (!drop && seen.add(name)) {
-                                if (name == collidingEntry) keptColliding = true
-                                out.putNextEntry(ZipEntry(name))
-                                zin.copyTo(out)
-                                out.closeEntry()
-                            }
+                            consider(entry.name, "jar ${jar.asFile.name}!${entry.name}", zin.readBytes())
                         }
                         entry = zin.nextEntry
                     }
                 }
             }
         }
+
+        if (droppedLibraryCopies.isNotEmpty()) {
+            logger.lifecycle(
+                "StripImagePickerShutter: dropped library shutter copy from " +
+                    droppedLibraryCopies.joinToString(),
+            )
+        }
+        check(keptOurs) {
+            "StripImagePickerShutter: our muted no-op PlayShutterSoundKt " +
+                "(io.github.ismoy.imagepickerkmp.presentation.ui.utils, no MediaActionSound) " +
+                "was not found in the release class set — the camera shutter would play. " +
+                "Ensure :core:presentation still ships the shadow class."
+        }
+        check(droppedLibraryCopies.isNotEmpty()) {
+            "StripImagePickerShutter: did not find the imagepickerkmp library's " +
+                "PlayShutterSoundKt (references MediaActionSound) to drop — the library may " +
+                "have changed (renamed/removed the class). Re-check the shutter-mute strategy."
+        }
+    }
+
+    private fun indexOf(haystack: ByteArray, needle: ByteArray): Int {
+        if (needle.isEmpty() || haystack.size < needle.size) return -1
+        outer@ for (i in 0..haystack.size - needle.size) {
+            for (j in needle.indices) {
+                if (haystack[i + j] != needle[j]) continue@outer
+            }
+            return i
+        }
+        return -1
     }
 }
 
