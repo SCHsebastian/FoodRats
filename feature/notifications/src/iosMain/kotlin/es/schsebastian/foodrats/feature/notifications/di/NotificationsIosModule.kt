@@ -13,5 +13,5 @@ val notificationsIosModule = module {
     single(named("platform-label")) { "ios" }
     single<NotificationPermissionGateway> { IosNotificationPermissionGateway() }
     single<LocalReminderScheduler> { IosLocalReminderScheduler() }
-    single<FcmTokenProvider> { IosFcmTokenProvider() }
+    single<FcmTokenProvider> { IosFcmTokenProvider(get()) }
 }

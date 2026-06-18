@@ -12,9 +12,9 @@
     <string name="crew_create_submit">Crear</string>
     <string name="crew_join_code_label">Código de invitación</string>
     <string name="crew_join_submit">Unirme</string>
-    <string name="crew_settings_title">Grupo</string>
+    <string name="crew_settings_title">GRUPO</string>
     <string name="crew_settings_back_cta">Atrás</string>
-    <string name="crew_settings_members_section">Miembros</string>
+    <string name="crew_settings_members_section">MIEMBROS</string>
     <string name="crew_settings_owner_badge">Eres el dueño</string>
     <string name="crew_settings_members_count">%1$d de 8 miembros</string>
     <string name="crew_settings_role_owner">Dueño</string>
@@ -23,10 +23,10 @@
     <string name="crew_settings_leave_cta">Salir del grupo</string>
     <string name="crew_settings_crew_section">Grupo</string>
     <string name="crew_settings_actions_section">Acciones</string>
-    <string name="crew_settings_danger_section">Zona de peligro</string>
+    <string name="crew_settings_danger_section">ZONA DE PELIGRO</string>
     <string name="crew_settings_crew_name_label">Nombre del grupo</string>
     <string name="crew_settings_save">Guardar</string>
-    <string name="crew_settings_blind_voting_section">Votación a ciegas</string>
+    <string name="crew_settings_blind_voting_section">VOTACIÓN A CIEGAS</string>
     <string name="crew_settings_blind_voting_label">Ocultar quién cocinó hasta votar</string>
     <string name="crew_settings_blind_voting_description">Cuando está activado, el autor de un plato permanece oculto hasta que lo hayas puntuado, para que nadie se deje influir por quién cocinó.</string>
     <string name="crew_settings_switch_crew">Cambiar de grupo</string>

@@ -66,6 +66,9 @@
     <string name="feed_delete_meal_cta">Delete meal</string>
     <string name="feed_delete_meal_confirm_title">Delete this meal?</string>
     <string name="feed_delete_meal_confirm_body">This can't be undone.</string>
+    <string name="feed_delete_meal_error_unauthorized">Only the author or the crew owner can delete this meal.</string>
+    <string name="feed_delete_meal_error_not_found">This meal is no longer here.</string>
+    <string name="feed_delete_meal_error_unavailable">Couldn't delete the meal. Try again.</string>
     <string name="feed_delete_comment_cta">Delete comment</string>
     <string name="feed_delete_comment_confirm_title">Delete this comment?</string>
     <string name="feed_delete_confirm_cta">Delete</string>

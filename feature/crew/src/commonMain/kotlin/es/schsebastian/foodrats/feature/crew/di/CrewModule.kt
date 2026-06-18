@@ -100,7 +100,7 @@ val crewModule = module {
     viewModel {
         CrewPickerViewModel(
             session = get(), observeMyCrews = get(), createCrew = get(), joinCrew = get(),
-            switchActive = get(), accountRead = get(), analytics = get(),
+            switchActive = get(), analytics = get(),
         )
     }
     viewModel { (code: String) ->
@@ -110,7 +110,6 @@ val crewModule = module {
             resolveCrew = get(),
             joinCrew = get(),
             switchActive = get(),
-            accountRead = get(),
             analytics = get(),
         )
     }

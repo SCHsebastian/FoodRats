@@ -524,7 +524,7 @@ private fun DangerActionRow(
 @Composable
 private fun SectionEyebrow(text: String, modifier: Modifier = Modifier) {
     FrText(
-        text = text.uppercase(),
+        text = text,
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = modifier,

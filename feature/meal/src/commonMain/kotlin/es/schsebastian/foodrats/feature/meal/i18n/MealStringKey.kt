@@ -2,6 +2,10 @@ package es.schsebastian.foodrats.feature.meal.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.meal.generated.resources.Res
+import foodrats.feature.meal.generated.resources.meal_capture_draft_failed
+import foodrats.feature.meal.generated.resources.meal_capture_no_crews
+import foodrats.feature.meal.generated.resources.meal_capture_photo_failed
+import foodrats.feature.meal.generated.resources.meal_capture_session_error
 import foodrats.feature.meal.generated.resources.meal_classifier_load_failed
 import foodrats.feature.meal.generated.resources.meal_classifier_no_detection
 import foodrats.feature.meal.generated.resources.meal_compose_add_location
@@ -85,4 +89,8 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     MealErrorLocationPermission(Res.string.meal_error_location_permission),
     MealErrorLocationUnavailable(Res.string.meal_error_location_unavailable),
     MealErrorLocationTimeout(Res.string.meal_error_location_timeout),
+    CaptureSessionError(Res.string.meal_capture_session_error),
+    CaptureNoCrews(Res.string.meal_capture_no_crews),
+    CaptureDraftFailed(Res.string.meal_capture_draft_failed),
+    CapturePhotoFailed(Res.string.meal_capture_photo_failed),
 }

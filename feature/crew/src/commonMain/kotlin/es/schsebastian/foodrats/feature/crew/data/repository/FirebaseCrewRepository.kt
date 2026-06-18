@@ -34,10 +34,9 @@ internal class FirebaseCrewRepository(
     override suspend fun create(
         name: String,
         founder: AccountId,
-        founderDisplayName: String,
     ): Result<Crew, CrewError> = withContext(dispatchers.io) {
         runCatching {
-            dataSource.createCrew(name, founder, founderDisplayName, clock.now().toEpochMilliseconds())
+            dataSource.createCrew(name, founder, clock.now().toEpochMilliseconds())
                 .toDomain()
         }.fold(
             onSuccess = { it },
@@ -55,10 +54,9 @@ internal class FirebaseCrewRepository(
     override suspend fun joinByCode(
         code: CrewCode,
         joiner: AccountId,
-        joinerDisplayName: String,
     ): Result<Crew, CrewError> = withContext(dispatchers.io) {
         runCatching {
-            dataSource.joinByCode(code, joiner, joinerDisplayName, clock.now().toEpochMilliseconds())
+            dataSource.joinByCode(code, joiner, clock.now().toEpochMilliseconds())
                 .toDomain()
         }.fold(
             onSuccess = { it },

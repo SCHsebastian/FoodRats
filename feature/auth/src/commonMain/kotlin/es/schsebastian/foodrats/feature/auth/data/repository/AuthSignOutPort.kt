@@ -15,7 +15,7 @@ import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
  * Maps [AuthError] → [SessionError]. The full GoogleSignIn / EmailPassword error
  * trees can't actually fire from sign-out (those are sign-IN paths) so the only
  * meaningful translations are the `AuthError.Firebase.*` leaves; anything else
- * collapses to [SessionError.FirebaseUnavailable].
+ * collapses to [SessionError.ProviderUnavailable].
  */
 internal class AuthSignOutPort(
     private val auth: AuthRepository,
@@ -42,6 +42,6 @@ internal class AuthSignOutPort(
         AuthError.Firebase.NotSignedIn,
         AuthError.Firebase.Unavailable,
         is AuthError.GoogleSignIn,
-        is AuthError.EmailPassword          -> SessionError.FirebaseUnavailable
+        is AuthError.EmailPassword          -> SessionError.ProviderUnavailable
     }
 }

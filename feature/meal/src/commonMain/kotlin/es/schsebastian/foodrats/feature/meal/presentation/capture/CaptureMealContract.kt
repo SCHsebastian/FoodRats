@@ -3,9 +3,12 @@ package es.schsebastian.foodrats.feature.meal.presentation.capture
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
+import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 
 data class CaptureMealState(
     val isCapturing: Boolean = false,
+    /** Non-null when starting the draft / saving the photo failed; surfaced as a banner. */
+    val error: MealStringKey? = null,
 ) : MviState
 
 sealed interface CaptureMealIntent : MviIntent {

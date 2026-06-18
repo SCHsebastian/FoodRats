@@ -22,6 +22,9 @@ import foodrats.feature.feed.generated.resources.feed_delete_confirm_cta
 import foodrats.feature.feed.generated.resources.feed_delete_meal_confirm_body
 import foodrats.feature.feed.generated.resources.feed_delete_meal_confirm_title
 import foodrats.feature.feed.generated.resources.feed_delete_meal_cta
+import foodrats.feature.feed.generated.resources.feed_delete_meal_error_not_found
+import foodrats.feature.feed.generated.resources.feed_delete_meal_error_unauthorized
+import foodrats.feature.feed.generated.resources.feed_delete_meal_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_average_heading
 import foodrats.feature.feed.generated.resources.feed_blind_author
 import foodrats.feature.feed.generated.resources.feed_reaction_count
@@ -147,6 +150,9 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     DeleteMealCta(Res.string.feed_delete_meal_cta),
     DeleteMealConfirmTitle(Res.string.feed_delete_meal_confirm_title),
     DeleteMealConfirmBody(Res.string.feed_delete_meal_confirm_body),
+    DeleteMealErrorUnauthorized(Res.string.feed_delete_meal_error_unauthorized),
+    DeleteMealErrorNotFound(Res.string.feed_delete_meal_error_not_found),
+    DeleteMealErrorUnavailable(Res.string.feed_delete_meal_error_unavailable),
     DeleteCommentCta(Res.string.feed_delete_comment_cta),
     DeleteCommentConfirmTitle(Res.string.feed_delete_comment_confirm_title),
     DeleteConfirmCta(Res.string.feed_delete_confirm_cta),

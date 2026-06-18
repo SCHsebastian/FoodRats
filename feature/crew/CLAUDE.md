@@ -4,9 +4,9 @@ Closed-group membership bounded context (3–8 members): create / join-by-code /
 
 ## Authoritative references
 
-- Spec — `docs/specs/2026-05-16-foodrats-ddd-kmp-design.md` §2.1 (Crew bounded context), §3 (module layout), §6.3 (remove-member design — still a stub).
+- Spec — `docs/specs/2026-05-16-foodrats-ddd-kmp-design.md` §2.1 (Crew bounded context), §3 (module layout), §6.3 (remove-member design — fully implemented).
 - Module README — `feature/crew/README.md` (screens + use-case inventory).
-- Root `CLAUDE.md` — "Module graph", "Architectural rules" (cross-context reads via ports — others consume `ActiveCrewProvider` from `:core:domain`), "Active tech debt" (remove-member stub returns `CrewError.NotImplemented.RemoveMember`).
+- Root `CLAUDE.md` — "Module graph", "Architectural rules" (cross-context reads via ports — others consume `ActiveCrewProvider` from `:core:domain`).
 
 ## Local rules
 

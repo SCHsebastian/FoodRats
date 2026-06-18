@@ -1,0 +1,31 @@
+ M CLAUDE.md
+ M androidApp/src/main/kotlin/es/schsebastian/foodrats/FoodRatsApplication.kt
+ M catalogApp/src/main/kotlin/es/schsebastian/foodrats/catalog/stories/AtomStories.kt
+ D core/data/src/commonMain/kotlin/es/schsebastian/foodrats/core/data/datastore/LegacyDevCrewMigration.kt
+ M core/designsystem/src/commonMain/kotlin/es/schsebastian/foodrats/core/designsystem/atoms/FrCard.kt
+ M core/designsystem/src/commonMain/kotlin/es/schsebastian/foodrats/core/designsystem/theme/FoodRatsTheme.kt
+ M core/designsystem/src/commonMain/kotlin/es/schsebastian/foodrats/core/designsystem/theme/SemanticColors.kt
+ M feature/auth/CLAUDE.md
+ M feature/auth/src/commonMain/kotlin/es/schsebastian/foodrats/feature/auth/data/repository/FirebaseAuthRepository.kt
+ M feature/crew/CLAUDE.md
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/data/firebase/CrewDataSource.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/data/firebase/CrewFirestoreDataSource.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/data/repository/FirebaseCrewRepository.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/di/CrewModule.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/domain/repository/CrewRepository.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/domain/usecase/CreateCrewUseCase.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/domain/usecase/JoinCrewByCodeUseCase.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/presentation/invite/AcceptInviteViewModel.kt
+ M feature/crew/src/commonMain/kotlin/es/schsebastian/foodrats/feature/crew/presentation/picker/CrewPickerViewModel.kt
+ M feature/crew/src/commonTest/kotlin/es/schsebastian/foodrats/feature/crew/data/firebase/FakeCrewDataSource.kt
+ M feature/crew/src/commonTest/kotlin/es/schsebastian/foodrats/feature/crew/data/repository/FirebaseCrewRepositoryTest.kt
+ M feature/crew/src/commonTest/kotlin/es/schsebastian/foodrats/feature/crew/domain/test/FakeCrewRepository.kt
+ M feature/crew/src/commonTest/kotlin/es/schsebastian/foodrats/feature/crew/domain/usecase/CreateCrewUseCaseTest.kt
+ M feature/crew/src/commonTest/kotlin/es/schsebastian/foodrats/feature/crew/domain/usecase/JoinCrewByCodeUseCaseTest.kt
+ M feature/crew/src/commonTest/kotlin/es/schsebastian/foodrats/feature/crew/presentation/invite/AcceptInviteViewModelTest.kt
+ M feature/crew/src/commonTest/kotlin/es/schsebastian/foodrats/feature/crew/presentation/picker/CrewPickerViewModelTest.kt
+ M shared/src/iosMain/kotlin/es/schsebastian/foodrats/MainViewController.kt
+?? core/designsystem/src/commonMain/kotlin/es/schsebastian/foodrats/core/designsystem/theme/Fur.kt
+?? core/designsystem/src/commonMain/kotlin/es/schsebastian/foodrats/core/designsystem/theme/MinotaurUnlock.kt
+?? docs/session/2026-06-16-minotaur-mode/
+?? docs/session/2026-06-17-full-app-review/

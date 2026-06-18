@@ -4,7 +4,6 @@ import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.app.navigation.DeepLinkBus
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.app.navigation.parseDeepLink
-import es.schsebastian.foodrats.app.navigation.requiresSession
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.needsDecision
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
@@ -119,7 +118,9 @@ class RootNavViewModel(
                 }
                 navLock.withLock {
                     val ready = currentState.stage == RootStage.Ready
-                    if (!route.requiresSession() || ready) {
+                    // All routes returned by parseDeepLink are Route.Protected, so requiresSession()
+                    // is always true here. Navigate immediately when Ready; stash otherwise.
+                    if (ready) {
                         FrLog.d(FrLog.Tags.RootNav) { "deep link → navigate now: ${route::class.simpleName}" }
                         emit(RootNavEffect.NavigateDeepLink(route))
                     } else {

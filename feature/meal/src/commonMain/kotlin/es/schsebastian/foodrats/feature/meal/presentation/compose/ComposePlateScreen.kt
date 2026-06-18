@@ -83,8 +83,10 @@ fun ComposePlateScreen(
     }
 
     // Kick off on-device classification when a plate arrives. The VM dedupes by
-    // photo content, so re-entry is a no-op and re-capture re-classifies.
-    LaunchedEffect(state.photoBytes) {
+    // photo content, so re-entry is a no-op and re-capture re-classifies. Key on
+    // the content hash, not the ByteArray identity — recomposition can hand us an
+    // equal-but-distinct array and we don't want to re-run on identity churn.
+    LaunchedEffect(state.photoBytes?.contentHashCode()) {
         state.photoBytes?.let { vm.onPhotoCaptured(it) }
     }
 

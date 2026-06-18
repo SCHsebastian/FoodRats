@@ -1,7 +1,16 @@
 package es.schsebastian.foodrats.feature.meal.presentation.capture
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.meal.presentation.components.resizeForUpload
 import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
 import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
@@ -16,6 +25,7 @@ fun CaptureMealScreen(
     onOpenSettings: () -> Unit,
     vm: CaptureMealViewModel = koinViewModel(),
 ) {
+    val state by vm.state.collectAsStateWithLifecycle()
     val picker = rememberImagePickerKMP()
 
     LaunchedEffect(Unit) {
@@ -49,6 +59,18 @@ fun CaptureMealScreen(
                 onCancelled()
             }
             is ImagePickerResult.Loading, is ImagePickerResult.Idle -> Unit
+        }
+    }
+
+    // The screen is otherwise a transparent camera launcher; when starting the
+    // draft or saving the photo fails, surface the reason as a banner so the
+    // failure isn't silent (the user can back out via the camera dismiss path).
+    state.error?.let { error ->
+        FrScreenScaffold {
+            FrErrorBanner(
+                text = resolve(error),
+                modifier = Modifier.fillMaxWidth().padding(Spacing.md),
+            )
         }
     }
 }

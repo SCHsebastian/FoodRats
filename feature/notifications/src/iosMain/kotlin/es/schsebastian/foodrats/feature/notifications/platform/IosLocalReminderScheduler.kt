@@ -4,11 +4,14 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationError
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
 import es.schsebastian.foodrats.feature.notifications.domain.repository.LocalReminderScheduler
+import kotlinx.coroutines.suspendCancellableCoroutine
 import platform.Foundation.NSDateComponents
+import platform.Foundation.NSError
 import platform.UserNotifications.UNCalendarNotificationTrigger
 import platform.UserNotifications.UNMutableNotificationContent
 import platform.UserNotifications.UNNotificationRequest
 import platform.UserNotifications.UNUserNotificationCenter
+import kotlin.coroutines.resume
 
 /**
  * iOS scheduler: registers a repeating UNCalendarNotificationTrigger at 14:00 device-local.
@@ -41,9 +44,16 @@ class IosLocalReminderScheduler : LocalReminderScheduler {
         )
         UNUserNotificationCenter.currentNotificationCenter()
             .removePendingNotificationRequestsWithIdentifiers(listOf(reminder.id))
-        UNUserNotificationCenter.currentNotificationCenter()
-            .addNotificationRequest(request) { /* error ignored */ }
-        return Result.success(Unit)
+
+        val nsError: NSError? = suspendCancellableCoroutine { cont ->
+            UNUserNotificationCenter.currentNotificationCenter()
+                .addNotificationRequest(request) { error -> cont.resume(error) }
+        }
+        return if (nsError == null) {
+            Result.success(Unit)
+        } else {
+            Result.failure(NotificationError.Schedule.Failed)
+        }
     }
 
     override suspend fun cancel(reminderId: String) {

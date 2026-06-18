@@ -296,7 +296,7 @@ class StatsViewModelTest {
         assertNull(share.lastCall!!.plateUrl) // streak card has no photo
         val event = analytics.events.filterIsInstance<AnalyticsEvent.StreakShared>().single()
         assertEquals("share", event.name)
-        assertEquals(AnalyticsValue.Count(1L), event.params["item_id"]) // makeVm seeds a 1-day streak
+        assertEquals(AnalyticsValue.Text("1"), event.params["item_id"]) // makeVm seeds a 1-day streak; item_id is text like every *Shared event
     }
 
     @Test fun sharing_streak_does_not_fire_event_on_failed_outcome() = runTest {

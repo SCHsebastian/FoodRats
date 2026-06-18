@@ -104,7 +104,14 @@ sealed interface ProfileIntent : MviIntent {
     data class DeleteConfirmationChanged(val value: String) : ProfileIntent
     data object RequestDeleteDialog : ProfileIntent
     data object DeleteDialogDismiss : ProfileIntent
-    data object DeleteDialogConfirm : ProfileIntent
+
+    /**
+     * Confirm deletion. [expectedPhrase] is the locale-resolved confirmation phrase the
+     * screen displayed (e.g. "DELETE Ana" / "BORRAR Ana"); the VM compares the user's typed
+     * input against it. Carrying it from the UI keeps the phrase in one language — the one
+     * the user actually saw — instead of a hardcoded English constant.
+     */
+    data class DeleteDialogConfirm(val expectedPhrase: String) : ProfileIntent
 }
 
 sealed interface ProfileEffect : MviEffect
@@ -230,7 +237,7 @@ class ProfileViewModel(
                 update { it.copy(deleteDialogOpen = true) }
             ProfileIntent.DeleteDialogDismiss ->
                 update { it.copy(deleteDialogOpen = false) }
-            ProfileIntent.DeleteDialogConfirm -> doDeleteAccount()
+            is ProfileIntent.DeleteDialogConfirm -> doDeleteAccount(intent.expectedPhrase)
         }
     }
 
@@ -350,8 +357,7 @@ class ProfileViewModel(
         }
     }
 
-    private suspend fun doDeleteAccount() {
-        val expected = expectedDeletePhrase()
+    private suspend fun doDeleteAccount(expected: String) {
         update { it.copy(isDeletingAccount = true, deleteDialogOpen = false, deleteError = null) }
         when (val r = deleteMyAccount(currentState.deleteConfirmation, expected)) {
             is Result.Ok -> {
@@ -396,26 +402,5 @@ class ProfileViewModel(
                 )
             }
         }
-    }
-
-    /**
-     * Phrase the user must type to confirm deletion. Built from the current
-     * display name; falls back to "DELETE" if no account is loaded yet (the UI
-     * disables the field in that case).
-     */
-    fun expectedDeletePhrase(): String {
-        val name = currentState.account?.displayName?.trim().orEmpty()
-        return if (name.isEmpty()) DELETE_VERB else "$DELETE_VERB $name"
-    }
-
-    companion object {
-        /**
-         * The English imperative verb used in the confirmation phrase. The
-         * Spanish locale builds "BORRAR <name>" via the same template
-         * resource (the localized template lives in strings.xml); we keep the
-         * source-of-truth comparison in English for now to avoid a circular
-         * dependency on the resolver in the VM layer.
-         */
-        const val DELETE_VERB = "DELETE"
     }
 }

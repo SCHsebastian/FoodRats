@@ -31,7 +31,8 @@ class LocationPermissionLauncherHolder {
 
     suspend fun requestAsync(permission: String): Boolean {
         val launcher = launcherRef.get() ?: return false
-        val deferred = CompletableDeferred<Boolean>().also { pending.set(it) }
+        val deferred = CompletableDeferred<Boolean>()
+        pending.getAndSet(deferred)?.complete(false)  // abandon any in-flight request
         launcher.launch(permission)
         return deferred.await()
     }

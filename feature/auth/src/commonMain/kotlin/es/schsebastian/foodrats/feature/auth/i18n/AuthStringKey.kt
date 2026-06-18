@@ -8,7 +8,6 @@ import foodrats.feature.auth.generated.resources.auth_delete_account_dialog_canc
 import foodrats.feature.auth.generated.resources.auth_delete_account_dialog_confirm
 import foodrats.feature.auth.generated.resources.auth_delete_account_dialog_title
 import foodrats.feature.auth.generated.resources.auth_delete_account_error_backend
-import foodrats.feature.auth.generated.resources.auth_delete_account_error_not_implemented
 import foodrats.feature.auth.generated.resources.auth_delete_account_error_ownership
 import foodrats.feature.auth.generated.resources.auth_delete_account_error_phrase
 import foodrats.feature.auth.generated.resources.auth_delete_account_in_flight
@@ -34,6 +33,7 @@ import foodrats.feature.auth.generated.resources.auth_error_network
 import foodrats.feature.auth.generated.resources.auth_error_no_google_accounts
 import foodrats.feature.auth.generated.resources.auth_error_password_too_short
 import foodrats.feature.auth.generated.resources.auth_error_play_services
+import foodrats.feature.auth.generated.resources.auth_error_session_expired
 import foodrats.feature.auth.generated.resources.auth_error_unknown
 import foodrats.feature.auth.generated.resources.auth_error_user_cancelled
 import foodrats.feature.auth.generated.resources.auth_error_wrong_credentials
@@ -118,6 +118,7 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ErrorPlayServices(Res.string.auth_error_play_services),
     ErrorNetwork(Res.string.auth_error_network),
     ErrorAccountDisabled(Res.string.auth_error_account_disabled),
+    ErrorSessionExpired(Res.string.auth_error_session_expired),
     ErrorMissingServerClientId(Res.string.auth_error_missing_server_client_id),
     ErrorUnknown(Res.string.auth_error_unknown),
     ErrorEmailInvalid(Res.string.auth_error_email_invalid),
@@ -197,7 +198,6 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     DeleteAccountDialogConfirm(Res.string.auth_delete_account_dialog_confirm),
     DeleteAccountInFlight(Res.string.auth_delete_account_in_flight),
     DeleteAccountErrorPhrase(Res.string.auth_delete_account_error_phrase),
-    DeleteAccountErrorNotImplemented(Res.string.auth_delete_account_error_not_implemented),
     DeleteAccountErrorBackend(Res.string.auth_delete_account_error_backend),
     DeleteAccountErrorOwnership(Res.string.auth_delete_account_error_ownership),
 }

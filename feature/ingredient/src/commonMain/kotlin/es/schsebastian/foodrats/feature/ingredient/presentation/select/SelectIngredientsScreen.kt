@@ -104,6 +104,8 @@ fun SelectIngredientsScreen(
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             )
 
+            // ingredient-02: build detectedSlugs set once; exclude from category rows
+            val detectedSlugs = remember(state.detected) { state.detected.toSet() }
             if (!state.loading && state.catalog.isEmpty()) {
                 FrEmptyState(
                     icon = FrIcons.Warning,
@@ -130,7 +132,7 @@ fun SelectIngredientsScreen(
                     }
 
                     CategoryOrder.forEach { category ->
-                        val rows = filtered.filter { it.category == category }
+                        val rows = filtered.filter { it.category == category && it.slug !in detectedSlugs }
                         if (rows.isEmpty()) return@forEach
                         val expanded = category in state.expandedCategories
                         item(key = "cat-${category::class.simpleName}") {

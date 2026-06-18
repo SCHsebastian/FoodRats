@@ -3,8 +3,6 @@ package es.schsebastian.foodrats
 import androidx.compose.ui.window.ComposeUIViewController
 import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.app.root.FoodRatsApp
-import es.schsebastian.foodrats.core.data.datastore.AppPreferences
-import es.schsebastian.foodrats.core.data.datastore.clearLegacyDevCrewIfPresent
 import es.schsebastian.foodrats.core.data.di.analyticsIosModule
 import es.schsebastian.foodrats.core.data.di.configIosModule
 import es.schsebastian.foodrats.core.data.di.crashIosModule
@@ -19,10 +17,6 @@ import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.meal.di.mealIosModule
 import es.schsebastian.foodrats.feature.mealai.di.mealAiIosModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.launch
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
 import platform.Foundation.NSData
@@ -109,10 +103,6 @@ fun MainViewController(
         // effectively a no-op there; the debug println path is unaffected.
         FrLog.installSink(CrashReporterLogSink(KoinPlatform.getKoin().get<CrashReporter>()))
 
-        // Self-healing migration: see Android equivalent in FoodRatsApplication.onCreate.
-        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
-            KoinPlatform.getKoin().get<AppPreferences>().clearLegacyDevCrewIfPresent()
-        }
     },
 ) {
     FoodRatsApp()

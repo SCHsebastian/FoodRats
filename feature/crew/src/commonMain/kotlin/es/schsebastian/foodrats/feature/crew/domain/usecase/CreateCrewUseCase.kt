@@ -12,9 +12,8 @@ class CreateCrewUseCase(private val repo: CrewRepository) {
     suspend operator fun invoke(
         name: String,
         founder: AccountId,
-        founderDisplayName: String,
     ): Result<Crew, CrewError> {
         val crewName = CrewName.of(name).getOrElse { return Result.failure(it) }
-        return repo.create(crewName.value, founder, founderDisplayName)
+        return repo.create(crewName.value, founder)
     }
 }

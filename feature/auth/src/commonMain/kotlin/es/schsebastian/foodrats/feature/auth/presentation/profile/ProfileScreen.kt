@@ -37,6 +37,7 @@ import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
@@ -67,7 +68,7 @@ fun ProfileScreen(
                 picker.reset()
             }
             is ImagePickerResult.Error -> {
-                println("[ProfileScreen] avatar picker error: ${r.exception.message}")
+                FrLog.w(FrLog.Tags.Auth) { "[ProfileScreen] avatar picker error: ${r.exception.message}" }
                 picker.reset()
             }
             is ImagePickerResult.Dismissed,
@@ -77,14 +78,20 @@ fun ProfileScreen(
     }
 
     if (state.deleteScreenOpen) {
+        // Locale-correct confirmation phrase: resolve the SAME template the screen displays
+        // (en "DELETE %1$s" / es "BORRAR %1$s") so a Spanish user types "BORRAR <name>", not the
+        // English "DELETE <name>". Trim because the template leaves a trailing space when no
+        // account/name is loaded yet (the field is disabled in that case anyway).
+        val displayName = state.account?.displayName?.trim().orEmpty()
+        val expectedPhrase = resolve(AuthStringKey.DeleteAccountPhraseTemplate, displayName).trim()
         DeleteAccountScreen(
             state = state,
             onBack = { vm.onIntent(ProfileIntent.CloseDeleteAccount) },
             onConfirmationChanged = { vm.onIntent(ProfileIntent.DeleteConfirmationChanged(it)) },
             onRequestDialog = { vm.onIntent(ProfileIntent.RequestDeleteDialog) },
             onDialogDismiss = { vm.onIntent(ProfileIntent.DeleteDialogDismiss) },
-            onDialogConfirm = { vm.onIntent(ProfileIntent.DeleteDialogConfirm) },
-            expectedPhrase = vm.expectedDeletePhrase(),
+            onDialogConfirm = { phrase -> vm.onIntent(ProfileIntent.DeleteDialogConfirm(phrase)) },
+            expectedPhrase = expectedPhrase,
         )
         return
     }

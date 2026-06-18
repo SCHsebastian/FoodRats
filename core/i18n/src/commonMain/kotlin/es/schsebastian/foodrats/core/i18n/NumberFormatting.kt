@@ -21,6 +21,7 @@ import kotlin.math.roundToLong
  * `(-73.985428).toFixed(5) == "-73.98543"`.
  */
 fun Double.toFixed(decimals: Int): String {
+    require(isFinite()) { "toFixed requires a finite value, was $this" }
     require(decimals >= 0) { "decimals must be >= 0, was $decimals" }
     val negative = this < 0.0
     val magnitude = abs(this)

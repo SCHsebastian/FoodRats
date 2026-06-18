@@ -27,9 +27,16 @@ class PermissionLauncherHolder {
         pending.getAndSet(null)?.complete(granted)
     }
 
+    /** True when a permission request is already in flight. */
+    val isRequesting: Boolean get() = pending.get() != null
+
     suspend fun requestAsync(permission: String): Boolean {
         val launcher = launcherRef.get() ?: return false
-        val deferred = CompletableDeferred<Boolean>().also { pending.set(it) }
+        val deferred = CompletableDeferred<Boolean>()
+        if (!pending.compareAndSet(null, deferred)) {
+            // A request is already in flight; don't launch a second one.
+            return false
+        }
         launcher.launch(permission)
         return deferred.await()
     }

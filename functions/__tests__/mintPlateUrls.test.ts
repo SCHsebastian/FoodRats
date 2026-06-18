@@ -3,6 +3,7 @@ import {
   authorizedPaths,
   buildSignedUrls,
   URL_TTL_MS,
+  MAX_PATHS,
   type ReadCrew,
   type SignReadUrl,
 } from "../src/callables/mintPlateUrls";
@@ -98,5 +99,15 @@ describe("buildSignedUrls — membership-checked minting (#15)", () => {
     expect(
       await codeOf(() => buildSignedUrls(deps, "alice", { crewId: "  ", paths: [] })),
     ).toBe("invalid-argument");
+  });
+
+  it("caps requests at MAX_PATHS paths (functions-03)", async () => {
+    // Build MAX_PATHS + 10 plate paths for crew c1; the response should contain at most MAX_PATHS.
+    const extraPaths = Array.from(
+      { length: MAX_PATHS + 10 },
+      (_, i) => `crews/c1/meals/c1_alice_2026-06-14_${i}.jpg`,
+    );
+    const res = await buildSignedUrls(deps, "alice", { crewId: "c1", paths: extraPaths });
+    expect(Object.keys(res.urls).length).toBeLessThanOrEqual(MAX_PATHS);
   });
 });

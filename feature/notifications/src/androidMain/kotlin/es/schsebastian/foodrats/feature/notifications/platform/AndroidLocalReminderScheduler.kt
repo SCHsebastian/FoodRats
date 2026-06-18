@@ -6,11 +6,11 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationError
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
 import es.schsebastian.foodrats.feature.notifications.domain.repository.LocalReminderScheduler
 import java.util.concurrent.TimeUnit
-import kotlinx.datetime.Clock as KxClock
 
 /**
  * Android scheduler: registers a daily-recurring PeriodicWorkRequest. The initial-delay lands at
@@ -20,10 +20,11 @@ import kotlinx.datetime.Clock as KxClock
  */
 class AndroidLocalReminderScheduler(
     private val context: Context,
+    private val clock: Clock,
 ) : LocalReminderScheduler {
 
     override suspend fun schedule(reminder: Reminder): Result<Unit, NotificationError.Schedule> {
-        val nowMs = KxClock.System.now().toEpochMilliseconds()
+        val nowMs = clock.now().toEpochMilliseconds()
         val initialDelayMs = reminder.deliverAt.toEpochMilliseconds() - nowMs
         if (initialDelayMs <= 0) return Result.failure(NotificationError.Schedule.Failed)
         val req = PeriodicWorkRequestBuilder<DailyInactivityWorker>(

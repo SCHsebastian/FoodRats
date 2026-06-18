@@ -2,12 +2,15 @@ package es.schsebastian.foodrats.feature.notifications.platform
 
 import dev.gitlive.firebase.Firebase
 import dev.gitlive.firebase.messaging.messaging
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.feature.notifications.domain.model.DeviceToken
 import es.schsebastian.foodrats.feature.notifications.domain.repository.FcmTokenProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-class IosFcmTokenProvider : FcmTokenProvider {
+class IosFcmTokenProvider(
+    private val crashReporter: CrashReporter,
+) : FcmTokenProvider {
     override val token: Flow<DeviceToken?> = flow {
         // FCM token retrieval requires APNs to be set up (Apple Developer Push Notifications
         // entitlement + APNs key in Firebase Console). On dev iPhones / personal-team builds
@@ -17,7 +20,7 @@ class IosFcmTokenProvider : FcmTokenProvider {
         val token = try {
             Firebase.messaging.getToken()
         } catch (t: Throwable) {
-            println("[IosFcmTokenProvider] FCM token unavailable: ${t.message}")
+            crashReporter.log("[IosFcmTokenProvider] FCM token unavailable: ${t.message}")
             null
         }
         emit(token?.let(::DeviceToken))

@@ -15,7 +15,7 @@ import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
-import es.schsebastian.foodrats.feature.meal.domain.error.MealError
+import es.schsebastian.foodrats.feature.meal.data.queue.uploadErrorKey
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraftStatus
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
@@ -225,30 +225,4 @@ class BackgroundMealUploadCoordinator(
         const val ERROR_UNKNOWN = "meal.upload.unknown"
         const val ERROR_NO_DRAFT = "meal.upload.no_draft"
     }
-}
-
-/**
- * Token the presentation layer maps to a `MealStringKey` via
- * `MealErrorMapper.uploadErrorKeyToStringKey`. Domain doesn't know about
- * `StringKey`, so we pass an opaque marker.
- */
-private fun MealError.uploadErrorKey(): String = when (this) {
-    MealError.Publish.AlreadyPostedToday -> "meal.error.alreadyPosted"
-    MealError.Publish.NoSlotSelected     -> "meal.error.noSlot"
-    MealError.Publish.NoCrewSelected     -> "meal.error.noCrewSelected"
-    MealError.Publish.NotToday           -> "meal.error.notToday"
-    MealError.Publish.PublishUnavailable -> "meal.error.publishUnavailable"
-    MealError.Publish.PhotoUploadFailed  -> "meal.error.photoUploadFailed"
-    MealError.Validation.Blank           -> "meal.error.blank"
-    MealError.Validation.NoPhoto         -> "meal.error.noPhoto"
-    MealError.Validation.TooLong         -> "meal.error.tooLong"
-    MealError.Validation.DescriptionTooLong -> "meal.error.descriptionTooLong"
-    MealError.Validation.TooManyIngredients -> "meal.error.tooManyIngredients"
-    MealError.Validation.OutOfRange      -> "meal.error.outOfRange"
-    MealError.Read.Unauthorized          -> "meal.error.readUnauthorized"
-    MealError.Read.CrewNotFound          -> "meal.error.readCrewNotFound"
-    MealError.Read.NotFound              -> "meal.error.readNotFound"
-    MealError.Location.PermissionDenied  -> "meal.error.locationPermission"
-    MealError.Location.Unavailable       -> "meal.error.locationUnavailable"
-    MealError.Location.Timeout           -> "meal.error.locationTimeout"
 }

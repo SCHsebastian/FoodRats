@@ -22,7 +22,6 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberCount
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
-import kotlin.math.round
 
 enum class CookAwardVariant { BestCook, MostProlific }
 
@@ -72,7 +71,7 @@ fun FrCookAwardCard(
             FrText(
                 text = resolve(
                     StatsStringKey.BestCookMetricFormat,
-                    formatScore(award.averageScore.toFloat()),
+                    formatOneDecimal(award.averageScore.toFloat()),
                     award.postCount,
                 ),
                 style = MaterialTheme.typography.bodyMedium,
@@ -134,11 +133,4 @@ fun FrCookAwardCard(
 private fun titleFor(variant: CookAwardVariant): StatsStringKey = when (variant) {
     CookAwardVariant.BestCook     -> StatsStringKey.BestCookTitle
     CookAwardVariant.MostProlific -> StatsStringKey.MostProlificTitle
-}
-
-private fun formatScore(v: Float): String {
-    val r = round(v * 10f) / 10f
-    val whole = r.toInt()
-    val tenths = ((r - whole) * 10f).toInt()
-    return "$whole.${if (tenths < 0) -tenths else tenths}"
 }

@@ -11,9 +11,8 @@ class JoinCrewByCodeUseCase(private val repo: CrewRepository) {
     suspend operator fun invoke(
         rawCode: String,
         joiner: AccountId,
-        joinerDisplayName: String,
     ): Result<Crew, CrewError> = when (val parsed = CrewCode.of(rawCode)) {
         is Result.Err -> Result.failure(parsed.error)
-        is Result.Ok  -> repo.joinByCode(parsed.value, joiner, joinerDisplayName)
+        is Result.Ok  -> repo.joinByCode(parsed.value, joiner)
     }
 }

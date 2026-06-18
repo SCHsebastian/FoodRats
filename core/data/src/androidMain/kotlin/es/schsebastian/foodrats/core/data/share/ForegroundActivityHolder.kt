@@ -21,7 +21,7 @@ object ForegroundActivityHolder {
 
     @Volatile
     private var activityRef: WeakReference<Activity> = WeakReference(null)
-    private var installed = false
+    @Volatile private var installed = false
 
     /** Registers lifecycle tracking. Idempotent. Call once from `Application.onCreate`. */
     fun install(application: Application) {

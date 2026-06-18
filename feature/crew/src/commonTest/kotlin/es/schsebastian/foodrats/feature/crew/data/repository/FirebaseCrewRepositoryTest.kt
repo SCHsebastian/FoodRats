@@ -86,7 +86,7 @@ class FirebaseCrewRepositoryTest {
     @Test
     fun create_maps_datasource_dto_to_domain_and_passes_clock_now() = runTest {
         ds.createResult = validDto
-        val r = repo().create("Test Crew", aid("owner"), "Owner")
+        val r = repo().create("Test Crew", aid("owner"))
         assertIs<Result.Ok<Crew>>(r)
         assertEquals(cid("c-1"), r.value.id)
         assertEquals("Test Crew", r.value.name)
@@ -98,21 +98,21 @@ class FirebaseCrewRepositoryTest {
     @Test
     fun create_classifies_CodeCollisionExhausted_as_Create_CodeCollisionRetriesExhausted() = runTest {
         ds.createThrows = CodeCollisionExhaustedException
-        val r = repo().create("Test Crew", aid("owner"), "Owner")
+        val r = repo().create("Test Crew", aid("owner"))
         assertEquals(Result.failure(CrewError.Create.CodeCollisionRetriesExhausted), r)
     }
 
     @Test
     fun create_classifies_permission_denied_throwable_as_Backend_PermissionDenied() = runTest {
         ds.createThrows = RuntimeException("PERMISSION_DENIED: missing permissions")
-        val r = repo().create("Test Crew", aid("owner"), "Owner")
+        val r = repo().create("Test Crew", aid("owner"))
         assertEquals(Result.failure(CrewError.Backend.PermissionDenied), r)
     }
 
     @Test
     fun create_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
         ds.createThrows = RuntimeException("boom")
-        val r = repo().create("Test Crew", aid("owner"), "Owner")
+        val r = repo().create("Test Crew", aid("owner"))
         assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
     }
 
@@ -120,7 +120,7 @@ class FirebaseCrewRepositoryTest {
     fun create_propagates_mapper_failure_when_returned_dto_is_malformed() = runTest {
         // Datasource "succeeds" but returns an un-mappable DTO (missing id) → toDomain failure surfaces.
         ds.createResult = validDto.copy(id = null)
-        val r = repo().create("Test Crew", aid("owner"), "Owner")
+        val r = repo().create("Test Crew", aid("owner"))
         assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
     }
 
@@ -135,7 +135,7 @@ class FirebaseCrewRepositoryTest {
                 "joiner" to MemberDto(joinedAtEpochMs = nowMs),
             ),
         )
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"), "Joiner")
+        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
         assertIs<Result.Ok<Crew>>(r)
         assertEquals(2, r.value.members.size)
         assertEquals(code("ABCD23"), ds.lastJoin?.code)
@@ -144,14 +144,14 @@ class FirebaseCrewRepositoryTest {
     @Test
     fun joinByCode_classifies_CodeUnknown_as_Invite_CodeUnknown() = runTest {
         ds.joinThrows = CodeUnknownException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"), "Joiner")
+        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Invite.CodeUnknown), r)
     }
 
     @Test
     fun joinByCode_classifies_NotFound_as_Membership_NotFound() = runTest {
         ds.joinThrows = NotFoundException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"), "Joiner")
+        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Membership.NotFound), r)
     }
 
@@ -162,21 +162,21 @@ class FirebaseCrewRepositoryTest {
         // (The in-memory cap itself is covered by CrewTest / CrewSizeTest, and the transactional
         // cap by the firestore emulator harness — not unit-testable through this fake.)
         ds.joinThrows = FullException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"), "Joiner")
+        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Membership.Full), r)
     }
 
     @Test
     fun joinByCode_classifies_AlreadyMember_as_Membership_AlreadyMember() = runTest {
         ds.joinThrows = AlreadyMemberException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"), "Joiner")
+        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Membership.AlreadyMember), r)
     }
 
     @Test
     fun joinByCode_classifies_network_throwable_as_Backend_Network() = runTest {
         ds.joinThrows = RuntimeException("network unavailable")
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"), "Joiner")
+        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Backend.Network), r)
     }
 

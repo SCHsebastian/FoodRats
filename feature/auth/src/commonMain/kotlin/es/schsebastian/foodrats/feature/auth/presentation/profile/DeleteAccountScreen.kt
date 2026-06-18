@@ -14,7 +14,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -23,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
@@ -45,7 +45,7 @@ internal fun DeleteAccountScreen(
     onConfirmationChanged: (String) -> Unit,
     onRequestDialog: () -> Unit,
     onDialogDismiss: () -> Unit,
-    onDialogConfirm: () -> Unit,
+    onDialogConfirm: (expectedPhrase: String) -> Unit,
 ) {
     val semantic = LocalFrSemanticColors.current
     val cta_enabled = state.deleteConfirmation == expectedPhrase &&
@@ -57,9 +57,11 @@ internal fun DeleteAccountScreen(
             CenterAlignedTopAppBar(
                 title = { Text(resolve(AuthStringKey.DeleteAccountTitle)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(imageVector = FrIcons.Back, contentDescription = null)
-                    }
+                    FrIconButton(
+                        icon = FrIcons.Back,
+                        onClick = onBack,
+                        contentDescription = resolve(AuthStringKey.ProfileBackCta),
+                    )
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -161,7 +163,7 @@ internal fun DeleteAccountScreen(
             message = resolve(AuthStringKey.DeleteAccountDialogBody),
             confirmLabel = resolve(AuthStringKey.DeleteAccountDialogConfirm),
             dismissLabel = resolve(AuthStringKey.DeleteAccountDialogCancel),
-            onConfirm = onDialogConfirm,
+            onConfirm = { onDialogConfirm(expectedPhrase) },
             onDismiss = onDialogDismiss,
             destructive = true,
         )

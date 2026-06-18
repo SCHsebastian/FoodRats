@@ -18,6 +18,8 @@ actual fun providePreferencesDataStore(): DataStore<Preferences> =
             appropriateForURL = null,
             create = false,
             error = null,
-        )!!
-        ("${docDir.path}/$DATASTORE_FILE_NAME").toPath()
+        ) ?: error("NSFileManager cannot resolve NSDocumentDirectory — cannot create DataStore")
+        val docPath = docDir.path
+            ?: error("NSDocumentDirectory URL has no path component — cannot create DataStore")
+        ("$docPath/$DATASTORE_FILE_NAME").toPath()
     })

@@ -21,6 +21,7 @@
     <string name="auth_error_unknown">Couldn't sign in. Try again.</string>
     <string name="auth_error_missing_server_client_id">Google sign-in is not configured. Set googleServerClientId in ~/.gradle/gradle.properties and rebuild.</string>
     <string name="auth_error_account_disabled">This account is disabled.</string>
+    <string name="auth_error_session_expired">Your session expired. Sign in again.</string>
     <string name="auth_error_email_invalid">Enter a valid email address.</string>
     <string name="auth_error_password_too_short">Password must be at least 6 characters.</string>
     <string name="auth_error_email_in_use">That email is already taken.</string>
@@ -98,7 +99,6 @@
     <string name="auth_delete_account_dialog_confirm">Delete forever</string>
     <string name="auth_delete_account_in_flight">Deleting account…</string>
     <string name="auth_delete_account_error_phrase">The confirmation phrase didn't match. Type it exactly.</string>
-    <string name="auth_delete_account_error_not_implemented">Account deletion is being rolled out. Reach out to support to delete your account today.</string>
     <string name="auth_delete_account_error_backend">Couldn't reach the deletion service. Try again.</string>
     <string name="auth_delete_account_error_ownership">Couldn't reassign your crew's owner. Please try again.</string>
 </resources>

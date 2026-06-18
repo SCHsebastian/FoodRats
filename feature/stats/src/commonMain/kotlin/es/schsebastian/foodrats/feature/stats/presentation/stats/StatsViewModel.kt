@@ -60,10 +60,17 @@ class StatsViewModel(
             observeStats(historicEnabledFlow, epochFlow).collect { r ->
                 when (r) {
                     is Result.Ok -> update {
+                        val historicFailed = r.value.historicError != null
                         it.copy(
                             snapshot = r.value,
                             error = null,
-                            historicLoading = it.selectedTab == Tab.Historic && r.value.historic == null,
+                            historicError = r.value.historicError,
+                            // Stop spinning once Historic resolves either way — a populated window
+                            // OR a surfaced error both end the load; only keep spinning while the
+                            // tab is open and we have neither yet.
+                            historicLoading = it.selectedTab == Tab.Historic &&
+                                r.value.historic == null &&
+                                !historicFailed,
                             isRefreshing = false,
                         )
                     }

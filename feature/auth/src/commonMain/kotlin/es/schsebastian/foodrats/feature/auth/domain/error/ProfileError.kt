@@ -47,8 +47,6 @@ sealed interface ProfileError {
     sealed interface Delete : ProfileError {
         data object PhraseMismatch : Delete
 
-        /** Dead-but-kept one release (stub-era outcome); removed in a follow-up. See spec §10. */
-        data object NotImplemented : Delete
         data object Unavailable : Delete
 
         /** Transient, retryable: server couldn't reassign an owned crew. Replaces OwnerOfActiveCrew. */
@@ -82,7 +80,6 @@ internal fun NotificationsPreferenceError.toProfileError(): ProfileError = when 
 
 internal fun AccountDeletionError.toProfileError(): ProfileError = when (this) {
     AccountDeletionError.Validation.PhraseMismatch -> ProfileError.Delete.PhraseMismatch
-    AccountDeletionError.Backend.NotImplemented -> ProfileError.Delete.NotImplemented
     AccountDeletionError.Backend.Unavailable -> ProfileError.Delete.Unavailable
     AccountDeletionError.Deletion.OwnerReassignFailed -> ProfileError.Delete.OwnerReassignFailed
 }

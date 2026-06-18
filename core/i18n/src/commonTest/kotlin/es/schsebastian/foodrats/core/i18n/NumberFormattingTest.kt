@@ -45,4 +45,19 @@ class NumberFormattingTest {
     fun negative_decimals_is_rejected() {
         assertFailsWith<IllegalArgumentException> { 1.0.toFixed(-1) }
     }
+
+    @Test
+    fun nan_is_rejected() {
+        assertFailsWith<IllegalArgumentException> { Double.NaN.toFixed(1) }
+    }
+
+    @Test
+    fun positive_infinity_is_rejected() {
+        assertFailsWith<IllegalArgumentException> { Double.POSITIVE_INFINITY.toFixed(1) }
+    }
+
+    @Test
+    fun negative_infinity_is_rejected() {
+        assertFailsWith<IllegalArgumentException> { Double.NEGATIVE_INFINITY.toFixed(1) }
+    }
 }

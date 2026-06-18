@@ -61,6 +61,8 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.testJunit)
                 implementation(libs.junit)
+                implementation(libs.kotlinx.coroutines.test)
+                implementation(libs.androidx.activity.compose)
             }
         }
         androidMain.dependencies {

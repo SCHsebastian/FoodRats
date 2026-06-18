@@ -19,8 +19,9 @@ interface SessionProvider {
 }
 
 sealed interface SessionError {
-    data object NotSignedIn         : SessionError
-    data object TokenExpired        : SessionError
-    data object AccountDisabled     : SessionError
-    data object FirebaseUnavailable : SessionError
+    data object NotSignedIn          : SessionError
+    data object TokenExpired         : SessionError
+    data object AccountDisabled      : SessionError
+    /** The auth/identity provider was unreachable (network, outage, …). Vendor-agnostic name. */
+    data object ProviderUnavailable  : SessionError
 }

@@ -12,9 +12,9 @@
     <string name="crew_create_submit">Create</string>
     <string name="crew_join_code_label">Invite code</string>
     <string name="crew_join_submit">Join</string>
-    <string name="crew_settings_title">Crew</string>
+    <string name="crew_settings_title">CREW</string>
     <string name="crew_settings_back_cta">Back</string>
-    <string name="crew_settings_members_section">Members</string>
+    <string name="crew_settings_members_section">MEMBERS</string>
     <string name="crew_settings_owner_badge">You\'re the owner</string>
     <string name="crew_settings_members_count">%1$d of 8 members</string>
     <string name="crew_settings_role_owner">Owner</string>
@@ -23,10 +23,10 @@
     <string name="crew_settings_leave_cta">Leave crew</string>
     <string name="crew_settings_crew_section">Crew</string>
     <string name="crew_settings_actions_section">Actions</string>
-    <string name="crew_settings_danger_section">Danger zone</string>
+    <string name="crew_settings_danger_section">DANGER ZONE</string>
     <string name="crew_settings_crew_name_label">Crew name</string>
     <string name="crew_settings_save">Save</string>
-    <string name="crew_settings_blind_voting_section">Blind voting</string>
+    <string name="crew_settings_blind_voting_section">BLIND VOTING</string>
     <string name="crew_settings_blind_voting_label">Hide who cooked until you vote</string>
     <string name="crew_settings_blind_voting_description">When on, a meal\'s author stays hidden until you\'ve scored it — so nobody is swayed by who cooked.</string>
     <string name="crew_settings_switch_crew">Switch crew</string>

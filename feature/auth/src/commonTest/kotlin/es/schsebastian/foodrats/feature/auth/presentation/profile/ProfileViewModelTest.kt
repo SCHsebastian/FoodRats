@@ -207,7 +207,7 @@ class ProfileViewModelTest {
             // Seed the confirmation phrase, then confirm.
             vm.onIntent(ProfileIntent.OpenDeleteAccount)
             vm.onIntent(ProfileIntent.DeleteConfirmationChanged(expectedPhrase))
-            vm.onIntent(ProfileIntent.DeleteDialogConfirm)
+            vm.onIntent(ProfileIntent.DeleteDialogConfirm(expectedPhrase))
 
             val final = expectMostRecentItem()
             assertEquals(false, final.isDeletingAccount)
@@ -238,7 +238,7 @@ class ProfileViewModelTest {
         vm.state.test {
             vm.onIntent(ProfileIntent.OpenDeleteAccount)
             vm.onIntent(ProfileIntent.DeleteConfirmationChanged(expectedPhrase))
-            vm.onIntent(ProfileIntent.DeleteDialogConfirm)
+            vm.onIntent(ProfileIntent.DeleteDialogConfirm(expectedPhrase))
 
             val final = expectMostRecentItem()
             assertEquals(false, final.isDeletingAccount)
@@ -252,6 +252,57 @@ class ProfileViewModelTest {
         assertTrue(analytics.events.isEmpty())
         assertTrue(analytics.userIds.isEmpty())
         assertEquals(0, analytics.resetCount)
+        assertEquals(0, signOut.signOutCount)
+    }
+
+    // auth-01 regression: the expected phrase is carried from the screen in the locale the
+    // user actually saw, so the Spanish "BORRAR <name>" must confirm just like English would.
+    @Test fun spanish_phrase_confirms_deletion() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val signOut = RecordingSignOutPort()
+        val vm = buildViewModel(Result.success(Unit), analytics, signOut)
+        val spanishPhrase = "BORRAR Ana"
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.OpenDeleteAccount)
+            vm.onIntent(ProfileIntent.DeleteConfirmationChanged(spanishPhrase))
+            vm.onIntent(ProfileIntent.DeleteDialogConfirm(spanishPhrase))
+
+            val final = expectMostRecentItem()
+            assertEquals(false, final.isDeletingAccount)
+            assertEquals(false, final.deleteScreenOpen)
+            assertNull(final.deleteError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // The deletion ran end-to-end: the account-deleted event fired and we signed out.
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.AccountDeleted), analytics.events)
+        assertEquals(1, signOut.signOutCount)
+    }
+
+    // A typed input that doesn't match the displayed phrase must NOT delete — it surfaces a
+    // phrase-mismatch error and fires no teardown (the use case re-validates as defense in depth).
+    @Test fun wrong_phrase_does_not_confirm_deletion() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val signOut = RecordingSignOutPort()
+        val vm = buildViewModel(Result.success(Unit), analytics, signOut)
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.OpenDeleteAccount)
+            // User typed the English phrase but the displayed (expected) phrase was Spanish.
+            vm.onIntent(ProfileIntent.DeleteConfirmationChanged("DELETE Ana"))
+            vm.onIntent(ProfileIntent.DeleteDialogConfirm("BORRAR Ana"))
+
+            val final = expectMostRecentItem()
+            assertEquals(false, final.isDeletingAccount)
+            // Screen stays open; the mismatch error is shown.
+            assertTrue(final.deleteScreenOpen)
+            assertEquals(AuthStringKey.DeleteAccountErrorPhrase, final.deleteError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // Nothing destructive happened.
+        assertTrue(analytics.events.isEmpty())
         assertEquals(0, signOut.signOutCount)
     }
 

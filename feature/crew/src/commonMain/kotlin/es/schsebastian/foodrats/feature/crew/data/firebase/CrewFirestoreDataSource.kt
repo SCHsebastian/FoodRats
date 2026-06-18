@@ -62,7 +62,6 @@ class CrewFirestoreDataSource(
     override suspend fun createCrew(
         name: String,
         founder: AccountId,
-        founderDisplayName: String,
         nowMs: Long,
     ): CrewDto {
         repeat(MAX_CODE_ATTEMPTS) {
@@ -99,7 +98,6 @@ class CrewFirestoreDataSource(
     override suspend fun joinByCode(
         code: CrewCode,
         joiner: AccountId,
-        joinerDisplayName: String,
         nowMs: Long,
     ): CrewDto {
         val codeRef = codesCol.document(code.value)

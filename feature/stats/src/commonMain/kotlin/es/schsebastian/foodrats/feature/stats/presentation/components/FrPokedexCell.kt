@@ -13,7 +13,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,8 +45,8 @@ internal fun FrPokedexCell(
     modifier: Modifier = Modifier,
 ) {
     val collected = cell.collected
-    val celebration = LocalFrSemanticColors.current.celebration
-    val discColor = if (collected) celebration else MaterialTheme.colorScheme.surfaceVariant
+    val semantic = LocalFrSemanticColors.current
+    val discColor = if (collected) semantic.celebration else MaterialTheme.colorScheme.surfaceVariant
     val paddedIndex = index.toString().padStart(3, '0')
 
     Column(
@@ -70,7 +69,7 @@ internal fun FrPokedexCell(
                     FrText(
                         text = cell.ingredient.displayName.trim().take(1).uppercase(),
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
+                        color = semantic.onCelebration,
                     )
                 } else {
                     FrText(

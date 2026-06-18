@@ -134,6 +134,10 @@ class AnalyticsTaxonomyTest {
             )
             assertTrue(contentType in setOf("plate", "award", "streak", "recap"), "illegal content_type '$contentType'")
             assertTrue(event.params.containsKey("item_id"), "share-card event missing item_id: '${event.name}'")
+            assertTrue(
+                event.params["item_id"] is AnalyticsValue.Text,
+                "share-card event item_id must be Text (GA4 string), got ${event.params["item_id"]?.let { it::class.simpleName }} on '${event.name}'",
+            )
         }
     }
 

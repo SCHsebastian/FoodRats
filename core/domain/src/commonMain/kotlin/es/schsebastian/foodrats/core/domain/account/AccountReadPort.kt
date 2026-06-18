@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.core.domain.account
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 
@@ -28,5 +29,6 @@ interface AccountReadPort {
             flowOf(emptyMap())
         } else {
             combine(ids.map { id -> observe(id).map { id to it } }) { pairs -> pairs.toMap() }
+                .distinctUntilChanged()
         }
 }

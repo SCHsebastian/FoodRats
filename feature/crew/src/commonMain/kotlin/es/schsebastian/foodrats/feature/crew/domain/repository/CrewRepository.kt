@@ -11,10 +11,10 @@ import kotlinx.coroutines.flow.Flow
 interface CrewRepository {
 
     /** Creates a new Crew with the calling user as the sole founding member. */
-    suspend fun create(name: String, founder: AccountId, founderDisplayName: String): Result<Crew, CrewError>
+    suspend fun create(name: String, founder: AccountId): Result<Crew, CrewError>
 
     /** Joins an existing Crew by invite code. Transactional under contention. */
-    suspend fun joinByCode(code: CrewCode, joiner: AccountId, joinerDisplayName: String): Result<Crew, CrewError>
+    suspend fun joinByCode(code: CrewCode, joiner: AccountId): Result<Crew, CrewError>
 
     /**
      * Resolves a Crew by its invite [code] WITHOUT joining — for the accept-invite preview (the

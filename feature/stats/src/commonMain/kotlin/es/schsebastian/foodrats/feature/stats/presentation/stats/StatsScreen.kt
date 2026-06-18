@@ -188,7 +188,14 @@ private fun StatsContent(
                     Tab.Historic -> snap.historic
                 }
                 if (window == null) {
-                    HistoricLoading()
+                    val historicError = state.historicError
+                    if (tab == Tab.Historic && historicError != null) {
+                        Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
+                            FrErrorBanner(text = resolve(historicError.toStringKey()))
+                        }
+                    } else {
+                        HistoricLoading()
+                    }
                 } else {
                     TabBody(
                         window = window,

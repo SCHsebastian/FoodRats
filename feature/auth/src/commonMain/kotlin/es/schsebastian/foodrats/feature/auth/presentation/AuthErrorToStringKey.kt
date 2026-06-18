@@ -15,7 +15,7 @@ fun AuthError.toStringKey(): AuthStringKey = when (this) {
     AuthError.EmailPassword.EmailAlreadyInUse       -> AuthStringKey.ErrorEmailInUse
     AuthError.EmailPassword.WrongCredentials        -> AuthStringKey.ErrorWrongCredentials
     AuthError.Firebase.NotSignedIn                  -> AuthStringKey.ErrorUnknown
-    AuthError.Firebase.TokenExpired                 -> AuthStringKey.ErrorUnknown
+    AuthError.Firebase.TokenExpired                 -> AuthStringKey.ErrorSessionExpired
     AuthError.Firebase.AccountDisabled              -> AuthStringKey.ErrorAccountDisabled
     AuthError.Firebase.Unavailable                  -> AuthStringKey.ErrorUnknown
 }

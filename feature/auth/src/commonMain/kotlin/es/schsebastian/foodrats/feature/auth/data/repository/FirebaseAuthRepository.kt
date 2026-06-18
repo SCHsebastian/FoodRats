@@ -112,20 +112,7 @@ internal class FirebaseAuthRepository(
     private suspend fun finishSignIn(uid: String): Result<Session, AuthError> {
         val account = firebase.ensureAccountDoc(uid).toAccount()
             ?: return Result.failure(AuthError.Firebase.Unavailable)
-        // One-shot migration (2026-05-20): the prior build seeded every sign-in with
-        // activeCrewId = "test-crew-1" via the now-removed dev-crew hardcode. Users
-        // upgrading from that build still carry the legacy pref and get routed
-        // straight to Main → publish hits PERMISSION_DENIED because they're not in
-        // that crew's memberIds. Wipe the legacy value so the RootNavViewModel
-        // emits NeedsCrew → CrewPicker and the user can pick or create a real crew.
-        if (prefs.observe(Keys.ActiveCrewId).first() == LEGACY_DEV_CREW_ID) {
-            prefs.clear(Keys.ActiveCrewId)
-        }
         return Result.success(account.toSession())
-    }
-
-    private companion object {
-        const val LEGACY_DEV_CREW_ID = "test-crew-1"
     }
 
     override suspend fun signOut(): Result<Unit, AuthError> {

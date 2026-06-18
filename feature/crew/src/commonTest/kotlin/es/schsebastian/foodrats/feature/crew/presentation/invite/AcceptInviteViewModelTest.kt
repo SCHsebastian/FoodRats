@@ -15,10 +15,8 @@ import es.schsebastian.foodrats.feature.crew.domain.test.cid
 import es.schsebastian.foodrats.feature.crew.domain.usecase.JoinCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
-import es.schsebastian.foodrats.feature.crew.presentation.picker.FakeAccountReadPort
 import es.schsebastian.foodrats.feature.crew.presentation.picker.FakeActiveCrew
 import es.schsebastian.foodrats.feature.crew.presentation.picker.FakeSessionProvider
-import es.schsebastian.foodrats.core.domain.account.Account
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -48,10 +46,6 @@ class AcceptInviteViewModelTest {
         createdAt = Instant.fromEpochMilliseconds(0L),
         members = listOf(Member(aid("uid-owner"), Instant.fromEpochMilliseconds(0L))),
     )
-    private val myAccount = Account(
-        id = me, handle = "me", displayName = "Me", email = null, avatarUrl = null,
-    )
-
     private fun viewModel(
         repo: FakeCrewRepository,
         active: FakeActiveCrew = FakeActiveCrew(),
@@ -63,7 +57,6 @@ class AcceptInviteViewModelTest {
         resolveCrew = ResolveCrewByCodeUseCase(repo),
         joinCrew = JoinCrewByCodeUseCase(repo),
         switchActive = SwitchActiveCrewUseCase(active),
-        accountRead = FakeAccountReadPort(myAccount),
         analytics = analytics,
     )
 

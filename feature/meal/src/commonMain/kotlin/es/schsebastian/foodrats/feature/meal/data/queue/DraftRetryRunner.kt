@@ -161,8 +161,10 @@ class DraftRetryRunner(
 
 /**
  * Map a publish [MealError] to the opaque `errorKey` token the presentation layer
- * resolves to a `MealStringKey`. Mirrors `BackgroundMealUploadCoordinator`'s
- * private mapper so the queue and the single-upload path use identical tokens.
+ * resolves to a `MealStringKey`. The single source of truth shared by both the
+ * durable-queue retry path ([DraftRetryRunner]) and the single-upload fast path
+ * ([es.schsebastian.foodrats.feature.meal.data.upload.BackgroundMealUploadCoordinator]),
+ * so both emit identical tokens.
  */
 internal fun MealError.uploadErrorKey(): String = when (this) {
     MealError.Publish.AlreadyPostedToday -> "meal.error.alreadyPosted"
