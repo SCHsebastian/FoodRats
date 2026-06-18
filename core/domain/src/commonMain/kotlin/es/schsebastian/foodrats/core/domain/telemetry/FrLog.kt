@@ -59,6 +59,7 @@ object FrLog {
         const val ActiveCrew = "ActiveCrew"
         const val RootNav    = "RootNav"
         const val Prefs      = "Prefs"
+        const val Notifications = "Notifications"
         const val Lifecycle  = "Lifecycle"
         /** Prefix used by [es.schsebastian.foodrats.core.presentation.mvi.MviViewModel] — full tag is `MVI/<VmClassName>`. */
         const val Mvi        = "MVI"

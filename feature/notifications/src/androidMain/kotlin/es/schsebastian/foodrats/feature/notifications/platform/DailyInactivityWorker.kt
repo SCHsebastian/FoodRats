@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -51,15 +52,25 @@ class DailyInactivityWorker(
         NotificationChannels.ensure(applicationContext)
         val title = inputData.getString(KEY_TITLE).orEmpty()
         val body = inputData.getString(KEY_BODY).orEmpty()
-        val notif = NotificationCompat.Builder(applicationContext, NotificationChannels.NUDGE_ID)
+        // A status-bar small icon MUST be a monochrome silhouette; the app launcher icon renders
+        // as a white square. The drawable lives in :androidApp (merged into the app), so resolve it
+        // by name at runtime rather than taking a compile-time dependency on :androidApp's R. Fall
+        // back to the launcher icon if absent so a resource rename can never crash the worker.
+        val resources = applicationContext.resources
+        val pkg = applicationContext.packageName
+        val smallIcon = resources.getIdentifier("ic_stat_notification", "drawable", pkg)
+            .takeIf { it != 0 } ?: applicationContext.applicationInfo.icon
+        val builder = NotificationCompat.Builder(applicationContext, NotificationChannels.NUDGE_ID)
             .setContentTitle(title)
             .setContentText(body)
-            .setSmallIcon(applicationContext.applicationInfo.icon)
+            .setSmallIcon(smallIcon)
             .setAutoCancel(true)
             .setContentIntent(openAppIntent())
-            .build()
+        resources.getIdentifier("notification_accent", "color", pkg)
+            .takeIf { it != 0 }
+            ?.let { builder.setColor(ContextCompat.getColor(applicationContext, it)) }
         applicationContext.getSystemService<NotificationManager>()
-            ?.notify(NOTIF_ID, notif)
+            ?.notify(NOTIF_ID, builder.build())
         return Result.success()
     }
 

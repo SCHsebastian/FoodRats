@@ -147,6 +147,38 @@ class ScheduleDailyInactivityReminderUseCaseTest {
         )
     }
 
+    @Test fun honors_a_custom_time_and_id() = runTest {
+        val zone = TimeZone.UTC
+        val scheduler = RecordingScheduler()
+        // 09:00 now, custom target 19:30 → same day at 19:30.
+        val now = instantAt(zone, LocalDate(2026, 6, 14), LocalTime(9, 0))
+        val useCase = ScheduleDailyInactivityReminderUseCase(scheduler, FixedClock(now), zone)
+
+        useCase(TITLE, BODY, time = LocalTime(19, 30), id = "meal-reminder-1")
+
+        assertEquals(
+            instantAt(zone, LocalDate(2026, 6, 14), LocalTime(19, 30)),
+            scheduler.scheduled?.deliverAt,
+        )
+        assertEquals("meal-reminder-1", scheduler.scheduled?.id)
+        assertEquals(listOf("cancel:meal-reminder-1", "schedule"), scheduler.calls)
+    }
+
+    @Test fun custom_time_rolls_to_tomorrow_when_already_past() = runTest {
+        val zone = TimeZone.UTC
+        val scheduler = RecordingScheduler()
+        // 20:00 now, custom target 19:30 → already past, rolls to next day.
+        val now = instantAt(zone, LocalDate(2026, 6, 14), LocalTime(20, 0))
+        val useCase = ScheduleDailyInactivityReminderUseCase(scheduler, FixedClock(now), zone)
+
+        useCase(TITLE, BODY, time = LocalTime(19, 30), id = "meal-reminder-2")
+
+        assertEquals(
+            instantAt(zone, LocalDate(2026, 6, 15), LocalTime(19, 30)),
+            scheduler.scheduled?.deliverAt,
+        )
+    }
+
     @Test fun propagates_scheduler_error() = runTest {
         val zone = TimeZone.UTC
         val scheduler = RecordingScheduler().apply {

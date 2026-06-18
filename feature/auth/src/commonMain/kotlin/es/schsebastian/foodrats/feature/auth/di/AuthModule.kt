@@ -25,6 +25,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAcco
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
@@ -47,7 +48,9 @@ val authModule = module {
     singleOf(::AuthErrorMapper)
     single<AccountDocStore> { FirestoreAccountDocStore(firestore = get()) }
     single { FirebaseAuthDataSource(auth = get(), store = get(), clock = get<Clock>(), dispatchers = get()) }
-    single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get()) }
+    // appleClient (2nd arg) is bound per-platform alongside GoogleAuthClient:
+    // androidAuthModule() in FoodRatsApplication, authIosModule(...) on iOS.
+    single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get(), get()) }
     single<SessionProvider> { get<AuthRepository>() }
     single<SignOutPort> { AuthSignOutPort(get()) }
     single<AccountSnapshotSource> {
@@ -79,6 +82,7 @@ val authModule = module {
     factoryOf(::UpdateMyAvatarUseCase)
     factoryOf(::SetThemeModeUseCase)
     factoryOf(::SetLocaleUseCase)
+    factoryOf(::SetMealRemindersUseCase)
     factoryOf(::SetNotificationsEnabledUseCase)
     factoryOf(::EnableNotificationsUseCase)
     factoryOf(::DeleteMyAccountUseCase)
@@ -94,11 +98,13 @@ val authModule = module {
             themePort = get(),
             localePort = get(),
             notificationsPort = get(),
+            mealRemindersPort = get(),
             updateDisplayName = get(),
             updateAvatar = get(),
             signOut = get(),
             setThemeMode = get(),
             setLocale = get(),
+            setMealReminders = get(),
             setNotificationsEnabled = get(),
             enableNotifications = get(),
             notificationPermission = get(),

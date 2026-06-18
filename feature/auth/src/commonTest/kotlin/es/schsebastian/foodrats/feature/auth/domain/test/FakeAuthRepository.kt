@@ -12,6 +12,7 @@ class FakeAuthRepository(
     private val signInResult: Result<Session, AuthError>,
     private val emailSignInResult: Result<Session, AuthError> = signInResult,
     private val emailSignUpResult: Result<Session, AuthError> = signInResult,
+    private val appleSignInResult: Result<Session, AuthError> = Result.failure(AuthError.AppleSignIn.NotYetAvailable),
     private val initialSession: Session? = null,
 ) : AuthRepository {
     private val sessionFlow = MutableStateFlow(initialSession)
@@ -27,6 +28,11 @@ class FakeAuthRepository(
     override suspend fun signInWithGoogle(): Result<Session, AuthError> {
         if (signInResult is Result.Ok) sessionFlow.value = signInResult.value
         return signInResult
+    }
+
+    override suspend fun signInWithApple(): Result<Session, AuthError> {
+        if (appleSignInResult is Result.Ok) sessionFlow.value = appleSignInResult.value
+        return appleSignInResult
     }
 
     override suspend fun signInWithEmail(email: String, password: String): Result<Session, AuthError> {

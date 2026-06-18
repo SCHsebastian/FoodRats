@@ -36,6 +36,9 @@ class ProfileErrorToStringKeyTest {
     @Test fun notifications_permission_denied_forever_maps_to_dedicated_key() =
         assertEquals(AuthStringKey.ProfileNotificationsPermissionDeniedForever, ProfileError.Notifications.PermissionDeniedForever.toStringKey())
 
+    @Test fun reminders_persist_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileRemindersPersistFailed, ProfileError.Reminders.PersistFailed.toStringKey())
+
     @Test fun delete_phrase_mismatch_maps_to_phrase_key() =
         assertEquals(AuthStringKey.DeleteAccountErrorPhrase, ProfileError.Delete.PhraseMismatch.toStringKey())
 

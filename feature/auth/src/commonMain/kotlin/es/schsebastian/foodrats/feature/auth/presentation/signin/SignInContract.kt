@@ -15,10 +15,13 @@ data class SignInState(
     val emailError: AuthError.EmailPassword? = null,
     val passwordError: AuthError.EmailPassword? = null,
     val error: AuthError? = null,
+    /** Set when the user taps "Continue with Apple" while the flow is still "being built". */
+    val appleComingSoon: Boolean = false,
 ) : MviState
 
 sealed interface SignInIntent : MviIntent {
     data object ContinueWithGoogle : SignInIntent
+    data object ContinueWithApple : SignInIntent
     data class UpdateEmail(val value: String) : SignInIntent
     data class UpdatePassword(val value: String) : SignInIntent
     data object ToggleMode : SignInIntent

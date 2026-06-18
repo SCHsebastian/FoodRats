@@ -19,6 +19,8 @@ import es.schsebastian.foodrats.core.domain.notifications.NotificationPermission
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderPreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
@@ -32,6 +34,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAcco
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
@@ -49,6 +52,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.datetime.LocalTime
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -97,6 +101,18 @@ class ProfileViewModelTest {
         override val prompted: Flow<Boolean> = flowOf(true)
         override suspend fun set(enabled: Boolean): Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
         override suspend fun markPrompted(): Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
+    }
+
+    /** In-memory [MealReminderSchedulePort]: `set` updates the observed flow (single source of truth). */
+    private class FakeMealReminderSchedulePort(
+        initial: List<LocalTime> = MealReminderSchedulePort.DEFAULT_TIMES,
+    ) : MealReminderSchedulePort {
+        private val state = MutableStateFlow(initial)
+        override val times: Flow<List<LocalTime>> = state.asStateFlow()
+        override suspend fun set(times: List<LocalTime>): Result<Unit, MealReminderPreferenceError> {
+            state.value = times
+            return Result.success(Unit)
+        }
     }
 
     private object NoopNotificationPermissionPort : NotificationPermissionPort {
@@ -174,6 +190,7 @@ class ProfileViewModelTest {
         exportPort: DataExportPort = FakeDataExportPort(
             Result.success(ExportReady(downloadUrl = "https://example.test/x", expiresAtMs = 0L)),
         ),
+        reminders: MealReminderSchedulePort = FakeMealReminderSchedulePort(),
     ): ProfileViewModel {
         val session = FixedSessionProvider(Session(accountId = accountId, activeCrewId = null))
         val writePort = FakeAccountWritePort()
@@ -183,11 +200,13 @@ class ProfileViewModelTest {
             themePort = NoopThemeModePort,
             localePort = NoopLocalePort,
             notificationsPort = NoopNotificationsPreferencePort,
+            mealRemindersPort = reminders,
             updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
             updateAvatar = UpdateMyAvatarUseCase(writePort, session),
             signOut = signOut,
             setThemeMode = SetThemeModeUseCase(NoopThemeModePort),
             setLocale = SetLocaleUseCase(NoopLocalePort),
+            setMealReminders = SetMealRemindersUseCase(reminders),
             setNotificationsEnabled = SetNotificationsEnabledUseCase(NoopNotificationsPreferencePort),
             enableNotifications = EnableNotificationsUseCase(NoopNotificationPermissionPort, NoopNotificationsPreferencePort),
             notificationPermission = NoopNotificationPermissionPort,
@@ -352,6 +371,70 @@ class ProfileViewModelTest {
         assertEquals(0, consent.grantCount)
         // Withdrawal records NOTHING — tracking is off, so an event would be a consent violation.
         assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test fun reminders_seeded_from_persisted_times() = runTest {
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(8, 0), LocalTime(20, 0))),
+        )
+        vm.state.test {
+            assertEquals(listOf(LocalTime(8, 0), LocalTime(20, 0)), expectMostRecentItem().reminderTimes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun adding_a_reminder_hour_appends_and_sorts() = runTest {
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(14, 0))),
+        )
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderAddOpen)
+            vm.onIntent(ProfileIntent.ReminderHourSelected(8))
+            val final = expectMostRecentItem()
+            assertEquals(listOf(LocalTime(8, 0), LocalTime(14, 0)), final.reminderTimes)
+            assertFalse(final.reminderPickerOpen)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun editing_a_reminder_replaces_that_slot() = runTest {
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(9, 0), LocalTime(18, 0))),
+        )
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderEditOpen(0))
+            vm.onIntent(ProfileIntent.ReminderHourSelected(7))
+            assertEquals(listOf(LocalTime(7, 0), LocalTime(18, 0)), expectMostRecentItem().reminderTimes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun removing_a_reminder_drops_that_slot() = runTest {
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(9, 0), LocalTime(18, 0))),
+        )
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderRemove(0))
+            assertEquals(listOf(LocalTime(18, 0)), expectMostRecentItem().reminderTimes)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun duplicate_hour_is_not_added_twice() = runTest {
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(14, 0))),
+        )
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderAddOpen)
+            vm.onIntent(ProfileIntent.ReminderHourSelected(14))
+            assertEquals(listOf(LocalTime(14, 0)), expectMostRecentItem().reminderTimes)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test fun export_ok_exposes_download_url_and_clears_in_flight() = runTest {

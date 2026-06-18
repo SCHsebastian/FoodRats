@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Branded launch theme (Android 12+ SplashScreen API via androidx.core:core-splashscreen).
+         Set as MainActivity's android:theme; installSplashScreen() swaps to postSplashScreenTheme
+         after the first frame. Icon defaults to the app launcher icon (masked by the system) — we
+         only brand the background so there's no white/black flash before the icon appears. -->
+    <style name="Theme.FoodRats.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <item name="postSplashScreenTheme">@style/Theme.FoodRats</item>
+    </style>
+
+    <!-- Post-splash host theme for the Compose content window. No action bar; the brand surface
+         color as the window background prevents a flash before the first Compose frame. -->
+    <style name="Theme.FoodRats" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/splash_background</item>
+    </style>
+</resources>

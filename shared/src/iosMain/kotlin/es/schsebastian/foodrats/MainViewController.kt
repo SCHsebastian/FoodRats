@@ -31,6 +31,11 @@ import platform.UIKit.UIViewController
  * The [googleSignIn] completion is invoked with `(idToken, accessToken, errorCode)` — on
  * iOS Firebase requires both idToken and accessToken (see GoogleAuthClient.ios.kt).
  *
+ * [appleSignIn] / [appleSignOut] bridge to AppleSignInBridge — Swift runs an
+ * `ASAuthorizationController` Sign-in-with-Apple request with a SHA-256 nonce; the completion is
+ * invoked with `(identityToken, rawNonce, authorizationCode, email, fullName, errorCode)` and the
+ * identity token + raw nonce are exchanged via `OAuthProvider("apple.com")` (see AppleAuthClient.ios.kt).
+ *
  * [crashRecordNonFatal] / [crashLog] bridge to CrashlyticsBridge — Firebase Crashlytics has no
  * KMP binding and is resolved via SPM in Xcode, so it must be called from Swift.
  *
@@ -56,6 +61,18 @@ fun MainViewController(
         (idToken: String?, accessToken: String?, errorCode: String?) -> Unit,
     ) -> Unit,
     googleSignOut: () -> Unit,
+    appleSignIn: (
+        UIViewController,
+        (
+            identityToken: String?,
+            rawNonce: String?,
+            authorizationCode: String?,
+            email: String?,
+            fullName: String?,
+            errorCode: String?,
+        ) -> Unit,
+    ) -> Unit,
+    appleSignOut: () -> Unit,
     crashRecordNonFatal: (domain: String, message: String) -> Unit,
     crashLog: (String) -> Unit,
     classifyPlate: (
@@ -83,7 +100,13 @@ fun MainViewController(
                         mealAiIosModule(classifyPlate),
                         shareIosModule(share),
                         storyShareIosModule(storyShare),
-                        authIosModule(viewControllerProvider, googleSignIn, googleSignOut),
+                        authIosModule(
+                            viewControllerProvider,
+                            googleSignIn,
+                            googleSignOut,
+                            appleSignIn,
+                            appleSignOut,
+                        ),
                         crashIosModule(crashRecordNonFatal, crashLog),
                         analyticsIosModule(
                             analyticsLogEvent,

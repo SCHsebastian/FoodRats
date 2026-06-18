@@ -5,6 +5,8 @@ import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationE
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
 import es.schsebastian.foodrats.feature.notifications.domain.repository.LocalReminderScheduler
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 import platform.Foundation.NSDateComponents
 import platform.Foundation.NSError
 import platform.UserNotifications.UNCalendarNotificationTrigger
@@ -14,7 +16,8 @@ import platform.UserNotifications.UNUserNotificationCenter
 import kotlin.coroutines.resume
 
 /**
- * iOS scheduler: registers a repeating UNCalendarNotificationTrigger at 14:00 device-local.
+ * iOS scheduler: registers a repeating UNCalendarNotificationTrigger at the reminder's device-local
+ * hour/minute, derived from [Reminder.deliverAt] (so user-chosen times and multiple reminders work).
  * Reschedule with the same Reminder.id replaces the existing request (identifier-based).
  *
  * Note: unlike Android, the pre-fire `HasPostedTodayPort` check is NOT performed on iOS in v1.
@@ -29,9 +32,11 @@ class IosLocalReminderScheduler : LocalReminderScheduler {
             setTitle(reminder.title)
             setBody(reminder.body)
         }
+        // Derive the daily hour/minute from the next-occurrence Instant the use case computed.
+        val local = reminder.deliverAt.toLocalDateTime(TimeZone.currentSystemDefault())
         val components = NSDateComponents().apply {
-            hour = HOUR_LOCAL
-            minute = MINUTE_LOCAL
+            hour = local.hour.toLong()
+            minute = local.minute.toLong()
         }
         val trigger = UNCalendarNotificationTrigger.triggerWithDateMatchingComponents(
             dateComponents = components,
@@ -59,10 +64,5 @@ class IosLocalReminderScheduler : LocalReminderScheduler {
     override suspend fun cancel(reminderId: String) {
         UNUserNotificationCenter.currentNotificationCenter()
             .removePendingNotificationRequestsWithIdentifiers(listOf(reminderId))
-    }
-
-    private companion object {
-        const val HOUR_LOCAL = 14L
-        const val MINUTE_LOCAL = 0L
     }
 }

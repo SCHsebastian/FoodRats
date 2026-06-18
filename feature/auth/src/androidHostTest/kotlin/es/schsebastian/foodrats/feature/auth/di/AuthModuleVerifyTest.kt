@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
@@ -44,6 +45,7 @@ class AuthModuleVerifyTest {
                 CrashReporter::class,
                 ThemeModePort::class,
                 LocalePort::class,
+                MealReminderSchedulePort::class,
                 NotificationsPreferencePort::class,
                 TokenRegistrationPort::class,
                 NotificationPermissionPort::class,

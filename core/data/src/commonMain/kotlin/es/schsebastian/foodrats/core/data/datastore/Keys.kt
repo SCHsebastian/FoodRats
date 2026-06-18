@@ -20,6 +20,12 @@ object Keys {
     val NotificationsPermissionPrompted = StoreKey(booleanPreferencesKey("notifications_permission_prompted"))
     val LocaleTag            = StoreKey(stringPreferencesKey("locale_tag"))
     val ThemeMode            = StoreKey(stringPreferencesKey("theme_mode"))
+
+    /**
+     * Comma-separated `HH:mm` local times for the daily meal reminders (max 3), e.g. `"14:00,19:00"`.
+     * Absent = the default single 14:00 reminder. Owned by `MealReminderScheduleRepository`.
+     */
+    val MealReminderTimes    = StoreKey(stringPreferencesKey("meal_reminder_times"))
     val MealDraftJson        = StoreKey(stringPreferencesKey("meal_draft_json"))
 
     /**

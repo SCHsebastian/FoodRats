@@ -4,6 +4,10 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<!-- The app uses only standard/exempt cryptography (HTTPS/TLS). Declaring this skips the
+	     manual export-compliance question on every TestFlight / App Store upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<!-- Privacy / consent defaults: GA4 starts with collection OFF until the user grants consent
 	     (IosAnalyticsTracker.applyConsent → setAnalyticsCollectionEnabled(true) via the bridge).
 	     Screen views are tracked manually (NavGraph.TrackScreenViews), so disable the SDK's

@@ -19,8 +19,11 @@ import es.schsebastian.foodrats.app.navigation.EventsEffect
 import es.schsebastian.foodrats.app.navigation.NavGraph
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.app.navigation.navigateTopLevel
+import es.schsebastian.foodrats.app.locale.ProvideAppLocale
 import es.schsebastian.foodrats.app.notifications.InAppPushBanner
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.domain.preferences.AppLocale
+import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
@@ -98,6 +101,11 @@ fun FoodRatsApp() {
 
     val themePort = koinInject<ThemeModePort>()
     val themeMode by themePort.mode.collectAsState(initial = ThemeMode.System)
+    // Observed in-app language. Drives ProvideAppLocale below so picking En/Es actually flips
+    // the UI text (the link that was previously missing — see app/locale/AppLocaleProvider).
+    val localePort = koinInject<LocalePort>()
+    val appLocale by localePort.locale.collectAsState(initial = AppLocale.System)
+    val appLanguageTag = appLocale.tag.ifBlank { null }
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeMode) {
         ThemeMode.System -> systemDark
@@ -113,6 +121,9 @@ fun FoodRatsApp() {
     val snackbarHostState = remember { SnackbarHostState() }
 
     FoodRatsTheme(darkTheme = darkTheme) {
+      // Re-keys the UI subtree on the chosen language so every resolve(...) re-resolves. The root
+      // NavController is created above this block, so the back stack survives a language switch.
+      ProvideAppLocale(languageTag = appLanguageTag) {
         InAppPushBanner(bus = notificationBus, snackbarHostState = snackbarHostState)
         Scaffold(
             // Host whose only job is to position the SnackbarHost above every screen; the NavGraph
@@ -131,5 +142,6 @@ fun FoodRatsApp() {
                 NavGraph(navController = rootController)
             }
         }
+      }
     }
 }

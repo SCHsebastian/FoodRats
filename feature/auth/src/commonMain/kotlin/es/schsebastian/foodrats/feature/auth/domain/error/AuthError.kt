@@ -9,6 +9,19 @@ sealed interface AuthError {
         data object MissingServerClientId : GoogleSignIn
         data object UnknownClientFailure : GoogleSignIn
     }
+    sealed interface AppleSignIn : AuthError {
+        /**
+         * The Sign-in-with-Apple seam is wired end-to-end but the native flow is not yet
+         * enabled — the platform client returns this so the UI can say "being built". Remove
+         * (or stop returning) this leaf once the real Apple flow + Firebase exchange land.
+         */
+        data object NotYetAvailable : AppleSignIn
+        data object UserCancelled : AppleSignIn
+        data object NetworkUnavailable : AppleSignIn
+        /** Apple returned a malformed/empty identity token. */
+        data object InvalidResponse : AppleSignIn
+        data object UnknownClientFailure : AppleSignIn
+    }
     sealed interface EmailPassword : AuthError {
         /** Email format doesn't match a valid address. Caught client-side before the network call. */
         data object InvalidEmail : EmailPassword

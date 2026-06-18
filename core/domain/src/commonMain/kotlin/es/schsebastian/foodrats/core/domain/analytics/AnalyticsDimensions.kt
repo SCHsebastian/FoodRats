@@ -9,6 +9,7 @@ package es.schsebastian.foodrats.core.domain.analytics
  */
 enum class AuthMethod(val wire: String) {
     GOOGLE("google"),
+    APPLE("apple"),
     EMAIL("email"),
 }
 

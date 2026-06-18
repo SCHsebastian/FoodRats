@@ -2,14 +2,31 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- Enables iOS Universal Links for https://foodrats.app/... Requires the hosted
-	     apple-app-site-association file (see deeplinks/README.md) AND that this file is
-	     wired into the Xcode target's CODE_SIGN_ENTITLEMENTS (Signing & Capabilities →
-	     Associated Domains). -->
+	<!-- iOS Universal Links. Only the LIVE Firebase Hosting domain is declared: it actually
+	     serves /.well-known/apple-app-site-association (deployed from website/), so Apple's CDN
+	     can verify it. The vanity domain foodrats.app is intentionally NOT listed — it hosts
+	     nothing yet, so declaring it would just be an unverifiable applinks entry. Re-add
+	     `applinks:foodrats.app` once it's mapped as a Firebase Hosting custom domain serving the
+	     same .well-known files (see docs/store-release/PUBLICATION.md). -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
-		<string>applinks:foodrats.app</string>
 		<string>applinks:foodrats-de4ec.web.app</string>
 	</array>
+	<!-- Sign in with Apple. Required by App Store Guideline 4.8 once the app offers a third-party
+	     login (Google). The App ID must ALSO have the "Sign in with Apple" capability enabled in the
+	     Apple Developer portal (Automatic signing adds it on archive with -allowProvisioningUpdates;
+	     CI `match` profiles must be regenerated), and the Apple provider must be enabled in the
+	     Firebase console (Authentication → Sign-in method → Apple) for the OAuthProvider("apple.com")
+	     credential exchange to succeed. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+	<!-- APNs (FCM push). Baseline value is "development"; Xcode promotes it to "production"
+	     for App Store / TestFlight archives via the distribution profile. The App ID must have
+	     the Push Notifications capability enabled (Automatic signing adds it; CI `match`
+	     profiles must be regenerated to include it). -->
+	<key>aps-environment</key>
+	<string>development</string>
 </dict>
 </plist>

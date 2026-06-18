@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.notifications.di
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.StreakNotificationPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
+import es.schsebastian.foodrats.feature.notifications.data.adapter.MealReminderScheduler
 import es.schsebastian.foodrats.feature.notifications.data.adapter.NotificationPermissionAdapter
 import es.schsebastian.foodrats.feature.notifications.data.adapter.StreakNotificationAdapter
 import es.schsebastian.foodrats.feature.notifications.data.adapter.TokenRegistrationAdapter
@@ -16,10 +17,14 @@ import es.schsebastian.foodrats.feature.notifications.domain.usecase.RegisterDev
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.RequestNotificationPermissionUseCase
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.ScheduleDailyInactivityReminderUseCase
 import es.schsebastian.foodrats.feature.notifications.presentation.permission.NotificationPermissionViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.datetime.TimeZone
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val notificationsModule = module {
@@ -40,6 +45,20 @@ val notificationsModule = module {
     single<TokenRegistrationPort> { TokenRegistrationAdapter(get()) }
     single<StreakNotificationPort> { StreakNotificationAdapter(get()) }
     single<NotificationPermissionPort> { NotificationPermissionAdapter(get()) }
+
+    // App-lifetime scope for the reactive reminder scheduler below.
+    single<CoroutineScope>(named("notif-app-scope")) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
+    // Eager: starts at app launch and keeps the OS reminders in sync with the persisted times +
+    // notifications opt-in. This is what re-establishes (and re-times) the daily meal reminders.
+    single(createdAtStart = true) {
+        MealReminderScheduler(
+            scope = get(named("notif-app-scope")),
+            schedulePort = get(),
+            notificationsPref = get(),
+            useCase = get(),
+            localScheduler = get(),
+        )
+    }
 
     viewModel { NotificationPermissionViewModel(uc = get(), prefs = get(), analytics = get()) }
 }

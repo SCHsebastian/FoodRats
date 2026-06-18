@@ -3,6 +3,7 @@
     <string name="auth_signin_title">FoodRats</string>
     <string name="auth_signin_subtitle">Real food with your crew. No filters.</string>
     <string name="auth_signin_continue_google">Continue with Google</string>
+    <string name="auth_signin_continue_apple">Continue with Apple</string>
     <string name="auth_signin_highlight_share">Capture today's plate</string>
     <string name="auth_signin_highlight_rate">Score your crew's cooking</string>
     <string name="auth_signin_highlight_feed">Keep the streak alive</string>
@@ -14,6 +15,7 @@
     <string name="auth_toggle_to_signup">No account? Sign up</string>
     <string name="auth_toggle_to_signin">Already a rat? Sign in</string>
     <string name="auth_or_divider">or</string>
+    <string name="auth_error_apple_coming_soon">Sign in with Apple is being built — coming soon.</string>
     <string name="auth_error_user_cancelled">Sign-in cancelled.</string>
     <string name="auth_error_no_google_accounts">No Google accounts on this device.</string>
     <string name="auth_error_play_services">Google Play Services unavailable.</string>
@@ -69,6 +71,14 @@
     <string name="auth_profile_notifications_permission_denied">Notifications were not allowed. You can change this later.</string>
     <string name="auth_profile_notifications_permission_denied_forever">Notifications are blocked. Enable them in system settings to receive updates.</string>
     <string name="auth_profile_notifications_open_system_settings_cta">Open system settings</string>
+
+    <string name="auth_profile_reminders_row">Meal reminders</string>
+    <string name="auth_profile_reminders_subtitle">Get a daily nudge to post your meal. Add up to 3 times.</string>
+    <string name="auth_profile_reminders_empty">No reminders</string>
+    <string name="auth_profile_reminders_add_cta">Add reminder</string>
+    <string name="auth_profile_reminders_picker_title">Reminder time</string>
+    <string name="auth_profile_reminders_remove_cta">Remove reminder</string>
+    <string name="auth_profile_reminders_persist_failed">Couldn't save your reminders. Try again.</string>
 
     <string name="auth_profile_analytics_row">Share anonymous usage data</string>
     <string name="auth_profile_analytics_subtitle_on">On — helping improve FoodRats. No personal content is ever collected, and you can turn this off at any time.</string>

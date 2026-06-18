@@ -8,6 +8,13 @@
     "ignore": ["firebase.json", "**/node_modules/**", "**/.DS_Store"],
     "cleanUrls": true,
     "appAssociation": "AUTO",
+    "rewrites": [
+      {
+        "comment": "Crew invite landing — /invite/{code} serves the single page; JS reads the code from the path. The app intercepts this URL via App/Universal Links when installed; the page is the no-app fallback. Static files (incl. /.well-known/*) still win over this rewrite.",
+        "source": "/invite/**",
+        "destination": "/invite/index.html"
+      }
+    ],
     "headers": [
       {
         "source": "/.well-known/apple-app-site-association",

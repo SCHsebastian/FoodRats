@@ -1,0 +1,21 @@
+<!--
+  Monochrome status-bar notification icon: a chef's toque, echoing the chef-rat brand mark.
+  Notification small icons MUST be a flat single-color silhouette — the system renders only the
+  alpha channel and applies its own tint (default_notification_color / NotificationCompat.setColor),
+  so a full-color launcher icon shows as a white square. fillColor is opaque white; swap the
+  pathData for a bespoke brand glyph if design ships one.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Puffy crown (closed blob: top-centre → right shoulder/puff → bottom → left puff/shoulder). -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,2.5 C14.5,2.5 16.6,4.4 16.6,6.9 C18.4,7.0 19.8,8.5 19.8,10.4 C19.8,12.3 18.3,13.8 16.5,13.9 L7.5,13.9 C5.7,13.8 4.2,12.3 4.2,10.4 C4.2,8.5 5.6,7.0 7.4,6.9 C7.4,4.4 9.5,2.5 12,2.5 Z" />
+    <!-- Band / cuff (overlaps the crown so the two union into one toque). -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M7,13 L17,13 L17,19 C17,19.55 16.55,20 16,20 L8,20 C7.45,20 7,19.55 7,19 Z" />
+</vector>

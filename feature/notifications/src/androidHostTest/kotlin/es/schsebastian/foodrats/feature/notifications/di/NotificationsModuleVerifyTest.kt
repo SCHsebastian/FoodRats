@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.notifications.di
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -39,6 +40,7 @@ class NotificationsModuleVerifyTest {
                 Clock::class,
                 TimeZone::class,
                 NotificationsPreferencePort::class,
+                MealReminderSchedulePort::class,
                 FcmTokenProvider::class,
                 NotificationPermissionGateway::class,
                 LocalReminderScheduler::class,

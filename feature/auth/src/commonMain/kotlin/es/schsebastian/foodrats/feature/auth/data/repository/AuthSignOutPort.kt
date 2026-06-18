@@ -42,6 +42,7 @@ internal class AuthSignOutPort(
         AuthError.Firebase.NotSignedIn,
         AuthError.Firebase.Unavailable,
         is AuthError.GoogleSignIn,
+        is AuthError.AppleSignIn,
         is AuthError.EmailPassword          -> SessionError.ProviderUnavailable
     }
 }

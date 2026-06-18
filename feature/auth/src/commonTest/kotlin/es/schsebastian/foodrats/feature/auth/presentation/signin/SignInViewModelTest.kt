@@ -170,6 +170,48 @@ class SignInViewModelTest {
         assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.SignedUp(AuthMethod.EMAIL)), analytics.events.toList())
     }
 
+    @Test fun apple_sign_in_shows_coming_soon_notice_not_error() = runTest {
+        val vm = SignInViewModel(FakeAuthRepository(Result.success(sampleSession)), NoopTokenRegistrationPort)
+        vm.onIntent(SignInIntent.ContinueWithApple)
+        assertEquals(true, vm.state.value.appleComingSoon)
+        assertNull(vm.state.value.error)
+        assertEquals(false, vm.state.value.isLoading)
+    }
+
+    @Test fun apple_coming_soon_does_not_track_analytics() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = SignInViewModel(FakeAuthRepository(Result.success(sampleSession)), NoopTokenRegistrationPort, analytics)
+        vm.onIntent(SignInIntent.ContinueWithApple)
+        assertEquals(emptyList<AnalyticsEvent>(), analytics.events.toList())
+    }
+
+    @Test fun dismissError_clears_apple_coming_soon_notice() = runTest {
+        val vm = SignInViewModel(FakeAuthRepository(Result.success(sampleSession)), NoopTokenRegistrationPort)
+        vm.onIntent(SignInIntent.ContinueWithApple)
+        assertEquals(true, vm.state.value.appleComingSoon)
+        vm.onIntent(SignInIntent.DismissError)
+        assertEquals(false, vm.state.value.appleComingSoon)
+    }
+
+    @Test fun apple_sign_in_success_emits_signedIn_and_tracks_login() = runTest {
+        // The real iOS flow returns a session (not NotYetAvailable): it must flow through the normal
+        // result path — SignedIn effect + LoggedIn(APPLE) analytics, NOT the "coming soon" notice.
+        val analytics = RecordingAnalyticsTracker()
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            appleSignInResult = Result.success(sampleSession),
+        )
+        val vm = SignInViewModel(repo, NoopTokenRegistrationPort, analytics)
+        vm.effects.test {
+            vm.onIntent(SignInIntent.ContinueWithApple)
+            assertEquals(SignInEffect.SignedIn, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(false, vm.state.value.appleComingSoon)
+        assertNull(vm.state.value.error)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.LoggedIn(AuthMethod.APPLE)), analytics.events.toList())
+    }
+
     @Test fun wrong_credentials_maps_to_passwordError() = runTest {
         val repo = FakeAuthRepository(
             signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),

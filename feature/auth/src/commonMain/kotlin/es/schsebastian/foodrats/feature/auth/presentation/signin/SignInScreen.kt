@@ -46,6 +46,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -101,6 +102,23 @@ fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) 
                     enabled = !state.isLoading,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                 )
+
+                Spacer(Modifier.height(Spacing.sm))
+                FrButton(
+                    label = resolve(AuthStringKey.ContinueWithApple),
+                    onClick = { vm.onIntent(SignInIntent.ContinueWithApple) },
+                    variant = FrButtonVariant.Secondary,
+                    enabled = !state.isLoading,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                )
+                if (state.appleComingSoon) {
+                    Spacer(Modifier.height(Spacing.sm))
+                    FrText(
+                        text = resolve(AuthStringKey.ErrorAppleComingSoon),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = LocalFrSemanticColors.current.info,
+                    )
+                }
 
                 Spacer(Modifier.height(Spacing.sm))
                 ToggleModeLink(state.mode, onClick = { vm.onIntent(SignInIntent.ToggleMode) })

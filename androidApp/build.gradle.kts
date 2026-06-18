@@ -46,6 +46,7 @@ dependencies {
     implementation(projects.feature.notifications)
     implementation(projects.feature.stats)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
     implementation(libs.koin.core)
@@ -230,6 +231,22 @@ android {
         versionName = (project.findProperty("versionName") as String?) ?: "1.0"
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${project.findProperty("googleServerClientId") ?: ""}\"")
         buildConfigField("String", "MAPS_API_KEY", "\"${project.findProperty("googleMapsApiKey") ?: ""}\"")
+    }
+    androidResources {
+        // The app ships only English (default) + Spanish. UI translations live in
+        // Compose resources (core/i18n), not android `values-es/`. Without a filter the
+        // AAB bundles every locale our transitive deps (androidx, play-services,
+        // MediaPipe) carry — ~80 languages of dead android resources. Restrict the
+        // shipped android-resource set; the Compose-resource translations are unaffected.
+        // Replaces the deprecated defaultConfig.resourceConfigurations / resConfigs.
+        //
+        // NOT using generateLocaleConfig: it scans android `values-XX` folders, which for
+        // this app contain only the default (en) — so it emits an en-only locale config
+        // and would advertise an English-only per-app language picker. Wiring a correct
+        // en+es <localeConfig> for a Compose-resource app needs a hand-authored
+        // res/xml/locales_config.xml AND on-device proof that Compose resources follow the
+        // system per-app locale (see AUDIT.md R-locale). Deferred until that's verified.
+        localeFilters += listOf("en", "es")
     }
     // Release signing reads the upload keystore from the environment. CI
     // materializes it from the ANDROID_KEYSTORE_BASE64 secret and exports

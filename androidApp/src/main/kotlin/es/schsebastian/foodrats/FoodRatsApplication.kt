@@ -26,6 +26,7 @@ import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.feature.auth.data.apple.AppleAuthClient
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleAuthClient
 import es.schsebastian.foodrats.feature.feed.presentation.components.MapsApiKey
 import es.schsebastian.foodrats.core.data.image.installImageLoader
@@ -118,6 +119,9 @@ class FoodRatsApplication : Application() {
                 serverClientId = BuildConfig.GOOGLE_SERVER_CLIENT_ID,
             )
         }
+        // Apple sign-in is wired but "being built" — parameterless stub for now (Apple on Android
+        // is a future web-OAuth flow). FirebaseAuthRepository consumes it as its 2nd ctor arg.
+        single<AppleAuthClient> { AppleAuthClient() }
         // MainActivity binds `() -> Activity?` (see MainActivity.kt) via Koin.declare so the
         // notification gateway can read shouldShowRequestPermissionRationale.
     }

@@ -18,6 +18,16 @@ class AuthErrorToStringKeyTest {
         assertEquals(AuthStringKey.ErrorMissingServerClientId, AuthError.GoogleSignIn.MissingServerClientId.toStringKey())
     @Test fun unknownClient_maps_to_unknown_string() =
         assertEquals(AuthStringKey.ErrorUnknown, AuthError.GoogleSignIn.UnknownClientFailure.toStringKey())
+    @Test fun appleNotYetAvailable_maps_to_comingSoon_string() =
+        assertEquals(AuthStringKey.ErrorAppleComingSoon, AuthError.AppleSignIn.NotYetAvailable.toStringKey())
+    @Test fun appleUserCancelled_maps_to_userCancelled_string() =
+        assertEquals(AuthStringKey.ErrorUserCancelled, AuthError.AppleSignIn.UserCancelled.toStringKey())
+    @Test fun appleNetwork_maps_to_network_string() =
+        assertEquals(AuthStringKey.ErrorNetwork, AuthError.AppleSignIn.NetworkUnavailable.toStringKey())
+    @Test fun appleInvalidResponse_maps_to_unknown_string() =
+        assertEquals(AuthStringKey.ErrorUnknown, AuthError.AppleSignIn.InvalidResponse.toStringKey())
+    @Test fun appleUnknownClient_maps_to_unknown_string() =
+        assertEquals(AuthStringKey.ErrorUnknown, AuthError.AppleSignIn.UnknownClientFailure.toStringKey())
     @Test fun firebaseAccountDisabled_maps_to_accountDisabled_string() =
         assertEquals(AuthStringKey.ErrorAccountDisabled, AuthError.Firebase.AccountDisabled.toStringKey())
     @Test fun firebaseNotSignedIn_maps_to_unknown_string() =

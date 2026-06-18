@@ -15,9 +15,10 @@ import kotlinx.datetime.toInstant
 import kotlinx.datetime.toLocalDateTime
 
 /**
- * Schedules a daily local notification at 14:00 device-local. The platform scheduler is expected
- * to register a repeating trigger so subsequent days fire automatically without re-scheduling.
- * Caller invokes once after permission grant / app launch — re-invoking is idempotent.
+ * Schedules a daily local notification at [time] device-local (defaults to 14:00 for backward
+ * compatibility). The platform scheduler registers a repeating trigger so subsequent days fire
+ * automatically. Re-invoking with the same [id] is idempotent (cancel-then-schedule). Pass a
+ * distinct [id] per reminder slot to register several reminders at different times.
  */
 class ScheduleDailyInactivityReminderUseCase(
     private val scheduler: LocalReminderScheduler,
@@ -27,25 +28,25 @@ class ScheduleDailyInactivityReminderUseCase(
     suspend operator fun invoke(
         title: String,
         body: String,
+        time: LocalTime = DEFAULT_TIME,
+        id: String = DAILY_INACTIVITY_REMINDER_ID,
     ): Result<Unit, NotificationError.Schedule> {
         val now = clock.now().toLocalDateTime(zone)
-        val targetTime = LocalTime(hour = TARGET_HOUR_LOCAL, minute = TARGET_MINUTE_LOCAL)
-        val baseDate = if (now.time < targetTime) now.date else now.date.plus(DatePeriod(days = 1))
-        val deliverAt = LocalDateTime(baseDate, targetTime).toInstant(zone)
+        val baseDate = if (now.time < time) now.date else now.date.plus(DatePeriod(days = 1))
+        val deliverAt = LocalDateTime(baseDate, time).toInstant(zone)
         val reminder = Reminder(
-            id = DAILY_INACTIVITY_REMINDER_ID,
+            id = id,
             kind = ReminderKind.StreakAtRisk,
             deliverAt = deliverAt,
             title = title,
             body = body,
         )
-        scheduler.cancel(DAILY_INACTIVITY_REMINDER_ID)
+        scheduler.cancel(id)
         return scheduler.schedule(reminder)
     }
 
     companion object {
         const val DAILY_INACTIVITY_REMINDER_ID = "daily-inactivity-14h"
-        private const val TARGET_HOUR_LOCAL = 14
-        private const val TARGET_MINUTE_LOCAL = 0
+        val DEFAULT_TIME = LocalTime(hour = 14, minute = 0)
     }
 }

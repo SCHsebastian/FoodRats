@@ -22,6 +22,14 @@ struct ComposeView: UIViewControllerRepresentable {
             googleSignOut: {
                 GoogleSignInBridge.signOut()
             },
+            appleSignIn: { presenter, completion in
+                AppleSignInBridge.signIn(presenter: presenter) { identityToken, rawNonce, authorizationCode, email, fullName, errorCode in
+                    completion(identityToken, rawNonce, authorizationCode, email, fullName, errorCode)
+                }
+            },
+            appleSignOut: {
+                AppleSignInBridge.signOut()
+            },
             crashRecordNonFatal: { domain, message in
                 CrashlyticsBridge.recordNonFatal(domain: domain, message: message)
             },
@@ -51,7 +59,9 @@ struct ComposeView: UIViewControllerRepresentable {
                 AnalyticsBridge.setUserProperty(name: name, value: value)
             },
             analyticsSetConsent: { granted in
-                AnalyticsBridge.setConsent(granted: granted)
+                // The Kotlin `(Boolean) -> Unit` lambda param is exported boxed (KotlinBoolean) —
+                // unbox before handing it to the Bool-typed bridge.
+                AnalyticsBridge.setConsent(granted: granted.boolValue)
             },
             analyticsReset: {
                 AnalyticsBridge.resetData()

@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.account.AccountDeletionError
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.core.domain.account.DataExportError
 import es.schsebastian.foodrats.core.domain.preferences.LocalePreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.MealReminderPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.ThemePreferenceError
 
@@ -44,6 +45,10 @@ sealed interface ProfileError {
         data object PermissionDeniedForever : Notifications
     }
 
+    sealed interface Reminders : ProfileError {
+        data object PersistFailed : Reminders
+    }
+
     sealed interface Delete : ProfileError {
         data object PhraseMismatch : Delete
 
@@ -76,6 +81,10 @@ internal fun LocalePreferenceError.toProfileError(): ProfileError = when (this) 
 
 internal fun NotificationsPreferenceError.toProfileError(): ProfileError = when (this) {
     NotificationsPreferenceError.Persist.Unavailable -> ProfileError.Notifications.PersistFailed
+}
+
+internal fun MealReminderPreferenceError.toProfileError(): ProfileError = when (this) {
+    MealReminderPreferenceError.Persist.Unavailable -> ProfileError.Reminders.PersistFailed
 }
 
 internal fun AccountDeletionError.toProfileError(): ProfileError = when (this) {
