@@ -1,0 +1,11 @@
+-- Throwaway spike table (offline-first P3a-T0 feasibility gate). Replaced by Meal.sq in P3a-T1.
+CREATE TABLE spike (
+    id    INTEGER NOT NULL PRIMARY KEY,
+    label TEXT NOT NULL
+);
+
+insertSpike:
+INSERT INTO spike(id, label) VALUES (?, ?);
+
+selectAll:
+SELECT * FROM spike;

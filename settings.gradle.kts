@@ -35,6 +35,7 @@ include(":shared")
 
 include(":core:domain")
 include(":core:data")
+include(":core:database")
 include(":core:designsystem")
 include(":core:presentation")
 include(":core:i18n")
