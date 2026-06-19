@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,7 +37,6 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrChip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFilterChip
-import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrGlassPill
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
@@ -46,9 +46,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
-import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSparkline
-import es.schsebastian.foodrats.core.designsystem.atoms.FrSpacer
 import es.schsebastian.foodrats.core.designsystem.atoms.FrStoryProgressBar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrStoryScaffold
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
@@ -70,8 +68,6 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.icons",         CatalogGroup.ATOMS, "FrIcons",         "Project-wide ImageVector catalog (core-only set)") { IconsCatalogStory() },
     CatalogEntry("atom.iconbutton",    CatalogGroup.ATOMS, "FrIconButton",    "Icon-only button — back, settings, chevrons") { IconButtonStory() },
     CatalogEntry("atom.progress",      CatalogGroup.ATOMS, "FrProgressIndicator", "Default + tinted spinners") { ProgressStory() },
-    CatalogEntry("atom.shutter",       CatalogGroup.ATOMS, "FrShutterButton", "Capture-screen shutter — enabled & disabled") { ShutterStory() },
-    CatalogEntry("atom.spacer",        CatalogGroup.ATOMS, "FrSpacer",        "Spacing token visualization") { SpacerStory() },
     CatalogEntry("atom.text",          CatalogGroup.ATOMS, "FrText",          "Wraps Material Text with FrTextStyles") { TextStory() },
     CatalogEntry("atom.textfield",     CatalogGroup.ATOMS, "FrTextField",     "OutlinedTextField with error / disabled states") { TextFieldStory() },
     CatalogEntry("atom.crownbadge",    CatalogGroup.ATOMS, "FrCrownBadge",    "Circular crown badge — primary / tertiary tints") { CrownBadgeStory() },
@@ -83,7 +79,6 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.card.fur",      CatalogGroup.ATOMS, "FrCard (Minotaur)", "Hidden Minotaur mode — furry edge via LocalMinotaurMode") { MinotaurCardStory() },
     CatalogEntry("atom.sparkline",     CatalogGroup.ATOMS, "FrSparkline",     "Tiny inline trend chart for stat tiles") { SparklineStory() },
     CatalogEntry("atom.qrcode",        CatalogGroup.ATOMS, "FrQrCode",        "Pure-Kotlin QR encoder rendered on Canvas — shareable invite link") { QrCodeStory() },
-    CatalogEntry("atom.flamebadge",    CatalogGroup.ATOMS, "FrFlameBadge",    "🔥 streak pill on the streakHot semantic color") { FlameBadgeStory() },
     CatalogEntry("atom.glasspill",     CatalogGroup.ATOMS, "FrGlassPill",     "Translucent circular overlay for in-photo back / close") { GlassPillStory() },
     CatalogEntry("atom.switch",        CatalogGroup.ATOMS, "FrSwitch",        "Brand-colored toggle — on / off / disabled") { SwitchStory() },
     CatalogEntry("atom.badge",         CatalogGroup.ATOMS, "FrBadge",         "Achievement badge — earned (vivid) vs locked (dimmed + progress ring), tiers") { BadgeStory() },
@@ -399,7 +394,7 @@ private fun IconsCatalogStory() {
                             modifier = Modifier.size(64.dp),
                         ) {
                             FrIcon(image = icon, modifier = Modifier.size(Sizes.iconMd), contentDescription = label)
-                            FrSpacer(size = Spacing.xxs)
+                            Spacer(modifier = Modifier.size(Spacing.xxs))
                             FrText(text = label, style = MaterialTheme.typography.labelSmall)
                         }
                     }
@@ -435,41 +430,6 @@ private fun ProgressStory() {
                 modifier = Modifier.size(40.dp),
                 color = MaterialTheme.colorScheme.secondary,
             )
-        }
-    }
-}
-
-@Composable
-private fun ShutterStory() {
-    CatalogScene(label = "Shutter — enabled / disabled") {
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-            FrShutterButton(onClick = {}, contentDescription = "Take photo")
-            FrShutterButton(onClick = {}, contentDescription = "Take photo", enabled = false)
-        }
-    }
-}
-
-@Composable
-private fun SpacerStory() {
-    val items = listOf(
-        "xxs" to Spacing.xxs,
-        "xs"  to Spacing.xs,
-        "sm"  to Spacing.sm,
-        "md"  to Spacing.md,
-        "lg"  to Spacing.lg,
-        "xl"  to Spacing.xl,
-        "xxl" to Spacing.xxl,
-    )
-    CatalogScene(label = "Heights — Spacing tokens") {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            items.forEach { (label, dp) ->
-                FrText(
-                    text = "Spacing.$label · $dp",
-                    style = MaterialTheme.typography.labelSmall,
-                )
-                FrSpacer(size = dp)
-                FrDivider()
-            }
         }
     }
 }
@@ -671,24 +631,6 @@ private fun QrCodeStory() {
         }
         CatalogScene(label = "Smaller (140dp)") {
             FrQrCode(content = "https://foodrats.app/invite/AB2K9P", size = 140.dp)
-        }
-    }
-}
-
-@Composable
-private fun FlameBadgeStory() {
-    CatalogScene(
-        label = "Streak lengths",
-        description = "Hidden entirely at 0 — the fourth pill below isn't drawn.",
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FrFlameBadge(days = 1)
-            FrFlameBadge(days = 7)
-            FrFlameBadge(days = 42)
-            FrFlameBadge(days = 0)
         }
     }
 }
