@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlinx.coroutines.flow.map
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
@@ -16,6 +17,7 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSour
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.local.CrewListCache
 import es.schsebastian.foodrats.feature.crew.data.local.DataStoreCrewListCache
+import es.schsebastian.foodrats.feature.crew.data.outbox.CrewOutboxCommandHandler
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
@@ -90,6 +92,14 @@ val crewModule = module {
                     }
                 }
         }
+    }
+
+    // Offline-first write outbox (P2 §1 T6): replays the crew-admin commands
+    // (rename / set-blind-voting / remove-member / leave) against CrewRepository.
+    // Contributed to the cross-feature OutboxRunner (in :core:data) via Koin
+    // getAll(); the runner never imports :feature:crew.
+    single<OutboxCommandHandler> {
+        CrewOutboxCommandHandler(crews = get<CrewRepository>())
     }
 
     factoryOf(::CreateCrewUseCase)

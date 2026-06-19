@@ -89,4 +89,7 @@
     <string name="feed_queue_failed">%1$d failed to post</string>
     <string name="feed_queue_retry_cta">Retry</string>
     <string name="feed_queue_dismiss_cta">Dismiss</string>
+    <!-- Write-outbox sync indicator in the feed top bar (P2 §1 T8): rate/comment/reaction/crew-admin mutations parked while offline. -->
+    <string name="feed_sync_pending">%1$d waiting to sync</string>
+    <string name="feed_sync_failed">%1$d failed to sync</string>
 </resources>

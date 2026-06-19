@@ -58,6 +58,7 @@ internal class FirebaseCommentRepository(
     override suspend fun post(
         crewId: CrewId,
         mealId: MealId,
+        commentId: MealCommentId,
         text: CommentText,
     ): Result<Unit, CommentError.Write> = withContext(dispatchers.io) {
         val uid = authorIdentity.current()?.uid
@@ -66,6 +67,7 @@ internal class FirebaseCommentRepository(
             ds.create(
                 crewId, mealId,
                 CommentDto(
+                    id = commentId.value,
                     authorId = uid,
                     text = text.value,
                     createdAtEpochMs = clock.now().toEpochMilliseconds(),

@@ -4,8 +4,10 @@ import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.serialization.json.Json
@@ -49,6 +51,8 @@ class CrewModuleVerifyTest {
                 AppPreferences::class,
                 Json::class,
                 CoroutineScope::class,
+                ConnectivityPort::class,
+                OutboxPort::class,
             ),
         )
     }

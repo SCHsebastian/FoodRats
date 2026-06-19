@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.app.consent.ConsentViewModel
 import es.schsebastian.foodrats.app.navigation.DeepLinkBus
 import es.schsebastian.foodrats.app.recap.weeklyStoryModule
 import es.schsebastian.foodrats.app.root.RootNavViewModel
+import es.schsebastian.foodrats.core.data.outbox.outboxModule
 import es.schsebastian.foodrats.feature.achievements.di.achievementsModule
 import es.schsebastian.foodrats.feature.auth.di.authModule
 import es.schsebastian.foodrats.feature.crew.di.crewModule
@@ -39,6 +40,10 @@ val appModules: List<org.koin.core.module.Module> = listOf(
     rootNavModule,
     recapModule,
     coreDataModule,
+    // Offline-first write outbox (P2 §1 T4). Coexists with the meal-publish queue
+    // (DraftQueue*, in mealModule). The eager OutboxRunner drains it on the appScope;
+    // feature handlers (meal/crew) are collected via Koin getAll().
+    outboxModule,
     authModule,
     crewModule,
     mealModule,

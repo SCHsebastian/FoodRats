@@ -33,6 +33,18 @@ data class FeedState(
      */
     val queuedPending: Int = 0,
     val queuedFailed: Int = 0,
+    /**
+     * Write-outbox aggregate (P2 §1 T8), surfaced in the feed top bar by
+     * [es.schsebastian.foodrats.feature.feed.presentation.components.FrSyncStatusBar].
+     * [syncPending] = rate/comment/reaction/crew-admin mutations still on their way
+     * to applying (Pending / Uploading / retryable Failed); [syncFailed] = mutations
+     * the runner gave up on (`Failed(retryable = false)`), needing a user
+     * retry/dismiss. Both zero → the sync bar hides. Derived solely from
+     * [es.schsebastian.foodrats.core.domain.outbox.OutboxPort.observePending] — the
+     * single source of truth.
+     */
+    val syncPending: Int = 0,
+    val syncFailed: Int = 0,
     /** Active crew's blind-voting flag; masks meal authors until the viewer rates. */
     val blindVoting: Boolean = false,
 ) : MviState
@@ -51,6 +63,12 @@ sealed interface FeedIntent : MviIntent {
 
     /** Drop the terminal-failed queued drafts from the queue. */
     data object DismissQueuedDrafts : FeedIntent
+
+    /** Re-arm the terminal-failed outbox commands so the runner replays them. */
+    data object RetrySyncOutbox : FeedIntent
+
+    /** Drop the terminal-failed outbox commands from the outbox. */
+    data object DismissSyncOutbox : FeedIntent
 }
 
 sealed interface FeedEffect : MviEffect

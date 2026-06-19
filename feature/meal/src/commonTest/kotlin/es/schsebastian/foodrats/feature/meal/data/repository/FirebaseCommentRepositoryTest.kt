@@ -68,6 +68,7 @@ private class FakeAuthorIdentity(private val uid: String?) : MealAuthorIdentity 
 class FirebaseCommentRepositoryTest {
     private val crewId = (CrewId.of("crew1") as Result.Ok).value
     private val mealId = (MealId.of("meal1") as Result.Ok).value
+    private val commentId = MealCommentId("comment1")
     private val text = (CommentText.of("hola crew") as Result.Ok).value
 
     private fun repository(
@@ -138,10 +139,11 @@ class FirebaseCommentRepositoryTest {
         val fake = FakeCommentFirestore()
         val repo = repository(fake, FakeAuthorIdentity("uid-author"))
 
-        val r = repo.post(crewId, mealId, text)
+        val r = repo.post(crewId, mealId, commentId, text)
         assertTrue(r is Result.Ok)
         assertEquals(1, fake.docs.value.size)
         val created = fake.docs.value.single()
+        assertEquals("comment1", created.id) // client-minted id is written to the doc (offline-replay idempotency)
         assertEquals("uid-author", created.authorId)
         assertEquals("hola crew", created.text)
         assertEquals(Instant.parse("2026-06-14T12:00:00Z").toEpochMilliseconds(), created.createdAtEpochMs)
@@ -151,7 +153,7 @@ class FirebaseCommentRepositoryTest {
         val fake = FakeCommentFirestore()
         val repo = repository(fake, FakeAuthorIdentity(uid = null))
 
-        val r = repo.post(crewId, mealId, text)
+        val r = repo.post(crewId, mealId, commentId, text)
         assertTrue(r is Result.Err)
         assertEquals(CommentError.Write.Unauthorized, (r as Result.Err).error)
         assertTrue(fake.docs.value.isEmpty())
@@ -161,7 +163,7 @@ class FirebaseCommentRepositoryTest {
         val fake = FakeCommentFirestore(failWith = RuntimeException("PERMISSION_DENIED: nope"))
         val repo = repository(fake)
 
-        val r = repo.post(crewId, mealId, text)
+        val r = repo.post(crewId, mealId, commentId, text)
         assertTrue(r is Result.Err)
         assertEquals(CommentError.Write.Unauthorized, (r as Result.Err).error)
     }
@@ -170,7 +172,7 @@ class FirebaseCommentRepositoryTest {
         val fake = FakeCommentFirestore(failWith = RuntimeException("UNAUTHENTICATED token expired"))
         val repo = repository(fake)
 
-        val r = repo.post(crewId, mealId, text)
+        val r = repo.post(crewId, mealId, commentId, text)
         assertTrue(r is Result.Err)
         assertEquals(CommentError.Write.Unauthorized, (r as Result.Err).error)
     }
@@ -179,7 +181,7 @@ class FirebaseCommentRepositoryTest {
         val fake = FakeCommentFirestore(failWith = RuntimeException("network unreachable"))
         val repo = repository(fake)
 
-        val r = repo.post(crewId, mealId, text)
+        val r = repo.post(crewId, mealId, commentId, text)
         assertTrue(r is Result.Err)
         assertEquals(CommentError.Write.Unavailable, (r as Result.Err).error)
     }

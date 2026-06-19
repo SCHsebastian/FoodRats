@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
+import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseAuthorIdentity
@@ -23,6 +24,7 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorageDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.ReactionFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.ReactionFirestoreDataSource
+import es.schsebastian.foodrats.feature.meal.data.outbox.MealOutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueLocalStore
@@ -110,6 +112,18 @@ val mealModule = module {
         HasPostedTodayAdapter(
             firestore = get(),
             dispatchers = get(),
+        )
+    }
+
+    // Offline-first write outbox (P2 §1 T6): replays the meal-bounded-context
+    // commands (rate / comment / delete-comment / toggle-reaction) against the
+    // domain write ports. Contributed to the cross-feature OutboxRunner (in
+    // :core:data) via Koin getAll(); the runner never imports :feature:meal.
+    single<OutboxCommandHandler> {
+        MealOutboxCommandHandler(
+            rating = get<MealRatingPort>(),
+            comments = get<MealCommentPort>(),
+            reactions = get<MealReactionPort>(),
         )
     }
 

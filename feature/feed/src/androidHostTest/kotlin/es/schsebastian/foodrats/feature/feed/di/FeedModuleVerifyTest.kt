@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.feed.di
 import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
@@ -15,6 +16,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import kotlinx.datetime.TimeZone
@@ -56,6 +58,8 @@ class FeedModuleVerifyTest {
                 TimeZone::class,
                 StoryShareController::class,
                 AnalyticsPort::class,
+                ConnectivityPort::class,
+                OutboxPort::class,
             ),
         )
     }

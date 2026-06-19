@@ -45,6 +45,7 @@ import es.schsebastian.foodrats.feature.feed.i18n.FeedPluralKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedDayHeader
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedMealRow
+import es.schsebastian.foodrats.feature.feed.presentation.components.FrSyncStatusBar
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrUploadQueueBar
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
 import kotlinx.datetime.DatePeriod
@@ -87,6 +88,14 @@ fun FeedScreen(
                         failed = state.queuedFailed,
                         onRetry = { vm.onIntent(FeedIntent.RetryQueuedDrafts) },
                         onDismiss = { vm.onIntent(FeedIntent.DismissQueuedDrafts) },
+                    )
+                    // Write-outbox sync indicator (P2 §1 T8): rate/comment/reaction/
+                    // crew-admin mutations parked while offline. Hides itself when empty.
+                    FrSyncStatusBar(
+                        pending = state.syncPending,
+                        failed = state.syncFailed,
+                        onRetry = { vm.onIntent(FeedIntent.RetrySyncOutbox) },
+                        onDismiss = { vm.onIntent(FeedIntent.DismissSyncOutbox) },
                     )
                     FrFeedDayHeader(
                         primaryLabel = primary,

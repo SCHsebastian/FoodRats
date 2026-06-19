@@ -32,9 +32,12 @@ import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
+import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -172,9 +175,11 @@ class FeedViewModelTest {
         sessionProvider: SessionProvider = session,
         uploadProgress: MealUploadProgressPort = idleUploadProgress,
         queuedActions: QueuedUploadActionsPort = FakeQueuedUploadActionsPort(),
+        connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
+        outbox: RecordingOutboxPort = RecordingOutboxPort(),
     ) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(active, port),
-        rateMeal = RateMealUseCase(ratingPort),
+        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox),
         activeCrew = active,
         session = sessionProvider,
         clock = clock,
@@ -183,6 +188,8 @@ class FeedViewModelTest {
         blindVoting = blindVoting,
         reactions = reactionPort,
         queuedUploadActions = queuedActions,
+        connectivity = connectivity,
+        outbox = outbox,
         analytics = analytics,
     )
 
@@ -382,18 +389,63 @@ class FeedViewModelTest {
         assertTrue(analytics.events.none { it is AnalyticsEvent.MealReacted })
     }
 
-    @Test fun react_failure_populates_reactError() = runTest {
+    @Test fun react_failure_with_offline_falls_back_to_outbox() = runTest {
+        // A connectivity-class failure of the direct toggle parks the command instead of erroring.
         val reactionPort = FakeMealReactionPort().apply {
             nextToggle = Result.failure(ReactionError.Toggle.Offline)
         }
-        val vm = buildVm(reactionPort = reactionPort)
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(reactionPort = reactionPort, outbox = outbox)
+        runCurrent()
+        vm.onIntent(FeedIntent.ReactMeal("m-1"))
+        runCurrent()
+        assertEquals(null, vm.state.value.reactError, "connectivity failure is parked, not surfaced")
+        assertEquals(1, outbox.enqueued.size)
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.ToggleReaction)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals(true, cmd.desiredPresent) // viewer had not reacted -> target present
+    }
+
+    // --- offline-first write fallback (P2 §0.5 T7) ------------------------------
+
+    @Test fun react_offline_enqueues_toggle_with_target_and_skips_direct_port() = runTest {
+        val reactionPort = FakeMealReactionPort()
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(
+            reactionPort = reactionPort,
+            outbox = outbox,
+            connectivity = FakeConnectivityPort(online = false),
+        )
         vm.state.test {
             skipItems(1)
             vm.onIntent(FeedIntent.ReactMeal("m-1"))
-            val s = expectMostRecentItem()
-            assertEquals(ReactionError.Toggle.Offline, s.reactError)
+            runCurrent()
             cancelAndIgnoreRemainingEvents()
         }
+        assertTrue(reactionPort.toggleCalls.isEmpty(), "offline must not hit the direct port")
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.ToggleReaction)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals("daily_glyph", cmd.reactionKindKey)
+        assertEquals(true, cmd.desiredPresent)
+    }
+
+    @Test fun rate_offline_enqueues_and_skips_direct_port() = runTest {
+        val ratingPort = FakeMealRatingPort()
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(
+            ratingPort = ratingPort,
+            outbox = outbox,
+            connectivity = FakeConnectivityPort(online = false),
+        )
+        vm.onIntent(FeedIntent.RateMeal("m-1", 4))
+        runCurrent()
+        assertTrue(ratingPort.calls.isEmpty(), "offline must not hit the direct rating port")
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.RateMeal)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals(4, cmd.score.value)
     }
 
     // --- Offline-first publish queue indicator (roadmap §5.2) ------------------

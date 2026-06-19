@@ -49,6 +49,16 @@ object Keys {
     val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
 
     /**
+     * The durable write outbox (offline-first P2): a JSON array of queued
+     * rate / comment / reaction / crew-admin mutations (each with its
+     * lifecycle status + attempt count), so a process death or airplane-mode
+     * session never loses a user mutation. Coexists with — and is distinct from
+     * — [DraftQueueJson] (the meal-publish queue, which is untouched). Owned by
+     * `:core:data`'s `OutboxLocalStore`.
+     */
+    val OutboxJson           = StoreKey(stringPreferencesKey("outbox_json"))
+
+    /**
      * BRIDGE (offline-first P1): the last-seen crew list for the signed-in member,
      * persisted as a JSON array of `CrewDto` so the crew picker survives offline.
      * Disposable — replaced by the SQLDelight read model in offline-first P3. Owned

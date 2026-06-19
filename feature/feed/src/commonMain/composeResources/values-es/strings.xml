@@ -89,4 +89,7 @@
     <string name="feed_queue_failed">%1$d no se pudieron publicar</string>
     <string name="feed_queue_retry_cta">Reintentar</string>
     <string name="feed_queue_dismiss_cta">Descartar</string>
+    <!-- Indicador del outbox de escritura en la barra superior del feed (P2 §1 T8): valoraciones/comentarios/reacciones/admin de crew en espera mientras estás sin conexión. -->
+    <string name="feed_sync_pending">%1$d esperando sincronizar</string>
+    <string name="feed_sync_failed">%1$d no se pudieron sincronizar</string>
 </resources>

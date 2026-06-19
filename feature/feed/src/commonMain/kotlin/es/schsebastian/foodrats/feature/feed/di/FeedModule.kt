@@ -32,6 +32,8 @@ val feedModule = module {
             blindVoting = get(),
             reactions = get(),
             queuedUploadActions = get(),
+            connectivity = get(),
+            outbox = get(),
             analytics = get(),
         )
     }
@@ -42,6 +44,8 @@ val feedModule = module {
             observeFeed = get(),
             rateMeal = get(),
             commentPort = get(),
+            connectivity = get(),
+            outbox = get(),
             accountReadPort = get(),
             ingredientRead = get(),
             activeCrew = get(),

@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.designsystem.templates.ShareCardFormat
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
@@ -25,6 +26,9 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
+import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.core.domain.result.getOrNull
@@ -54,6 +58,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 class MealDetailViewModel(
     private val mealId: String,
@@ -61,6 +67,8 @@ class MealDetailViewModel(
     observeFeed: ObserveFeedUseCase,
     private val rateMeal: RateMealUseCase,
     private val commentPort: MealCommentPort,
+    private val connectivity: ConnectivityPort,
+    private val outbox: OutboxPort,
     private val accountReadPort: AccountReadPort,
     private val ingredientRead: IngredientReadPort,
     private val activeCrew: ActiveCrewProvider,
@@ -354,6 +362,7 @@ class MealDetailViewModel(
         }
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     private suspend fun postComment() {
         val crewId = activeCrew.current.first()
             ?: return update { it.copy(commentWriteError = CommentError.Write.Unauthorized) }
@@ -370,14 +379,37 @@ class MealDetailViewModel(
                 it.copy(commentWriteError = writeErr)
             }
         }
+        val authorId = session.current.first()?.accountId
+            ?: return update { it.copy(commentWriteError = CommentError.Write.Unauthorized) }
         update { it.copy(isPostingComment = true, commentWriteError = null) }
-        val r = commentPort.post(crewId, parsedMealId, text)
+        // Client-minted id so an offline replay (T7) sets the SAME doc — `.set()` is idempotent.
+        val commentId = MealCommentId(Uuid.random().toString())
+        // OFFLINE-FIRST (P2 §0.5): offline — or a connectivity-class write failure — durably
+        // parks the comment in the outbox (with this same minted id) and treats it as posted.
+        if (!connectivity.isOnline().first()) {
+            return enqueueComment(crewId, parsedMealId, commentId, text, authorId)
+        }
+        val r = commentPort.post(crewId, parsedMealId, commentId, text)
         if (r is Result.Ok) analytics.track(AnalyticsEvent.CommentPosted(parsedMealId))
+        if (r is Result.Err && r.error == CommentError.Write.Unavailable) {
+            return enqueueComment(crewId, parsedMealId, commentId, text, authorId)
+        }
         update {
             when (r) {
                 is Result.Ok  -> it.copy(isPostingComment = false, commentInput = "")
                 is Result.Err -> it.copy(isPostingComment = false, commentWriteError = r.error)
             }
         }
+    }
+
+    private suspend fun enqueueComment(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: MealCommentId,
+        text: CommentText,
+        authorId: AccountId,
+    ) {
+        outbox.enqueue(PendingCommand.PostComment(crewId, mealId, commentId, text, authorId))
+        update { it.copy(isPostingComment = false, commentInput = "") }
     }
 }

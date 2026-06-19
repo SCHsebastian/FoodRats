@@ -25,9 +25,11 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
+import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
@@ -113,12 +115,16 @@ class MealDetailViewModelTest {
         )
         val active = FakeActiveCrewProvider(initial = crew)
         val session = FakeSessionProvider(Session(viewerId, crew))
+        val connectivity = FakeConnectivityPort(online = true)
+        val outbox = RecordingOutboxPort()
         return MealDetailViewModel(
             mealId = "meal-1",
             dayIso = dayIso,
             observeFeed = ObserveFeedUseCase(active, readPort),
-            rateMeal = RateMealUseCase(FakeMealRatingPort()),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox),
             commentPort = commentPort,
+            connectivity = connectivity,
+            outbox = outbox,
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
@@ -131,7 +137,7 @@ class MealDetailViewModelTest {
                 deleteMyMealPort,
                 FakeCrewMembership(listOf(CrewSummary(crew, "Crew"))),
             ),
-            deleteComment = DeleteCommentUseCase(commentPort),
+            deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(owner),
             storyShareController = RecordingStoryShareController(),
         )
