@@ -58,14 +58,6 @@ object Keys {
      */
     val OutboxJson           = StoreKey(stringPreferencesKey("outbox_json"))
 
-    /**
-     * BRIDGE (offline-first P1): the last-seen crew list for the signed-in member,
-     * persisted as a JSON array of `CrewDto` so the crew picker survives offline.
-     * Disposable — replaced by the SQLDelight read model in offline-first P3. Owned
-     * by `:feature:crew`'s `CrewListCache`.
-     */
-    val CrewListJson         = StoreKey(stringPreferencesKey("crew_list_json"))
-
     // ── Analytics consent (GDPR/CCPA opt-in). Absence of [AnalyticsConsentState] = "Unknown"
     //    (no decision yet → analytics is a hard no-op). See ConsentRepository / ConsentGatedAnalytics.
     /** `"granted"` | `"denied"`; absent = no decision recorded yet. */

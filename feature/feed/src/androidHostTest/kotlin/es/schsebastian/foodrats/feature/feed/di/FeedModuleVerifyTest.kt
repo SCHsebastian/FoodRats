@@ -15,6 +15,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -48,6 +49,7 @@ class FeedModuleVerifyTest {
                 CrewOwnerPort::class,
                 MealReadPort::class,
                 MealRatingPort::class,
+                OptimisticMealWritePort::class,
                 MealReactionPort::class,
                 MealDeletePort::class,
                 MealCommentPort::class,

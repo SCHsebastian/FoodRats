@@ -35,6 +35,7 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
@@ -137,7 +138,7 @@ class MealDetailCommentIdentityTest {
             mealId = "meal-1",
             dayIso = "2026-05-20",
             observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
-            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
             connectivity = connectivity,
             outbox = outbox,
@@ -257,7 +258,7 @@ class MealDetailCommentIdentityTest {
             mealId = "meal-1",
             dayIso = "2026-05-20",
             observeFeed = ObserveFeedUseCase(active, readPort),
-            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
             connectivity = connectivity,
             outbox = outbox,
@@ -333,7 +334,7 @@ class MealDetailCommentIdentityTest {
             mealId = "meal-1",
             dayIso = "2026-05-20",
             observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
-            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
             connectivity = connectivity,
             outbox = outbox,

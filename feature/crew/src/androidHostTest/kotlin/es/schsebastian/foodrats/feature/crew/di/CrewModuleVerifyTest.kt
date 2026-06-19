@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.crew.di
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.database.FoodRatsDatabase
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
@@ -27,9 +28,10 @@ import kotlin.random.Random
  *    is still reflected).
  *  - `CrewId` is the runtime parameter of `CrewSettingsViewModel` (`viewModel { (crewId) -> ... }`);
  *    `verify` reflects the VM constructor including that parameter, so the type must be declared.
- *  - `AppPreferences` + `Json` back the offline-first P1 `CrewListCache` (bound here, but their
- *    constructor deps come from the shared `coreDataModule`); `CoroutineScope` is the app-lifetime
- *    `named("appScope")` scope bound in `ingredientModule` and consumed by `FirebaseCrewRepository`.
+ *  - `FoodRatsDatabase` (bound by `:core:database`'s `databaseModule`) backs the offline-first P3b
+ *    `CrewLocalStore`; `CoroutineScope` is the app-lifetime `named("appScope")` scope bound in
+ *    `ingredientModule` and consumed by the `CrewSyncEngine`. `AppPreferences` + `Json` remain
+ *    app-wide deps wired in the `shared` aggregator (datasource / DataStore plumbing).
  *
  * `verify` is JVM-only, so this lives in androidHostTest.
  */
@@ -50,6 +52,8 @@ class CrewModuleVerifyTest {
                 AnalyticsPort::class,
                 AppPreferences::class,
                 Json::class,
+                // Bound by :core:database's databaseModule; backs CrewLocalStore.
+                FoodRatsDatabase::class,
                 CoroutineScope::class,
                 ConnectivityPort::class,
                 OutboxPort::class,

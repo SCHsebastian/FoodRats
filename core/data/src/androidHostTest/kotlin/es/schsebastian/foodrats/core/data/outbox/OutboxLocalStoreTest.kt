@@ -1,9 +1,5 @@
 package es.schsebastian.foodrats.core.data.outbox
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.mutablePreferencesOf
-import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -18,42 +14,33 @@ import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrNull
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.yield
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
+/**
+ * Host-test (JVM) coverage of the SQLDelight-backed [OutboxLocalStore] (P3b-T6). Seeds a real
+ * in-memory `outbox` table, then asserts the public surface (`observe`/`read`/`add`/`update`/`remove`)
+ * behaves like the P2 DataStore-JSON store: coalescing on idempotency key, every command leaf round-
+ * tripping through the flattened columns, and a `Failed` status preserving its error key + retryable.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class OutboxLocalStoreTest {
 
-    /**
-     * Backing store whose read deliberately yields before emitting, opening the
-     * read-modify-write interleave window. Without [OutboxLocalStore]'s serializing
-     * mutex, two concurrent `add`s would both read the same snapshot and the second
-     * write would clobber the first (lost update).
-     */
-    private class YieldingDataStore : DataStore<Preferences> {
-        private val state = MutableStateFlow<Preferences>(mutablePreferencesOf())
-        override val data: Flow<Preferences> = flow {
-            yield()
-            emit(state.value)
-        }
-        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
-            val newValue = transform(state.value)
-            yield()
-            state.value = newValue
-            return newValue
-        }
+    private lateinit var db: OutboxTestDb
+    private lateinit var store: OutboxLocalStore
+
+    @BeforeTest fun setUp() {
+        db = OutboxTestDb()
+        store = db.store()
     }
+
+    @AfterTest fun tearDown() = db.close()
 
     private val crew = (CrewId.of("crew-1") as Result.Ok).value
     private val meal = (MealId.of("meal-1") as Result.Ok).value
@@ -75,13 +62,10 @@ class OutboxLocalStoreTest {
     )
 
     @Test
-    fun concurrent_adds_with_distinct_keys_do_not_lose_updates() = runTest(StandardTestDispatcher()) {
-        val store = OutboxLocalStore(AppPreferences(YieldingDataStore()))
-
-        coroutineScope {
-            // Distinct rater per entry → distinct idempotency keys → all 8 survive.
-            repeat(8) { idx -> launch { store.add(entry(idx, rateCommand("rater-$idx"))) } }
-        }
+    fun adds_with_distinct_keys_all_survive() = runTest {
+        // Distinct rater per entry → distinct idempotency keys → all 8 rows persist (the UNIQUE
+        // index only coalesces same-key rows).
+        repeat(8) { idx -> store.add(entry(idx, rateCommand("rater-$idx"))) }
 
         val survivors = store.read().map { it.id.value }.toSet()
         assertEquals((0 until 8).map { "entry-$it" }.toSet(), survivors)
@@ -89,7 +73,6 @@ class OutboxLocalStoreTest {
 
     @Test
     fun add_coalesces_on_idempotency_key_last_write_wins() = runTest {
-        val store = OutboxLocalStore(AppPreferences(YieldingDataStore()))
         // Same crew/meal/rater → same idempotency key for both commands.
         store.add(entry(1, rateCommand("rater-X")))
         store.add(entry(2, rateCommand("rater-X")))
@@ -100,8 +83,7 @@ class OutboxLocalStoreTest {
     }
 
     @Test
-    fun round_trips_every_command_leaf_through_json() = runTest {
-        val store = OutboxLocalStore(AppPreferences(YieldingDataStore()))
+    fun round_trips_every_command_leaf_through_the_table() = runTest {
         val commands: List<PendingCommand> = listOf(
             rateCommand("rater-1"),
             PendingCommand.PostComment(
@@ -130,8 +112,7 @@ class OutboxLocalStoreTest {
     }
 
     @Test
-    fun status_failed_round_trips_with_error_key_and_retryable() = runTest {
-        val store = OutboxLocalStore(AppPreferences(YieldingDataStore()))
+    fun update_to_failed_round_trips_with_error_key_and_retryable() = runTest {
         store.add(entry(1, rateCommand("rater-1")))
         store.update(OutboxEntryId("entry-1")) {
             it.copy(status = OutboxEntryStatus.Failed(errorKey = "react.offline", retryable = true), attemptCount = 2)
@@ -145,10 +126,28 @@ class OutboxLocalStoreTest {
     }
 
     @Test
-    fun unparseable_blob_decodes_to_empty() = runTest {
-        val store = OutboxLocalStore(AppPreferences(YieldingDataStore()))
-        // Nothing written yet → empty.
+    fun update_is_noop_when_id_absent() = runTest {
+        store.update(OutboxEntryId("ghost")) { it.copy(attemptCount = 99) }
+        assertTrue(store.read().isEmpty())
+    }
+
+    @Test
+    fun remove_deletes_the_row_and_is_noop_safe() = runTest {
+        store.add(entry(1, rateCommand("rater-1")))
+        store.remove(OutboxEntryId("entry-1"))
+        assertTrue(store.read().isEmpty())
+        // No-op-safe on an already-removed id.
+        store.remove(OutboxEntryId("entry-1"))
+    }
+
+    @Test
+    fun observe_orders_by_created_at_and_starts_empty() = runTest {
         assertTrue(store.read().isEmpty())
         assertTrue(store.observe().first().isEmpty())
+
+        store.add(entry(2, rateCommand("rater-B"))) // createdAt 1002
+        store.add(entry(1, rateCommand("rater-A"))) // createdAt 1001
+        val ordered = store.observe().first().map { it.id.value }
+        assertEquals(listOf("entry-1", "entry-2"), ordered)
     }
 }

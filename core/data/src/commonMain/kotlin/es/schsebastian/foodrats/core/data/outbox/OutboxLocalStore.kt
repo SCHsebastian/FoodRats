@@ -1,7 +1,10 @@
 package es.schsebastian.foodrats.core.data.outbox
 
-import es.schsebastian.foodrats.core.data.datastore.AppPreferences
-import es.schsebastian.foodrats.core.data.datastore.Keys
+import app.cash.sqldelight.coroutines.asFlow
+import app.cash.sqldelight.coroutines.mapToList
+import es.schsebastian.foodrats.core.database.FoodRatsDatabase
+import es.schsebastian.foodrats.core.database.Outbox as OutboxRow
+import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -15,252 +18,245 @@ import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.getOrNull
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.serializer
 
 /**
- * Durable, multi-entry local store for the write outbox (offline-first P2 §1 T2).
+ * Durable, multi-entry local store for the write outbox (offline-first P3b §2.5 / P3b-T6).
  *
- * The direct sibling of `:feature:meal`'s `DraftQueueLocalStore` (kept
- * byte-for-byte untouched): the offline-first write outbox COEXISTS with the
- * meal-publish queue rather than folding into it. This store holds the full list
- * of [OutboxEntry]s — each with its [PendingCommand], lifecycle status, and
- * attempt bookkeeping — as one JSON blob in DataStore Preferences
- * ([Keys.OutboxJson]), the same proven mechanism that survives process death
- * without adding a DB dependency.
+ * Migrated OFF the DataStore-JSON blob ([Keys.OutboxJson][es.schsebastian.foodrats.core.data.datastore.Keys.OutboxJson])
+ * ONTO the SQLDelight `outbox` table (`:core:database`). Each [OutboxEntry] is one row — its
+ * [PendingCommand] FLATTENED into the table's nullable payload columns, lifecycle status + attempt
+ * bookkeeping in dedicated columns. The public surface is byte-for-byte the same as the P2 store
+ * (`observe()` / `read()` / `add()` / `update()` / `remove()`), so [OutboxRepository] and
+ * `OutboxRunner` are unchanged. The one-shot migration of any leftover JSON entries lives in
+ * [OutboxJsonMigration].
  *
- * This is a pure (de)serialization + read/modify/write helper. It holds NO
- * `withContext` — the IO boundary lives in [OutboxRepository], which owns the one
- * `withContext(dispatchers.io)` per public method (CLAUDE.md rule).
+ * The direct sibling of `:feature:meal`'s `DraftQueueLocalStore` (kept untouched): the offline-first
+ * write outbox COEXISTS with the meal-publish queue rather than folding into it.
  *
- * SERIALIZATION SHAPE. The domain [PendingCommand] is NOT `@Serializable` (vendor/
- * serialization concerns stay out of `:core:domain`). It is persisted here as a
- * FLAT discriminator DTO ([CommandJson], a `type` tag + nullable fields) rather
- * than a `@Serializable sealed` hierarchy, so an unknown discriminator persisted
- * by a newer build degrades to "skip the entry" instead of failing to deserialize
- * the whole list. [toDomain] is null-tolerant: any malformed/partial entry is
- * dropped rather than crashing the queue.
+ * IO BOUNDARY. This store holds NO `withContext` — the suspend mutations ([add]/[update]/[remove])
+ * run on the caller's context, and [OutboxRepository] owns the one `withContext(dispatchers.io)` per
+ * public method (CLAUDE.md rule). The reactive [observe] flow dispatches its query on
+ * `dispatchers.io` via `mapToList(io)`, mirroring `MealLocalStore`.
  *
- * A single DataStore `set` is atomic, but the read-modify-write in [mutate] spans
- * a `read()` and a separate `set()`: two concurrent mutations (e.g. an enqueue
- * racing a retry status flip) could both read the same `current` and the later
- * write would clobber the earlier one (lost update). A per-instance [Mutex]
- * serializes the whole read-modify-write so the writes compose instead of racing.
+ * COALESCING. Enqueue coalescing on [PendingCommand.idempotencyKey] is enforced by the table's
+ * UNIQUE index + `INSERT OR REPLACE` (`upsertByIdem`): an offline user rating the same meal twice
+ * ends with one row (last-write-wins). [toDomain] is null-tolerant: a malformed/partial row (e.g. an
+ * unknown command `type` persisted by a newer build) is dropped rather than crashing the queue.
  */
 class OutboxLocalStore(
-    private val prefs: AppPreferences,
-    private val json: Json = Json,
+    private val database: FoodRatsDatabase,
+    private val dispatchers: DispatcherProvider,
 ) {
 
-    /** Serializes the read-modify-write in [mutate] against itself. */
-    private val mutateLock = Mutex()
+    private val queries get() = database.outboxQueries
 
-    /** Observe the full outbox, ordered by `createdAt`. Empty when nothing queued or unparseable. */
-    fun observe(): Flow<List<OutboxEntry>> = prefs.observe(Keys.OutboxJson).map { raw ->
-        decode(raw)
-    }
+    /** Observe the full outbox, ordered by `createdAt`. Empty when nothing queued. */
+    fun observe(): Flow<List<OutboxEntry>> =
+        queries.selectAll()
+            .asFlow()
+            .mapToList(dispatchers.io)
+            .map { rows -> rows.mapNotNull { it.toDomain() } }
 
-    /** Read the current outbox once. */
-    suspend fun read(): List<OutboxEntry> = decode(prefs.observe(Keys.OutboxJson).first())
+    /** Read the current outbox once, ordered by `createdAt`. */
+    fun read(): List<OutboxEntry> = queries.selectAll().executeAsList().mapNotNull { it.toDomain() }
 
     /**
-     * Append [entry] to the outbox, coalescing on the command's idempotency key:
-     * any existing entry whose command shares the same [PendingCommand.idempotencyKey]
-     * is replaced (last-write-wins), and a same-[OutboxEntryId] duplicate is also
-     * replaced. So an offline user rating the same meal twice ends with one entry.
+     * Append [entry] to the outbox, coalescing on the command's idempotency key via the table's
+     * UNIQUE index (`INSERT OR REPLACE`): any existing row whose command shares the same
+     * [PendingCommand.idempotencyKey] is replaced (last-write-wins), and a same-[OutboxEntryId]
+     * duplicate is also replaced. So an offline user rating the same meal twice ends with one row.
      */
-    suspend fun add(entry: OutboxEntry) = mutate { current ->
-        val coalesceKey = entry.command.idempotencyKey
-        current.filterNot { it.id == entry.id || it.command.idempotencyKey == coalesceKey } + entry
+    fun add(entry: OutboxEntry) {
+        val payload = entry.command.toPayload()
+        val status = entry.status.toColumns()
+        queries.upsertByIdem(
+            id = entry.id.value,
+            type = payload.type,
+            idempotencyKey = entry.command.idempotencyKey,
+            statusKind = status.kind,
+            errorKey = status.errorKey,
+            retryable = status.retryable,
+            attemptCount = entry.attemptCount.toLong(),
+            createdAtEpochMs = entry.createdAt.toEpochMilliseconds(),
+            lastAttemptAtEpochMs = entry.lastAttemptAt?.toEpochMilliseconds(),
+            crewId = payload.crewId,
+            mealId = payload.mealId,
+            accountId = payload.accountId,
+            commentId = payload.commentId,
+            text = payload.text,
+            score = payload.score,
+            reactionKindKey = payload.reactionKindKey,
+            desiredPresent = payload.desiredPresent,
+            enabled = payload.enabled,
+            targetAccountId = payload.targetAccountId,
+            newName = payload.newName,
+        )
     }
 
-    /** Replace the entry with [OutboxEntry.id] == [id] via [transform]; no-op if absent. */
-    suspend fun update(id: OutboxEntryId, transform: (OutboxEntry) -> OutboxEntry) = mutate { current ->
-        current.map { if (it.id == id) transform(it) else it }
+    /**
+     * Replace the entry with [OutboxEntry.id] == [id] via [transform]; no-op if absent. Only the
+     * lifecycle/attempt columns (status / attemptCount / lastAttemptAt) are written back — the
+     * command payload never changes after enqueue.
+     */
+    fun update(id: OutboxEntryId, transform: (OutboxEntry) -> OutboxEntry) {
+        // Read-then-write in ONE transaction so a concurrent status flip can't read the same
+        // snapshot and clobber the other's write (lost update) — the SQLDelight equivalent of the
+        // P2 store's serializing mutex.
+        queries.transaction {
+            val current = queries.selectAll().executeAsList()
+                .firstOrNull { it.id == id.value }
+                ?.toDomain()
+                ?: return@transaction
+            val next = transform(current)
+            val status = next.status.toColumns()
+            queries.updateStatus(
+                statusKind = status.kind,
+                errorKey = status.errorKey,
+                retryable = status.retryable,
+                attemptCount = next.attemptCount.toLong(),
+                lastAttemptAtEpochMs = next.lastAttemptAt?.toEpochMilliseconds(),
+                id = id.value,
+            )
+        }
     }
 
     /** Remove the entry [id]; no-op if absent. */
-    suspend fun remove(id: OutboxEntryId) = mutate { current ->
-        current.filterNot { it.id == id }
+    fun remove(id: OutboxEntryId) = queries.deleteById(id.value)
+
+    // ── command type discriminators (mirror the P2 CommandJson tags) ───────────
+
+    private object CommandType {
+        const val RATE_MEAL = "rate_meal"
+        const val POST_COMMENT = "post_comment"
+        const val DELETE_COMMENT = "delete_comment"
+        const val TOGGLE_REACTION = "toggle_reaction"
+        const val RENAME_CREW = "rename_crew"
+        const val SET_BLIND_VOTING = "set_blind_voting"
+        const val REMOVE_MEMBER = "remove_member"
+        const val LEAVE_CREW = "leave_crew"
     }
 
-    /**
-     * Atomic read-modify-write of the whole list through one DataStore string key.
-     * Held under [mutateLock] so concurrent mutations serialize and compose rather
-     * than racing (a later write clobbering an earlier one — lost update).
-     */
-    private suspend fun mutate(transform: (List<OutboxEntry>) -> List<OutboxEntry>) = mutateLock.withLock {
-        val current = read()
-        val next = transform(current).sortedBy { it.createdAt }
-        prefs.set(Keys.OutboxJson, json.encodeToString(serializer<List<OutboxEntryJson>>(), next.map { it.toJson() }))
-    }
+    // ── domain → columns ──────────────────────────────────────────────────────
 
-    private fun decode(raw: String?): List<OutboxEntry> {
-        if (raw.isNullOrBlank()) return emptyList()
-        return runCatching { json.decodeFromString<List<OutboxEntryJson>>(raw) }
-            .getOrNull()
-            ?.mapNotNull { it.toDomain() }
-            ?.sortedBy { it.createdAt }
-            ?: emptyList()
-    }
-
-    // ── serialization shape ───────────────────────────────────────────────
-
-    @Serializable
-    private data class OutboxEntryJson(
-        val id: String,
-        val command: CommandJson,
-        val status: StatusJson,
-        val attemptCount: Int,
-        val createdAtEpochMs: Long,
-        val lastAttemptAtEpochMs: Long? = null,
-    )
-
-    @Serializable
-    private data class StatusJson(
-        val kind: String,                 // "pending" | "uploading" | "failed"
-        val errorKey: String? = null,     // failed only
-        val retryable: Boolean = false,   // failed only
-    )
-
-    /**
-     * Flat, discriminated DTO for every [PendingCommand] leaf. The `type` tag
-     * selects the leaf; the remaining fields are nullable and only the ones the
-     * leaf uses are populated. Keeps the domain command vendor-free and tolerant
-     * to an unknown `type` from a newer build (such an entry is dropped on read).
-     */
-    @Serializable
-    private data class CommandJson(
+    /** Flattened payload of a [PendingCommand] leaf; only the columns the leaf uses are non-null. */
+    private class CommandPayload(
         val type: String,
         val crewId: String? = null,
         val mealId: String? = null,
         val accountId: String? = null,
         val commentId: String? = null,
         val text: String? = null,
-        val score: Int? = null,
+        val score: Long? = null,
         val reactionKindKey: String? = null,
-        val desiredPresent: Boolean? = null,
-        val enabled: Boolean? = null,
+        val desiredPresent: Long? = null,
+        val enabled: Long? = null,
         val targetAccountId: String? = null,
         val newName: String? = null,
-    ) {
-        companion object {
-            const val RATE_MEAL = "rate_meal"
-            const val POST_COMMENT = "post_comment"
-            const val DELETE_COMMENT = "delete_comment"
-            const val TOGGLE_REACTION = "toggle_reaction"
-            const val RENAME_CREW = "rename_crew"
-            const val SET_BLIND_VOTING = "set_blind_voting"
-            const val REMOVE_MEMBER = "remove_member"
-            const val LEAVE_CREW = "leave_crew"
-        }
-    }
-
-    private fun OutboxEntry.toJson() = OutboxEntryJson(
-        id = id.value,
-        command = command.toJson(),
-        status = status.toJson(),
-        attemptCount = attemptCount,
-        createdAtEpochMs = createdAt.toEpochMilliseconds(),
-        lastAttemptAtEpochMs = lastAttemptAt?.toEpochMilliseconds(),
     )
 
-    private fun OutboxEntryStatus.toJson() = when (this) {
-        OutboxEntryStatus.Pending   -> StatusJson(kind = "pending")
-        OutboxEntryStatus.Uploading -> StatusJson(kind = "uploading")
-        is OutboxEntryStatus.Failed -> StatusJson(kind = "failed", errorKey = errorKey, retryable = retryable)
+    private class StatusColumns(val kind: String, val errorKey: String?, val retryable: Long)
+
+    private fun OutboxEntryStatus.toColumns(): StatusColumns = when (this) {
+        OutboxEntryStatus.Pending   -> StatusColumns(kind = "pending", errorKey = null, retryable = 0L)
+        OutboxEntryStatus.Uploading -> StatusColumns(kind = "uploading", errorKey = null, retryable = 0L)
+        is OutboxEntryStatus.Failed -> StatusColumns(
+            kind = "failed",
+            errorKey = errorKey,
+            retryable = if (retryable) 1L else 0L,
+        )
     }
 
-    private fun PendingCommand.toJson(): CommandJson = when (this) {
-        is PendingCommand.RateMeal -> CommandJson(
-            type = CommandJson.RATE_MEAL,
+    private fun PendingCommand.toPayload(): CommandPayload = when (this) {
+        is PendingCommand.RateMeal -> CommandPayload(
+            type = CommandType.RATE_MEAL,
             crewId = crewId.value,
             mealId = mealId.value,
             accountId = raterId.value,
-            score = score.value,
+            score = score.value.toLong(),
         )
-        is PendingCommand.PostComment -> CommandJson(
-            type = CommandJson.POST_COMMENT,
+        is PendingCommand.PostComment -> CommandPayload(
+            type = CommandType.POST_COMMENT,
             crewId = crewId.value,
             mealId = mealId.value,
             commentId = commentId.value,
             text = text.value,
             accountId = authorId.value,
         )
-        is PendingCommand.DeleteComment -> CommandJson(
-            type = CommandJson.DELETE_COMMENT,
+        is PendingCommand.DeleteComment -> CommandPayload(
+            type = CommandType.DELETE_COMMENT,
             crewId = crewId.value,
             mealId = mealId.value,
             commentId = commentId.value,
         )
-        is PendingCommand.ToggleReaction -> CommandJson(
-            type = CommandJson.TOGGLE_REACTION,
+        is PendingCommand.ToggleReaction -> CommandPayload(
+            type = CommandType.TOGGLE_REACTION,
             crewId = crewId.value,
             mealId = mealId.value,
             accountId = reactorId.value,
             reactionKindKey = reactionKindKey,
-            desiredPresent = desiredPresent,
+            desiredPresent = if (desiredPresent) 1L else 0L,
         )
-        is PendingCommand.RenameCrew -> CommandJson(
-            type = CommandJson.RENAME_CREW,
+        is PendingCommand.RenameCrew -> CommandPayload(
+            type = CommandType.RENAME_CREW,
             crewId = crewId.value,
             accountId = requestedBy.value,
             newName = newName,
         )
-        is PendingCommand.SetBlindVoting -> CommandJson(
-            type = CommandJson.SET_BLIND_VOTING,
+        is PendingCommand.SetBlindVoting -> CommandPayload(
+            type = CommandType.SET_BLIND_VOTING,
             crewId = crewId.value,
             accountId = requestedBy.value,
-            enabled = enabled,
+            enabled = if (enabled) 1L else 0L,
         )
-        is PendingCommand.RemoveMember -> CommandJson(
-            type = CommandJson.REMOVE_MEMBER,
+        is PendingCommand.RemoveMember -> CommandPayload(
+            type = CommandType.REMOVE_MEMBER,
             crewId = crewId.value,
             accountId = requestedBy.value,
             targetAccountId = target.value,
         )
-        is PendingCommand.LeaveCrew -> CommandJson(
-            type = CommandJson.LEAVE_CREW,
+        is PendingCommand.LeaveCrew -> CommandPayload(
+            type = CommandType.LEAVE_CREW,
             crewId = crewId.value,
             accountId = leaver.value,
         )
     }
 
-    private fun OutboxEntryJson.toDomain(): OutboxEntry? {
-        val entryId = runCatching { OutboxEntryId(id) }.getOrNull() ?: return null
-        val domainCommand = command.toDomain() ?: return null
-        val domainStatus = status.toDomain() ?: return null
+    // ── columns → domain (null-tolerant: a malformed/unknown row is dropped) ────
+
+    private fun OutboxRow.toDomain(): OutboxEntry? {
+        val entryId = id.takeIf { it.isNotBlank() }?.let { OutboxEntryId(it) } ?: return null
+        val command = toCommand() ?: return null
+        val domainStatus = toStatus() ?: return null
         return OutboxEntry(
             id = entryId,
-            command = domainCommand,
+            command = command,
             status = domainStatus,
-            attemptCount = attemptCount,
+            attemptCount = attemptCount.toInt(),
             createdAt = Instant.fromEpochMilliseconds(createdAtEpochMs),
             lastAttemptAt = lastAttemptAtEpochMs?.let(Instant::fromEpochMilliseconds),
         )
     }
 
-    private fun StatusJson.toDomain(): OutboxEntryStatus? = when (kind) {
+    private fun OutboxRow.toStatus(): OutboxEntryStatus? = when (statusKind) {
         "pending"   -> OutboxEntryStatus.Pending
         "uploading" -> OutboxEntryStatus.Uploading
-        "failed"    -> OutboxEntryStatus.Failed(errorKey = errorKey ?: "outbox.unknown", retryable = retryable)
+        "failed"    -> OutboxEntryStatus.Failed(
+            errorKey = errorKey ?: "outbox.unknown",
+            retryable = retryable != 0L,
+        )
         else        -> null
     }
 
-    private fun CommandJson.toDomain(): PendingCommand? = when (type) {
-        CommandJson.RATE_MEAL -> {
+    private fun OutboxRow.toCommand(): PendingCommand? = when (type) {
+        CommandType.RATE_MEAL -> {
             val crew = crewId.toCrewId() ?: return null
             val meal = mealId.toMealId() ?: return null
             val rater = accountId.toAccountId() ?: return null
-            val s = score?.let { Score.of(it).getOrNull() } ?: return null
+            val s = score?.toInt()?.let { Score.of(it).getOrNull() } ?: return null
             PendingCommand.RateMeal(crewId = crew, mealId = meal, raterId = rater, score = s)
         }
-        CommandJson.POST_COMMENT -> {
+        CommandType.POST_COMMENT -> {
             val crew = crewId.toCrewId() ?: return null
             val meal = mealId.toMealId() ?: return null
             val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
@@ -268,13 +264,13 @@ class OutboxLocalStore(
             val author = accountId.toAccountId() ?: return null
             PendingCommand.PostComment(crewId = crew, mealId = meal, commentId = cId, text = body, authorId = author)
         }
-        CommandJson.DELETE_COMMENT -> {
+        CommandType.DELETE_COMMENT -> {
             val crew = crewId.toCrewId() ?: return null
             val meal = mealId.toMealId() ?: return null
             val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
             PendingCommand.DeleteComment(crewId = crew, mealId = meal, commentId = cId)
         }
-        CommandJson.TOGGLE_REACTION -> {
+        CommandType.TOGGLE_REACTION -> {
             val crew = crewId.toCrewId() ?: return null
             val meal = mealId.toMealId() ?: return null
             val reactor = accountId.toAccountId() ?: return null
@@ -285,33 +281,33 @@ class OutboxLocalStore(
                 mealId = meal,
                 reactorId = reactor,
                 reactionKindKey = kindKey,
-                desiredPresent = present,
+                desiredPresent = present != 0L,
             )
         }
-        CommandJson.RENAME_CREW -> {
+        CommandType.RENAME_CREW -> {
             val crew = crewId.toCrewId() ?: return null
             val by = accountId.toAccountId() ?: return null
             val name = newName ?: return null
             PendingCommand.RenameCrew(crewId = crew, requestedBy = by, newName = name)
         }
-        CommandJson.SET_BLIND_VOTING -> {
+        CommandType.SET_BLIND_VOTING -> {
             val crew = crewId.toCrewId() ?: return null
             val by = accountId.toAccountId() ?: return null
             val on = enabled ?: return null
-            PendingCommand.SetBlindVoting(crewId = crew, requestedBy = by, enabled = on)
+            PendingCommand.SetBlindVoting(crewId = crew, requestedBy = by, enabled = on != 0L)
         }
-        CommandJson.REMOVE_MEMBER -> {
+        CommandType.REMOVE_MEMBER -> {
             val crew = crewId.toCrewId() ?: return null
             val by = accountId.toAccountId() ?: return null
             val tgt = targetAccountId.toAccountId() ?: return null
             PendingCommand.RemoveMember(crewId = crew, requestedBy = by, target = tgt)
         }
-        CommandJson.LEAVE_CREW -> {
+        CommandType.LEAVE_CREW -> {
             val crew = crewId.toCrewId() ?: return null
             val leaver = accountId.toAccountId() ?: return null
             PendingCommand.LeaveCrew(crewId = crew, leaver = leaver)
         }
-        else -> null // unknown discriminator from a newer build → drop the entry
+        else -> null // unknown discriminator from a newer build → drop the row
     }
 
     private fun String?.toCrewId(): CrewId? = this?.let { CrewId.of(it).getOrNull() }

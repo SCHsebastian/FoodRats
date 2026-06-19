@@ -1,0 +1,32 @@
+-- Local read source-of-truth for the crew list / picker (offline-first P3b §P3b-T7).
+-- Stores exactly what observeMyCrews needs to rebuild the Crew list: the crew identity, its
+-- name, owner, blind-voting policy, the member-id set (as a CSV — no account id contains a comma),
+-- and the creation timestamp. Display names / per-member join times are NOT persisted; the picker
+-- renders only crew name + member count, and identity resolves live as today.
+-- The CrewSyncEngine mirrors the CrewDataSource.observeMyCrews Firestore listener in via replaceAll.
+
+CREATE TABLE crew (
+    crewId            TEXT    NOT NULL PRIMARY KEY,
+    name              TEXT    NOT NULL,
+    ownerId           TEXT    NOT NULL,
+    -- Owner-settable policy: 1 = a meal's author is masked from a crewmate until they've voted.
+    blindVoting       INTEGER NOT NULL DEFAULT 0,
+    -- Member account ids joined with ',' (no account id contains a comma). Empty string = none.
+    memberIdsCsv      TEXT    NOT NULL DEFAULT '',
+    createdAtEpochMs  INTEGER NOT NULL
+);
+
+-- All of the signed-in member's crews, newest-created first (picker order).
+selectAll:
+SELECT * FROM crew
+ORDER BY createdAtEpochMs DESC;
+
+upsert:
+INSERT OR REPLACE INTO crew(crewId, name, ownerId, blindVoting, memberIdsCsv, createdAtEpochMs)
+VALUES (:crewId, :name, :ownerId, :blindVoting, :memberIdsCsv, :createdAtEpochMs);
+
+deleteById:
+DELETE FROM crew WHERE crewId = :crewId;
+
+deleteAll:
+DELETE FROM crew;

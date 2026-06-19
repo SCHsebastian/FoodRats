@@ -114,6 +114,58 @@ open class MealLocalStore(
         }
     }
 
+    /**
+     * Optimistic RATE (offline-first P3b §P3b-T5): records [raterId]'s [score] for [mealId] as a
+     * PENDING local row so the feed (which reads this store) shows the star instantly, before the
+     * network write. In ONE transaction: upsert `mealRating(pending = 1)`, recompute the meal's
+     * denormalized `ratingSum`/`voterCount` from the resulting rating set, and stamp the meal
+     * `pending = 1` + [idempotencyKey]. A no-op if the meal isn't held locally (nothing to render
+     * against). The next server snapshot of this meal overwrites the row with `pending = 0` (see
+     * [MealUpsert.write]), auto-clearing the pending flag — no explicit reconcile call is needed.
+     */
+    open suspend fun applyRate(
+        mealId: String,
+        raterId: String,
+        score: Int,
+        atMs: Long,
+        idempotencyKey: String,
+    ) = withContext(io) {
+        queries.transaction {
+            val meal = queries.selectMealById(mealId).executeAsOneOrNull()
+                ?: return@transaction // meal not cached locally → nothing to show optimistically
+            queries.upsertRating(mealId = mealId, raterId = raterId, score = score.toLong(), atMs = atMs, pending = 1L)
+            val ratings = queries.selectRatingsForMeals(listOf(mealId)).executeAsList()
+            queries.setMealOptimisticRate(
+                ratingSum = ratings.sumOf { it.score },
+                voterCount = ratings.size.toLong(),
+                idempotencyKey = idempotencyKey,
+                mealId = mealId,
+            )
+        }
+    }
+
+    /**
+     * Rolls back the optimistic bookkeeping for the meal carrying [idempotencyKey] (offline-first
+     * P3b §P3b-T5): clears the meal `pending`/`idempotencyKey` and drops its still-unconfirmed
+     * (`pending = 1`) rating rows, recomputing the denormalized totals from what remains, all in ONE
+     * transaction. A no-op if no meal carries that key (the server snapshot already reconciled it).
+     */
+    open suspend fun clearPending(idempotencyKey: String) = withContext(io) {
+        queries.transaction {
+            val mealId = queries.mealIdForIdempotencyKey(idempotencyKey).executeAsOneOrNull()
+                ?: return@transaction // already reconciled by a server snapshot
+            queries.deletePendingRatings(mealId)
+            val ratings = queries.selectRatingsForMeals(listOf(mealId)).executeAsList()
+            queries.setMealOptimisticRate(
+                ratingSum = ratings.sumOf { it.score },
+                voterCount = ratings.size.toLong(),
+                idempotencyKey = idempotencyKey,
+                mealId = mealId,
+            )
+            queries.clearMealPending(mealId)
+        }
+    }
+
     /** Upsert one meal row + replace its ratings. Called inside an open transaction. */
     private fun MealUpsert.write() {
         queries.upsertMeal(

@@ -51,6 +51,14 @@ SELECT * FROM meal
 WHERE crewId = :crewId AND dayKey = :dayKey
 ORDER BY publishedAtEpochMs DESC;
 
+-- Single meal row by id (optimistic-write path P3b: read to recompute denormalized totals).
+selectMealById:
+SELECT * FROM meal WHERE mealId = :mealId;
+
+-- The meal id currently carrying an optimistic-write idempotency key (P3b rollback lookup).
+mealIdForIdempotencyKey:
+SELECT mealId FROM meal WHERE idempotencyKey = :idempotencyKey;
+
 -- One crew's meals across an inclusive day-key range, newest first (rolling window + stats history).
 selectRangeByCrew:
 SELECT * FROM meal
@@ -84,6 +92,23 @@ DELETE FROM meal WHERE mealId IN :mealIds;
 
 setMealPending:
 UPDATE meal SET pending = :pending WHERE mealId = :mealId;
+
+-- Optimistic RATE (P3b): set the recomputed denormalized totals, mark the meal in-flight, and stamp
+-- the command's idempotency key so the rollback / sync-reconcile can find the row.
+setMealOptimisticRate:
+UPDATE meal
+SET ratingSum = :ratingSum, voterCount = :voterCount, pending = 1, idempotencyKey = :idempotencyKey
+WHERE mealId = :mealId;
+
+-- Roll back the optimistic bookkeeping on a meal (clear pending + idempotency key). Totals are left
+-- as-is; the next server snapshot upsert overwrites them with truth.
+clearMealPending:
+UPDATE meal SET pending = 0, idempotencyKey = NULL WHERE mealId = :mealId;
+
+-- Drop only the still-unconfirmed (pending=1) rating rows on a meal (optimistic-write rollback).
+-- Server-confirmed (pending=0) rows are untouched.
+deletePendingRatings:
+DELETE FROM mealRating WHERE mealId = :mealId AND pending = 1;
 
 upsertRating:
 INSERT OR REPLACE INTO mealRating(mealId, raterId, score, atMs, pending)

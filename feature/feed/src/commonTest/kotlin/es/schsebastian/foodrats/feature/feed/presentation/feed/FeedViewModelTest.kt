@@ -36,6 +36,7 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import kotlinx.coroutines.Dispatchers
@@ -179,7 +180,7 @@ class FeedViewModelTest {
         outbox: RecordingOutboxPort = RecordingOutboxPort(),
     ) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(active, port),
-        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox),
+        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox, RecordingOptimisticMealWritePort()),
         activeCrew = active,
         session = sessionProvider,
         clock = clock,

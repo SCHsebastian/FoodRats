@@ -31,6 +31,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.core.domain)
+            // Outbox is now backed by the SQLDelight outbox table (P3b-T6). This brings the
+            // generated FoodRatsDatabase / outboxQueries + the coroutines flow extensions.
+            implementation(projects.core.database)
+            implementation(libs.sqldelight.coroutines.ext)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
@@ -64,6 +68,9 @@ kotlin {
                 implementation(libs.junit)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.androidx.activity.compose)
+                // JVM in-memory SQLDelight driver for OutboxLocalStoreTest (P3b-T6) — the outbox
+                // store now wraps FoodRatsDatabase; the host test seeds a real in-memory table.
+                implementation(libs.sqldelight.jvm.driver)
             }
         }
         androidMain.dependencies {

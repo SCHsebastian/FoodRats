@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestore
@@ -28,6 +29,7 @@ import es.schsebastian.foodrats.feature.meal.data.outbox.MealOutboxCommandHandle
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
+import es.schsebastian.foodrats.feature.meal.data.local.OptimisticMealLocalWriter
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueLocalStore
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueRepository
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
@@ -107,6 +109,10 @@ val mealModule = module {
     }
     single<MealReadPort> { get<MealRepository>() }
     single<MealRatingPort> { get<MealRepository>() }
+    // Offline-first optimistic RATE seam (P3b §P3b-T5): lets :feature:feed's RateMealUseCase write a
+    // pending mealRating row into the local feed store (the feed reads from it) WITHOUT depending on
+    // :feature:meal. The meal SYNC path overwrites that pending row with server truth on next snapshot.
+    single<OptimisticMealWritePort> { OptimisticMealLocalWriter(local = get(), clock = get()) }
     single<MealDeletePort> { get<MealRepository>() }
     // Exposed so the ingredient picker (:feature:ingredient) reads/edits the draft's
     // ingredient slugs without depending on :feature:meal (spec §7.2).
