@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.core.domain
 
 import com.lemonappdev.konsist.api.Konsist
+import com.lemonappdev.konsist.api.declaration.KoFileDeclaration
 import com.lemonappdev.konsist.api.declaration.KoFunctionDeclaration
 import com.lemonappdev.konsist.api.verify.assertFalse
 import kotlin.test.Test
@@ -34,6 +35,7 @@ class ArchitectureFitnessTest {
     fun feature_does_not_import_another_feature() {
         Konsist.scopeFromProject()
             .files
+            .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.packagee?.name?.let(::featureSegmentOf) != null }
             .assertFalse { file ->
                 val ownFeature = featureSegmentOf(file.packagee!!.name)
@@ -57,6 +59,7 @@ class ArchitectureFitnessTest {
     fun usecases_and_viewmodels_do_not_switch_dispatchers() {
         Konsist.scopeFromProject()
             .files
+            .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.hasPackage("..domain.usecase..") || file.hasPackage("..presentation..") }
             .assertFalse { file ->
                 file.functions(includeNested = true, includeLocal = true)
@@ -75,6 +78,7 @@ class ArchitectureFitnessTest {
     fun designsystem_does_not_import_domain_or_firebase() {
         Konsist.scopeFromProject()
             .files
+            .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.hasPackage("es.schsebastian.foodrats.core.designsystem..") }
             .filterNot { file -> file.hasPackage("..core.designsystem.preview..") }
             .assertFalse { file ->
@@ -99,6 +103,7 @@ class ArchitectureFitnessTest {
     fun feature_ui_has_no_hardcoded_text_literals() {
         Konsist.scopeFromProject()
             .files
+            .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.hasPackage("..feature..presentation..") }
             // Production UI only — the rule is about user-facing app copy. Test source sets
             // (commonTest / androidHostTest / …) legitimately hold string literals (assertions,
@@ -124,6 +129,7 @@ class ArchitectureFitnessTest {
 
         val publicComposables = scope
             .files
+            .filterNot(::isNonSourceSnapshot)
             .filter { file ->
                 file.hasPackage("..core.designsystem.atoms..") ||
                     file.hasPackage("..core.designsystem.molecules..") ||
@@ -139,6 +145,7 @@ class ArchitectureFitnessTest {
 
         val catalogText = scope
             .files
+            .filterNot(::isNonSourceSnapshot)
             .filter { it.hasPackage("es.schsebastian.foodrats.catalog.stories..") }
             .joinToString("\n") { it.text }
 
@@ -162,6 +169,16 @@ class ArchitectureFitnessTest {
     // ---------------------------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------------------------
+
+    /**
+     * `Konsist.scopeFromProject()` walks the whole project tree, which includes gitignored,
+     * non-source locations: the `.claude/skills/**/_source/` snapshot a skill keeps for its own
+     * use (it holds stale copies of `Fr*` composables that were later deleted from real source,
+     * e.g. `FrShutterButton` removed in `b60aa12`), and any generated `build/` output. Those are
+     * not project source and must not be scanned by the fitness rules. Scope to real source only.
+     */
+    private fun isNonSourceSnapshot(file: KoFileDeclaration): Boolean =
+        file.path.contains("/.claude/") || file.path.contains("/build/")
 
     /** Returns the feature segment (e.g. "meal", "mealai") of a dotted name, or null. */
     private fun featureSegmentOf(dottedName: String): String? {
