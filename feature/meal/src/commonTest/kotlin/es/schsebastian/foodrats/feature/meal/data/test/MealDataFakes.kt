@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.meal.data.test
 
+import es.schsebastian.foodrats.core.domain.account.Account
+import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.image.ImageUrlError
 import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -11,8 +13,11 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
+import es.schsebastian.foodrats.feature.meal.data.local.LocalMeal
+import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 
 /**
@@ -145,4 +150,43 @@ internal class FakeImageUrlPort(
         if (fail) return Result.failure(ImageUrlError.Unavailable)
         return Result.success(paths.associateWith { "signed://$it" })
     }
+}
+
+/**
+ * Behavioral fake for [AccountReadPort]: resolves live identity per account so the repository's
+ * read-path enrichment (which overrides the denormalized snapshots with live `accounts/{id}`) can be
+ * exercised. Unset ids emit `null` (the "deleted user" case). Mirrors :feature:feed's equivalent —
+ * it can't be shared across module boundaries.
+ */
+internal class FakeAccountReadPort : AccountReadPort {
+    private val flows = mutableMapOf<AccountId, MutableStateFlow<Account?>>()
+
+    override fun observe(id: AccountId): Flow<Account?> =
+        flows.getOrPut(id) { MutableStateFlow(null) }
+
+    fun set(id: AccountId, account: Account?) {
+        flows.getOrPut(id) { MutableStateFlow(null) }.value = account
+    }
+}
+
+/**
+ * Read-only override-fake for [MealLocalStore] (offline-first P3a-T4 read-path test double). It uses
+ * the no-DB protected constructor and returns canned [LocalMeal]s so the repository's enrichment
+ * (signed URLs + live identity → `toMealWithRatings`) is verified WITHOUT a SQLDelight driver
+ * (feature:meal commonTest has none; the real JVM-backed store is covered in androidHostTest).
+ * [observeRange] serves all reads, replaying its current rows on subscribe; the repository filters
+ * by dayKey/range downstream.
+ */
+internal class FakeMealLocalStore(rows: List<LocalMeal> = emptyList()) : MealLocalStore() {
+    private val rowsFlow = MutableStateFlow(rows)
+    val rangeCalls = mutableListOf<Triple<String, String, String>>()
+
+    fun emit(rows: List<LocalMeal>) { rowsFlow.value = rows }
+
+    override fun observeRange(crewId: String, fromKey: String, toKey: String): Flow<List<LocalMeal>> {
+        rangeCalls += Triple(crewId, fromKey, toKey)
+        return rowsFlow
+    }
+
+    override fun observeFeed(crewId: String, dayKey: String): Flow<List<LocalMeal>> = rowsFlow
 }

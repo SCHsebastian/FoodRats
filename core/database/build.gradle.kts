@@ -13,6 +13,11 @@ kotlin {
     iosArm64()
     iosSimulatorArm64()
 
+    // Silence the K2 "expect/actual class" beta warning for the DriverFactory expect/actual class.
+    compilerOptions {
+        freeCompilerArgs.add("-Xexpect-actual-classes")
+    }
+
     androidLibrary {
         namespace = "es.schsebastian.foodrats.core.database"
         compileSdk = libs.versions.android.compileSdk.get().toInt()
@@ -29,6 +34,8 @@ kotlin {
             implementation(libs.sqldelight.coroutines.ext)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            // Koin module declarations (databaseModule / driver factory bindings) live here.
+            implementation(libs.koin.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -39,6 +46,12 @@ kotlin {
             implementation(libs.sqldelight.android.driver)
         }
         iosMain.dependencies {
+            implementation(libs.sqldelight.native.driver)
+        }
+        // iosTest (default-hierarchy intermediate) needs the native driver on its compile classpath
+        // for the in-memory TestDriverFactory actual — iosMain declares it `implementation`, so it
+        // isn't transitively visible to tests. `iosTest.dependencies {}` lazily creates the set.
+        iosTest.dependencies {
             implementation(libs.sqldelight.native.driver)
         }
         val androidHostTest by getting {
@@ -56,6 +69,7 @@ sqldelight {
         create("FoodRatsDatabase") {
             packageName.set("es.schsebastian.foodrats.core.database")
             generateAsync.set(false)
+            verifyMigrations.set(true)
         }
     }
 }

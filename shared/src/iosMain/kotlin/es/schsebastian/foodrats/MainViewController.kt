@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.data.di.connectivityIosModule
 import es.schsebastian.foodrats.core.data.di.crashIosModule
 import es.schsebastian.foodrats.core.data.di.locationIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
+import es.schsebastian.foodrats.core.database.di.databaseIosModule
 import es.schsebastian.foodrats.core.data.di.storyShareIosModule
 import es.schsebastian.foodrats.core.data.telemetry.CrashReporterLogSink
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
@@ -118,6 +119,7 @@ fun MainViewController(
                         ),
                         configIosModule,
                         connectivityIosModule,
+                        databaseIosModule,
                         locationIosModule,
                     ),
                 )

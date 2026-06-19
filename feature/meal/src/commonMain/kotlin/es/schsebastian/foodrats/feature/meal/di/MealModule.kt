@@ -27,11 +27,13 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.ReactionFirestoreData
 import es.schsebastian.foodrats.feature.meal.data.outbox.MealOutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
+import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueLocalStore
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueRepository
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseMealRepository
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseReactionRepository
+import es.schsebastian.foodrats.feature.meal.data.sync.MealSyncEngine
 import es.schsebastian.foodrats.feature.meal.data.upload.BackgroundMealUploadCoordinator
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftRetryPolicy
@@ -59,6 +61,27 @@ val mealModule = module {
     // constructor-reflection `singleOf` would otherwise try to resolve PlateCompressor from the graph.
     single { PlateStorageDataSource(storage = get()) }
     singleOf(::MealDraftLocalStore)
+    // Offline-first local read source-of-truth (P3a §3.1). Holds the FoodRatsDatabase queries
+    // (FoodRatsDatabase is bound by :core:database's databaseModule); the repository's read path
+    // (P3a-T4) and the sync engine (P3a-T3) talk to the feed through this store. Explicit `single`
+    // (not singleOf): the ctor params are nullable to admit the override-only commonTest fake, so
+    // singleOf's nullable-param `getOrNull` would silently bind null if a dependency were missing.
+    single { MealLocalStore(database = get(), dispatchers = get()) }
+    // Offline-first sync engine (P3a §3.2): the ONLY Firestore feed-listener consumer. Mirrors each
+    // active crew's rolling 30-day window into MealLocalStore (delete-by-absence in-window; older
+    // rows persist). `createdAtStart = true` + `start()` so it subscribes to ActiveCrewProvider at
+    // app boot — the cached feed must stay fresh without any screen having resolved it first. Runs
+    // on the app-lifetime named("appScope") scope (bound by ingredientModule), like the OutboxRunner.
+    single(createdAtStart = true) {
+        MealSyncEngine(
+            firestore = get<MealFirestore>(),
+            local = get(),
+            activeCrew = get(),
+            clock = get(),
+            zone = get(),
+            appScope = get(named("appScope")),
+        ).also { it.start() }
+    }
     singleOf(::MealErrorMapper)
     // The repository depends on data-layer ports, not the concrete Firebase data sources
     // (so its publish/rate/delete orchestration is fakeable in commonTest and the
@@ -71,6 +94,7 @@ val mealModule = module {
             firestore = get<MealFirestore>(),
             storage = get<PlateStorage>(),
             drafts = get(),
+            local = get(),
             dispatchers = get(),
             errorMapper = get(),
             clock = get(),
