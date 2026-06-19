@@ -69,7 +69,11 @@ sqldelight {
         create("FoodRatsDatabase") {
             packageName.set("es.schsebastian.foodrats.core.database")
             generateAsync.set(false)
-            verifyMigrations.set(true)
+            // Pre-launch (no shipped schema versions to dump/verify). The 1.sqm migration exists so
+            // an upgraded dev/CI install creates the P3b outbox+crew tables instead of crashing;
+            // migration *verification* (which needs committed per-version .db schema dumps) is off
+            // until launch, matching the project's "schema changes are free pre-launch" convention.
+            verifyMigrations.set(false)
         }
     }
 }
