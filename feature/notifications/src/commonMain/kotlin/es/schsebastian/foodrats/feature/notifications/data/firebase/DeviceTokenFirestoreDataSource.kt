@@ -15,4 +15,14 @@ class DeviceTokenFirestoreDataSource(private val firestore: FirebaseFirestore) {
             .document(tokenValue)
             .set(dto)
     }
+
+    /** Deletes accounts/{uid}/devices/{token}. Token is the doc ID. Deleting a missing doc is a no-op. */
+    suspend fun delete(accountId: AccountId, token: String) {
+        firestore
+            .collection("accounts")
+            .document(accountId.value)
+            .collection("devices")
+            .document(token)
+            .delete()
+    }
 }

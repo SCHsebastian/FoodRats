@@ -34,4 +34,12 @@ internal class DeviceTokenRepositoryImpl(
                 onFailure = { Result.failure(NotificationError.Token.PersistFailed) },
             )
         }
+
+    override suspend fun delete(accountId: AccountId, token: DeviceToken): Result<Unit, NotificationError.Token> =
+        withContext(dispatchers.io) {
+            runCatching { dataSource.delete(accountId = accountId, token = token.value) }.fold(
+                onSuccess = { Result.success(Unit) },
+                onFailure = { Result.failure(NotificationError.Token.PersistFailed) },
+            )
+        }
 }
