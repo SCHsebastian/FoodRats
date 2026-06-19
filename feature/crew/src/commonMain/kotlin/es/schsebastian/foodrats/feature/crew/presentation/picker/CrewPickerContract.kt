@@ -9,6 +9,8 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 
 data class CrewPickerState(
     val crews: List<Crew> = emptyList(),
+    /** True until the first crews emission (or error) arrives — drives the initial-load skeleton. */
+    val isLoading: Boolean = true,
     val isCreating: Boolean = false,
     val isJoining: Boolean = false,
     val createInput: String = "",

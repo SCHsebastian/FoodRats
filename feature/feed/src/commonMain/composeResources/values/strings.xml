@@ -3,6 +3,7 @@
     <string name="feed_title">Today</string>
     <string name="feed_empty_headline">Nothing here yet</string>
     <string name="feed_empty_subtext">No one has posted a meal today.</string>
+    <string name="feed_empty_subtext_past">No one posted a meal that day.</string>
     <string name="feed_prev_day">Previous day</string>
     <string name="feed_next_day">Next day</string>
     <string name="feed_no_active_crew_headline">No crew selected</string>
@@ -13,9 +14,15 @@
     <string name="feed_error_crew_not_found">Crew not found.</string>
     <string name="feed_error_unavailable">Couldn't load the feed. Try again.</string>
     <string name="feed_yesterday">Yesterday</string>
-    <string name="feed_plates_count">%1$d plates</string>
+    <plurals name="feed_plates_count">
+        <item quantity="one">%1$d plate</item>
+        <item quantity="other">%1$d plates</item>
+    </plurals>
     <string name="feed_time_of_day">%1$s:%2$s</string>
-    <string name="feed_rating_summary_votes">%1$s ★ · %2$d votes</string>
+    <plurals name="feed_rating_summary_votes">
+        <item quantity="one">%1$s ★ · %2$d vote</item>
+        <item quantity="other">%1$s ★ · %2$d votes</item>
+    </plurals>
     <string name="feed_slot_breakfast">Breakfast</string>
     <string name="feed_slot_lunch">Lunch</string>
     <string name="feed_slot_dinner">Dinner</string>
@@ -41,6 +48,8 @@
     <string name="feed_location_map_cta">Open location in maps</string>
     <string name="feed_ingredients_heading">Ingredients</string>
     <string name="feed_ingredient_separator">,</string>
+    <!-- Overflow chip in the feed row's compact ingredient strip: "+3" beyond the first few shown. -->
+    <string name="feed_more_ingredients">+%1$d</string>
     <string name="feed_rate_error_cannot_rate_own_meal">You can't rate your own meal</string>
     <string name="feed_rate_error_already_rated">You've already voted</string>
     <string name="feed_rate_error_window_closed">Voting is closed</string>

@@ -52,7 +52,10 @@
     <string name="stats_best_cook_title">Top cook</string>
     <string name="stats_best_cook_metric_format">%1$s ★ avg · %2$d plates</string>
     <string name="stats_most_prolific_title">Most prolific</string>
-    <string name="stats_most_prolific_metric_format">%1$d plates</string>
+    <plurals name="stats_most_prolific_metric_format">
+        <item quantity="one">%1$d plate</item>
+        <item quantity="other">%1$d plates</item>
+    </plurals>
 
     <!-- Roast -->
     <string name="stats_roast_section_title">Roast</string>
@@ -61,7 +64,10 @@
 
     <!-- Ingredients -->
     <string name="stats_most_used_ingredient_title">Most used ingredient</string>
-    <string name="stats_most_used_ingredient_metric_format">%1$s · %2$d meals</string>
+    <plurals name="stats_most_used_ingredient_metric_format">
+        <item quantity="one">%1$s · %2$d meal</item>
+        <item quantity="other">%1$s · %2$d meals</item>
+    </plurals>
     <string name="stats_top_ingredient_by_member_title">Signature ingredient by cook</string>
     <string name="stats_member_top_ingredient_format">%1$s · %2$d</string>
 
@@ -118,4 +124,7 @@
     <string name="stats_share_award">Share</string>
     <!-- On-card score pill for the shared award (avg ★ · count). -->
     <string name="stats_share_score_format">%1$s ★ · %2$d</string>
+
+    <!-- Retry the stats load from the full-screen error state. -->
+    <string name="stats_retry">Try again</string>
 </resources>

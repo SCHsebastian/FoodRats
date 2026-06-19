@@ -22,9 +22,7 @@ import foodrats.feature.stats.generated.resources.stats_hero_no_streak
 import foodrats.feature.stats.generated.resources.stats_member_top_ingredient_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_title
-import foodrats.feature.stats.generated.resources.stats_most_prolific_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_prolific_title
-import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_title
 import foodrats.feature.stats.generated.resources.stats_top_ingredient_by_member_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_title
@@ -53,6 +51,7 @@ import foodrats.feature.stats.generated.resources.stats_passport_locked_label
 import foodrats.feature.stats.generated.resources.stats_passport_progress_format
 import foodrats.feature.stats.generated.resources.stats_passport_title
 import foodrats.feature.stats.generated.resources.stats_plate_photo_format
+import foodrats.feature.stats.generated.resources.stats_retry
 import foodrats.feature.stats.generated.resources.stats_roast_section_title
 import foodrats.feature.stats.generated.resources.stats_share_award
 import foodrats.feature.stats.generated.resources.stats_share_score_format
@@ -97,14 +96,12 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     BestCookTitle(Res.string.stats_best_cook_title),
     BestCookMetricFormat(Res.string.stats_best_cook_metric_format),
     MostProlificTitle(Res.string.stats_most_prolific_title),
-    MostProlificMetricFormat(Res.string.stats_most_prolific_metric_format),
 
     RoastSectionTitle(Res.string.stats_roast_section_title),
     MostCriticizedTitle(Res.string.stats_most_criticized_title),
     MostCriticizedMetricFormat(Res.string.stats_most_criticized_metric_format),
 
     MostUsedIngredientTitle(Res.string.stats_most_used_ingredient_title),
-    MostUsedIngredientMetricFormat(Res.string.stats_most_used_ingredient_metric_format),
     TopIngredientByMemberTitle(Res.string.stats_top_ingredient_by_member_title),
     MemberTopIngredientFormat(Res.string.stats_member_top_ingredient_format),
 
@@ -145,6 +142,8 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     WeeklyRecapCta(Res.string.stats_weekly_recap_cta),
     ShareAward(Res.string.stats_share_award),
     ShareScoreFormat(Res.string.stats_share_score_format),
+
+    Retry(Res.string.stats_retry),
 
     ErrorNoActiveCrew(Res.string.stats_error_no_active_crew),
     ErrorNotSignedIn(Res.string.stats_error_not_signed_in),

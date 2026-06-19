@@ -17,8 +17,10 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.stats.domain.model.IngredientUsage
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberIngredient
+import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 
 /** Crew-wide most-used ingredient for a window: "name · N meals". */
@@ -43,7 +45,12 @@ fun FrMostUsedIngredientCard(
             color = onBackground.copy(alpha = 0.8f),
         )
         FrText(
-            text = resolve(StatsStringKey.MostUsedIngredientMetricFormat, usage.displayName, usage.mealCount),
+            text = resolvePlural(
+                StatsPluralKey.MostUsedIngredientMetric,
+                usage.mealCount,
+                usage.displayName,
+                usage.mealCount,
+            ),
             style = MaterialTheme.typography.titleMedium,
             color = onBackground,
         )

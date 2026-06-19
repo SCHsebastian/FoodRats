@@ -1,16 +1,20 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +31,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -43,11 +49,15 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
+import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
@@ -138,21 +148,21 @@ fun CrewSettingsScreen(
         },
     ) {
         val crew = state.crew
+        val error = state.error
         when {
-            crew == null && state.error != null -> Box(
+            crew == null && error != null -> Box(
                 modifier = Modifier.fillMaxSize().padding(Spacing.lg),
-            ) { FrErrorBanner(text = resolve(state.error!!.toStringKey())) }
+            ) { FrErrorBanner(text = resolve(error.toStringKey())) }
 
-            crew == null -> Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) { FrProgressIndicator() }
+            crew == null -> CrewSettingsSkeleton()
 
             else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg),
+                modifier = Modifier.fillMaxHeight().frContentWidth().padding(horizontal = Spacing.lg),
                 contentPadding = PaddingValues(vertical = Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
+                // Signature: the crew hero "develops in" with a focal reveal; every section
+                // below it rises into place in sequence (small stagger so the column lands fast).
                 item {
                     val inviteUrl = inviteUrlFor(crew.code.value)
                     val shareMessage = resolve(CrewStringKey.InviteShareMessage, crew.name, inviteUrl)
@@ -164,12 +174,13 @@ fun CrewSettingsScreen(
                             share.shareText(shareMessage)
                         },
                         onShowQr = { showQr = true },
+                        modifier = Modifier.frRevealScale(),
                     )
                 }
 
                 if (state.isOwner) {
                     item {
-                        FrCard(modifier = Modifier.fillMaxWidth()) {
+                        FrCard(modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 40)) {
                             FrTextField(
                                 value = state.editingCrewName,
                                 onValueChange = { vm.onIntent(CrewSettingsIntent.CrewNameChanged(it)) },
@@ -193,6 +204,7 @@ fun CrewSettingsScreen(
                             enabled = crew.blindVoting,
                             saving = state.isSavingBlindVoting,
                             onToggle = { vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(it)) },
+                            modifier = Modifier.frRiseIn(delayMillis = 80),
                         )
                     }
                 }
@@ -205,6 +217,7 @@ fun CrewSettingsScreen(
                         identities = state.identities,
                         removingMemberIds = state.removingMemberIds,
                         onRemove = { memberPendingRemoval = it },
+                        modifier = Modifier.frRiseIn(delayMillis = 120),
                     )
                 }
 
@@ -213,7 +226,7 @@ fun CrewSettingsScreen(
                         label = resolve(CrewStringKey.SettingsSwitchCrew),
                         onClick = { vm.onIntent(CrewSettingsIntent.SwitchCrew) },
                         variant = FrButtonVariant.Secondary,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 160),
                     )
                 }
 
@@ -224,6 +237,7 @@ fun CrewSettingsScreen(
                         deleteEnabled = !state.isDeleting,
                         onLeave = { vm.onIntent(CrewSettingsIntent.Leave) },
                         onDelete = { vm.onIntent(CrewSettingsIntent.RequestDelete) },
+                        modifier = Modifier.frRiseIn(delayMillis = 200),
                     )
                 }
 
@@ -253,7 +267,12 @@ fun CrewSettingsScreen(
     }
 
     memberPendingRemoval?.let { pendingId ->
-        val memberName = state.identities[pendingId]?.displayName
+        // displayName can be empty (non-null) for email-signup members, so the old
+        // `?:` (null-only) left the dialog showing a blank name. Fall back to the
+        // @handle, and only to "deleted user" when there's truly no identity.
+        val identity = state.identities[pendingId]
+        val memberName = identity?.displayName?.takeIf { it.isNotBlank() }
+            ?: identity?.handle?.takeIf { it.isNotBlank() }
             ?: resolve(CrewStringKey.MemberDeleted)
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName),
@@ -271,6 +290,42 @@ fun CrewSettingsScreen(
 }
 
 /**
+ * Decorative initial-load placeholder mimicking the loaded silhouette: one hero-card block atop a
+ * short stack of member rows (avatar circle + flexible name bar). Shown while the crew snapshot is
+ * still resolving. Capped to the same content width as the loaded state so width doesn't jump.
+ */
+@Composable
+private fun CrewSettingsSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxHeight().frContentWidth().padding(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+    ) {
+        FrShimmerBox(
+            modifier = Modifier.fillMaxWidth().height(120.dp),
+            shape = RoundedCornerShape(Radius.lg),
+        )
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            repeat(4) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                ) {
+                    FrShimmerBox(
+                        modifier = Modifier.size(Sizes.avatarMd),
+                        shape = CircleShape,
+                    )
+                    FrShimmerBox(
+                        modifier = Modifier.weight(1f).height(Spacing.md),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
  * Centered crew identity: name, member count, the tap-to-copy invite-code chip, and the invite-link
  * actions (Share link via the system share sheet + Show QR). The full shareable deep link / QR is
  * built upstream from the code (see [CrewSettingsScreen.inviteUrlFor]).
@@ -281,8 +336,9 @@ private fun CrewHeroCard(
     onCopy: () -> Unit,
     onShareLink: () -> Unit,
     onShowQr: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    FrCard(modifier = Modifier.fillMaxWidth()) {
+    FrCard(modifier = modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -371,9 +427,13 @@ private fun BlindVotingCard(
     enabled: Boolean,
     saving: Boolean,
     onToggle: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(resolve(CrewStringKey.SettingsBlindVotingSection))
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(
+            text = resolve(CrewStringKey.SettingsBlindVotingSection),
+            color = MaterialTheme.colorScheme.primary,
+        )
         FrCard(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -395,6 +455,7 @@ private fun BlindVotingCard(
                     checked = enabled,
                     onCheckedChange = { onToggle(it) },
                     enabled = !saving,
+                    contentDescription = resolve(CrewStringKey.SettingsBlindVotingLabel),
                 )
             }
         }
@@ -410,14 +471,18 @@ private fun MembersCard(
     identities: Map<AccountId, es.schsebastian.foodrats.core.domain.account.Account?>,
     removingMemberIds: Set<AccountId>,
     onRemove: (AccountId) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            SectionEyebrow(resolve(CrewStringKey.SettingsMembersSection))
+            SectionEyebrow(
+                text = resolve(CrewStringKey.SettingsMembersSection),
+                color = MaterialTheme.colorScheme.primary,
+            )
             if (isOwner) {
                 FrText(
                     text = resolve(CrewStringKey.SettingsOwnerBadge),
@@ -472,11 +537,23 @@ private fun DangerZoneCard(
     deleteEnabled: Boolean,
     onLeave: () -> Unit,
     onDelete: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(resolve(CrewStringKey.SettingsDangerSection))
+    val semantic = LocalFrSemanticColors.current
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        // Danger-tinted eyebrow so the destructive zone reads as set-apart, not just another section.
+        SectionEyebrow(
+            text = resolve(CrewStringKey.SettingsDangerSection),
+            color = semantic.danger,
+        )
         FrCard(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(
+                    width = 1.dp,
+                    color = semantic.danger.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(Radius.lg),
+                ),
             contentPadding = PaddingValues(0.dp),
         ) {
             DangerActionRow(
@@ -525,11 +602,15 @@ private fun DangerActionRow(
 }
 
 @Composable
-private fun SectionEyebrow(text: String, modifier: Modifier = Modifier) {
+private fun SectionEyebrow(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+) {
     FrText(
         text = text,
         style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier,
+        color = color,
+        modifier = modifier.semantics { heading() },   // WCAG 2.4.10 heading navigation
     )
 }

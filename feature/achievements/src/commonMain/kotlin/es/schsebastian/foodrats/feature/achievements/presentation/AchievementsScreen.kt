@@ -8,10 +8,13 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -27,11 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
-import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
@@ -116,13 +119,9 @@ fun AchievementsScreen(
     }
 
     celebration?.let { titleKey ->
-        // Single-action acknowledge dialog: one "Nice!" button, not the confirm/dismiss pair (which
-        // previously rendered the same "Close" label twice). It's a notification, not a gate.
-        FrConfirmDialog(
-            title = resolve(AchievementStringKey.CelebrationTitle),
-            message = "${resolve(titleKey)}\n${resolve(AchievementStringKey.UnlockedToast)}",
-            confirmLabel = resolve(AchievementStringKey.CelebrationAck),
-            onConfirm = { celebration = null },
+        // Bespoke firework celebration (see AchievementCelebration.kt) — tap anywhere to dismiss.
+        AchievementUnlockedCelebration(
+            titleKey = titleKey,
             onDismiss = { celebration = null },
         )
     }
@@ -133,8 +132,10 @@ private fun BadgeGrid(
     statuses: List<AchievementStatus>,
     onSelect: (AchievementStatus) -> Unit,
 ) {
-    val earned = statuses.filter { it.unlockedAtEpochMs != null }
-    val locked = statuses.filter { it.unlockedAtEpochMs == null }
+    // Partition once per distinct list (single pass), not twice on every recomposition.
+    val (earned, locked) = remember(statuses) {
+        statuses.partition { it.unlockedAtEpochMs != null }
+    }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
         modifier = Modifier.fillMaxSize(),
@@ -146,18 +147,51 @@ private fun BadgeGrid(
             item(span = { GridItemSpan(maxLineSpan) }) {
                 SectionHeader(resolve(AchievementStringKey.EarnedSectionTitle))
             }
-            items(earned, key = { it.achievement.id.value }) { status ->
-                FrAchievementCard(status = status, onClick = { onSelect(status) })
+            itemsIndexed(earned, key = { _, status -> status.achievement.id.value }) { index, status ->
+                FrAchievementCard(
+                    status = status,
+                    onClick = { onSelect(status) },
+                    modifier = Modifier.popIn(order = index),
+                )
             }
         }
         if (locked.isNotEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 SectionHeader(resolve(AchievementStringKey.LockedSectionTitle))
             }
-            items(locked, key = { it.achievement.id.value }) { status ->
-                FrAchievementCard(status = status, onClick = { onSelect(status) })
+            itemsIndexed(locked, key = { _, status -> status.achievement.id.value }) { index, status ->
+                FrAchievementCard(
+                    status = status,
+                    onClick = { onSelect(status) },
+                    modifier = Modifier.popIn(order = earned.size + index),
+                )
             }
         }
+    }
+}
+
+/**
+ * Bespoke staggered entrance: each badge springs up from 65 % scale + 36 dp below with a soft
+ * overshoot, fading in. The delay is `order` modulo a small window so the opening screen cascades
+ * left-to-right yet badges scrolled into view later still pop in promptly (no multi-second wait).
+ */
+@Composable
+private fun Modifier.popIn(order: Int): Modifier {
+    val anim = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay((order % 8) * 45L)
+        anim.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessLow),
+        )
+    }
+    return graphicsLayer {
+        val p = anim.value
+        alpha = p.coerceIn(0f, 1f)
+        val s = 0.65f + 0.35f * p
+        scaleX = s
+        scaleY = s
+        translationY = (1f - p) * 36f
     }
 }
 
@@ -173,6 +207,7 @@ private fun SectionHeader(text: String) {
 @Composable
 private fun BadgeDetail(status: AchievementStatus) {
     val unlockedAt = status.unlockedAtEpochMs
+    val earned = unlockedAt != null
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.lg, vertical = Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -180,6 +215,17 @@ private fun BadgeDetail(status: AchievementStatus) {
         FrText(
             text = resolve(status.achievement.titleKey),
             style = MaterialTheme.typography.headlineSmall,
+        )
+        // "How you earned it" / "How to earn it" eyebrow framing the criterion. The requirement text
+        // is the achievement's own descriptionKey (the single source of truth — e.g. "Publish 10
+        // meals."), so nothing is duplicated and it can't drift from the catalog.
+        FrText(
+            text = resolve(
+                if (earned) AchievementStringKey.DetailHowEarnedLabel
+                else AchievementStringKey.DetailHowToEarnLabel,
+            ),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
         )
         FrText(
             text = resolve(status.achievement.descriptionKey),

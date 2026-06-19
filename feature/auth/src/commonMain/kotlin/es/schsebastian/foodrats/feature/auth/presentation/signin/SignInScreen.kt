@@ -45,8 +45,12 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
+import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -69,55 +73,70 @@ fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) 
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
+                    .frContentWidth(Breakpoints.formMax)
                     .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Spacer(Modifier.height(Spacing.xl))
-                HeroBadge()
+                // Top-down assembly: the hero badge "develops in" focally (frRevealScale), then the
+                // title / subtitle / highlights / form rise in on an increasing cascade so the screen
+                // composes itself from the top down. Delays are tight (one step ≈ 60ms) to stay snappy.
                 Spacer(Modifier.height(Spacing.lg))
+                HeroBadge(modifier = Modifier.frRevealScale())
+                Spacer(Modifier.height(Spacing.md))
                 FrText(
                     text = resolve(AuthStringKey.SignInTitle),
                     style = MaterialTheme.typography.displaySmall,
+                    modifier = Modifier.frRiseIn(delayMillis = 80),
                 )
-                Spacer(Modifier.height(Spacing.sm))
+                Spacer(Modifier.height(Spacing.xs))
                 FrText(
                     text = resolve(AuthStringKey.SignInSubtitle),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.frRiseIn(delayMillis = 140),
                 )
 
                 Spacer(Modifier.height(Spacing.lg))
                 FeatureHighlights()
 
                 Spacer(Modifier.height(Spacing.lg))
-                EmailPasswordForm(state = state, onIntent = vm::onIntent)
+                EmailPasswordForm(
+                    state = state,
+                    onIntent = vm::onIntent,
+                    modifier = Modifier.frRiseIn(delayMillis = 380),
+                )
 
-                Spacer(Modifier.height(Spacing.md))
-                OrDivider()
-                Spacer(Modifier.height(Spacing.md))
+                Spacer(Modifier.height(Spacing.lg))
+                OrDivider(modifier = Modifier.frRiseIn(delayMillis = 440))
+                Spacer(Modifier.height(Spacing.lg))
                 FrButton(
                     label = resolve(AuthStringKey.ContinueWithGoogle),
                     onClick = { vm.onIntent(SignInIntent.ContinueWithGoogle) },
                     variant = FrButtonVariant.Secondary,
                     enabled = !state.isLoading,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp).frRiseIn(delayMillis = 500),
                 )
 
-                Spacer(Modifier.height(Spacing.sm))
-                FrButton(
-                    label = resolve(AuthStringKey.ContinueWithApple),
-                    onClick = { vm.onIntent(SignInIntent.ContinueWithApple) },
-                    variant = FrButtonVariant.Secondary,
-                    enabled = !state.isLoading,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                )
-                if (state.appleComingSoon) {
+                // Sign-in-with-Apple is only offered where it's actually implemented (iOS today).
+                // On Android the client is still a stub, so the button is hidden rather than shown
+                // as a dead "coming soon" — see platformSupportsAppleSignIn.
+                if (platformSupportsAppleSignIn) {
                     Spacer(Modifier.height(Spacing.sm))
-                    FrText(
-                        text = resolve(AuthStringKey.ErrorAppleComingSoon),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = LocalFrSemanticColors.current.info,
+                    FrButton(
+                        label = resolve(AuthStringKey.ContinueWithApple),
+                        onClick = { vm.onIntent(SignInIntent.ContinueWithApple) },
+                        variant = FrButtonVariant.Secondary,
+                        enabled = !state.isLoading,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
                     )
+                    if (state.appleComingSoon) {
+                        Spacer(Modifier.height(Spacing.sm))
+                        FrText(
+                            text = resolve(AuthStringKey.ErrorAppleComingSoon),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = LocalFrSemanticColors.current.info,
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(Spacing.sm))
@@ -168,9 +187,9 @@ private fun Modifier.signInBackdrop(): Modifier {
 }
 
 @Composable
-private fun HeroBadge() {
+private fun HeroBadge(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .size(96.dp)
             .clip(RoundedCornerShape(Radius.xl))
             .background(MaterialTheme.colorScheme.primary),
@@ -187,22 +206,24 @@ private fun HeroBadge() {
 
 @Composable
 private fun FeatureHighlights() {
+    // Each highlight rides the same cascade as the form below it (200/260/320ms), so the value
+    // props arrive between the headline and the inputs — the screen reads top-down as it assembles.
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        HighlightRow(icon = FrIcons.Camera,        label = resolve(AuthStringKey.HighlightShare))
-        HighlightRow(icon = FrIcons.Stats,         label = resolve(AuthStringKey.HighlightRate))
-        HighlightRow(icon = FrIcons.Home,          label = resolve(AuthStringKey.HighlightFeed))
+        HighlightRow(icon = FrIcons.Camera, label = resolve(AuthStringKey.HighlightShare), delayMillis = 200)
+        HighlightRow(icon = FrIcons.Stats,  label = resolve(AuthStringKey.HighlightRate),  delayMillis = 260)
+        HighlightRow(icon = FrIcons.Home,   label = resolve(AuthStringKey.HighlightFeed),  delayMillis = 320)
     }
 }
 
 @Composable
-private fun HighlightRow(icon: ImageVector, label: String) {
+private fun HighlightRow(icon: ImageVector, label: String, delayMillis: Int) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = delayMillis),
     ) {
         Box(
             modifier = Modifier
@@ -229,9 +250,10 @@ private fun HighlightRow(icon: ImageVector, label: String) {
 private fun EmailPasswordForm(
     state: SignInState,
     onIntent: (SignInIntent) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         FrTextField(
@@ -279,22 +301,22 @@ private fun EmailPasswordForm(
 }
 
 @Composable
-private fun OrDivider() {
+private fun OrDivider(modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         FrDivider(
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.outlineVariant,
         )
-        Spacer(Modifier.width(Spacing.md))
+        Spacer(Modifier.width(Spacing.sm))
         FrText(
             text = resolve(AuthStringKey.OrDivider),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Spacer(Modifier.width(Spacing.md))
+        Spacer(Modifier.width(Spacing.sm))
         FrDivider(
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.outlineVariant,

@@ -1,0 +1,18 @@
+package es.schsebastian.foodrats.feature.feed.i18n
+
+import es.schsebastian.foodrats.core.i18n.PluralStringKey
+import foodrats.feature.feed.generated.resources.Res
+import foodrats.feature.feed.generated.resources.feed_plates_count
+import foodrats.feature.feed.generated.resources.feed_rating_summary_votes
+import org.jetbrains.compose.resources.PluralStringResource
+
+/**
+ * Sibling of [FeedStringKey] for quantity-aware feed strings. Backed by `<plurals>`
+ * resources and resolved via `resolvePlural` so "1 plate"/"2 plates" and
+ * "1 vote"/"2 votes" follow each locale's CLDR plural rules instead of a hardcoded
+ * plural noun.
+ */
+enum class FeedPluralKey(override val resourceId: PluralStringResource) : PluralStringKey {
+    PlatesCount(Res.plurals.feed_plates_count),
+    RatingSummaryVotes(Res.plurals.feed_rating_summary_votes),
+}

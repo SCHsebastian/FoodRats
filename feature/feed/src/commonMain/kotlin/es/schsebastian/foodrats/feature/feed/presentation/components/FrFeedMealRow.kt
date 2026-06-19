@@ -41,13 +41,16 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
+import es.schsebastian.foodrats.feature.feed.i18n.FeedPluralKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import kotlin.math.round
 
 /**
  * Feed list "card row": square thumbnail with an outset [FrScoreBadge] overlay, the dish title,
  * an identity line (avatar + author + slot) and a meta line (time + score summary). When the
- * viewer has voted, a celebration-tinted "your vote" line is appended.
+ * viewer has voted, a celebration-tinted "your vote" line is appended. A compact, low-emphasis
+ * [IngredientStrip] (when the meal has resolved ingredients) sits just above the react button.
  *
  * The card lifts + scales on press — that behaviour comes from [FrCard]'s built-in press
  * feedback, so this row carries no bespoke animation. List padding/spacing is owned by the
@@ -170,7 +173,7 @@ fun FrFeedMealRow(
                     Dot()
                     if (hasVotes && avgRounded != null) {
                         FrText(
-                            text = resolve(FeedStringKey.RatingSummaryVotes, avgRounded, ui.ratingCount),
+                            text = resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, avgRounded, ui.ratingCount),
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
@@ -192,6 +195,10 @@ fun FrFeedMealRow(
                         color = semantic.celebration,
                         maxLines = 1,
                     )
+                }
+
+                if (ui.ingredients.isNotEmpty()) {
+                    IngredientStrip(ingredients = ui.ingredients)
                 }
 
                 ReactionButton(
@@ -256,6 +263,53 @@ private fun ReactionButton(
             )
         }
     }
+}
+
+/** Max ingredient chips shown inline before collapsing the remainder into a "+N" chip. */
+private const val MAX_INGREDIENT_CHIPS = 3
+
+/**
+ * A compact, low-emphasis ingredient strip under the meta line: up to [MAX_INGREDIENT_CHIPS]
+ * surface-variant chips plus a "+N" overflow chip when there are more. Display-only (no tap
+ * affordance, no per-chip semantics) so it never competes with the dish title, score badge, or
+ * react button for attention. A single clipped [Row] — never wraps to a second line, never scrolls;
+ * a long label ellipsizes within its own chip so the row keeps its silhouette. The whole strip is
+ * hidden by the caller when the meal has no resolved ingredients.
+ */
+@Composable
+private fun IngredientStrip(ingredients: List<String>) {
+    val shown = ingredients.take(MAX_INGREDIENT_CHIPS)
+    val overflow = ingredients.size - shown.size
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        shown.forEach { name ->
+            // weight(…, fill = false) lets a chip shrink (and its label ellipsize) under
+            // pressure instead of pushing the overflow chip off-row.
+            IngredientChip(label = name, modifier = Modifier.weight(1f, fill = false))
+        }
+        if (overflow > 0) {
+            IngredientChip(label = resolve(FeedStringKey.MoreIngredients, overflow))
+        }
+    }
+}
+
+/** One pill in the [IngredientStrip] — snug padding, single-line, onSurfaceVariant on surfaceVariant. */
+@Composable
+private fun IngredientChip(label: String, modifier: Modifier = Modifier) {
+    FrText(
+        text = label,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+            .clip(RoundedCornerShape(Radius.pill))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = Spacing.xs, vertical = Spacing.xxs),
+    )
 }
 
 /**

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +30,14 @@ import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 private val FlagTile = 56.dp
 
 /**
+ * The "locked stamp" desaturation. It's a constant — identical for every dimmed cell — so it lives
+ * at file scope instead of a per-cell `remember` slot (one allocation total, not one per locked
+ * flag). `ColorFilter` is plain immutable data with no composition dependency, safe outside compose.
+ */
+private val GrayscaleFilter: ColorFilter =
+    ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) })
+
+/**
  * One food-passport tile: a country flag for the cuisine (roadmap §2.2). Collected → full-colour
  * flag; locked → the same flag **desaturated and dimmed** (a saturation-0 [ColorMatrix]) under a
  * "Locked" caption — the "stamp not earned yet" read. Domain-aware (it takes a [CollectedCuisine]),
@@ -45,7 +52,6 @@ internal fun FrCuisineFlagCell(
     val collected = cell.collected
     val flag = FrFlags.forCuisine(cell.cuisine.iconKey)
     val tileShape = RoundedCornerShape(Radius.sm)
-    val grayscale = remember { ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }) }
 
     Column(
         modifier = modifier.fillMaxWidth().padding(Spacing.xs),
@@ -61,7 +67,7 @@ internal fun FrCuisineFlagCell(
                 .border(1.dp, MaterialTheme.colorScheme.outlineVariant, tileShape),
             contentScale = ContentScale.Crop,
             alpha = if (collected) 1f else 0.35f,
-            colorFilter = if (collected) null else grayscale,
+            colorFilter = if (collected) null else GrayscaleFilter,
         )
         FrText(
             text = cell.cuisine.displayName,

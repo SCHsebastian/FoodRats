@@ -1,9 +1,18 @@
 package es.schsebastian.foodrats.feature.achievements.presentation.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import es.schsebastian.foodrats.core.designsystem.atoms.FrBadge
+import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.achievements.domain.model.AchievementStatus
 import es.schsebastian.foodrats.feature.achievements.i18n.AchievementStringKey
@@ -31,6 +40,14 @@ internal fun FrAchievementCard(
     } else {
         resolve(AchievementStringKey.ProgressFormat, status.progress.current, status.progress.target)
     }
+    // Bespoke press feedback: the badge dips toward the finger and springs back on release.
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.93f else 1f,
+        animationSpec = tween(durationMillis = Motion.quick, easing = Motion.Standard),
+        label = "FrAchievementCardPress",
+    )
     FrBadge(
         icon = status.achievement.iconKey.toVector(),
         title = resolve(status.achievement.titleKey),
@@ -40,6 +57,12 @@ internal fun FrAchievementCard(
         tier = status.achievement.tier.toBadgeTier(),
         caption = caption,
         contentDescription = resolve(status.achievement.titleKey),
-        modifier = modifier.clickable(onClick = onClick),
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            ),
     )
 }

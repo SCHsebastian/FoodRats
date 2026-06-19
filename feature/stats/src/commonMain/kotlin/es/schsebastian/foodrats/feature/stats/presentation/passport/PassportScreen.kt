@@ -9,16 +9,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
@@ -54,17 +60,18 @@ private const val GRID_COLUMNS = 4
 @Composable
 fun PassportScreen(vm: StatsViewModel = koinViewModel()) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val snapshot = state.snapshot
+    val error = state.error
     FrScreenScaffold(contentWindowInsets = WindowInsets(0)) {
         Box(modifier = Modifier.fillMaxSize()) {
             when {
-                state.snapshot == null && state.error == null -> LoadingSkeleton()
-                state.error != null -> Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
-                    FrErrorBanner(text = resolve(state.error!!.toStringKey()))
+                snapshot == null && error == null -> LoadingSkeleton()
+                error != null -> Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
+                    FrErrorBanner(text = resolve(error.toStringKey()))
                 }
                 else -> {
-                    val snap = state.snapshot
-                    val passport = snap?.cuisinePassport?.takeIf { it.totalCount > 0 }
-                    val bingo = snap?.ingredientBingo?.takeIf { it.totalCount > 0 }
+                    val passport = snapshot?.cuisinePassport?.takeIf { it.totalCount > 0 }
+                    val bingo = snapshot?.ingredientBingo?.takeIf { it.totalCount > 0 }
                     if (passport == null && bingo == null) {
                         FrEmptyState(
                             icon = FrIcons.Public,
@@ -83,13 +90,18 @@ fun PassportScreen(vm: StatsViewModel = koinViewModel()) {
 @Composable
 private fun CollectionGrid(passport: CuisinePassport?, bingo: IngredientBingo?) {
     // Stable 1-based dex number per ingredient (catalog order), assigned BEFORE grouping so a
-    // specimen keeps its number regardless of which category section it lands in.
+    // specimen keeps its number regardless of which category section it lands in. Memoized on the
+    // bingo reference: PassportScreen reads the shared StatsViewModel's whole state, so it
+    // recomposes on unrelated changes (upload ticks, refresh, leaderboard) — without this the
+    // ~200-element groupBy would re-run on every one of those.
     val pokedexByCategory: List<Pair<IngredientCategory, List<IndexedSpecimen>>> =
-        bingo?.cells
-            ?.mapIndexed { i, cell -> IndexedSpecimen(i + 1, cell) }
-            ?.groupBy { it.cell.ingredient.category }
-            ?.toList()
-            .orEmpty()
+        remember(bingo) {
+            bingo?.cells
+                ?.mapIndexed { i, cell -> IndexedSpecimen(i + 1, cell) }
+                ?.groupBy { it.cell.ingredient.category }
+                ?.toList()
+                .orEmpty()
+        }
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(GRID_COLUMNS),
@@ -116,10 +128,12 @@ private fun CollectionGrid(passport: CuisinePassport?, bingo: IngredientBingo?) 
                     ),
                 )
             }
-            items(
+            itemsIndexed(
                 items = passport.cells,
-                key = { "cuisine:${it.cuisine.slug.value}" },
-            ) { cell -> FrCuisineFlagCell(cell = cell) }
+                key = { _, it -> "cuisine:${it.cuisine.slug.value}" },
+            ) { index, cell ->
+                FrCuisineFlagCell(cell = cell, modifier = Modifier.stampIn(order = index))
+            }
         }
 
         if (bingo != null) {
@@ -137,10 +151,16 @@ private fun CollectionGrid(passport: CuisinePassport?, bingo: IngredientBingo?) 
                 fullSpan(key = "cat:${category.labelStringKey().name}") {
                     CategoryHeader(resolve(category.labelStringKey()))
                 }
-                items(
+                itemsIndexed(
                     items = specimens,
-                    key = { "ingredient:${it.cell.ingredient.slug.value}" },
-                ) { specimen -> FrPokedexCell(cell = specimen.cell, index = specimen.index) }
+                    key = { _, it -> "ingredient:${it.cell.ingredient.slug.value}" },
+                ) { index, specimen ->
+                    FrPokedexCell(
+                        cell = specimen.cell,
+                        index = specimen.index,
+                        modifier = Modifier.stampIn(order = index),
+                    )
+                }
             }
         }
     }
@@ -150,6 +170,35 @@ private data class IndexedSpecimen(val index: Int, val cell: CollectedIngredient
 
 private fun LazyGridScope.fullSpan(key: String, content: @Composable () -> Unit) {
     item(key = key, span = { GridItemSpan(maxLineSpan) }) { content() }
+}
+
+/**
+ * Bespoke "stamp landing" entrance — deliberately distinct from the achievements badge pop. Each
+ * collectible tilts up from a back-leaning 3-D plane ([rotationX]) while scaling from 80 % with a soft
+ * overshoot and fading in, as if a passport stamp is being pressed onto the page. `cameraDistance`
+ * keeps the perspective shallow so the flip reads without distorting the flag/disc. Staggered
+ * left-to-right per row (delay = `order` modulo the column count) and bounded so later cells pop
+ * promptly on scroll-in.
+ */
+@Composable
+private fun Modifier.stampIn(order: Int): Modifier {
+    val anim = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay((order % GRID_COLUMNS) * 55L)
+        anim.animateTo(
+            targetValue = 1f,
+            animationSpec = spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMediumLow),
+        )
+    }
+    return graphicsLayer {
+        val p = anim.value
+        alpha = p.coerceIn(0f, 1f)
+        val s = 0.8f + 0.2f * p
+        scaleX = s
+        scaleY = s
+        rotationX = (1f - p.coerceIn(0f, 1f)) * -55f
+        cameraDistance = 14f * density
+    }
 }
 
 @Composable

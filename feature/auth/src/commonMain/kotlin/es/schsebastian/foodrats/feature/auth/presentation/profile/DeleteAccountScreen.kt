@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.auth.presentation.profile
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -10,7 +12,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -29,10 +33,15 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 
@@ -75,36 +84,50 @@ internal fun DeleteAccountScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .frContentWidth(Breakpoints.formMax)
                 .padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
-            // Header — warning icon + intro
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            // Warning block — header + consequences gathered into a danger-tinted hazard card so the
+            // irreversibility reads as one unmistakable unit. Rises in lightly on first appearance.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .frRiseIn(riseDp = 16f)
+                    .clip(RoundedCornerShape(Radius.md))
+                    .background(semantic.danger.copy(alpha = 0.08f))
+                    .border(1.dp, semantic.danger.copy(alpha = 0.35f), RoundedCornerShape(Radius.md))
+                    .padding(Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                Icon(
-                    imageVector = FrIcons.Warning,
-                    contentDescription = null,
-                    tint = semantic.danger,
-                    modifier = Modifier.size(Sizes.iconLg),
-                )
-                FrText(
-                    text = resolve(AuthStringKey.DeleteAccountIntro),
-                    style = MaterialTheme.typography.bodyMedium,
+                // Header — warning icon + intro
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    Icon(
+                        imageVector = FrIcons.Warning,
+                        contentDescription = null,
+                        tint = semantic.danger,
+                        modifier = Modifier.size(Sizes.iconLg),
+                    )
+                    FrText(
+                        text = resolve(AuthStringKey.DeleteAccountIntro),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+
+                // Consequences checklist
+                ConsequenceRow(text = resolve(AuthStringKey.DeleteAccountWarningMeals))
+                ConsequenceRow(text = resolve(AuthStringKey.DeleteAccountWarningRatings))
+                ConsequenceRow(text = resolve(AuthStringKey.DeleteAccountWarningCrews))
+                ConsequenceRow(
+                    text = resolve(AuthStringKey.DeleteAccountWarningIrreversible),
+                    emphasised = true,
                 )
             }
 
-            // Consequences checklist
-            ConsequenceRow(text = resolve(AuthStringKey.DeleteAccountWarningMeals))
-            ConsequenceRow(text = resolve(AuthStringKey.DeleteAccountWarningRatings))
-            ConsequenceRow(text = resolve(AuthStringKey.DeleteAccountWarningCrews))
-            ConsequenceRow(
-                text = resolve(AuthStringKey.DeleteAccountWarningIrreversible),
-                emphasised = true,
-            )
-
-            Spacer(Modifier.height(Spacing.md))
+            Spacer(Modifier.height(Spacing.xs))
 
             // Phrase gate
             FrText(

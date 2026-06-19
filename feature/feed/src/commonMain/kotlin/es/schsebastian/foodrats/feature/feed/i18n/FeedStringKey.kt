@@ -39,8 +39,10 @@ import foodrats.feature.feed.generated.resources.feed_detail_not_found
 import foodrats.feature.feed.generated.resources.feed_detail_title
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
+import foodrats.feature.feed.generated.resources.feed_empty_subtext_past
 import foodrats.feature.feed.generated.resources.feed_ingredient_separator
 import foodrats.feature.feed.generated.resources.feed_ingredients_heading
+import foodrats.feature.feed.generated.resources.feed_more_ingredients
 import foodrats.feature.feed.generated.resources.feed_error_crew_not_found
 import foodrats.feature.feed.generated.resources.feed_error_not_signed_in
 import foodrats.feature.feed.generated.resources.feed_error_unauthorized
@@ -50,14 +52,12 @@ import foodrats.feature.feed.generated.resources.feed_no_active_crew_headline
 import foodrats.feature.feed.generated.resources.feed_no_active_crew_subtext
 import foodrats.feature.feed.generated.resources.feed_pick_crew_cta
 import foodrats.feature.feed.generated.resources.feed_no_votes_yet
-import foodrats.feature.feed.generated.resources.feed_plates_count
 import foodrats.feature.feed.generated.resources.feed_prev_day
 import foodrats.feature.feed.generated.resources.feed_queue_dismiss_cta
 import foodrats.feature.feed.generated.resources.feed_queue_failed
 import foodrats.feature.feed.generated.resources.feed_queue_pending
 import foodrats.feature.feed.generated.resources.feed_queue_retry_cta
 import foodrats.feature.feed.generated.resources.feed_rating_summary
-import foodrats.feature.feed.generated.resources.feed_rating_summary_votes
 import foodrats.feature.feed.generated.resources.feed_share_meal
 import foodrats.feature.feed.generated.resources.feed_slot_breakfast
 import foodrats.feature.feed.generated.resources.feed_slot_dinner
@@ -86,15 +86,14 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     Title(Res.string.feed_title),
     EmptyHeadline(Res.string.feed_empty_headline),
     EmptySubtext(Res.string.feed_empty_subtext),
+    EmptySubtextPast(Res.string.feed_empty_subtext_past),
     PrevDay(Res.string.feed_prev_day),
     NextDay(Res.string.feed_next_day),
     NoActiveCrewHeadline(Res.string.feed_no_active_crew_headline),
     NoActiveCrewSubtext(Res.string.feed_no_active_crew_subtext),
     PickCrewCta(Res.string.feed_pick_crew_cta),
     Yesterday(Res.string.feed_yesterday),
-    PlatesCount(Res.string.feed_plates_count),
     TimeOfDay(Res.string.feed_time_of_day),
-    RatingSummaryVotes(Res.string.feed_rating_summary_votes),
     SlotBreakfast(Res.string.feed_slot_breakfast),
     SlotLunch(Res.string.feed_slot_lunch),
     SlotDinner(Res.string.feed_slot_dinner),
@@ -124,6 +123,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     LocationMapCta(Res.string.feed_location_map_cta),
     IngredientsHeading(Res.string.feed_ingredients_heading),
     IngredientSeparator(Res.string.feed_ingredient_separator),
+    MoreIngredients(Res.string.feed_more_ingredients),
     RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),
     RateErrorAlreadyRated(Res.string.feed_rate_error_already_rated),
     RateErrorWindowClosed(Res.string.feed_rate_error_window_closed),
