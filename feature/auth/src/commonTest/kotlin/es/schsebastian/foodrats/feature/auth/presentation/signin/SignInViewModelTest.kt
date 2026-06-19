@@ -27,6 +27,8 @@ import kotlin.test.assertNull
 private object NoopTokenRegistrationPort : TokenRegistrationPort {
     override suspend fun registerCurrentDeviceToken(): Result<Unit, TokenRegistrationError> =
         Result.success(Unit)
+    override suspend fun deregisterCurrentDeviceToken(): Result<Unit, TokenRegistrationError> =
+        Result.success(Unit)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
