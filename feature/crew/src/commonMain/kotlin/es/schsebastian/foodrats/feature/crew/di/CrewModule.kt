@@ -98,7 +98,9 @@ val crewModule = module {
     // (rename / set-blind-voting / remove-member / leave) against CrewRepository.
     // Contributed to the cross-feature OutboxRunner (in :core:data) via Koin
     // getAll(); the runner never imports :feature:crew.
-    single<OutboxCommandHandler> {
+    // Named qualifier so this and MealOutboxCommandHandler register at distinct Koin indices — see
+    // the matching note in MealModule. getAll<OutboxCommandHandler>() collects across qualifiers.
+    single<OutboxCommandHandler>(named("crewOutboxHandler")) {
         CrewOutboxCommandHandler(crews = get<CrewRepository>())
     }
 

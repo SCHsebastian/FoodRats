@@ -48,6 +48,7 @@ import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val mealModule = module {
@@ -119,7 +120,11 @@ val mealModule = module {
     // commands (rate / comment / delete-comment / toggle-reaction) against the
     // domain write ports. Contributed to the cross-feature OutboxRunner (in
     // :core:data) via Koin getAll(); the runner never imports :feature:meal.
-    single<OutboxCommandHandler> {
+    // Named qualifier so this and CrewOutboxCommandHandler register at DISTINCT Koin indices —
+    // a plain single<OutboxCommandHandler> for both would collide at OutboxCommandHandler::_root_
+    // and one would override the other, so getAll() returns only one handler and half the outbox
+    // commands silently never replay. getAll<OutboxCommandHandler>() collects across qualifiers.
+    single<OutboxCommandHandler>(named("mealOutboxHandler")) {
         MealOutboxCommandHandler(
             rating = get<MealRatingPort>(),
             comments = get<MealCommentPort>(),
