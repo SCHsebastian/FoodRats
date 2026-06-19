@@ -115,6 +115,23 @@ open class MealLocalStore(
     }
 
     /**
+     * Bounds local DB growth (offline-first P4-T1): deletes every meal whose [dayKey] is strictly
+     * older than [beforeDayKey] (a `YYYY-MM-DD` key — lexicographic order matches chronological
+     * order). The sync engine's delete-by-absence is window-scoped (30 days), so rows that age out
+     * of the window would otherwise accumulate forever; the [CachePruner][es.schsebastian.foodrats.feature.meal.data.sync.CachePruner]
+     * calls this once at app start with a retention cutoff. Ratings of pruned meals cascade away via
+     * the `mealRating` FK (foreign_keys is PRAGMA-enabled in the production drivers); the explicit
+     * [deleteRatingsForAbsentMeals] is a defensive sweep in case a connection ever lacks the PRAGMA.
+     * Both run in ONE transaction.
+     */
+    open suspend fun pruneOlderThan(beforeDayKey: String) = withContext(io) {
+        queries.transaction {
+            queries.deleteMealsBeforeDay(beforeDayKey)
+            queries.deleteRatingsForAbsentMeals()
+        }
+    }
+
+    /**
      * Optimistic RATE (offline-first P3b §P3b-T5): records [raterId]'s [score] for [mealId] as a
      * PENDING local row so the feed (which reads this store) shows the star instantly, before the
      * network write. In ONE transaction: upsert `mealRating(pending = 1)`, recompute the meal's

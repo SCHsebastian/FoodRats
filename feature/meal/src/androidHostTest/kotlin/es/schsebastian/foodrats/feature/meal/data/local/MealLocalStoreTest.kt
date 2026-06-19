@@ -258,6 +258,45 @@ class MealLocalStoreTest {
         }
     }
 
+    @Test fun prune_older_than_drops_pre_cutoff_meals_and_their_ratings_only() = runTest {
+        store.upsertAll(
+            listOf(
+                // Well before the cutoff → pruned (with its ratings).
+                dto(
+                    "ancient",
+                    dayKey = "2026-01-01",
+                    publishedAtEpochMs = 1L,
+                    ratings = mapOf("rater-1" to RatingEntryDto(score = 5, atMs = 1L)),
+                ),
+                // The day before the cutoff → pruned (strictly older than cutoff).
+                dto("day-before", dayKey = "2026-03-20", publishedAtEpochMs = 2L),
+                // Exactly the cutoff day → KEPT (delete is `< cutoff`, not `<=`).
+                dto("on-cutoff", dayKey = "2026-03-21", publishedAtEpochMs = 3L),
+                // After the cutoff → KEPT (with its ratings).
+                dto(
+                    "recent",
+                    dayKey = "2026-06-15",
+                    publishedAtEpochMs = 4L,
+                    ratings = mapOf("rater-2" to RatingEntryDto(score = 4, atMs = 5L)),
+                ),
+            ),
+        )
+
+        store.pruneOlderThan("2026-03-21")
+
+        // Within-retention meals (on-cutoff + recent) survive; the older two are gone.
+        store.observeRange("c1", "2026-01-01", "2026-06-20").test {
+            assertEquals(setOf("on-cutoff", "recent"), awaitItem().map { it.mealId }.toSet())
+            cancelAndIgnoreRemainingEvents()
+        }
+        // The pruned meal's ratings cascaded away; the kept meal's rating remains.
+        val ratingsByMeal = FoodRatsDatabase(driver).mealQueries
+            .selectRatingsForMeals(listOf("ancient", "recent")).executeAsList()
+            .groupBy { it.mealId }
+        assertEquals(null, ratingsByMeal["ancient"], "pruned meal's ratings cascade away")
+        assertEquals(setOf("rater-2"), ratingsByMeal["recent"].orEmpty().map { it.raterId }.toSet())
+    }
+
     @Test fun upsert_all_replaces_an_existing_row_in_place() = runTest {
         store.upsertAll(listOf(dto("m1", publishedAtEpochMs = 100L)))
         store.upsertAll(

@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.meal.data.sync
 
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
@@ -9,14 +10,18 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
 import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.minus
+import kotlin.time.Instant
 
 /**
  * The write side of the offline-first read-path inversion (P3a §3.2): the ONLY consumer of the
@@ -47,11 +52,22 @@ internal class MealSyncEngine(
     private val clock: Clock,
     private val zone: TimeZone,
     private val appScope: CoroutineScope,
-) {
+) : FeedSyncStatusPort {
     // One running collector per crew, so re-driving the same crew (e.g. the active-crew flow
-    // re-emits the same id) never spawns a duplicate listener. Touched only from the appScope's
-    // single dispatcher (the active-crew driver + syncCrew both run there), so no lock is needed.
+    // re-emits the same id) never spawns a duplicate listener. Touched ONLY from appScope: the
+    // active-crew driver + syncCrew both run there, and refresh() marshals its cancel→restart onto
+    // appScope before touching the map, so no lock is needed.
     private val jobs = mutableMapOf<CrewId, Job>()
+
+    /**
+     * Per-crew "freshness" stamp (P4-T2): the wall-clock [Instant] of the LAST window write for each
+     * crew, surfaced to the feed via [lastSyncedAt] so it can render "synced X ago" and offer a
+     * pull-to-refresh. App-lifetime, in-memory (not durable across process death) — a `StateFlow`
+     * so the feed re-renders the relative label live as fresh snapshots fold in. Keyed by the raw
+     * crew id string so the map is a plain value type. Written only from the appScope's single
+     * dispatcher (the snapshot collector), so no lock is needed.
+     */
+    private val lastSyncedAt = MutableStateFlow<Map<String, Instant>>(emptyMap())
 
     private companion object {
         const val STATS_WINDOW_DAYS = 30
@@ -71,7 +87,12 @@ internal class MealSyncEngine(
         val toKey = today.toKey()
         jobs[crewId] = appScope.launch {
             firestore.observeForRange(crewId, from, today)
-                .onEach { dtos -> local.replaceCrewWindow(crewId.value, fromKey, toKey, dtos) }
+                .onEach { dtos ->
+                    local.replaceCrewWindow(crewId.value, fromKey, toKey, dtos)
+                    // Stamp freshness AFTER the window write commits — the feed's "synced X ago"
+                    // must only advance once the local store actually reflects this snapshot.
+                    lastSyncedAt.value = lastSyncedAt.value + (crewId.value to clock.now())
+                }
                 // PERMISSION_DENIED-on-signout (or any upstream throw) STOPS this crew's sync
                 // without wiping its rows — the cached window must survive sign-out. The job
                 // completes here; a fresh syncCrew on the next active-crew emission re-listens.
@@ -80,6 +101,32 @@ internal class MealSyncEngine(
                 }
                 .collect()
         }
+    }
+
+    /**
+     * The wall-clock [Instant] of [crewId]'s LAST window write this session, or `null` if it has not
+     * synced yet (P4-T2). A live `StateFlow`-derived flow: the feed re-resolves its "synced X ago"
+     * label whenever a fresh snapshot folds in. Keyed by raw crew id.
+     */
+    override fun lastSyncedAt(crewId: CrewId): Flow<Instant?> =
+        lastSyncedAt.map { it[crewId.value] }
+
+    /**
+     * Forces a re-pull of [crewId]'s window (P4-T2): cancels the running per-crew collector (if any)
+     * and restarts it, so the Firestore listener re-subscribes and the next server snapshot is
+     * re-fetched and re-stamped into [lastSyncedAt]. Idempotent beyond re-arming the listener;
+     * cached rows are untouched by the cancel (the engine never wipes on stop).
+     *
+     * Called from the feed's ViewModel (the Main thread), NOT from appScope — so it must NOT touch
+     * [jobs] inline. It marshals the cancel→restart onto [appScope] (the only place [jobs] is ever
+     * mutated, matching [syncCrew]/[start]) and `.join()`s so the caller can await completion. This
+     * keeps the no-lock invariant intact: every read/write of [jobs] still happens on appScope.
+     */
+    override suspend fun refresh(crewId: CrewId) {
+        appScope.launch {
+            jobs.remove(crewId)?.cancel()
+            syncCrew(crewId)
+        }.join()
     }
 
     /**

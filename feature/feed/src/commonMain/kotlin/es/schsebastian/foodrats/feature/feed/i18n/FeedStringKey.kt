@@ -61,6 +61,7 @@ import foodrats.feature.feed.generated.resources.feed_rating_summary
 import foodrats.feature.feed.generated.resources.feed_share_meal
 import foodrats.feature.feed.generated.resources.feed_sync_failed
 import foodrats.feature.feed.generated.resources.feed_sync_pending
+import foodrats.feature.feed.generated.resources.feed_synced_ago
 import foodrats.feature.feed.generated.resources.feed_slot_breakfast
 import foodrats.feature.feed.generated.resources.feed_slot_dinner
 import foodrats.feature.feed.generated.resources.feed_slot_lunch
@@ -165,4 +166,5 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     QueueDismissCta(Res.string.feed_queue_dismiss_cta),
     SyncPending(Res.string.feed_sync_pending),
     SyncFailed(Res.string.feed_sync_failed),
+    SyncedAgo(Res.string.feed_synced_ago),
 }

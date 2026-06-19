@@ -90,6 +90,19 @@ WHERE crewId = :crewId AND dayKey >= :fromDayKey AND dayKey <= :toDayKey;
 deleteMealsByIds:
 DELETE FROM meal WHERE mealId IN :mealIds;
 
+-- Bound local DB growth (offline-first P4-T1): drop every meal older than a retention cutoff.
+-- The sync engine's delete-by-absence is window-scoped (30 days), so rows that age out of the
+-- window accumulate forever; a CachePruner runs this at app start with a 90-day cutoff. Ratings
+-- cascade away via the mealRating FK ON DELETE CASCADE (foreign_keys is PRAGMA-enabled at runtime).
+deleteMealsBeforeDay:
+DELETE FROM meal WHERE dayKey < :dayKey;
+
+-- Defensive companion to deleteMealsBeforeDay: drops any rating row whose meal is no longer held
+-- (i.e. orphaned because foreign_keys was off when the meal was deleted). A correctly-configured
+-- driver makes this a no-op, but it guarantees ratings of pruned meals never linger.
+deleteRatingsForAbsentMeals:
+DELETE FROM mealRating WHERE mealId NOT IN (SELECT mealId FROM meal);
+
 setMealPending:
 UPDATE meal SET pending = :pending WHERE mealId = :mealId;
 

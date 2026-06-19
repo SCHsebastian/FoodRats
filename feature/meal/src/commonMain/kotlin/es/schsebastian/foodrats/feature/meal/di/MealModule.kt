@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.di
 
+import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.HasPostedTodayPort
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
@@ -35,6 +36,7 @@ import es.schsebastian.foodrats.feature.meal.data.queue.DraftQueueRepository
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseMealRepository
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseReactionRepository
+import es.schsebastian.foodrats.feature.meal.data.sync.CachePruner
 import es.schsebastian.foodrats.feature.meal.data.sync.MealSyncEngine
 import es.schsebastian.foodrats.feature.meal.data.upload.BackgroundMealUploadCoordinator
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
@@ -79,6 +81,22 @@ val mealModule = module {
             firestore = get<MealFirestore>(),
             local = get(),
             activeCrew = get(),
+            clock = get(),
+            zone = get(),
+            appScope = get(named("appScope")),
+        ).also { it.start() }
+    }
+    // Feed freshness + manual refresh seam (P4-T2): the engine IS the FeedSyncStatusPort impl
+    // (its lastSyncedAt/refresh signatures match). :feature:feed consumes the port to render
+    // "synced X ago" and drive pull-to-refresh without depending on :feature:meal.
+    single<FeedSyncStatusPort> { get<MealSyncEngine>() }
+    // Offline-first cache pruner (P4-T1): bounds local DB growth. The sync engine's delete-by-absence
+    // is window-scoped (30 days), so meals that age out of the window accumulate forever; this drops
+    // rows older than 90 days ONCE at app start. `createdAtStart = true` + `start()` so it runs at
+    // boot on the app-lifetime named("appScope"), like the sync engine.
+    single(createdAtStart = true) {
+        CachePruner(
+            local = get(),
             clock = get(),
             zone = get(),
             appScope = get(named("appScope")),

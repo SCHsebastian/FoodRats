@@ -156,6 +156,44 @@ class MealDatabaseTest {
         assertEquals(listOf("rater-2"), afterDelete.map { it.raterId })
     }
 
+    @Test fun delete_meals_before_day_prunes_older_rows_and_cascades_ratings() {
+        insertMeal("ancient", crewId = "c1", dayKey = "2026-01-01", publishedAtEpochMs = 1L)
+        db.mealQueries.upsertRating("ancient", "rater-1", score = 5L, atMs = 1L, pending = 0L)
+        insertMeal("day-before", crewId = "c1", dayKey = "2026-03-20", publishedAtEpochMs = 2L)
+        // Exactly the cutoff day → kept (delete is strictly `< cutoff`).
+        insertMeal("on-cutoff", crewId = "c1", dayKey = "2026-03-21", publishedAtEpochMs = 3L)
+        insertMeal("recent", crewId = "c1", dayKey = "2026-06-15", publishedAtEpochMs = 4L)
+        db.mealQueries.upsertRating("recent", "rater-2", score = 4L, atMs = 5L, pending = 0L)
+
+        db.mealQueries.deleteMealsBeforeDay("2026-03-21")
+
+        val remaining = db.mealQueries
+            .selectRangeByCrew("c1", "2026-01-01", "2026-06-20").executeAsList().map { it.mealId }
+        assertEquals(setOf("on-cutoff", "recent"), remaining.toSet())
+        // The pruned meal's ratings cascaded away (foreign_keys ON in the test driver); the kept one survives.
+        assertTrue(db.mealQueries.selectRatingsForMeals(listOf("ancient")).executeAsList().isEmpty())
+        assertEquals(
+            listOf("rater-2"),
+            db.mealQueries.selectRatingsForMeals(listOf("recent")).executeAsList().map { it.raterId },
+        )
+    }
+
+    @Test fun delete_ratings_for_absent_meals_keeps_ratings_with_a_live_meal() {
+        // deleteRatingsForAbsentMeals is a defensive sweep for the production case where a connection
+        // lacks foreign_keys (orphans then linger). Under the FK-enforcing test drivers an orphan
+        // rating can't be inserted at all, so here we only assert the sweep is a no-op when every
+        // rating still has a live meal — the cascade itself is covered by deleting_a_meal_cascades_*.
+        insertMeal("present", crewId = "c1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)
+        db.mealQueries.upsertRating("present", "rater-1", score = 4L, atMs = 1L, pending = 0L)
+
+        db.mealQueries.deleteRatingsForAbsentMeals()
+
+        assertEquals(
+            listOf("rater-1"),
+            db.mealQueries.selectRatingsForMeals(listOf("present")).executeAsList().map { it.raterId },
+        )
+    }
+
     @Test fun deleting_a_meal_cascades_to_its_ratings() {
         insertMeal("m1", crewId = "c1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)
         db.mealQueries.upsertRating("m1", "rater-1", score = 4L, atMs = 10L, pending = 0L)
