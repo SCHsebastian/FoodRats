@@ -1,10 +1,11 @@
-package es.schsebastian.foodrats.feature.meal.data.queue
+package es.schsebastian.foodrats.core.data.connectivity
 
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.conflate
@@ -12,13 +13,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.callbackFlow
 
 /**
- * Android [ConnectivityMonitor] over [ConnectivityManager.NetworkCallback].
+ * Android [ConnectivityPort] over [ConnectivityManager.NetworkCallback].
  *
  * Emits the current online state on subscribe, then on every gain/loss of a
- * VALIDATED network. The retry runner uses the false→true edge; WorkManager's
+ * VALIDATED network. Consumers use the false→true edge; WorkManager's
  * `NetworkType.CONNECTED` constraint covers the after-process-death case.
  */
-class AndroidConnectivityMonitor(context: Context) : ConnectivityMonitor {
+class AndroidConnectivityMonitor(context: Context) : ConnectivityPort {
 
     private val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 

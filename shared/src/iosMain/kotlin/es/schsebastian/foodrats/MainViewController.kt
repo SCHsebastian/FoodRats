@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.app.di.appModules
 import es.schsebastian.foodrats.app.root.FoodRatsApp
 import es.schsebastian.foodrats.core.data.di.analyticsIosModule
 import es.schsebastian.foodrats.core.data.di.configIosModule
+import es.schsebastian.foodrats.core.data.di.connectivityIosModule
 import es.schsebastian.foodrats.core.data.di.crashIosModule
 import es.schsebastian.foodrats.core.data.di.locationIosModule
 import es.schsebastian.foodrats.core.data.di.shareIosModule
@@ -116,6 +117,7 @@ fun MainViewController(
                             analyticsReset,
                         ),
                         configIosModule,
+                        connectivityIosModule,
                         locationIosModule,
                     ),
                 )

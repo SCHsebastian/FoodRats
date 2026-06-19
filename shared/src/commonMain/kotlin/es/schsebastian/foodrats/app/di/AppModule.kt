@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.app.di
 
+import es.schsebastian.foodrats.app.connectivity.ConnectivityViewModel
 import es.schsebastian.foodrats.app.consent.ConsentViewModel
 import es.schsebastian.foodrats.app.navigation.DeepLinkBus
 import es.schsebastian.foodrats.app.recap.weeklyStoryModule
@@ -22,6 +23,9 @@ private val rootNavModule = module {
     // (Android MainActivity, iOS IosDeepLinkBridge), consumed by RootNavViewModel.
     single { DeepLinkBus() }
     viewModelOf(::RootNavViewModel)
+    // App-wide offline banner (offline-first §P1-T2): projects ConnectivityPort.isOnline (bound per
+    // platform in connectivity{Android,Ios}Module) into a StateFlow for the root NavHost.
+    viewModelOf(::ConnectivityViewModel)
     // Explicit binding (NOT viewModelOf): ConsentViewModel.analytics has a NoopAnalyticsTracker
     // default; viewModelOf would short-circuit graph resolution and bind the no-op, so we pass the
     // real AnalyticsPort by hand — same pattern the feature *Module files use for analytics.

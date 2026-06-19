@@ -13,10 +13,10 @@ import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.time.Clock
-import es.schsebastian.foodrats.feature.meal.data.queue.ConnectivityMonitor
 import es.schsebastian.foodrats.feature.meal.data.upload.MealUploadScheduler
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.Json
@@ -68,7 +68,7 @@ class MealModuleVerifyTest {
                 CuisineReadPort::class,
                 FeatureFlagPort::class,
                 MealUploadScheduler::class,
-                ConnectivityMonitor::class,
+                ConnectivityPort::class,
                 AnalyticsPort::class,
             ),
         )

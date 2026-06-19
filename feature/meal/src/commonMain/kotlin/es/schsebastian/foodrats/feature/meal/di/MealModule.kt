@@ -125,8 +125,8 @@ val mealModule = module {
     // persists the JSON list (incl. base64 plate bytes) so a process death / airplane
     // mode never loses a composed plate; DraftQueueRepository is the IO boundary;
     // DraftRetryRunner drains it idempotently on connectivity-return.
-    // ConnectivityMonitor comes from the platform module (ConnectivityManager on
-    // Android, NWPathMonitor on iOS).
+    // ConnectivityPort is the app-wide :core:data binding (ConnectivityManager on
+    // Android via connectivityAndroidModule, NWPathMonitor on iOS via connectivityIosModule).
     singleOf(::DraftQueueLocalStore)
     single<DraftQueuePort> {
         DraftQueueRepository(store = get(), clock = get(), dispatchers = get())

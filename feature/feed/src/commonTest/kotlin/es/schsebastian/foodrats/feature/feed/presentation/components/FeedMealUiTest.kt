@@ -167,6 +167,28 @@ class FeedMealUiTest {
         assertEquals("https://example.com/p.jpg", ui.feedImageUrl)
     }
 
+    @Test fun cache_keys_are_the_stable_storage_paths_not_the_signed_url() {
+        // The signed URL rotates per read; the cache key must stay pinned to the immutable
+        // Storage object path (crew + meal ids) so cached bytes survive re-mints (P1-T3).
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals("crews/c1/meals/m1.jpg", ui.plateCacheKey)
+        assertEquals("crews/c1/meals/m1_thumb.jpg", ui.thumbCacheKey)
+    }
+
+    @Test fun feed_image_cache_key_prefers_thumb_when_thumbnail_present() {
+        val withThumb = sampleMeal.copy(thumbnailUrl = "https://example.com/p_thumb.jpg")
+        val ui = MealWithRatings(withThumb, emptyList()).toFeedUi(viewerId, today)
+        // Mirrors feedImageUrl's thumbnail→plate fallback so the key matches the bytes loaded.
+        assertEquals("crews/c1/meals/m1_thumb.jpg", ui.feedImageCacheKey)
+    }
+
+    @Test fun feed_image_cache_key_falls_back_to_plate_when_no_thumbnail() {
+        // Pre-pipeline meal: feed card loads the full plate, so its key must be the plate key.
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals("", ui.thumbnailUrl)
+        assertEquals("crews/c1/meals/m1.jpg", ui.feedImageCacheKey)
+    }
+
     @Test fun average_computed_from_ratings() {
         val ui = MealWithRatings(
             sampleMeal,

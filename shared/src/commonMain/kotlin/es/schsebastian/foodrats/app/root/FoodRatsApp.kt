@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.app.root
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -19,9 +20,13 @@ import es.schsebastian.foodrats.app.navigation.EventsEffect
 import es.schsebastian.foodrats.app.navigation.NavGraph
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.app.navigation.navigateTopLevel
+import es.schsebastian.foodrats.app.connectivity.ConnectivityViewModel
+import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.app.locale.ProvideAppLocale
 import es.schsebastian.foodrats.app.notifications.InAppPushBanner
+import es.schsebastian.foodrats.core.designsystem.atoms.FrOfflineBanner
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
@@ -120,6 +125,12 @@ fun FoodRatsApp() {
     val notificationBus = koinInject<NotificationBus>()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // App-wide offline banner (offline-first §P1-T2): one connectivity signal surfaced at the root so
+    // it overlays every screen. `visible = !isOnline` — hidden by default (assumes online until the
+    // port reports otherwise). Message is resolved here through SharedStringKey, not in the atom.
+    val connectivityVm: ConnectivityViewModel = koinViewModel()
+    val isOnline by connectivityVm.isOnline.collectAsState()
+
     FoodRatsTheme(darkTheme = darkTheme) {
       // Re-keys the UI subtree on the chosen language so every resolve(...) re-resolves. The root
       // NavController is created above this block, so the back stack survives a language switch.
@@ -138,8 +149,16 @@ fun FoodRatsApp() {
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { _ ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                NavGraph(navController = rootController)
+            // Banner above the nav content so the offline notice shows on every screen. The NavGraph
+            // takes the remaining space (weight) and keeps owning its own bars/insets.
+            Column(modifier = Modifier.fillMaxSize()) {
+                FrOfflineBanner(
+                    visible = !isOnline,
+                    message = resolve(SharedStringKey.OfflineBanner),
+                )
+                Box(modifier = Modifier.weight(1f)) {
+                    NavGraph(navController = rootController)
+                }
             }
         }
       }

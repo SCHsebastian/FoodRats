@@ -12,6 +12,9 @@
     <string name="consent_allow">Allow analytics</string>
     <string name="consent_deny">No thanks</string>
 
+    <!-- App-wide offline banner (offline-first §P1-T2): shown at the NavHost root on every screen. -->
+    <string name="offline_banner">You\'re offline — changes sync when you\'re back.</string>
+
     <!-- Weekly recap story (roadmap §2.4) -->
     <string name="recap_entry_cta">See your week</string>
     <string name="recap_close">Close recap</string>

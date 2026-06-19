@@ -91,8 +91,12 @@ fun FrFeedMealRow(
                         // ThumbHash placeholder (instant blur) while the thumbnail loads; falls
                         // back to the flat surfaceVariant box behind it when no hash is present.
                         val placeholder = rememberThumbHashPainter(ui.thumbHash)
+                        // Key the disk/memory cache on the STABLE Storage path, not the rotating
+                        // signed URL, so cached bytes survive URL re-mints and render offline
+                        // (offline P1-T3). A blank key (path unknown) falls back to URL keying.
+                        val request = stablePlateRequest(imageUrl, ui.feedImageCacheKey)
                         AsyncImage(
-                            model = imageUrl,
+                            model = request,
                             contentDescription = ui.dishName,
                             contentScale = ContentScale.Crop,
                             placeholder = placeholder,

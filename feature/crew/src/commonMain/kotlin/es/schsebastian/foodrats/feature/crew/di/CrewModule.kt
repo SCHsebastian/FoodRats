@@ -14,6 +14,8 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
+import es.schsebastian.foodrats.feature.crew.data.local.CrewListCache
+import es.schsebastian.foodrats.feature.crew.data.local.DataStoreCrewListCache
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
@@ -33,6 +35,8 @@ import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsV
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.qualifier.named
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import org.koin.dsl.module
 import kotlin.random.Random
@@ -42,6 +46,9 @@ val crewModule = module {
     singleOf(::CrewErrorMapper)
     single<CrewDataSource> { CrewFirestoreDataSource(get(), get(), get(), get()) }
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
+    // BRIDGE (offline-first P1): last-seen crew list cache so the picker survives offline.
+    // prefs + Json (lenient, ignoreUnknownKeys) come from the shared coreDataModule.
+    single<CrewListCache> { DataStoreCrewListCache(prefs = get(), dispatchers = get(), json = get()) }
     single<CrewOwnerPort> {
         object : CrewOwnerPort {
             private val ds = get<CrewDataSource>()
@@ -52,8 +59,8 @@ val crewModule = module {
         }
     }
     single<CrewRepository> {
-        // (firestore, dispatchers, errorMapper, clock)
-        FirebaseCrewRepository(get(), get(), get(), get())
+        // (dataSource, dispatchers, errorMapper, clock, crewListCache, appScope)
+        FirebaseCrewRepository(get(), get(), get(), get(), get(), get(named("appScope")))
     }
     // Live "is blind voting on?" for a crew, consumed by :feature:feed to mask author
     // identity without a :feature:crew dep. Mirrors CrewOwnerPort: reads the crew read

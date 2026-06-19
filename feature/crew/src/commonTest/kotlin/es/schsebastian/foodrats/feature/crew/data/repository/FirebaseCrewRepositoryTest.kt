@@ -16,12 +16,16 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
 import es.schsebastian.foodrats.feature.crew.data.firebase.MemberDto
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotFoundException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotMemberException
+import es.schsebastian.foodrats.feature.crew.data.local.CrewListCache
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -45,7 +49,17 @@ class FirebaseCrewRepositoryTest {
     private val clock = FixedClock(Instant.fromEpochMilliseconds(nowMs))
     private val ds = FakeCrewDataSource()
 
-    private fun repo() = FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock)
+    // Empty cache flow → merge() yields the live datasource unchanged, preserving the
+    // existing assertions + awaitComplete() semantics. saved DTOs are recorded for assertions.
+    private val cache = object : CrewListCache {
+        var saved: List<List<CrewDto>> = emptyList()
+        override fun observe(): Flow<List<CrewDto>?> = emptyFlow()
+        override suspend fun save(crews: List<CrewDto>) { saved = saved + listOf(crews) }
+    }
+    private val appScope = CoroutineScope(testDispatcher)
+
+    private fun repo() =
+        FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock, cache, appScope)
 
     private fun aid(raw: String): AccountId = (AccountId.of(raw) as Result.Ok).value
     private fun cid(raw: String): CrewId = (CrewId.of(raw) as Result.Ok).value
@@ -402,5 +416,39 @@ class FirebaseCrewRepositoryTest {
             assertTrue(r.value.isEmpty())
             awaitComplete()
         }
+    }
+
+    // ---------------- offline-first bridge cache ----------------
+
+    @Test
+    fun observeMyCrews_replays_cached_crews_when_offline_through_same_mapper() = runTest {
+        // Offline: the live datasource never emits; the cache replays the last snapshot,
+        // mapped through the SAME toDomain so the offline list is identical to the online one.
+        ds.observeMyCrewsFlow = emptyFlow()
+        val cachingRepo = FirebaseCrewRepository(
+            ds, dispatchers, CrewErrorMapper(), clock,
+            object : CrewListCache {
+                override fun observe(): Flow<List<CrewDto>?> = flowOf(listOf(validDto))
+                override suspend fun save(crews: List<CrewDto>) {}
+            },
+            appScope,
+        )
+        cachingRepo.observeMyCrews(aid("owner")).test {
+            val r = awaitItem()
+            assertIs<Result.Ok<List<Crew>>>(r)
+            assertEquals(1, r.value.size)
+            assertEquals(cid("c-1"), r.value.first().id)
+            awaitComplete()
+        }
+    }
+
+    @Test
+    fun observeMyCrews_writes_each_live_snapshot_through_to_the_cache() = runTest {
+        ds.observeMyCrewsFlow = flowOf(listOf(validDto))
+        repo().observeMyCrews(aid("owner")).test {
+            awaitItem()
+            awaitComplete()
+        }
+        assertEquals(listOf(listOf(validDto)), cache.saved)
     }
 }

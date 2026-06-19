@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.PublishSource
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -59,7 +60,7 @@ class DraftRetryRunnerTest {
         override val default: CoroutineDispatcher = testDispatcher
     }
 
-    private class AlwaysOnline : ConnectivityMonitor {
+    private class AlwaysOnline : ConnectivityPort {
         override fun isOnline(): Flow<Boolean> = flowOf(true)
     }
 

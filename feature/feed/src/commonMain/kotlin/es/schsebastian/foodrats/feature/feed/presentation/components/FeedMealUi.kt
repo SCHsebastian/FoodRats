@@ -32,6 +32,21 @@ private fun MealSlot.toUi(): MealSlotUi = when (this) {
     MealSlot.Dinner -> MealSlotUi.Dinner
 }
 
+/**
+ * The full-plate Storage object path — the stable Coil cache key. Mirrors the server-owned layout
+ * (`MealDto.from`: `crews/{crewId}/meals/{mealId}.jpg`). Used only as a cache key, never to fetch.
+ */
+private fun platePathOf(crewId: String, mealId: String): String =
+    "crews/$crewId/meals/$mealId.jpg"
+
+/**
+ * The server-thumbnail Storage object path — the stable cache key for [FeedMealUi.thumbnailUrl].
+ * Mirrors the pipeline layout documented on `MealDto.thumbnailPath`
+ * (`crews/{crewId}/meals/{mealId}_thumb.jpg`).
+ */
+private fun thumbPathOf(crewId: String, mealId: String): String =
+    "crews/$crewId/meals/${mealId}_thumb.jpg"
+
 data class FeedMealUi(
     val mealId: String,
     val authorId: String,
@@ -45,6 +60,20 @@ data class FeedMealUi(
      * [feedImageUrl].
      */
     val thumbnailUrl: String = "",
+    /**
+     * STABLE Coil disk/memory cache key for the full plate, derived from the Storage object PATH
+     * (`crews/{crewId}/meals/{mealId}.jpg`) — NOT the signed URL. Signed URLs rotate per read
+     * (V4 TTL), so keying Coil on the URL makes every re-mint a cache miss and the plate vanishes
+     * offline. Keying on the immutable path lets cached bytes survive URL rotation. Blank only when
+     * the meal has no plate path (then callers fall back to default URL keying). (offline P1-T3)
+     */
+    val plateCacheKey: String = "",
+    /**
+     * STABLE Coil cache key for the server thumbnail, derived from its Storage object PATH
+     * (`crews/{crewId}/meals/{mealId}_thumb.jpg`). Same rationale as [plateCacheKey]. The feed card
+     * keys on [feedImageCacheKey], which mirrors [feedImageUrl]'s thumbnail→plate fallback.
+     */
+    val thumbCacheKey: String = "",
     /**
      * Base64 ThumbHash (the instant blur placeholder), or null until the server pipeline writes it.
      * Decoded to a placeholder bitmap in the row/detail composables.
@@ -95,6 +124,14 @@ data class FeedMealUi(
      */
     val feedImageUrl: String
         get() = thumbnailUrl.ifBlank { photoUrl }
+
+    /**
+     * The STABLE cache key paired with [feedImageUrl]: the thumbnail's key when a thumbnail URL is
+     * present, otherwise the plate's key — mirroring [feedImageUrl]'s fallback so the key always
+     * matches the bytes actually loaded. Blank when neither path is known (default URL keying).
+     */
+    val feedImageCacheKey: String
+        get() = if (thumbnailUrl.isNotBlank()) thumbCacheKey else plateCacheKey
 }
 
 /**
@@ -150,6 +187,12 @@ fun MealWithRatings.toFeedUi(
         authorAvatarUrl = meal.author.avatarUrl,
         photoUrl = meal.photoUrl,
         thumbnailUrl = meal.thumbnailUrl,
+        // Stable, URL-independent cache keys derived from the immutable Storage object paths the
+        // server resolves these URLs from. Path layout is owned server-side (see MealDto.from /
+        // MealDto.thumbnailPath) and is deterministic from the crew + meal ids, so we reconstruct
+        // it here without leaking the path into the domain Meal. (offline P1-T3)
+        plateCacheKey = platePathOf(meal.crewId.value, meal.id.value),
+        thumbCacheKey = thumbPathOf(meal.crewId.value, meal.id.value),
         thumbHash = meal.thumbHash,
         dishName = meal.dish.value,
         description = meal.description.value,
