@@ -3,7 +3,11 @@ package es.schsebastian.foodrats.app.root
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -152,11 +156,25 @@ fun FoodRatsApp() {
             // Banner above the nav content so the offline notice shows on every screen. The NavGraph
             // takes the remaining space (weight) and keeps owning its own bars/insets.
             Column(modifier = Modifier.fillMaxSize()) {
+                // statusBarsPadding keeps the amber bar below the system status bar (it was
+                // overlapping the clock). When the banner is shown it occupies that top inset's
+                // vertical space, so we consume the status-bars inset for the NavGraph subtree below
+                // — otherwise each screen's own Scaffold would pad the status bar a second time and
+                // leave an empty gap under the banner. When online the banner is gone (0 height) and
+                // we consume nothing, so screens inset themselves normally.
                 FrOfflineBanner(
                     visible = !isOnline,
                     message = resolve(SharedStringKey.OfflineBanner),
+                    modifier = Modifier.statusBarsPadding(),
                 )
-                Box(modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (!isOnline) Modifier.consumeWindowInsets(WindowInsets.statusBars)
+                            else Modifier,
+                        ),
+                ) {
                     NavGraph(navController = rootController)
                 }
             }

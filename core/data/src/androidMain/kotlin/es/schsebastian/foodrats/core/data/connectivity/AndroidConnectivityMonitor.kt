@@ -30,15 +30,24 @@ class AndroidConnectivityMonitor(context: Context) : ConnectivityPort {
                 caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
         }
 
+        // Tracks every network currently offering VALIDATED internet; we're online iff the set is
+        // non-empty. This replaces re-reading cm.activeNetwork inside onLost — at the instant onLost
+        // fires, cm.activeNetwork can still return the tearing-down network as VALIDATED, so the old
+        // snapshot() re-emitted `true` and distinctUntilChanged swallowed it: a live online→offline
+        // transition never reported `false` (only a cold start while already offline did). Callbacks
+        // for one registration are delivered serially on a single Handler thread, so a plain set is
+        // safe here without synchronization.
+        val validated = mutableSetOf<Network>()
         val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) { trySend(true) }
-            override fun onLost(network: Network) { trySend(snapshot()) }
+            private fun publish() { trySend(validated.isNotEmpty()) }
             override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
-                trySend(
-                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) &&
-                        caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET),
-                )
+                val online = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) &&
+                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                if (online) validated.add(network) else validated.remove(network)
+                publish()
             }
+            override fun onLost(network: Network) { validated.remove(network); publish() }
+            override fun onUnavailable() { publish() }
         }
 
         trySend(snapshot())
