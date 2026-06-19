@@ -19,8 +19,10 @@ import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberCount
+import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 
 enum class CookAwardVariant { BestCook, MostProlific }
@@ -122,7 +124,7 @@ fun FrCookAwardCard(
                 color = onBackground,
             )
             FrText(
-                text = resolve(StatsStringKey.MostProlificMetricFormat, award.mealCount),
+                text = resolvePlural(StatsPluralKey.MostProlificMetric, award.mealCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = onBackground.copy(alpha = 0.9f),
             )

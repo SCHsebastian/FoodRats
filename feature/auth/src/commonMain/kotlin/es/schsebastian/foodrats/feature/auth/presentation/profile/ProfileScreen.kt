@@ -1,12 +1,16 @@
 package es.schsebastian.foodrats.feature.auth.presentation.profile
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -22,6 +26,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
@@ -33,7 +38,11 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRow
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRowTone
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSection
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSectionTone
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
@@ -121,19 +130,27 @@ fun ProfileScreen(
         },
     ) {
         LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(Spacing.lg),
+            modifier = Modifier.fillMaxSize().frContentWidth().padding(Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
-            item { GeneralSection(state, vm, onPickAvatar = {
-                picker.launchGallery(
-                    allowMultiple = false,
-                    mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
+            // Sections rise in on a small top-down stagger (one step ≈ 60ms) so the settings list
+            // assembles itself rather than snapping in as one block.
+            item {
+                GeneralSection(
+                    state, vm,
+                    onPickAvatar = {
+                        picker.launchGallery(
+                            allowMultiple = false,
+                            mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
+                        )
+                    },
+                    modifier = Modifier.frRiseIn(),
                 )
-            }) }
-            item { PreferencesSection(state, vm) }
-            item { AchievementsSection(onOpenAchievements) }
-            item { DataExportSection(state, vm) }
-            item { DangerZoneSection(state, vm) }
+            }
+            item { PreferencesSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 60)) }
+            item { AchievementsSection(onOpenAchievements, modifier = Modifier.frRiseIn(delayMillis = 120)) }
+            item { DataExportSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 180)) }
+            item { DangerZoneSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 240)) }
         }
     }
 
@@ -191,70 +208,121 @@ private fun GeneralSection(
     state: ProfileState,
     vm: ProfileViewModel,
     onPickAvatar: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    FrSettingsSection(title = resolve(AuthStringKey.ProfileIdentitySection)) {
-        val initials = state.account?.displayName?.take(2)?.uppercase().orEmpty().ifBlank { "?" }
-        FrAvatarPicker(
-            initials = initials,
-            avatarUrl = state.account?.avatarUrl,
-            onPickClick = onPickAvatar,
-            busy = state.isUploadingAvatar,
-            changeLabel = resolve(AuthStringKey.ProfileChangeAvatarCta),
-            uploadingLabel = resolve(AuthStringKey.ProfileAvatarUploading),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
-        )
-        state.uploadAvatarError?.let {
-            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.height(Spacing.sm))
-        }
-
-        FrSettingsDivider()
-
-        // Display-name editor — laid out as a row containing the label, field and save button.
-        // Keeps the existing intent flow.
-        androidx.compose.foundation.layout.Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-        ) {
-            FrText(
-                text = resolve(AuthStringKey.ProfileDisplayNameLabel),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FrTextField(
-                value = state.editingDisplayName,
-                onValueChange = { vm.onIntent(ProfileIntent.DisplayNameChanged(it)) },
-                label = resolve(AuthStringKey.ProfileDisplayNameLabel),
-                enabled = !state.isSavingDisplayName,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            FrButton(
-                label = resolve(AuthStringKey.ProfileSave),
-                onClick = { vm.onIntent(ProfileIntent.SaveDisplayName) },
-                enabled = state.editingDisplayName.isNotBlank()
-                    && state.editingDisplayName != state.account?.displayName
-                    && !state.isSavingDisplayName,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            state.saveDisplayNameError?.let {
-                FrErrorBanner(text = resolve(it))
+    val account = state.account
+    // The identity block (avatar + display-name) hydrates from the account stream, which starts
+    // null. Until it lands — and only while no identity error is surfaced — show a tasteful
+    // skeleton in its place. An identity error means there IS something to act on, so we render
+    // the real controls (which carry the banner) rather than hiding it behind a shimmer.
+    val identityLoading = account == null &&
+        state.uploadAvatarError == null &&
+        state.saveDisplayNameError == null
+    FrSettingsSection(title = resolve(AuthStringKey.ProfileIdentitySection), modifier = modifier) {
+        if (identityLoading) {
+            IdentitySkeleton()
+        } else {
+            // Prominent identity header — the display name as a headline with the email beneath it,
+            // so "who am I" reads at a glance above the editable avatar/name controls.
+            account?.let { acc ->
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
+                    FrText(
+                        text = acc.displayName,
+                        style = MaterialTheme.typography.titleLarge,
+                    )
+                    acc.email?.let { email ->
+                        FrText(
+                            text = email,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                FrSettingsDivider()
             }
-        }
-
-        state.account?.email?.let { email ->
-            FrSettingsDivider()
-            FrSettingsRow(
-                title = resolve(AuthStringKey.ProfileSignedInAsLabel),
-                subtitle = email,
-                icon = FrIcons.Person,
+            val initials = account?.displayName?.take(2)?.uppercase().orEmpty().ifBlank { "?" }
+            FrAvatarPicker(
+                initials = initials,
+                avatarUrl = account?.avatarUrl,
+                onPickClick = onPickAvatar,
+                busy = state.isUploadingAvatar,
+                changeLabel = resolve(AuthStringKey.ProfileChangeAvatarCta),
+                uploadingLabel = resolve(AuthStringKey.ProfileAvatarUploading),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
             )
+            state.uploadAvatarError?.let {
+                FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
+                Spacer(Modifier.height(Spacing.sm))
+            }
+
+            FrSettingsDivider()
+
+            // Display-name editor — laid out as a row containing the label, field and save button.
+            // Keeps the existing intent flow.
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                FrText(
+                    text = resolve(AuthStringKey.ProfileDisplayNameLabel),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FrTextField(
+                    value = state.editingDisplayName,
+                    onValueChange = { vm.onIntent(ProfileIntent.DisplayNameChanged(it)) },
+                    label = resolve(AuthStringKey.ProfileDisplayNameLabel),
+                    enabled = !state.isSavingDisplayName,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FrButton(
+                    label = resolve(AuthStringKey.ProfileSave),
+                    onClick = { vm.onIntent(ProfileIntent.SaveDisplayName) },
+                    enabled = state.editingDisplayName.isNotBlank()
+                        && state.editingDisplayName != account?.displayName
+                        && !state.isSavingDisplayName,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                state.saveDisplayNameError?.let {
+                    FrErrorBanner(text = resolve(it))
+                }
+            }
         }
     }
 }
 
+/**
+ * Decorative shimmer placeholder for the identity block (avatar circle + display-name bar)
+ * shown while [ProfileState.account] is still null and no identity error is surfaced. Mirrors
+ * the silhouette of [FrAvatarPicker] + the display-name editor so the swap-in is seamless.
+ */
 @Composable
-private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
-    FrSettingsSection(title = resolve(AuthStringKey.ProfilePreferencesSection)) {
+private fun IdentitySkeleton() {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        FrShimmerBox(
+            modifier = Modifier.size(Sizes.avatarLg),
+            shape = CircleShape,
+        )
+        FrShimmerBox(
+            modifier = Modifier.fillMaxWidth(fraction = 0.6f).height(Sizes.iconMd),
+            shape = RoundedCornerShape(Radius.sm),
+        )
+        FrShimmerBox(
+            modifier = Modifier.fillMaxWidth().height(Sizes.touchTarget),
+            shape = RoundedCornerShape(Radius.sm),
+        )
+    }
+}
+
+@Composable
+private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel, modifier: Modifier = Modifier) {
+    FrSettingsSection(title = resolve(AuthStringKey.ProfilePreferencesSection), modifier = modifier) {
         // Theme
         FrSettingsRow(
             title = resolve(AuthStringKey.ProfileThemeRow),
@@ -300,6 +368,7 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
                 FrSwitch(
                     checked = state.notificationsEnabled,
                     onCheckedChange = { vm.onIntent(ProfileIntent.NotificationsToggled(it)) },
+                    contentDescription = resolve(AuthStringKey.ProfileNotificationsRow),
                 )
             },
         )
@@ -377,6 +446,7 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
                 FrSwitch(
                     checked = state.analyticsConsentGranted,
                     onCheckedChange = { vm.onIntent(ProfileIntent.AnalyticsConsentToggled(it)) },
+                    contentDescription = resolve(AuthStringKey.ProfileAnalyticsRow),
                 )
             },
         )
@@ -384,8 +454,8 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
 }
 
 @Composable
-private fun AchievementsSection(onOpenAchievements: () -> Unit) {
-    FrSettingsSection(title = resolve(AuthStringKey.ProfileAchievementsSection)) {
+private fun AchievementsSection(onOpenAchievements: () -> Unit, modifier: Modifier = Modifier) {
+    FrSettingsSection(title = resolve(AuthStringKey.ProfileAchievementsSection), modifier = modifier) {
         FrSettingsRow(
             title = resolve(AuthStringKey.ProfileAchievementsRow),
             subtitle = resolve(AuthStringKey.ProfileAchievementsSubtitle),
@@ -396,9 +466,9 @@ private fun AchievementsSection(onOpenAchievements: () -> Unit) {
 }
 
 @Composable
-private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
+private fun DataExportSection(state: ProfileState, vm: ProfileViewModel, modifier: Modifier = Modifier) {
     val uriHandler = LocalUriHandler.current
-    FrSettingsSection(title = resolve(AuthStringKey.ProfileAccountSection)) {
+    FrSettingsSection(title = resolve(AuthStringKey.ProfileAccountSection), modifier = modifier) {
         FrSettingsRow(
             title = resolve(AuthStringKey.ExportDataRow),
             subtitle = if (state.isExportingData)
@@ -436,11 +506,12 @@ private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
 }
 
 @Composable
-private fun DangerZoneSection(state: ProfileState, vm: ProfileViewModel) {
+private fun DangerZoneSection(state: ProfileState, vm: ProfileViewModel, modifier: Modifier = Modifier) {
     FrSettingsSection(
         title = resolve(AuthStringKey.ProfileDangerZoneSection),
         subtitle = resolve(AuthStringKey.ProfileDangerZoneSubtitle),
         tone = FrSettingsSectionTone.Danger,
+        modifier = modifier,
     ) {
         FrSettingsRow(
             title = resolve(AuthStringKey.ProfileSignOutCta),

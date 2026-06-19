@@ -27,6 +27,7 @@ import kotlin.time.Instant
 class FakeMealRepository : MealRepository {
     private val draftState = MutableStateFlow<MealDraft?>(null)
     var publishResultOverride: Result<Meal, MealError>? = null
+    var saveDraftResultOverride: Result<Unit, MealError>? = null
     val publishedDrafts = mutableListOf<MealDraft>()
     data class RateCall(val crewId: CrewId, val mealId: MealId, val raterId: AccountId, val score: Score)
     val rateCalls = mutableListOf<RateCall>()
@@ -97,6 +98,7 @@ class FakeMealRepository : MealRepository {
         return deleteResultOverride ?: Result.success(Unit)
     }
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {
+        saveDraftResultOverride?.let { return it }
         draftState.value = draft; return Result.success(Unit)
     }
     override fun observeDraft(): Flow<MealDraft?> = draftState

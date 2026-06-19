@@ -18,9 +18,14 @@ import kotlin.test.assertIs
 
 class FakeRepo : DeviceTokenRepository {
     val upserts = mutableListOf<Pair<AccountId, DeviceToken>>()
+    val deletes = mutableListOf<Pair<AccountId, DeviceToken>>()
     var nextResult: Result<Unit, NotificationError.Token> = Result.success(Unit)
     override suspend fun upsert(accountId: AccountId, token: DeviceToken): Result<Unit, NotificationError.Token> {
         upserts += accountId to token
+        return nextResult
+    }
+    override suspend fun delete(accountId: AccountId, token: DeviceToken): Result<Unit, NotificationError.Token> {
+        deletes += accountId to token
         return nextResult
     }
 }

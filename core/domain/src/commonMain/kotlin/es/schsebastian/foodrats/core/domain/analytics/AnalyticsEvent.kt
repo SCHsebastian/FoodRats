@@ -64,6 +64,24 @@ sealed interface AnalyticsEvent {
         override val params = mapOf("crew_id" to text(crewId.value))
     }
 
+    /** The owner renamed a crew. Id only — the crew NAME is free text (PII) and is never sent. */
+    data class CrewRenamed(val crewId: CrewId) : AnalyticsEvent {
+        override val name = "crew_renamed"
+        override val params = mapOf("crew_id" to text(crewId.value))
+    }
+
+    /** Crew-lifecycle churn signal, the inverse of [CrewCreated]. Distinct from [CrewLeft]. */
+    data class CrewDeleted(val crewId: CrewId) : AnalyticsEvent {
+        override val name = "crew_deleted"
+        override val params = mapOf("crew_id" to text(crewId.value))
+    }
+
+    /** Multi-crew engagement — the active crew switched. Destination crew id only. */
+    data class CrewSwitched(val crewId: CrewId) : AnalyticsEvent {
+        override val name = "crew_switched"
+        override val params = mapOf("crew_id" to text(crewId.value))
+    }
+
     /**
      * The crew owner removed a member. Fired in the ViewModel AFTER the remove `Result` resolves
      * `Ok`. Carries only the crew id — never the removed member's account id or any identity, so the
@@ -343,6 +361,25 @@ sealed interface AnalyticsEvent {
     data object AccountDeleted : AnalyticsEvent {
         override val name = "account_deleted"
         override val params = emptyMap<String, AnalyticsValue>()
+    }
+
+    // ───────────────────────────── settings ─────────────────────────────
+
+    /**
+     * A user-changeable persisted preference was changed. Generic over the [AppSetting] dimension so
+     * one leaf covers all five toggles. [enabled] is carried only for boolean toggles (notifications,
+     * blind-voting); theme/language/reminders omit the target VALUE on purpose (the question is
+     * did-they-change-it, not to-what — a locale tag risks reading as locale PII).
+     */
+    data class SettingChanged(
+        val setting: AppSetting,
+        val enabled: Boolean? = null,
+    ) : AnalyticsEvent {
+        override val name = "setting_changed"
+        override val params = buildMap {
+            put("setting", text(setting.wire))
+            if (enabled != null) put("enabled", flag(enabled))
+        }
     }
 
     // ───────────────────────────── consent ─────────────────────────────

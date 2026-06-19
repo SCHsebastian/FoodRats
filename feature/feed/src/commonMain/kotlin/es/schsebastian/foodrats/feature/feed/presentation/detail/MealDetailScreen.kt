@@ -16,15 +16,21 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -49,8 +55,10 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
@@ -59,16 +67,20 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.atoms.FrGlassPill
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.image.rememberThumbHashPainter
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
+import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
+import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
@@ -78,7 +90,6 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
-import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.Score
@@ -101,13 +112,19 @@ fun MealDetailScreen(
     var showDeleteMealDialog by remember { mutableStateOf(false) }
     LaunchedEffect(state.mealDeleted) { if (state.mealDeleted) onBack() }
 
-    FrScreenScaffold {
+    // Exclude the IME from the scaffold insets: this screen has a bottom-pinned comment
+    // composer that rises on its own via `imePadding()` (see MealDetailBody). If the scaffold
+    // also consumed the IME it would shrink the whole content Box, collapsing the scroll
+    // viewport and dragging the BottomCenter composer up the screen (the "comment box moves
+    // the whole screen up" bug). Keep system bars + cutout; drop ime.
+    FrScreenScaffold(
+        contentWindowInsets = WindowInsets.safeDrawing.exclude(WindowInsets.ime),
+    ) {
+        val error = state.error
         when {
-            state.isLoading -> CenteredState(onBack) { FrProgressIndicator() }
-            state.error != null -> {
-                val err: FeedError = state.error!!
-                CenteredState(onBack) { FrErrorBanner(text = resolve(err.toStringKey())) }
-            }
+            state.isLoading -> DetailLoadingSkeleton(onBack)
+            error != null ->
+                CenteredState(onBack) { FrErrorBanner(text = resolve(error.toStringKey())) }
             state.notFound || state.meal == null ->
                 CenteredState(onBack) { FrText(text = resolve(FeedStringKey.DetailNotFound)) }
             else -> MealDetailBody(
@@ -147,7 +164,7 @@ fun MealDetailScreen(
     }
 }
 
-/** Transient states (loading / error / not-found) still need a back affordance. */
+/** Transient states (error / not-found) still need a back affordance. */
 @Composable
 private fun CenteredState(onBack: () -> Unit, content: @Composable () -> Unit) {
     Box(modifier = Modifier.fillMaxSize().padding(Spacing.md)) {
@@ -158,6 +175,117 @@ private fun CenteredState(onBack: () -> Unit, content: @Composable () -> Unit) {
             modifier = Modifier.align(Alignment.TopStart),
         )
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
+    }
+}
+
+/** Number of comment-row placeholders shown while comments stream in. */
+private const val COMMENT_SKELETON_ROWS = 3
+
+/**
+ * Loading placeholder for the detail screen that mirrors the loaded layout: a full-width
+ * square hero, an author row (avatar + name bar), a title bar, a few description line bars,
+ * and one card-shaped block — all inside the same [frContentWidth] column the body uses, so
+ * the layout doesn't jump when the meal arrives. The back pill stays tappable throughout.
+ * Purely decorative — no text, no content descriptions.
+ */
+@Composable
+private fun DetailLoadingSkeleton(onBack: () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.frContentWidth().fillMaxSize()) {
+            FrShimmerBox(
+                modifier = Modifier.fillMaxWidth().aspectRatio(1f),
+                shape = RoundedCornerShape(Radius.lg),
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = Spacing.md, vertical = Spacing.lg),
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            ) {
+                // Author row: circular avatar + name bar.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                ) {
+                    FrShimmerBox(
+                        modifier = Modifier.size(Sizes.avatarMd),
+                        shape = CircleShape,
+                    )
+                    FrShimmerBox(
+                        modifier = Modifier.fillMaxWidth(0.4f).height(18.dp),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                }
+                // Title + description lines.
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    FrShimmerBox(
+                        modifier = Modifier.fillMaxWidth(0.7f).height(28.dp),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                    FrShimmerBox(
+                        modifier = Modifier.fillMaxWidth().height(16.dp),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                    FrShimmerBox(
+                        modifier = Modifier.fillMaxWidth().height(16.dp),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                    FrShimmerBox(
+                        modifier = Modifier.fillMaxWidth(0.5f).height(16.dp),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                }
+                // A card-shaped block (mirrors the score story / rating card).
+                FrShimmerBox(
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    shape = RoundedCornerShape(Radius.lg),
+                )
+            }
+        }
+        FrGlassPill(
+            icon = FrIcons.Back,
+            onClick = onBack,
+            contentDescription = resolve(FeedStringKey.DetailBackCta),
+            modifier = Modifier.align(Alignment.TopStart).padding(Spacing.md),
+        )
+    }
+}
+
+/**
+ * Loading placeholder for the comments list: a few rows of a circular avatar plus two short
+ * line bars, mirroring [FrCommentRow]'s silhouette. Purely decorative.
+ */
+@Composable
+private fun CommentsLoadingSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        repeat(COMMENT_SKELETON_ROWS) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                FrShimmerBox(
+                    modifier = Modifier.size(Sizes.avatarSm),
+                    shape = CircleShape,
+                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
+                    FrShimmerBox(
+                        modifier = Modifier.fillMaxWidth(0.35f).height(14.dp),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                    FrShimmerBox(
+                        modifier = Modifier.fillMaxWidth(0.8f).height(14.dp),
+                        shape = RoundedCornerShape(Radius.sm),
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -175,9 +303,13 @@ private fun MealDetailBody(
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
+                .frContentWidth()
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState()),
         ) {
+            // Signature: the hero "develops in" (gentle settle from a slight over-scale) while the
+            // text + section cards below rise in on a short staggered cascade, so the screen
+            // assembles top-down as a single layered reveal instead of snapping in flat.
             PhotoHero(
                 meal = meal,
                 canDelete = state.canDeleteMeal,
@@ -186,6 +318,7 @@ private fun MealDetailBody(
                 onBack = onBack,
                 onDelete = onRequestDeleteMeal,
                 onShare = { onIntent(MealDetailIntent.ShareTapped) },
+                modifier = Modifier.frRevealScale(),
             )
 
             Column(
@@ -194,20 +327,25 @@ private fun MealDetailBody(
                     .padding(horizontal = Spacing.md, vertical = Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
-                AuthorRow(meal)
+                Box(modifier = Modifier.frRiseIn(delayMillis = 0)) { AuthorRow(meal) }
 
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                Column(
+                    modifier = Modifier.frRiseIn(delayMillis = 60),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                ) {
                     FrText(text = meal.dishName, style = MaterialTheme.typography.headlineMedium)
                     if (meal.description.isNotBlank()) {
                         FrText(text = meal.description, style = MaterialTheme.typography.bodyLarge)
                     }
                 }
 
-                if (meal.ingredients.isNotEmpty()) IngredientChips(meal.ingredients)
+                if (meal.ingredients.isNotEmpty()) {
+                    Box(modifier = Modifier.frRiseIn(delayMillis = 120)) { IngredientChips(meal.ingredients) }
+                }
 
-                LocationSection(meal)
+                Box(modifier = Modifier.frRiseIn(delayMillis = 120)) { LocationSection(meal) }
 
-                ScoreStoryCard(meal)
+                Box(modifier = Modifier.frRiseIn(delayMillis = 180)) { ScoreStoryCard(meal) }
 
                 RatingSection(meal = meal, pendingRate = state.pendingRate, onIntent = onIntent)
 
@@ -229,7 +367,12 @@ private fun MealDetailBody(
             sendEnabled = !state.isPostingComment && state.commentInput.isNotBlank(),
             onChange = { onIntent(MealDetailIntent.CommentInputChanged(it)) },
             onSend = { onIntent(MealDetailIntent.PostComment) },
-            modifier = Modifier.align(Alignment.BottomCenter),
+            // imePadding lifts the composer to sit just above the keyboard while the
+            // scroll content behind it stays full-height (the scaffold no longer eats
+            // the IME). The composer is always visible, so no scroll/bring-into-view jump.
+            // frContentWidth caps + centers it to match the capped content column on wide
+            // screens (no-op fill on phones).
+            modifier = Modifier.align(Alignment.BottomCenter).frContentWidth().imePadding(),
         )
     }
 
@@ -257,6 +400,7 @@ private fun PhotoHero(
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val semantic = LocalFrSemanticColors.current
     // Pinch-to-zoom that snaps back on release. Two-finger only, so single-finger drags still
@@ -265,7 +409,7 @@ private fun PhotoHero(
     val offset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
     val scope = rememberCoroutineScope()
     Box(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
             .clipToBounds(),
@@ -431,17 +575,26 @@ private fun ScoreStoryCard(meal: FeedMealUi) {
     val avgRounded = (kotlin.math.round(avg * 10) / 10.0).toString()
     FrCard(modifier = Modifier.fillMaxWidth()) {
         SectionEyebrow(resolve(FeedStringKey.CrewScoreLabel))
-        Spacer(Modifier.height(Spacing.xs))
-        FrText(text = avgRounded, style = FrTextStyles.statNumberLarge, color = MaterialTheme.colorScheme.primary)
-        FrText(
-            text = resolve(FeedStringKey.RatingSummary, avgRounded, meal.ratingCount),
-            style = FrTextStyles.statNumberSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Spacer(Modifier.height(Spacing.sm))
+        // The big average and its "/10 · N votes" caption read as one unit: baseline-aligned, snug,
+        // with the headline number carrying the weight and the summary trailing it quietly.
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            FrText(text = avgRounded, style = FrTextStyles.statNumberLarge, color = MaterialTheme.colorScheme.primary)
+            FrText(
+                text = resolve(FeedStringKey.RatingSummary, avgRounded, meal.ratingCount),
+                style = FrTextStyles.statNumberSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = Spacing.xs),
+            )
+        }
         if (meal.votes.isNotEmpty()) {
-            Spacer(Modifier.height(Spacing.sm))
+            Spacer(Modifier.height(Spacing.md))
+            // Memoized so the histogram isn't rebuilt on unrelated recompositions.
+            val voteHistogram = remember(meal.votes) {
+                meal.votes.groupingBy { it.score.coerceIn(Score.MIN, Score.MAX) }.eachCount()
+            }
             FrVoteBars(
-                votes = meal.votes.groupingBy { it.score.coerceIn(Score.MIN, Score.MAX) }.eachCount(),
+                votes = voteHistogram,
                 maxScore = Score.MAX,
                 hotThreshold = Score.MAX - 1,
                 modifier = Modifier.fillMaxWidth(),
@@ -493,11 +646,22 @@ private fun RatingSection(meal: FeedMealUi, pendingRate: Boolean, onIntent: (Mea
 
 @Composable
 private fun VotersCard(meal: FeedMealUi) {
-    val semantic = LocalFrSemanticColors.current
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         SectionEyebrow(resolve(FeedStringKey.VotersLabel))
+        // Memoized so the sort isn't rerun on unrelated recompositions.
+        val sortedVotes = remember(meal.votes) { meal.votes.sortedByDescending { it.score } }
         FrCard(modifier = Modifier.fillMaxWidth()) {
-            meal.votes.sortedByDescending { it.score }.forEachIndexed { index, v ->
+            sortedVotes.forEachIndexed { index, v ->
+                // Hairline between entries (not above the first) so the leaderboard reads as
+                // distinct rows rather than one run-together block.
+                if (index > 0) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant),
+                    )
+                }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
@@ -553,10 +717,7 @@ private fun CommentsSection(
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         SectionEyebrow(resolve(FeedStringKey.CommentsTitle))
         when {
-            state.commentsLoading && state.commentRows.isEmpty() -> Box(
-                modifier = Modifier.fillMaxWidth().padding(Spacing.md),
-                contentAlignment = Alignment.Center,
-            ) { FrProgressIndicator() }
+            state.commentsLoading && state.commentRows.isEmpty() -> CommentsLoadingSkeleton()
             state.commentRows.isEmpty() && state.commentReadError == null ->
                 FrEmptyState(icon = FrIcons.Comment, headline = resolve(FeedStringKey.CommentsEmpty))
             state.commentReadError != null ->
@@ -641,6 +802,6 @@ private fun SectionEyebrow(text: String, modifier: Modifier = Modifier) {
         text = text.uppercase(),
         style = MaterialTheme.typography.labelMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier,
+        modifier = modifier.semantics { heading() },   // WCAG 2.4.10 heading navigation
     )
 }

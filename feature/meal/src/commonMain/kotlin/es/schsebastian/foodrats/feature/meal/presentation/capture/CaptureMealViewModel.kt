@@ -1,5 +1,9 @@
 package es.schsebastian.foodrats.feature.meal.presentation.capture
 
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.CaptureSource
+import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -16,6 +20,7 @@ class CaptureMealViewModel(
     private val updateDraft: UpdateMealDraftUseCase,
     private val sessionProvider: SessionProvider,
     private val crewMembership: CrewMembershipPort,
+    private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<CaptureMealState, CaptureMealIntent, CaptureMealEffect>(CaptureMealState()) {
 
     override suspend fun handle(intent: CaptureMealIntent) {
@@ -32,6 +37,7 @@ class CaptureMealViewModel(
                 update { it.copy(error = null) }
                 startDraft(session.accountId, crewIds).also { result ->
                     if (result is Result.Err) update { it.copy(error = MealStringKey.CaptureDraftFailed) }
+                    else analytics.track(AnalyticsEvent.MealCaptureStarted(CaptureSource.UNKNOWN))
                 }
             }
             is CaptureMealIntent.PhotoTaken -> {

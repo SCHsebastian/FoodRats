@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.ingredient.presentation.select
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.meal.DraftIngredients
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientCategory
@@ -109,6 +111,24 @@ class SelectIngredientsViewModelTest {
         vm.state.test {
             assertEquals(setOf(IngredientSlug.of("ing_1").getOrNull()!!), expectMostRecentItem().selected)
         }
+    }
+
+    @Test fun confirm_tracks_ingredients_confirmed_once_with_detected_and_confirmed_counts() = runTest {
+        // detected = {ing_1, ing_2}; the user confirms only ing_1 (drops ing_2),
+        // so the event must report detectedCount=2, confirmedCount=1.
+        val recorder = RecordingAnalyticsTracker()
+        val port = FakeDraftPort(
+            DraftIngredients(
+                selected = listOf(IngredientSlug.of("ing_1").getOrNull()!!),
+                detected = listOf(IngredientSlug.of("ing_1").getOrNull()!!, IngredientSlug.of("ing_2").getOrNull()!!),
+            ),
+        )
+        val vm = SelectIngredientsViewModel(catalogUseCase((1..3).map { veg("ing_$it") }), port, recorder)
+        vm.onIntent(SelectIngredientsIntent.ConfirmAndExit)
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.IngredientsConfirmed(detectedCount = 2, confirmedCount = 1)),
+            recorder.events.toList(),
+        )
     }
 
     private fun veg(slug: String) = Ingredient(IngredientSlug.of(slug).getOrNull()!!, slug, IngredientCategory.Vegetable)

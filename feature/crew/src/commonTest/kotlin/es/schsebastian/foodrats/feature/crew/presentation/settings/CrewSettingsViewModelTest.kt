@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -142,9 +143,10 @@ class CrewSettingsViewModelTest {
     }
 
     @Test
-    fun save_crew_name_success_keeps_state_clean() = runTest {
+    fun save_crew_name_success_keeps_state_clean_and_tracks_crew_renamed() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val vm = buildVm(ownerId, repo)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ownerId, repo, analytics)
 
         vm.onIntent(CrewSettingsIntent.CrewNameChanged("Renamed Crew"))
         vm.onIntent(CrewSettingsIntent.SaveCrewName)
@@ -152,18 +154,21 @@ class CrewSettingsViewModelTest {
         assertEquals(false, vm.state.value.isSavingCrewName)
         assertNull(vm.state.value.error)
         assertEquals(Pair(crewId, "Renamed Crew"), repo.lastRename)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.CrewRenamed(crewId)), analytics.events.toList())
     }
 
     @Test
-    fun save_crew_name_fails_with_authorization_not_owner_when_non_owner() = runTest {
+    fun save_crew_name_fails_with_authorization_not_owner_when_non_owner_and_does_not_track() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val vm = buildVm(memberId, repo)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(memberId, repo, analytics)
 
         vm.onIntent(CrewSettingsIntent.CrewNameChanged("Hostile Rename"))
         vm.onIntent(CrewSettingsIntent.SaveCrewName)
 
         assertEquals(CrewError.Authorization.NotOwner, vm.state.value.error)
         assertEquals(false, vm.state.value.isSavingCrewName)
+        assertTrue(analytics.events.isEmpty())
     }
 
     @Test
@@ -179,9 +184,10 @@ class CrewSettingsViewModelTest {
     }
 
     @Test
-    fun owner_toggles_blind_voting_on_and_state_reflects_it() = runTest {
+    fun owner_toggles_blind_voting_on_and_state_reflects_it_and_tracks_setting_changed() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val vm = buildVm(ownerId, repo)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ownerId, repo, analytics)
         assertEquals(false, vm.state.value.crew?.blindVoting)
 
         vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(true))
@@ -190,12 +196,17 @@ class CrewSettingsViewModelTest {
         assertEquals(true, vm.state.value.crew?.blindVoting)
         assertEquals(false, vm.state.value.isSavingBlindVoting)
         assertNull(vm.state.value.error)
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.BLIND_VOTING, enabled = true)),
+            analytics.events.toList(),
+        )
     }
 
     @Test
-    fun non_owner_toggle_blind_voting_surfaces_authorization_error() = runTest {
+    fun non_owner_toggle_blind_voting_surfaces_authorization_error_and_does_not_track() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val vm = buildVm(memberId, repo)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(memberId, repo, analytics)
 
         vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(true))
 
@@ -203,14 +214,27 @@ class CrewSettingsViewModelTest {
         assertEquals(false, vm.state.value.isSavingBlindVoting)
         assertNull(repo.lastSetBlindVoting)
         assertEquals(false, vm.state.value.crew?.blindVoting)
+        assertTrue(analytics.events.isEmpty())
     }
 
     @Test
-    fun leave_crew_emits_left_effect_on_success() = runTest {
+    fun share_link_tapped_tracks_crew_invite_shared() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ownerId, repo, analytics)
+
+        vm.onIntent(CrewSettingsIntent.ShareLinkTapped)
+
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.CrewInviteShared(crewId)), analytics.events.toList())
+    }
+
+    @Test
+    fun leave_crew_emits_left_effect_on_success_and_tracks_crew_left() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew)).apply {
             nextLeave = Result.success(Unit)
         }
-        val vm = buildVm(memberId, repo)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(memberId, repo, analytics)
 
         vm.effects.test {
             vm.onIntent(CrewSettingsIntent.Leave)
@@ -218,28 +242,32 @@ class CrewSettingsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(false, vm.state.value.isLeaving)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.CrewLeft(crewId)), analytics.events.toList())
         // Note: after a successful leave the crew is removed from the fake repo, so
         // observeCrew re-emits NotFound — that error surfacing back onto state is the
         // expected behavior (the screen has navigated away by then).
     }
 
     @Test
-    fun leave_crew_error_surfaces_on_state() = runTest {
+    fun leave_crew_error_surfaces_on_state_and_does_not_track() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew)).apply {
             nextLeave = Result.failure(CrewError.Backend.Network)
         }
-        val vm = buildVm(memberId, repo)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(memberId, repo, analytics)
 
         vm.onIntent(CrewSettingsIntent.Leave)
 
         assertEquals(CrewError.Backend.Network, vm.state.value.error)
         assertEquals(false, vm.state.value.isLeaving)
+        assertTrue(analytics.events.isEmpty())
     }
 
     @Test
-    fun confirm_delete_emits_deleted_effect_on_success_for_owner() = runTest {
+    fun confirm_delete_emits_deleted_effect_on_success_for_owner_and_tracks_crew_deleted() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val vm = buildVm(ownerId, repo)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ownerId, repo, analytics)
 
         vm.effects.test {
             vm.onIntent(CrewSettingsIntent.ConfirmDelete)
@@ -249,6 +277,7 @@ class CrewSettingsViewModelTest {
         assertEquals(crewId, repo.lastDelete)
         assertEquals(false, vm.state.value.isDeleting)
         assertEquals(false, vm.state.value.showDeleteConfirm)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.CrewDeleted(crewId)), analytics.events.toList())
     }
 
     @Test

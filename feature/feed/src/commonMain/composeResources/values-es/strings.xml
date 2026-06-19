@@ -3,6 +3,7 @@
     <string name="feed_title">Hoy</string>
     <string name="feed_empty_headline">Aún no hay nada</string>
     <string name="feed_empty_subtext">Nadie ha publicado una comida hoy.</string>
+    <string name="feed_empty_subtext_past">Nadie publicó una comida ese día.</string>
     <string name="feed_prev_day">Día anterior</string>
     <string name="feed_next_day">Día siguiente</string>
     <string name="feed_no_active_crew_headline">Sin grupo seleccionado</string>
@@ -13,9 +14,15 @@
     <string name="feed_error_crew_not_found">Grupo no encontrado.</string>
     <string name="feed_error_unavailable">No se ha podido cargar el feed. Inténtalo de nuevo.</string>
     <string name="feed_yesterday">Ayer</string>
-    <string name="feed_plates_count">%1$d platos</string>
+    <plurals name="feed_plates_count">
+        <item quantity="one">%1$d plato</item>
+        <item quantity="other">%1$d platos</item>
+    </plurals>
     <string name="feed_time_of_day">%1$s:%2$s</string>
-    <string name="feed_rating_summary_votes">%1$s ★ · %2$d votos</string>
+    <plurals name="feed_rating_summary_votes">
+        <item quantity="one">%1$s ★ · %2$d voto</item>
+        <item quantity="other">%1$s ★ · %2$d votos</item>
+    </plurals>
     <string name="feed_slot_breakfast">Desayuno</string>
     <string name="feed_slot_lunch">Almuerzo</string>
     <string name="feed_slot_dinner">Cena</string>
@@ -41,6 +48,8 @@
     <string name="feed_location_map_cta">Abrir ubicación en mapas</string>
     <string name="feed_ingredients_heading">Ingredientes</string>
     <string name="feed_ingredient_separator">,</string>
+    <!-- Chip de desbordamiento en la tira compacta de ingredientes de la fila del feed. -->
+    <string name="feed_more_ingredients">+%1$d</string>
     <string name="feed_rate_error_cannot_rate_own_meal">No puedes puntuar tu propio plato</string>
     <string name="feed_rate_error_already_rated">Ya votaste</string>
     <string name="feed_rate_error_window_closed">Ya pasó la ventana de voto</string>

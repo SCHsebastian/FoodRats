@@ -279,6 +279,46 @@ class StatsViewModelTest {
         }
     }
 
+    // ───────────────────────────── analytics: streak / leaderboard views ─────────────────────────────
+
+    @Test fun streak_viewed_fires_once_on_init_default_week() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        makeVm(analytics = analytics)
+        assertEquals(
+            1,
+            analytics.events.filterIsInstance<AnalyticsEvent.StreakViewed>().size,
+        )
+        // Landing on Week must NOT emit a leaderboard view.
+        assertEquals(
+            0,
+            analytics.events.filterIsInstance<AnalyticsEvent.LeaderboardViewed>().size,
+        )
+    }
+
+    @Test fun leaderboard_viewed_fires_on_first_select_month_and_historic() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = makeVm(analytics = analytics)
+        vm.onIntent(StatsIntent.SelectTab(Tab.Month))
+        vm.onIntent(StatsIntent.SelectTab(Tab.Historic))
+        assertEquals(
+            2,
+            analytics.events.filterIsInstance<AnalyticsEvent.LeaderboardViewed>().size,
+        )
+        assertEquals("leaderboard_viewed", AnalyticsEvent.LeaderboardViewed.name)
+    }
+
+    @Test fun reselecting_an_already_viewed_leaderboard_tab_does_not_refire() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = makeVm(analytics = analytics)
+        vm.onIntent(StatsIntent.SelectTab(Tab.Month))
+        vm.onIntent(StatsIntent.SelectTab(Tab.Week))
+        vm.onIntent(StatsIntent.SelectTab(Tab.Month))
+        assertEquals(
+            1,
+            analytics.events.filterIsInstance<AnalyticsEvent.LeaderboardViewed>().size,
+        )
+    }
+
     // ───────────────────────────── share (spec §8.2 / §12) ─────────────────────────────
 
     @Test fun sharing_streak_invokes_launcher_and_fires_streak_event_on_success() = runTest {

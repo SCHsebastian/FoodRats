@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
@@ -21,7 +23,15 @@ fun FrLabeledTextField(
 ) {
     Column(modifier = modifier) {
         FrText(text = label)
-        FrTextField(value = value, onValueChange = onValueChange, isError = isError)
+        // The label is drawn above as a sibling, so the field itself has no Material label and
+        // would read as an unnamed edit box. Mirror the label into the field's accessible name
+        // (WCAG 4.1.2 / 3.3.2) without rendering a second visible label.
+        FrTextField(
+            value = value,
+            onValueChange = onValueChange,
+            isError = isError,
+            modifier = Modifier.semantics { contentDescription = label },
+        )
         helper?.let { FrText(text = it) }
     }
 }

@@ -21,6 +21,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
@@ -29,9 +31,13 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
+import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -62,16 +68,15 @@ fun StatsScreen(
     FrScreenScaffold(contentWindowInsets = WindowInsets(0)) {
         Box(modifier = Modifier.fillMaxSize()) {
         androidx.compose.foundation.layout.Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().frContentWidth(Breakpoints.contentMax),
         ) {
             FrUploadProgressBar(visible = state.isUploadActive)
             when {
                 state.snapshot == null && state.error == null -> LoadingSkeleton()
-                state.error != null -> {
-                    Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg)) {
-                        FrErrorBanner(text = resolve(state.error!!.toStringKey()))
-                    }
-                }
+                state.error != null -> ErrorState(
+                    message = resolve(state.error!!.toStringKey()),
+                    onRetry = { vm.onIntent(StatsIntent.Refresh) },
+                )
                 state.snapshot != null -> StatsContent(
                     state = state,
                     onSelectTab = { vm.onIntent(StatsIntent.SelectTab(it)) },
@@ -102,6 +107,26 @@ fun StatsScreen(
             )
         }
         }
+    }
+}
+
+/**
+ * Full-screen load failure: the banner rises in, then a Secondary "Retry" button follows it with a
+ * short cascade delay. Retry re-runs the clean reload path ([StatsIntent.Refresh] → epoch bump).
+ */
+@Composable
+private fun ErrorState(message: String, onRetry: () -> Unit) {
+    androidx.compose.foundation.layout.Column(
+        modifier = Modifier.fillMaxSize().padding(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
+    ) {
+        FrErrorBanner(text = message, modifier = Modifier.frRiseIn())
+        FrButton(
+            label = resolve(StatsStringKey.Retry),
+            onClick = onRetry,
+            variant = FrButtonVariant.Secondary,
+            modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 70),
+        )
     }
 }
 
@@ -151,7 +176,8 @@ private fun StatsContent(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
-        item { FrStreakHeroCard(hero = snap.hero) }
+        // Signature: the streak hero "develops in" as the focal surface of the screen.
+        item { FrStreakHeroCard(hero = snap.hero, modifier = Modifier.frRevealScale()) }
         // Share the personal streak to Stories (spec §8.2). Shown only when there is a streak worth
         // celebrating; the button shows a spinner while the card rasterizes.
         if (snap.hero.personalStreak.days > 0) {
@@ -222,44 +248,53 @@ private fun TabBody(
         )
         return
     }
+    // Each award/cook/roast/ingredient block rises in on a small staggered cascade so the leaderboard
+    // assembles top-down. A mutable index walks the rendered blocks; the per-step delay is capped
+    // (riseDelay) so blocks far down the column still pop promptly when scrolled into view.
+    var cascade = 0
+    @Composable
+    fun riseMod(): Modifier = Modifier.frRiseIn(delayMillis = riseDelay(cascade++))
     androidx.compose.foundation.layout.Column(
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        FrWindowSummaryCard(window = window)
+        FrWindowSummaryCard(window = window, modifier = riseMod())
         window.bestMeal?.let { award ->
-            FrBestPlatePodium(award = award)
+            FrBestPlatePodium(award = award, modifier = riseMod())
             // Share the best plate to Stories (spec §8.2).
             FrButton(
                 label = resolve(StatsStringKey.ShareAward),
                 onClick = { onShareAward(award.mealId.value) },
                 variant = FrButtonVariant.Secondary,
                 enabled = !sharePreparing,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = riseDelay(cascade++)),
             )
         }
-        window.mostVotedMeal?.let { FrMostVotedPlate(award = it) }
+        window.mostVotedMeal?.let { FrMostVotedPlate(award = it, modifier = riseMod()) }
         if (window.bestCook != null || window.mostProlific != null) {
             FrText(
                 text = resolve(StatsStringKey.CooksSectionTitle),
-                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                modifier = riseMod().semantics { heading() },   // WCAG 2.4.10
             )
-            window.bestCook?.let { FrCookAwardCard(award = it) }
-            window.mostProlific?.let { FrCookAwardCard(award = it) }
+            window.bestCook?.let { FrCookAwardCard(award = it, modifier = riseMod()) }
+            window.mostProlific?.let { FrCookAwardCard(award = it, modifier = riseMod()) }
         }
         window.mostCriticized?.let {
             FrText(
                 text = resolve(StatsStringKey.RoastSectionTitle),
-                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                modifier = riseMod().semantics { heading() },   // WCAG 2.4.10
             )
-            FrRoastCard(award = it)
+            FrRoastCard(award = it, modifier = riseMod())
         }
-        window.mostUsedIngredient?.let { FrMostUsedIngredientCard(usage = it) }
+        window.mostUsedIngredient?.let { FrMostUsedIngredientCard(usage = it, modifier = riseMod()) }
         if (window.topByMember.isNotEmpty()) {
             FrText(
                 text = resolve(StatsStringKey.TopIngredientByMemberTitle),
-                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
+                modifier = riseMod().semantics { heading() },   // WCAG 2.4.10
             )
-            window.topByMember.forEach { FrMemberIngredientRow(member = it) }
+            window.topByMember.forEach { FrMemberIngredientRow(member = it, modifier = riseMod()) }
         }
     }
 }
@@ -308,6 +343,9 @@ private fun LoadingSkeleton() {
         )
     }
 }
+
+/** Cascade delay for the [index]-th TabBody block: 55ms per step, capped at 330ms so deep blocks pop promptly. */
+private fun riseDelay(index: Int): Int = (index * 55).coerceAtMost(330)
 
 private fun emptyKeyFor(tab: Tab): StatsStringKey = when (tab) {
     Tab.Week     -> StatsStringKey.WindowEmptyWeek

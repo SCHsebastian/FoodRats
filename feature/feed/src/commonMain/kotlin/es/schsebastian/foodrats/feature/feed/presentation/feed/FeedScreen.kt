@@ -3,32 +3,45 @@ package es.schsebastian.foodrats.feature.feed.presentation.feed
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
-import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrFeedLayout
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
+import es.schsebastian.foodrats.feature.feed.i18n.FeedPluralKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedDayHeader
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrFeedMealRow
@@ -37,6 +50,9 @@ import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.minus
 import org.koin.compose.viewmodel.koinViewModel
+
+/** Number of meal-row placeholders shown while the first day window loads. */
+private const val FEED_SKELETON_ROWS = 5
 
 @Composable
 fun FeedScreen(
@@ -84,10 +100,16 @@ fun FeedScreen(
                 }
             },
             list = {
+                // Read the state fields once; the body branches off these locals.
+                val meals = state.meals
+                val error = state.error
                 Column(modifier = Modifier.fillMaxSize()) {
                     when {
-                        state.error is FeedError.Session.NoActiveCrew -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        error is FeedError.Session.NoActiveCrew -> {
+                            Box(
+                                modifier = Modifier.frContentWidth().fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
                                 FrEmptyState(
                                     icon = FrIcons.Group,
                                     headline = resolve(FeedStringKey.NoActiveCrewHeadline),
@@ -102,24 +124,33 @@ fun FeedScreen(
                                 )
                             }
                         }
-                        state.isLoading && state.meals.isEmpty() -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                FrProgressIndicator()
-                            }
+                        state.isLoading && meals.isEmpty() -> {
+                            FeedLoadingSkeleton()
                         }
-                        state.meals.isEmpty() && state.error == null -> {
-                            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        meals.isEmpty() && error == null -> {
+                            // "today" copy only when the cursor is on today (or today is
+                            // still resolving); past days get the past-tense variant so we
+                            // don't claim "nobody posted today" while viewing last Tuesday.
+                            val viewingToday = state.today == null ||
+                                state.day?.day?.date == state.today
+                            Box(
+                                modifier = Modifier.frContentWidth().fillMaxSize(),
+                                contentAlignment = Alignment.Center,
+                            ) {
                                 FrEmptyState(
                                     icon = FrIcons.GalleryImport,
                                     headline = resolve(FeedStringKey.EmptyHeadline),
-                                    subtext = resolve(FeedStringKey.EmptySubtext),
+                                    subtext = resolve(
+                                        if (viewingToday) FeedStringKey.EmptySubtext
+                                        else FeedStringKey.EmptySubtextPast,
+                                    ),
                                 )
                             }
                         }
                         else -> {
                             val dayIso = state.day?.day?.date?.toString().orEmpty()
                             LazyColumn(
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier.frContentWidth().fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     horizontal = Spacing.md,
                                     vertical = Spacing.sm,
@@ -127,25 +158,29 @@ fun FeedScreen(
                                 verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                             ) {
                                 item(key = "plates-count") {
-                                    FrText(
-                                        text = resolve(FeedStringKey.PlatesCount, state.meals.size),
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = Spacing.xs),
+                                    PlatesCountHeader(
+                                        count = meals.size,
+                                        modifier = Modifier.frRiseIn(delayMillis = 0),
                                     )
                                 }
-                                items(state.meals, key = { it.mealId }) { ui ->
+                                itemsIndexed(meals, key = { _, ui -> ui.mealId }) { index, ui ->
                                     FrFeedMealRow(
                                         ui = ui,
                                         onClick = { onMealClick(ui.mealId, dayIso) },
                                         onReact = { vm.onIntent(FeedIntent.ReactMeal(ui.mealId)) },
-                                        modifier = Modifier.animateItem(),
+                                        // Bespoke fade+rise cascade on first compose. The window is
+                                        // kept small (index % 6) so rows scrolled into view later
+                                        // still pop promptly instead of waiting on a long stagger.
+                                        // animateItem handles reorder/insert placement underneath.
+                                        modifier = Modifier
+                                            .animateItem()
+                                            .frRiseIn(delayMillis = (index % 6) * 40),
                                     )
                                 }
                             }
                         }
                     }
-                    state.error?.let { err ->
+                    error?.let { err ->
                         if (err !is FeedError.Session.NoActiveCrew) {
                             FrErrorBanner(text = resolve(err.toStringKey()))
                         }
@@ -159,5 +194,75 @@ fun FeedScreen(
                 }
             },
         )
+    }
+}
+
+/**
+ * The "N plates" list header: a clearer, slightly weightier label than the old muted caption — it
+ * names the day's haul as a small headline (onSurface, semibold) with comfortable breathing room
+ * below it so the first card doesn't crowd it. The count + pluralization come from
+ * [FeedPluralKey.PlatesCount] (i18n owns "plate"/"plates"); it rises first in the entrance cascade.
+ */
+@Composable
+private fun PlatesCountHeader(count: Int, modifier: Modifier = Modifier) {
+    FrText(
+        text = resolvePlural(FeedPluralKey.PlatesCount, count),
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = modifier.padding(horizontal = Spacing.xs, vertical = Spacing.xs),
+    )
+}
+
+/**
+ * Loading placeholder for the feed list: a short stack of shimmer rows that mimic
+ * [FrFeedMealRow]'s silhouette (square thumbnail + a title line and a subtitle line),
+ * capped to the same content width as the loaded list so the layout doesn't jump when
+ * meals arrive. Purely decorative — no text, no content descriptions.
+ */
+@Composable
+private fun FeedLoadingSkeleton() {
+    Column(
+        modifier = Modifier
+            .frContentWidth()
+            .fillMaxSize()
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        repeat(FEED_SKELETON_ROWS) {
+            FeedSkeletonRow()
+        }
+    }
+}
+
+@Composable
+private fun FeedSkeletonRow() {
+    FrCard(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(Radius.lg),
+        contentPadding = PaddingValues(Spacing.sm),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        ) {
+            FrShimmerBox(
+                modifier = Modifier.size(Sizes.feedRowThumbnail),
+                shape = RoundedCornerShape(Radius.md),
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                FrShimmerBox(
+                    modifier = Modifier.fillMaxWidth(0.6f).height(18.dp),
+                    shape = RoundedCornerShape(Radius.sm),
+                )
+                FrShimmerBox(
+                    modifier = Modifier.fillMaxWidth(0.35f).height(14.dp),
+                    shape = RoundedCornerShape(Radius.sm),
+                )
+            }
+        }
     }
 }

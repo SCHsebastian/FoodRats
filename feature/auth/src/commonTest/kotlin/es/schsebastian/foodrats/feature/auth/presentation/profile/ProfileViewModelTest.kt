@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.account.DataExportPort
 import es.schsebastian.foodrats.core.domain.account.ExportReady
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
@@ -182,6 +183,30 @@ class ProfileViewModelTest {
         }
     }
 
+    /** [ThemeModePort] whose `set` always fails — for asserting the error branch fires no event. */
+    private object FailingThemeModePort : ThemeModePort {
+        override val mode: Flow<ThemeMode> = flowOf(ThemeMode.System)
+        override suspend fun set(mode: ThemeMode): Result<Unit, ThemePreferenceError> =
+            Result.failure(ThemePreferenceError.Persist.Unavailable)
+    }
+
+    /** [LocalePort] whose `set` always fails. */
+    private object FailingLocalePort : LocalePort {
+        override val locale: Flow<AppLocale> = flowOf(AppLocale.System)
+        override suspend fun set(locale: AppLocale): Result<Unit, LocalePreferenceError> =
+            Result.failure(LocalePreferenceError.Persist.Unavailable)
+    }
+
+    /** [MealReminderSchedulePort] whose `set` always fails (the observed times never change). */
+    private class FailingMealReminderSchedulePort(
+        initial: List<LocalTime> = MealReminderSchedulePort.DEFAULT_TIMES,
+    ) : MealReminderSchedulePort {
+        private val state = MutableStateFlow(initial)
+        override val times: Flow<List<LocalTime>> = state.asStateFlow()
+        override suspend fun set(times: List<LocalTime>): Result<Unit, MealReminderPreferenceError> =
+            Result.failure(MealReminderPreferenceError.Persist.Unavailable)
+    }
+
     private fun buildViewModel(
         deletionResult: Result<Unit, AccountDeletionError>,
         analytics: RecordingAnalyticsTracker,
@@ -191,21 +216,23 @@ class ProfileViewModelTest {
             Result.success(ExportReady(downloadUrl = "https://example.test/x", expiresAtMs = 0L)),
         ),
         reminders: MealReminderSchedulePort = FakeMealReminderSchedulePort(),
+        themePort: ThemeModePort = NoopThemeModePort,
+        localePort: LocalePort = NoopLocalePort,
     ): ProfileViewModel {
         val session = FixedSessionProvider(Session(accountId = accountId, activeCrewId = null))
         val writePort = FakeAccountWritePort()
         return ProfileViewModel(
             accountRead = FakeAccountReadPort(account),
             session = session,
-            themePort = NoopThemeModePort,
-            localePort = NoopLocalePort,
+            themePort = themePort,
+            localePort = localePort,
             notificationsPort = NoopNotificationsPreferencePort,
             mealRemindersPort = reminders,
             updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
             updateAvatar = UpdateMyAvatarUseCase(writePort, session),
             signOut = signOut,
-            setThemeMode = SetThemeModeUseCase(NoopThemeModePort),
-            setLocale = SetLocaleUseCase(NoopLocalePort),
+            setThemeMode = SetThemeModeUseCase(themePort),
+            setLocale = SetLocaleUseCase(localePort),
             setMealReminders = SetMealRemindersUseCase(reminders),
             setNotificationsEnabled = SetNotificationsEnabledUseCase(NoopNotificationsPreferencePort),
             enableNotifications = EnableNotificationsUseCase(NoopNotificationPermissionPort, NoopNotificationsPreferencePort),
@@ -481,5 +508,145 @@ class ProfileViewModelTest {
         }
 
         assertEquals(1, export.calls)
+    }
+
+    // ─────────────────────── setting_changed analytics ───────────────────────
+
+    @Test fun theme_change_ok_fires_setting_changed_theme() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(Result.success(Unit), analytics, RecordingSignOutPort())
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ThemeSelected(ThemeMode.Dark))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.THEME)),
+            analytics.events,
+        )
+    }
+
+    @Test fun theme_change_err_fires_nothing() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            themePort = FailingThemeModePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ThemeSelected(ThemeMode.Dark))
+            assertEquals(AuthStringKey.ProfileThemePersistFailed, expectMostRecentItem().themeError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test fun locale_change_ok_fires_setting_changed_language() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(Result.success(Unit), analytics, RecordingSignOutPort())
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.LocaleSelected(AppLocale.En))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.LANGUAGE)),
+            analytics.events,
+        )
+    }
+
+    @Test fun locale_change_err_fires_nothing() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            localePort = FailingLocalePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.LocaleSelected(AppLocale.En))
+            assertEquals(AuthStringKey.ProfileLanguagePersistFailed, expectMostRecentItem().localeError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test fun notifications_toggle_ok_fires_setting_changed_with_enabled() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(Result.success(Unit), analytics, RecordingSignOutPort())
+
+        vm.state.test {
+            // Disable path persists the pref (no OS gate) and resolves Ok.
+            vm.onIntent(ProfileIntent.NotificationsToggled(false))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.NOTIFICATIONS, enabled = false)),
+            analytics.events,
+        )
+    }
+
+    @Test fun reminder_add_ok_fires_setting_changed_meal_reminders() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(14, 0))),
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderAddOpen)
+            vm.onIntent(ProfileIntent.ReminderHourSelected(8))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.MEAL_REMINDERS)),
+            analytics.events,
+        )
+    }
+
+    @Test fun reminder_remove_ok_fires_setting_changed_meal_reminders() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(9, 0), LocalTime(18, 0))),
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderRemove(0))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // doSetReminders is shared by add/edit and remove — the remove path emits MEAL_REMINDERS too.
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.MEAL_REMINDERS)),
+            analytics.events,
+        )
+    }
+
+    @Test fun reminder_change_err_fires_nothing() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            reminders = FailingMealReminderSchedulePort(listOf(LocalTime(14, 0))),
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderAddOpen)
+            vm.onIntent(ProfileIntent.ReminderHourSelected(8))
+            assertEquals(AuthStringKey.ProfileRemindersPersistFailed, expectMostRecentItem().reminderError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertTrue(analytics.events.isEmpty())
     }
 }

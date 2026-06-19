@@ -41,7 +41,13 @@ class StatsViewModel(
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<StatsState, StatsIntent, StatsEffect>(StatsState()) {
 
+    /** Leaderboard tabs (Month/Historic) already announced this VM lifetime; gates duplicate fires. */
+    private val leaderboardTabsViewed = mutableSetOf<Tab>()
+
     init {
+        // The streak hero is the landing surface (default Week tab) — one view per VM lifetime.
+        analytics.track(AnalyticsEvent.StreakViewed)
+
         uploadProgress.status
             .map { it is MealUploadStatus.Uploading }
             .distinctUntilChanged()
@@ -81,11 +87,17 @@ class StatsViewModel(
     }
 
     override suspend fun handle(intent: StatsIntent) = when (intent) {
-        is StatsIntent.SelectTab -> update {
-            it.copy(
-                selectedTab = intent.tab,
-                historicLoading = intent.tab == Tab.Historic && it.snapshot?.historic == null,
-            )
+        is StatsIntent.SelectTab -> {
+            // Leaderboard surfaces (Month/Historic) — first open of each tab per VM lifetime.
+            if (intent.tab != Tab.Week && leaderboardTabsViewed.add(intent.tab)) {
+                analytics.track(AnalyticsEvent.LeaderboardViewed)
+            }
+            update {
+                it.copy(
+                    selectedTab = intent.tab,
+                    historicLoading = intent.tab == Tab.Historic && it.snapshot?.historic == null,
+                )
+            }
         }
         StatsIntent.Refresh      -> update { it.copy(isRefreshing = true, epoch = it.epoch + 1) }
         StatsIntent.DismissError -> update { it.copy(error = null, historicError = null) }

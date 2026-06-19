@@ -12,6 +12,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -117,6 +118,9 @@ private fun ScoreCell(
         contentColor = onContainer,
         border = border,
         modifier = Modifier
+            // Keep the 40dp visual cell but guarantee a 48dp tap target (WCAG 2.5.5 / Material) —
+            // .selectable alone does not expand the touch area the way M3 RadioButton/Checkbox do.
+            .minimumInteractiveComponentSize()
             .size(Sizes.scoreCell)
             .semantics {
                 if (contentDescription != null) this.contentDescription = contentDescription

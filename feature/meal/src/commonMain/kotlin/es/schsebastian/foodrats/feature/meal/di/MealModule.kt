@@ -164,7 +164,16 @@ val mealModule = module {
     single<MealUploadProgressPort> { get<BackgroundMealUploadCoordinator>() }
     single<QueuedUploadActionsPort> { get<BackgroundMealUploadCoordinator>() }
 
-    viewModelOf(::CaptureMealViewModel)
+    // Explicit (not viewModelOf): the trailing analytics: AnalyticsPort param has a NoopAnalyticsTracker
+    // default, so viewModelOf would short-circuit graph resolution and inject the no-op instead of the
+    // real per-platform tracker. See the analytics-base convention in CLAUDE.md.
+    viewModel {
+        CaptureMealViewModel(
+            startDraft = get(), updateDraft = get(),
+            sessionProvider = get(), crewMembership = get(),
+            analytics = get(),
+        )
+    }
     viewModel {
         ComposePlateViewModel(
             updateDraft = get(), repository = get(), crewMembership = get(),

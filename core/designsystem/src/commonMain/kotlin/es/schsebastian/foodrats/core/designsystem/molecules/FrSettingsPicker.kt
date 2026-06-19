@@ -19,8 +19,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
@@ -56,21 +60,32 @@ fun FrSettingsPicker(
                 .padding(horizontal = Spacing.lg, vertical = Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
-            FrText(text = title, style = MaterialTheme.typography.titleMedium)
+            FrText(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() },
+            )
             options.forEach { (id, label) ->
                 Row(
+                    // One labelled radio node: the row owns selection (role + the merged label) and
+                    // a min 48dp target; the inner RadioButton is decorative (onClick = null) so
+                    // TalkBack announces "<label>, radio button, selected" instead of a bare,
+                    // unlabelled control (WCAG 4.1.2 / 2.5.5).
                     modifier = Modifier
                         .fillMaxWidth()
+                        .heightIn(min = Sizes.touchTarget)
                         .selectable(
                             selected = id == selectedId,
+                            role = Role.RadioButton,
                             onClick = { onSelect(id) },
                         )
+                        .semantics(mergeDescendants = true) {}
                         .padding(vertical = Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     RadioButton(
                         selected = id == selectedId,
-                        onClick = { onSelect(id) },
+                        onClick = null,
                         colors = RadioButtonDefaults.colors(
                             selectedColor = MaterialTheme.colorScheme.primary,
                         ),

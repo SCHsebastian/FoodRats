@@ -30,6 +30,21 @@ enum class PublishSource(val wire: String) {
 enum class CaptureSource(val wire: String) {
     CAMERA("camera"),
     GALLERY("gallery"),
+    UNKNOWN("unknown"),
+}
+
+/**
+ * The user-changeable persisted preferences, collapsed under one `setting_changed` event instead of
+ * a leaf-per-toggle. Boolean toggles ([NOTIFICATIONS], [BLIND_VOTING]) carry their new value; the
+ * others omit the target value on purpose (a locale tag could read as locale PII; the analytical
+ * question is whether a retained user tunes a setting, not to what).
+ */
+enum class AppSetting(val wire: String) {
+    THEME("theme"),
+    LANGUAGE("language"),
+    NOTIFICATIONS("notifications"),
+    MEAL_REMINDERS("meal_reminders"),
+    BLIND_VOTING("blind_voting"),
 }
 
 /** How the weekly-recap story was reached (roadmap §2.4). */

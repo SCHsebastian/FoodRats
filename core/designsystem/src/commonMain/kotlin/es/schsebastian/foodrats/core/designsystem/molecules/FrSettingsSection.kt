@@ -13,6 +13,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
@@ -45,7 +47,9 @@ fun FrSettingsSection(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             color = headerColor,
-            modifier = Modifier.padding(start = Spacing.md, bottom = Spacing.xs),
+            modifier = Modifier
+                .padding(start = Spacing.md, bottom = Spacing.xs)
+                .semantics { heading() },   // WCAG 2.4.10 — TalkBack heading navigation
         )
         subtitle?.let {
             FrText(

@@ -22,7 +22,8 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
  * Avatar preview (initials fallback) + change-avatar button. Tapping either is the edit
- * affordance — the avatar circle is decorative and stays out of the a11y tree.
+ * affordance — the avatar circle carries [changeLabel] as its click label so TalkBack
+ * announces the action (WCAG 4.1.2 / 2.5.3) instead of focusing a silent click target.
  *
  * Takes only primitives so domain-aware callers (Profile, CrewSettings, …) can drive it.
  */
@@ -46,7 +47,7 @@ fun FrAvatarPicker(
                 .size(Sizes.avatarLg)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .clickable(enabled = !busy) { onPickClick() },
+                .clickable(enabled = !busy, onClickLabel = changeLabel) { onPickClick() },
             contentAlignment = Alignment.Center,
         ) {
             if (!avatarUrl.isNullOrBlank()) {

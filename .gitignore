@@ -69,3 +69,6 @@ build/ios/
 # Ruby / Bundler local install path.
 vendor/bundle/
 .bundle/
+
+# Local test-account credentials (never commit).
+test-accounts.md

@@ -52,7 +52,7 @@ val authModule = module {
     // androidAuthModule() in FoodRatsApplication, authIosModule(...) on iOS.
     single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get(), get()) }
     single<SessionProvider> { get<AuthRepository>() }
-    single<SignOutPort> { AuthSignOutPort(get()) }
+    single<SignOutPort> { AuthSignOutPort(get(), get()) }
     single<AccountSnapshotSource> {
         FirebaseAccountSnapshotSource(
             firestore = get(),

@@ -28,12 +28,14 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrComposerHeroCard
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
 import es.schsebastian.foodrats.core.designsystem.templates.FrFormLayout
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -94,7 +96,9 @@ fun ComposePlateScreen(
         FrFormLayout {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.verticalScroll(rememberScrollState()),
+                modifier = Modifier
+                    .frContentWidth(Breakpoints.formMax)
+                    .verticalScroll(rememberScrollState()),
             ) {
                 AnimatedFormItem(delay = 0) {
                     DailyEmoteBadge(emote = emote, modifier = Modifier.padding(bottom = Spacing.sm))
