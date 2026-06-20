@@ -30,6 +30,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemin
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileViewModel
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInViewModel
@@ -80,6 +81,7 @@ val authModule = module {
     single<AccountDeletionPort> { FirebaseAccountDeletionPort(dispatchers = get()) }
     single<DataExportPort> { FirebaseDataExportPort(dispatchers = get()) }
     factoryOf(::UpdateMyDisplayNameUseCase)
+    factoryOf(::UpdateMyBioUseCase)
     factoryOf(::UpdateMyAvatarUseCase)
     factoryOf(::SetThemeModeUseCase)
     factoryOf(::SetLocaleUseCase)
@@ -103,6 +105,7 @@ val authModule = module {
             aiPreferencePort = get(),
             mealRemindersPort = get(),
             updateDisplayName = get(),
+            updateBio = get(),
             updateAvatar = get(),
             signOut = get(),
             setThemeMode = get(),

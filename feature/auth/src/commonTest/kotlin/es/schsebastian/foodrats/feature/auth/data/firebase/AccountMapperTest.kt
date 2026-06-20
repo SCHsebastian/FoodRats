@@ -62,4 +62,21 @@ class AccountMapperTest {
         assertEquals(0, account.dataConsentVersion)
         assertNull(account.dataConsentGrantedAt)
     }
+
+    @Test fun toAccount_maps_bio_string_to_bio_value_object() {
+        val account = validDto.copy(bio = "Home cook from Barcelona").toAccount()!!
+        assertEquals("Home cook from Barcelona", account.bio?.value)
+    }
+
+    @Test fun toAccount_maps_null_bio_to_null() {
+        val account = validDto.copy(bio = null).toAccount()!!
+        assertNull(account.bio)
+    }
+
+    @Test fun toAccount_silently_drops_overlong_bio() {
+        // A bio exceeding 100 chars (e.g. old data) is dropped rather than surfaced as a malformed value.
+        val overlong = "a".repeat(101)
+        val account = validDto.copy(bio = overlong).toAccount()!!
+        assertNull(account.bio)
+    }
 }

@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.data.firebase
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.core.domain.account.AccountWritePort
+import es.schsebastian.foodrats.core.domain.account.Bio
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -34,6 +35,17 @@ class FirestoreAccountWriter(
         runCatching {
             firestore.collection("accounts").document(accountId.value)
                 .update("displayName" to trimmed)
+            Result.success(Unit)
+        }.getOrElse { Result.failure(AccountWriteError.Backend.Unavailable) }
+    }
+
+    override suspend fun updateBio(
+        accountId: AccountId,
+        bio: Bio?,
+    ): Result<Unit, AccountWriteError> = withContext(dispatchers.io) {
+        runCatching {
+            firestore.collection("accounts").document(accountId.value)
+                .update("bio" to bio?.value)
             Result.success(Unit)
         }.getOrElse { Result.failure(AccountWriteError.Backend.Unavailable) }
     }

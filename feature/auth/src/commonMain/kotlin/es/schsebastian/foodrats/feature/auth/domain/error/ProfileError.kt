@@ -19,6 +19,7 @@ sealed interface ProfileError {
     sealed interface Validation : ProfileError {
         data object DisplayNameBlank : Validation
         data object DisplayNameTooLong : Validation
+        data object BioTooLong : Validation
         data object EmptyBytes : Validation
     }
 
@@ -72,6 +73,7 @@ sealed interface ProfileError {
 internal fun AccountWriteError.toProfileError(): ProfileError = when (this) {
     AccountWriteError.Validation.DisplayNameBlank -> ProfileError.Validation.DisplayNameBlank
     AccountWriteError.Validation.DisplayNameTooLong -> ProfileError.Validation.DisplayNameTooLong
+    AccountWriteError.Validation.BioTooLong -> ProfileError.Validation.BioTooLong
     AccountWriteError.Validation.EmptyBytes -> ProfileError.Validation.EmptyBytes
     AccountWriteError.Backend.Unavailable -> ProfileError.Backend.Unavailable
 }

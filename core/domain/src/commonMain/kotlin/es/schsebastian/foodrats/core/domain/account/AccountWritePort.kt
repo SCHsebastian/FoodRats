@@ -17,6 +17,16 @@ interface AccountWritePort {
     ): Result<Unit, AccountWriteError>
 
     /**
+     * Persists the account's personal bio. [bio] is the validated [Bio] value (null = clear).
+     * Validation (length cap) is enforced in the use-case layer via [Bio.of]; this method
+     * expects a pre-validated value and only handles the persistence boundary.
+     */
+    suspend fun updateBio(
+        accountId: AccountId,
+        bio: Bio?,
+    ): Result<Unit, AccountWriteError>
+
+    /**
      * Uploads [bytes] to Storage at `avatars/{accountId}.jpg`, writes the resulting
      * download URL to `accounts/{accountId}.avatarUrl`, and returns the URL so the
      * caller can fan it out to denormalized member caches.
@@ -31,6 +41,7 @@ sealed interface AccountWriteError {
     sealed interface Validation : AccountWriteError {
         data object DisplayNameBlank : Validation
         data object DisplayNameTooLong : Validation
+        data object BioTooLong : Validation
         data object EmptyBytes : Validation
     }
 

@@ -35,6 +35,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemin
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -52,6 +53,14 @@ data class ProfileState(
     val saveDisplayNameError: StringKey? = null,
     val isUploadingAvatar: Boolean = false,
     val uploadAvatarError: StringKey? = null,
+
+    // Bio — single-field editor in GeneralSection. editingBio is seeded from account.bio on
+    // first emission (mirrors editingDisplayName) and never overwritten by subsequent live
+    // emissions while the user is editing.
+    val editingBio: String = "",
+    val isSavingBio: Boolean = false,
+    val saveBioError: StringKey? = null,
+
     val isSigningOut: Boolean = false,
     val signOutError: StringKey? = null,
 
@@ -97,6 +106,8 @@ data class ProfileState(
 sealed interface ProfileIntent : MviIntent {
     data class DisplayNameChanged(val value: String) : ProfileIntent
     data object SaveDisplayName : ProfileIntent
+    data class BioChanged(val value: String) : ProfileIntent
+    data object SaveBio : ProfileIntent
     data class AvatarPicked(val bytes: ByteArray) : ProfileIntent
     data object SignOut : ProfileIntent
 
@@ -154,6 +165,7 @@ class ProfileViewModel(
     aiPreferencePort: AiPreferencePort,
     mealRemindersPort: MealReminderSchedulePort,
     private val updateDisplayName: UpdateMyDisplayNameUseCase,
+    private val updateBio: UpdateMyBioUseCase,
     private val updateAvatar: UpdateMyAvatarUseCase,
     private val signOut: SignOutPort,
     private val setThemeMode: SetThemeModeUseCase,
@@ -180,8 +192,10 @@ class ProfileViewModel(
                     update { prev ->
                         prev.copy(
                             account = account,
-                            // Seed the field on first emission; never overwrite an in-progress edit.
+                            // Seed display name on first emission; never overwrite an in-progress edit.
                             editingDisplayName = if (prev.editingDisplayName.isBlank()) account.displayName else prev.editingDisplayName,
+                            // Seed bio on first emission (null bio → empty string = no bio set).
+                            editingBio = if (prev.editingBio.isBlank()) (account.bio?.value ?: "") else prev.editingBio,
                         )
                     }
                 }
@@ -228,6 +242,12 @@ class ProfileViewModel(
                 update { it.copy(editingDisplayName = intent.value, saveDisplayNameError = null) }
 
             ProfileIntent.SaveDisplayName -> doSaveDisplayName()
+
+            is ProfileIntent.BioChanged ->
+                update { it.copy(editingBio = intent.value, saveBioError = null) }
+
+            ProfileIntent.SaveBio -> doSaveBio()
+
             is ProfileIntent.AvatarPicked -> doUploadAvatar(intent.bytes)
             ProfileIntent.SignOut -> doSignOut()
 
@@ -294,6 +314,18 @@ class ProfileViewModel(
             ProfileIntent.DeleteDialogDismiss ->
                 update { it.copy(deleteDialogOpen = false) }
             is ProfileIntent.DeleteDialogConfirm -> doDeleteAccount(intent.expectedPhrase)
+        }
+    }
+
+    private suspend fun doSaveBio() {
+        val raw = currentState.editingBio
+        update { it.copy(isSavingBio = true, saveBioError = null) }
+        val r = updateBio(raw)
+        update {
+            when (r) {
+                is Result.Ok -> it.copy(isSavingBio = false, saveBioError = null)
+                is Result.Err -> it.copy(isSavingBio = false, saveBioError = r.error.toStringKey())
+            }
         }
     }
 

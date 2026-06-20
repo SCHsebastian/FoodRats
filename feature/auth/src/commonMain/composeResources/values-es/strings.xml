@@ -93,6 +93,11 @@
     <string name="auth_profile_reminders_remove_cta">Quitar recordatorio</string>
     <string name="auth_profile_reminders_persist_failed">No se pudieron guardar tus recordatorios. Inténtalo de nuevo.</string>
 
+    <string name="auth_profile_bio_label">Bio personal</string>
+    <string name="auth_profile_bio_placeholder">Cocinero casero de Barcelona · máx. 100 caracteres</string>
+    <string name="auth_profile_bio_save">Guardar bio</string>
+    <string name="auth_profile_bio_too_long">La bio es demasiado larga (máx. 100 caracteres).</string>
+
     <string name="auth_profile_ai_row">Sugerencias de IA</string>
     <string name="auth_profile_ai_subtitle_on">Las fotos de tu plato se analizan en tu dispositivo para sugerir ingredientes.</string>
     <string name="auth_profile_ai_subtitle_off">La IA está desactivada — añade los ingredientes tú mismo.</string>

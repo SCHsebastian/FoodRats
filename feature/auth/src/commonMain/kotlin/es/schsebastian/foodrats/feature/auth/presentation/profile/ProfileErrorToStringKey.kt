@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Validation.DisplayNameBlank -> AuthStringKey.ProfileDisplayNameBlank
     ProfileError.Validation.DisplayNameTooLong -> AuthStringKey.ProfileDisplayNameTooLong
+    ProfileError.Validation.BioTooLong -> AuthStringKey.ProfileBioTooLong
     ProfileError.Validation.EmptyBytes -> AuthStringKey.ProfileAvatarEmptyBytes
     ProfileError.Backend.Unavailable -> AuthStringKey.ProfileBackendUnavailable
     ProfileError.Session.SignedOut -> AuthStringKey.ProfileBackendUnavailable

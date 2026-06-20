@@ -93,6 +93,11 @@
     <string name="auth_profile_reminders_remove_cta">Remove reminder</string>
     <string name="auth_profile_reminders_persist_failed">Couldn't save your reminders. Try again.</string>
 
+    <string name="auth_profile_bio_label">Personal bio</string>
+    <string name="auth_profile_bio_placeholder">Home cook from Barcelona · 100 chars max</string>
+    <string name="auth_profile_bio_save">Save bio</string>
+    <string name="auth_profile_bio_too_long">Bio is too long (max 100 characters).</string>
+
     <string name="auth_profile_ai_row">AI suggestions</string>
     <string name="auth_profile_ai_subtitle_on">Your plate photos are analyzed on your device to suggest ingredients.</string>
     <string name="auth_profile_ai_subtitle_off">AI is off — add ingredients yourself.</string>

@@ -42,6 +42,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemin
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import es.schsebastian.foodrats.feature.auth.testdoubles.FakeAccountWritePort
@@ -251,6 +252,7 @@ class ProfileViewModelTest {
             aiPreferencePort = aiPreferencePort,
             mealRemindersPort = reminders,
             updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
+            updateBio = UpdateMyBioUseCase(writePort, session),
             updateAvatar = UpdateMyAvatarUseCase(writePort, session),
             signOut = signOut,
             setThemeMode = SetThemeModeUseCase(themePort),
@@ -692,6 +694,45 @@ class ProfileViewModelTest {
             val final = expectMostRecentItem()
             assertFalse(final.aiEnabled)
             assertNull(final.aiError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ─────────────────────── bio update ───────────────────────
+
+    @Test fun bio_change_updates_editing_field() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.BioChanged("Home cook"))
+            val state = expectMostRecentItem()
+            assertEquals("Home cook", state.editingBio)
+            assertNull(state.saveBioError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun bio_save_ok_clears_in_flight_and_no_error() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.BioChanged("Home cook, Barcelona"))
+            vm.onIntent(ProfileIntent.SaveBio)
+            val state = expectMostRecentItem()
+            assertFalse(state.isSavingBio)
+            assertNull(state.saveBioError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun bio_save_too_long_shows_error() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            // 101 characters — exceeds the 100-char cap
+            val tooLong = "a".repeat(101)
+            vm.onIntent(ProfileIntent.BioChanged(tooLong))
+            vm.onIntent(ProfileIntent.SaveBio)
+            val state = expectMostRecentItem()
+            assertFalse(state.isSavingBio)
+            assertEquals(AuthStringKey.ProfileBioTooLong, state.saveBioError)
             cancelAndIgnoreRemainingEvents()
         }
     }

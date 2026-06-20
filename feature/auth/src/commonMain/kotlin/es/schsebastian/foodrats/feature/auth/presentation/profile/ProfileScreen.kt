@@ -305,6 +305,37 @@ private fun GeneralSection(
                     FrErrorBanner(text = resolve(it))
                 }
             }
+
+            FrSettingsDivider()
+
+            // Bio — personal tagline shown under the display name. Blank clears the bio.
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                FrText(
+                    text = resolve(AuthStringKey.ProfileBioLabel),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                FrTextField(
+                    value = state.editingBio,
+                    onValueChange = { vm.onIntent(ProfileIntent.BioChanged(it)) },
+                    label = resolve(AuthStringKey.ProfileBioPlaceholder),
+                    enabled = !state.isSavingBio,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FrButton(
+                    label = resolve(AuthStringKey.ProfileBioSave),
+                    onClick = { vm.onIntent(ProfileIntent.SaveBio) },
+                    enabled = state.editingBio != (account?.bio?.value ?: "")
+                        && !state.isSavingBio,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                state.saveBioError?.let {
+                    FrErrorBanner(text = resolve(it))
+                }
+            }
         }
     }
 }

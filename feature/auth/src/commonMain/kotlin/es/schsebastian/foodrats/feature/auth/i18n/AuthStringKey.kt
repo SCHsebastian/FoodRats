@@ -45,6 +45,10 @@ import foodrats.feature.auth.generated.resources.auth_mode_signup_cta
 import foodrats.feature.auth.generated.resources.auth_or_divider
 import foodrats.feature.auth.generated.resources.auth_profile_account_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_row
+import foodrats.feature.auth.generated.resources.auth_profile_bio_label
+import foodrats.feature.auth.generated.resources.auth_profile_bio_placeholder
+import foodrats.feature.auth.generated.resources.auth_profile_bio_save
+import foodrats.feature.auth.generated.resources.auth_profile_bio_too_long
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_subtitle
 import foodrats.feature.auth.generated.resources.auth_profile_ai_row
@@ -168,6 +172,12 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileSave(Res.string.auth_profile_save),
     ProfileChangeAvatarCta(Res.string.auth_profile_change_avatar_cta),
     ProfileAvatarUploading(Res.string.auth_profile_avatar_uploading),
+
+    ProfileBioLabel(Res.string.auth_profile_bio_label),
+    ProfileBioPlaceholder(Res.string.auth_profile_bio_placeholder),
+    ProfileBioSave(Res.string.auth_profile_bio_save),
+    ProfileBioTooLong(Res.string.auth_profile_bio_too_long),
+
     ProfileAccountSection(Res.string.auth_profile_account_section),
     ProfileAchievementsSection(Res.string.auth_profile_achievements_section),
     ProfileAchievementsRow(Res.string.auth_profile_achievements_row),

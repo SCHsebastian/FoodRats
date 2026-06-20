@@ -53,4 +53,7 @@ class ProfileErrorToStringKeyTest {
 
     @Test fun ai_persist_failed_maps_to_ai_persist_failed_key() =
         assertEquals(AuthStringKey.ProfileAiPersistFailed, ProfileError.Ai.PersistFailed.toStringKey())
+
+    @Test fun bio_too_long_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileBioTooLong, ProfileError.Validation.BioTooLong.toStringKey())
 }
