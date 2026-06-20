@@ -51,6 +51,8 @@
     <string name="stats_cooks_section_title">Cooks</string>
     <string name="stats_best_cook_title">Top cook</string>
     <string name="stats_best_cook_metric_format">%1$s ★ avg · %2$d plates</string>
+    <!-- C8b — glyph-free: %1$s = pre-rendered score (emoji or number), %2$d = plate count. -->
+    <string name="stats_best_cook_metric_format_glyph_free">%1$s avg · %2$d plates</string>
     <string name="stats_most_prolific_title">Most prolific</string>
     <plurals name="stats_most_prolific_metric_format">
         <item quantity="one">%1$d plate</item>
@@ -61,6 +63,8 @@
     <string name="stats_roast_section_title">Roast</string>
     <string name="stats_most_criticized_title">Most criticized</string>
     <string name="stats_most_criticized_metric_format">%1$s ★ avg · ouch</string>
+    <!-- C8b — glyph-free: %1$s = pre-rendered score (emoji or number). -->
+    <string name="stats_most_criticized_metric_format_glyph_free">%1$s avg · ouch</string>
 
     <!-- Ingredients -->
     <string name="stats_most_used_ingredient_title">Most used ingredient</string>

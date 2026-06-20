@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.i18n.PluralStringKey
 import foodrats.feature.feed.generated.resources.Res
 import foodrats.feature.feed.generated.resources.feed_plates_count
 import foodrats.feature.feed.generated.resources.feed_rating_summary_votes
+import foodrats.feature.feed.generated.resources.feed_score_summary_votes
 import org.jetbrains.compose.resources.PluralStringResource
 
 /**
@@ -15,4 +16,10 @@ import org.jetbrains.compose.resources.PluralStringResource
 enum class FeedPluralKey(override val resourceId: PluralStringResource) : PluralStringKey {
     PlatesCount(Res.plurals.feed_plates_count),
     RatingSummaryVotes(Res.plurals.feed_rating_summary_votes),
+    /**
+     * C8b — glyph-free score-summary caption for the meal-detail ScoreStoryCard when
+     * [FrScoreStyle] ≠ [FrScoreStyle.Stars]. Takes %1$s = pre-rendered score string
+     * (e.g. "3.5", "😋") and %2$d = vote count.
+     */
+    ScoreSummaryVotes(Res.plurals.feed_score_summary_votes),
 }

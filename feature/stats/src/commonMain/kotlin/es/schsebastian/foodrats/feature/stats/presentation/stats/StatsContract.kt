@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.presentation.stats
 
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
@@ -20,6 +21,12 @@ data class StatsState(
     val isPreparingShare: Boolean = false,
     /** Transient share-outcome toast; cleared via [StatsIntent.DismissShareOutcome] (spec §10). */
     val shareOutcome: ShareOutcomeUi? = null,
+    /**
+     * Active crew's chosen Score display vocabulary (C8b). Defaults to [FrScoreStyle.Stars] for
+     * pre-C8 crews. Drives the leaderboard award cards so they render Stars/Emoji/Numeric to match
+     * the feed and meal-detail screens. Mapped from [StatsSnapshot.scoreStyle] on each emission.
+     */
+    val scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
 ) : MviState
 
 /** Presentation mirror of `StoryShareOutcome` → which toast the screen shows (spec §10). */

@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
@@ -44,6 +45,8 @@ class StatsModuleVerifyTest {
                 TimeZone::class,
                 StoryShareController::class,
                 AnalyticsPort::class,
+                // C8b — crew's score style, so leaderboard cards render Stars/Emoji/Numeric.
+                CrewWelcomePort::class,
             ),
         )
     }

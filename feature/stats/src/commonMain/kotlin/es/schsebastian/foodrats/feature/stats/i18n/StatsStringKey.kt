@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.stats.i18n
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.stats.generated.resources.Res
 import foodrats.feature.stats.generated.resources.stats_best_cook_metric_format
+import foodrats.feature.stats.generated.resources.stats_best_cook_metric_format_glyph_free
 import foodrats.feature.stats.generated.resources.stats_best_cook_title
 import foodrats.feature.stats.generated.resources.stats_best_plate_author_format
 import foodrats.feature.stats.generated.resources.stats_best_plate_score_format
@@ -21,6 +22,7 @@ import foodrats.feature.stats.generated.resources.stats_hero_i_posted_today
 import foodrats.feature.stats.generated.resources.stats_hero_no_streak
 import foodrats.feature.stats.generated.resources.stats_member_top_ingredient_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_format
+import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_format_glyph_free
 import foodrats.feature.stats.generated.resources.stats_most_criticized_title
 import foodrats.feature.stats.generated.resources.stats_most_prolific_title
 import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_title
@@ -95,11 +97,15 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     CooksSectionTitle(Res.string.stats_cooks_section_title),
     BestCookTitle(Res.string.stats_best_cook_title),
     BestCookMetricFormat(Res.string.stats_best_cook_metric_format),
+    /** C8b — glyph-free variant (Emoji/Numeric); %1$s = pre-rendered score, %2$d = plate count. */
+    BestCookMetricFormatGlyphFree(Res.string.stats_best_cook_metric_format_glyph_free),
     MostProlificTitle(Res.string.stats_most_prolific_title),
 
     RoastSectionTitle(Res.string.stats_roast_section_title),
     MostCriticizedTitle(Res.string.stats_most_criticized_title),
     MostCriticizedMetricFormat(Res.string.stats_most_criticized_metric_format),
+    /** C8b — glyph-free variant (Emoji/Numeric); %1$s = pre-rendered score, no ★. */
+    MostCriticizedMetricFormatGlyphFree(Res.string.stats_most_criticized_metric_format_glyph_free),
 
     MostUsedIngredientTitle(Res.string.stats_most_used_ingredient_title),
     TopIngredientByMemberTitle(Res.string.stats_top_ingredient_by_member_title),

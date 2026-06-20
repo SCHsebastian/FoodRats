@@ -129,4 +129,12 @@
     <string name="feed_badge_ten">10 Plates</string>
     <string name="feed_badge_fifty">50 Plates</string>
     <string name="feed_badge_hundred">100 Plates</string>
+    <!-- C8b — glyph-free score-summary caption used on meal-detail when scoreStyle ≠ Stars.
+         %1$s = pre-rendered score string (e.g. "3.5", "😋"); %2$d = vote count. -->
+    <plurals name="feed_score_summary_votes">
+        <item quantity="one">%1$s · %2$d vote</item>
+        <item quantity="other">%1$s · %2$d votes</item>
+    </plurals>
+    <!-- C8b — glyph-free voter-row score used when scoreStyle ≠ Stars. %1$s = pre-rendered value. -->
+    <string name="feed_voter_score_glyph_free">%1$s</string>
 </resources>

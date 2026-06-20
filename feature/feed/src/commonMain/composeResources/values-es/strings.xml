@@ -129,4 +129,12 @@
     <string name="feed_badge_ten">10 Platos</string>
     <string name="feed_badge_fifty">50 Platos</string>
     <string name="feed_badge_hundred">100 Platos</string>
+    <!-- C8b — leyenda de puntuación sin glifo para el detalle del plato cuando scoreStyle ≠ Stars.
+         %1$s = puntuación prerenderizada; %2$d = número de votos. -->
+    <plurals name="feed_score_summary_votes">
+        <item quantity="one">%1$s · %2$d voto</item>
+        <item quantity="other">%1$s · %2$d votos</item>
+    </plurals>
+    <!-- C8b — puntuación del votante sin glifo cuando scoreStyle ≠ Stars. %1$s = valor prerenderizado. -->
+    <string name="feed_voter_score_glyph_free">%1$s</string>
 </resources>

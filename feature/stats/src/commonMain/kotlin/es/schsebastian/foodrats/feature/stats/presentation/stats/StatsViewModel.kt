@@ -3,10 +3,12 @@ package es.schsebastian.foodrats.feature.stats.presentation.stats
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.data.share.StoryShareOutcome
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.templates.ShareCardFormat
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -78,6 +80,9 @@ class StatsViewModel(
                                 r.value.historic == null &&
                                 !historicFailed,
                             isRefreshing = false,
+                            // C8b — map the domain score style to the presentation enum so all
+                            // leaderboard cards can read it from state without importing :core:domain.
+                            scoreStyle = r.value.scoreStyle.toFrScoreStyle(),
                         )
                     }
                     is Result.Err -> update { it.copy(error = r.error, isRefreshing = false) }
@@ -154,4 +159,14 @@ class StatsViewModel(
         StoryShareOutcome.OpenedFallbackSheet -> ShareOutcomeUi.OpenedSheet
         StoryShareOutcome.Failed              -> ShareOutcomeUi.Failed
     }
+}
+
+/**
+ * C8b — maps the domain [CrewScoreStyle] to the presentation [FrScoreStyle] (the same arms that
+ * [FeedViewModel.observeScoreStyle] and [MealDetailViewModel.scoreStyleFlow] use).
+ */
+private fun CrewScoreStyle.toFrScoreStyle(): FrScoreStyle = when (this) {
+    CrewScoreStyle.Stars   -> FrScoreStyle.Stars
+    CrewScoreStyle.Emoji   -> FrScoreStyle.Emoji
+    CrewScoreStyle.Numeric -> FrScoreStyle.Numeric
 }

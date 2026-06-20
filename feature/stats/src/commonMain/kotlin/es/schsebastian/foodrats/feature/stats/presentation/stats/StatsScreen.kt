@@ -34,6 +34,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
 import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
@@ -227,6 +228,7 @@ private fun StatsContent(
                         window = window,
                         sharePreparing = state.isPreparingShare,
                         onShareAward = onShareAward,
+                        scoreStyle = state.scoreStyle,
                     )
                 }
             }
@@ -239,6 +241,7 @@ private fun TabBody(
     window: WindowStats,
     sharePreparing: Boolean,
     onShareAward: (String) -> Unit,
+    scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
 ) {
     if (window.totalMeals == 0) {
         FrEmptyState(
@@ -259,7 +262,7 @@ private fun TabBody(
     ) {
         FrWindowSummaryCard(window = window, modifier = riseMod())
         window.bestMeal?.let { award ->
-            FrBestPlatePodium(award = award, modifier = riseMod())
+            FrBestPlatePodium(award = award, scoreStyle = scoreStyle, modifier = riseMod())
             // Share the best plate to Stories (spec §8.2).
             FrButton(
                 label = resolve(StatsStringKey.ShareAward),
@@ -276,7 +279,7 @@ private fun TabBody(
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
                 modifier = riseMod().semantics { heading() },   // WCAG 2.4.10
             )
-            window.bestCook?.let { FrCookAwardCard(award = it, modifier = riseMod()) }
+            window.bestCook?.let { FrCookAwardCard(award = it, scoreStyle = scoreStyle, modifier = riseMod()) }
             window.mostProlific?.let { FrCookAwardCard(award = it, modifier = riseMod()) }
         }
         window.mostCriticized?.let {
@@ -285,7 +288,7 @@ private fun TabBody(
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
                 modifier = riseMod().semantics { heading() },   // WCAG 2.4.10
             )
-            FrRoastCard(award = it, modifier = riseMod())
+            FrRoastCard(award = it, scoreStyle = scoreStyle, modifier = riseMod())
         }
         window.mostUsedIngredient?.let { FrMostUsedIngredientCard(usage = it, modifier = riseMod()) }
         if (window.topByMember.isNotEmpty()) {

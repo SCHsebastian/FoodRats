@@ -114,6 +114,7 @@ import foodrats.feature.feed.generated.resources.feed_badge_first
 import foodrats.feature.feed.generated.resources.feed_badge_ten
 import foodrats.feature.feed.generated.resources.feed_badge_fifty
 import foodrats.feature.feed.generated.resources.feed_badge_hundred
+import foodrats.feature.feed.generated.resources.feed_voter_score_glyph_free
 import org.jetbrains.compose.resources.StringResource
 
 enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
@@ -237,4 +238,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     BadgeTen(Res.string.feed_badge_ten),
     BadgeFifty(Res.string.feed_badge_fifty),
     BadgeHundred(Res.string.feed_badge_hundred),
+    // C8b — glyph-free voter-row score used when scoreStyle ≠ Stars on the detail screen.
+    // Takes %1$s = pre-rendered score string (e.g. "😋", "3").
+    VoterScoreGlyphFree(Res.string.feed_voter_score_glyph_free),
 }

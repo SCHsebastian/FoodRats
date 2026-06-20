@@ -91,8 +91,11 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
+import es.schsebastian.foodrats.feature.feed.i18n.FeedPluralKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.Score
@@ -466,7 +469,7 @@ private fun MealDetailBody(
 
                 Box(modifier = Modifier.frRiseIn(delayMillis = 120)) { LocationSection(meal) }
 
-                Box(modifier = Modifier.frRiseIn(delayMillis = 180)) { ScoreStoryCard(meal) }
+                Box(modifier = Modifier.frRiseIn(delayMillis = 180)) { ScoreStoryCard(meal, state.scoreStyle) }
 
                 RatingSection(
                     meal = meal,
@@ -475,7 +478,7 @@ private fun MealDetailBody(
                     onIntent = onIntent,
                 )
 
-                if (meal.votes.isNotEmpty()) VotersCard(meal)
+                if (meal.votes.isNotEmpty()) VotersCard(meal, state.scoreStyle)
 
                 CommentsSection(
                     state = state,
@@ -711,7 +714,7 @@ private fun IngredientChips(ingredients: List<String>) {
 }
 
 @Composable
-private fun ScoreStoryCard(meal: FeedMealUi) {
+private fun ScoreStoryCard(meal: FeedMealUi, scoreStyle: FrScoreStyle) {
     val avg = meal.averageScore
     if (avg == null || meal.ratingCount <= 0) {
         FrText(
@@ -722,15 +725,28 @@ private fun ScoreStoryCard(meal: FeedMealUi) {
         return
     }
     val avgRounded = (kotlin.math.round(avg * 10) / 10.0).toString()
+    // C8b: the headline number adapts to the crew's score style.
+    val avgRoundedInt = kotlin.math.round(avg).toInt().coerceIn(1, 5)
+    val headlineScore = when (scoreStyle) {
+        FrScoreStyle.Stars   -> avgRounded
+        FrScoreStyle.Emoji   -> scoreToEmoji(avgRoundedInt)
+        FrScoreStyle.Numeric -> avgRounded
+    }
+    // C8b: the caption is glyph-free for Emoji/Numeric; Stars keeps the legacy "★ · N" form.
+    val captionText = when (scoreStyle) {
+        FrScoreStyle.Stars   -> resolve(FeedStringKey.RatingSummary, avgRounded, meal.ratingCount)
+        FrScoreStyle.Emoji   -> resolvePlural(FeedPluralKey.ScoreSummaryVotes, meal.ratingCount, scoreToEmoji(avgRoundedInt), meal.ratingCount)
+        FrScoreStyle.Numeric -> resolvePlural(FeedPluralKey.ScoreSummaryVotes, meal.ratingCount, avgRounded, meal.ratingCount)
+    }
     FrCard(modifier = Modifier.fillMaxWidth()) {
         SectionEyebrow(resolve(FeedStringKey.CrewScoreLabel))
         Spacer(Modifier.height(Spacing.sm))
-        // The big average and its "/10 · N votes" caption read as one unit: baseline-aligned, snug,
+        // The big average and its "· N votes" caption read as one unit: baseline-aligned, snug,
         // with the headline number carrying the weight and the summary trailing it quietly.
         Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-            FrText(text = avgRounded, style = FrTextStyles.statNumberLarge, color = MaterialTheme.colorScheme.primary)
+            FrText(text = headlineScore, style = FrTextStyles.statNumberLarge, color = MaterialTheme.colorScheme.primary)
             FrText(
-                text = resolve(FeedStringKey.RatingSummary, avgRounded, meal.ratingCount),
+                text = captionText,
                 style = FrTextStyles.statNumberSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = Spacing.xs),
@@ -781,8 +797,19 @@ private fun RatingSection(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
             ) {
-                FrIcon(image = FrIcons.Star, tint = celebration, modifier = Modifier.size(Sizes.iconSm))
-                SectionEyebrow(resolve(FeedStringKey.YourVote, meal.viewerRating))
+                // C8b a1: render the "your vote" eyebrow style-aware.
+                when (scoreStyle) {
+                    FrScoreStyle.Stars -> {
+                        FrIcon(image = FrIcons.Star, tint = celebration, modifier = Modifier.size(Sizes.iconSm))
+                        SectionEyebrow(resolve(FeedStringKey.YourVote, meal.viewerRating))
+                    }
+                    FrScoreStyle.Emoji -> {
+                        SectionEyebrow(scoreToEmoji(meal.viewerRating.coerceIn(1, 5)))
+                    }
+                    FrScoreStyle.Numeric -> {
+                        SectionEyebrow(meal.viewerRating.toString())
+                    }
+                }
             }
         }
         meal.canRate -> Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -800,7 +827,7 @@ private fun RatingSection(
 }
 
 @Composable
-private fun VotersCard(meal: FeedMealUi) {
+private fun VotersCard(meal: FeedMealUi, scoreStyle: FrScoreStyle) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         SectionEyebrow(resolve(FeedStringKey.VotersLabel))
         // Memoized so the sort isn't rerun on unrelated recompositions.
@@ -853,8 +880,15 @@ private fun VotersCard(meal: FeedMealUi) {
                             )
                         }
                     }
+                    // C8b a3: render each rater's score style-aware so the voters column matches
+                    // the score summary card on the same screen.
+                    val raterScoreText = when (scoreStyle) {
+                        FrScoreStyle.Stars   -> resolve(FeedStringKey.VoterScoreCompact, v.score)
+                        FrScoreStyle.Emoji   -> resolve(FeedStringKey.VoterScoreGlyphFree, scoreToEmoji(v.score.coerceIn(1, 5)))
+                        FrScoreStyle.Numeric -> resolve(FeedStringKey.VoterScoreGlyphFree, v.score.toString())
+                    }
                     FrText(
-                        text = resolve(FeedStringKey.VoterScoreCompact, v.score),
+                        text = raterScoreText,
                         style = FrTextStyles.statNumberSmall,
                         color = if (v.score >= Score.MAX - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
