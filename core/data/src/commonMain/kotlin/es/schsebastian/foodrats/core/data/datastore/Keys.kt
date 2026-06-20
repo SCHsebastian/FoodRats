@@ -58,6 +58,14 @@ object Keys {
      */
     val OutboxJson           = StoreKey(stringPreferencesKey("outbox_json"))
 
+    /**
+     * The EULA / Community-Guidelines version the user accepted at the login-screen gate (UGC
+     * compliance §6). Absent = never accepted → the gate requires acceptance before sign-in. NOT
+     * cleared on sign-out (a EULA is accepted by the human/device, not the account). Owned by
+     * `EulaRepository`.
+     */
+    val EulaAcceptedVersion       = StoreKey(intPreferencesKey("eula_accepted_version"))
+
     // ── Analytics consent (GDPR/CCPA opt-in). Absence of [AnalyticsConsentState] = "Unknown"
     //    (no decision yet → analytics is a hard no-op). See ConsentRepository / ConsentGatedAnalytics.
     /** `"granted"` | `"denied"`; absent = no decision recorded yet. */

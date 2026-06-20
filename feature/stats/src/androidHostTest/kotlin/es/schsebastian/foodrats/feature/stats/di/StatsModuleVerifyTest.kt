@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.stats.di
 
 import es.schsebastian.foodrats.core.data.share.StoryShareController
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
@@ -36,6 +37,8 @@ class StatsModuleVerifyTest {
                 MealReadPort::class,
                 IngredientReadPort::class,
                 CuisineReadPort::class,
+                // UGC compliance §5 — stats excludes blocked authors from every ranking.
+                BlockedAccountsPort::class,
                 MealUploadProgressPort::class,
                 Clock::class,
                 TimeZone::class,

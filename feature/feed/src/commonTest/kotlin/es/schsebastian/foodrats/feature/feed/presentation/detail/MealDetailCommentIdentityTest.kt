@@ -137,7 +137,7 @@ class MealDetailCommentIdentityTest {
         val vm = MealDetailViewModel(
             mealId = "meal-1",
             dayIso = "2026-05-20",
-            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
+            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort(), session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
             rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
             connectivity = connectivity,
@@ -257,7 +257,7 @@ class MealDetailCommentIdentityTest {
         val vm = MealDetailViewModel(
             mealId = "meal-1",
             dayIso = "2026-05-20",
-            observeFeed = ObserveFeedUseCase(active, readPort),
+            observeFeed = ObserveFeedUseCase(active, readPort, session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
             rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
             connectivity = connectivity,
@@ -333,7 +333,7 @@ class MealDetailCommentIdentityTest {
         val vm = MealDetailViewModel(
             mealId = "meal-1",
             dayIso = "2026-05-20",
-            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
+            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort(), session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
             rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
             connectivity = connectivity,

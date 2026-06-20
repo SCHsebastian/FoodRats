@@ -57,7 +57,7 @@ Seguro porque `applyConsent(true)` reactiva la colección del SDK al dar consent
 
 ### Pre-requisitos
 - App creada en Play Console.
-- Borrado de cuenta necesita **URL pública** además del flujo in-app (landing en `foodrats.app`).
+- Borrado de cuenta necesita **URL pública** además del flujo in-app (landing en `foodrats-de4ec.web.app`).
 - Se guarda como borrador; se publica con el primer release.
 
 ---
@@ -80,7 +80,7 @@ Los archivos de asociación YA están servidos y verificados en el dominio del h
 - `website/.well-known/assetlinks.json` → https://foodrats-de4ec.web.app/.well-known/assetlinks.json
   (HTTP 200 ✅) — **placeholders de SHA-256 pendientes** (ver abajo).
 - `firebase.json` hosting: `appAssociation: AUTO` + headers `Content-Type application/json` para ambos.
-- iOS `iosApp/iosApp/iosApp.entitlements`: añadido `applinks:foodrats-de4ec.web.app` (junto a `foodrats.app`).
+- iOS `iosApp/iosApp/iosApp.entitlements`: declara `applinks:foodrats-de4ec.web.app` (único host).
 - Android `AndroidManifest.xml`: intent-filter `autoVerify` ahora incluye host `foodrats-de4ec.web.app`.
 
 **Pendiente para que Android App Links VERIFIQUE (manual):**
@@ -91,8 +91,9 @@ Los archivos de asociación YA están servidos y verificados en el dominio del h
 - [ ] Xcode: target `iosApp` → Signing & Capabilities → **Associated Domains** (registra el
       entitlement en el App ID). Build con `-allowProvisioningUpdates`.
 
-**Si luego usas el dominio propio `foodrats.app`** (lo que asume el código, `DeepLinks.WEB_HOST`):
-- [ ] Mapear `foodrats.app` como dominio custom en Firebase Hosting (servirá los mismos `.well-known`).
+**Futuro dominio custom (opcional):** si algún día se mapea un dominio propio en Firebase Hosting,
+habrá que actualizar `DeepLinks.WEB_HOST` + manifest + entitlements al nuevo host (servirá los
+mismos `.well-known`). Hoy el host vivo y único es `foodrats-de4ec.web.app`.
 - [ ] La página OG/unfurl para `/invite/{code}` (rich preview en chats) sigue pendiente — server-only.
 
 - Contrato de referencia: `deeplinks/` y `deeplinks/README.md`. Test local:
@@ -108,7 +109,7 @@ Los archivos de asociación YA están servidos y verificados en el dominio del h
 - **URL viva:** https://foodrats-de4ec.web.app/account-deletion (HTTP 200 verificado).
 - Usar esa URL en el Data Safety de Play y en App Store Connect.
 - Deploy: `pnpm dlx firebase-tools deploy --only hosting --project foodrats-de4ec`.
-- Para usar `foodrats.app/account-deletion`: mapear dominio custom en Firebase Hosting.
+- Si se mapea un dominio custom en Firebase Hosting, la misma página quedará servida en él.
 
 ---
 

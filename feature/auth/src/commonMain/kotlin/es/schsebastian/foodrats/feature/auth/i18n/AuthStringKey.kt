@@ -97,7 +97,17 @@ import foodrats.feature.auth.generated.resources.auth_profile_back_cta
 import foodrats.feature.auth.generated.resources.auth_profile_title
 import foodrats.feature.auth.generated.resources.auth_signin_continue_apple
 import foodrats.feature.auth.generated.resources.auth_signin_continue_google
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_connector
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_eula_link
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_guidelines_link
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_prefix
 import foodrats.feature.auth.generated.resources.auth_signin_footer
+import foodrats.feature.auth.generated.resources.auth_profile_legal_section
+import foodrats.feature.auth.generated.resources.auth_profile_legal_eula_row
+import foodrats.feature.auth.generated.resources.auth_profile_legal_guidelines_row
+import foodrats.feature.auth.generated.resources.auth_profile_safety_section
+import foodrats.feature.auth.generated.resources.auth_profile_blocked_users_row
+import foodrats.feature.auth.generated.resources.auth_profile_blocked_users_subtitle
 import foodrats.feature.auth.generated.resources.auth_signin_highlight_feed
 import foodrats.feature.auth.generated.resources.auth_signin_highlight_rate
 import foodrats.feature.auth.generated.resources.auth_signin_highlight_share
@@ -116,6 +126,13 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     HighlightRate(Res.string.auth_signin_highlight_rate),
     HighlightFeed(Res.string.auth_signin_highlight_feed),
     Footer(Res.string.auth_signin_footer),
+
+    // UGC-compliance agreement line below the sign-in buttons (UGC compliance §6). The two doc names
+    // are tappable links that open Route.Eula / Route.CommunityGuidelines; continuing accepts both.
+    SignInAgreementPrefix(Res.string.auth_signin_agreement_prefix),
+    SignInAgreementEulaLink(Res.string.auth_signin_agreement_eula_link),
+    SignInAgreementConnector(Res.string.auth_signin_agreement_connector),
+    SignInAgreementGuidelinesLink(Res.string.auth_signin_agreement_guidelines_link),
     FieldEmail(Res.string.auth_field_email),
     FieldPassword(Res.string.auth_field_password),
     ModeSignInCta(Res.string.auth_mode_signin_cta),
@@ -151,6 +168,15 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileAchievementsSection(Res.string.auth_profile_achievements_section),
     ProfileAchievementsRow(Res.string.auth_profile_achievements_row),
     ProfileAchievementsSubtitle(Res.string.auth_profile_achievements_subtitle),
+
+    // Profile "Legal" section (UGC compliance §6) — opens the embedded EULA / Community Guidelines.
+    // Profile "Safety" section (UGC compliance §5) — opens the blocked-users list.
+    ProfileSafetySection(Res.string.auth_profile_safety_section),
+    ProfileBlockedUsersRow(Res.string.auth_profile_blocked_users_row),
+    ProfileBlockedUsersSubtitle(Res.string.auth_profile_blocked_users_subtitle),
+    ProfileLegalSection(Res.string.auth_profile_legal_section),
+    ProfileLegalEulaRow(Res.string.auth_profile_legal_eula_row),
+    ProfileLegalGuidelinesRow(Res.string.auth_profile_legal_guidelines_row),
     ProfileSignOutCta(Res.string.auth_profile_sign_out_cta),
     ProfileSignOutFailed(Res.string.auth_profile_sign_out_failed),
     ProfileDisplayNameBlank(Res.string.auth_profile_display_name_blank),

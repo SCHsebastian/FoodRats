@@ -37,8 +37,8 @@
 			</array>
 		</dict>
 		<!-- Custom-scheme deep links: foodrats://app/... (fallback for Universal Links). Universal
-		     Links (https://foodrats.app/...) additionally need the Associated Domains entitlement +
-		     a hosted apple-app-site-association — see deeplinks/README.md. -->
+		     Links (https://foodrats-de4ec.web.app/...) additionally need the Associated Domains
+		     entitlement + a hosted apple-app-site-association — see deeplinks/README.md. -->
 		<dict>
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>

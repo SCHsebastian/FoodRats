@@ -12,6 +12,57 @@
     <string name="consent_allow">Permitir estadísticas</string>
     <string name="consent_deny">No, gracias</string>
 
+    <!-- Documentos legales integrados (cumplimiento UGC §6). -->
+    <string name="legal_back_cta">Atrás</string>
+
+    <!-- Acuerdo de licencia de usuario final — adaptado del EULA estándar de Apple, con la cláusula
+         de uso aceptable que Apple exige para apps con contenido generado por el usuario. -->
+    <string name="legal_eula_title">Acuerdo de licencia de usuario final</string>
+    <string name="legal_eula_body_intro">Este Acuerdo de licencia de usuario final (el "Acuerdo") es un contrato vinculante entre tú y FoodRats ("nosotros") que regula tu uso de la aplicación FoodRats (la "Aplicación"). Al crear una cuenta o usar la Aplicación, aceptas quedar vinculado por este Acuerdo. La Aplicación se te concede bajo licencia, no se te vende, y solo puedes usarla conforme a los términos de este Acuerdo.</string>
+
+    <string name="legal_eula_heading_scope">1. Alcance de la licencia</string>
+    <string name="legal_eula_body_scope">Te concedemos una licencia intransferible y revocable para usar la Aplicación en cualquier dispositivo de marca Apple o Android de tu propiedad o bajo tu control, según lo permitido por las normas de uso de la App Store y Google Play. No puedes distribuir ni poner la Aplicación a disposición en una red donde varios dispositivos puedan usarla a la vez. No puedes copiar, aplicar ingeniería inversa, descompilar ni crear obras derivadas de la Aplicación, salvo en la medida permitida por la ley.</string>
+
+    <string name="legal_eula_heading_consent_data">2. Consentimiento para el uso de datos</string>
+    <string name="legal_eula_body_consent_data">Aceptas que podamos recopilar y usar datos técnicos y de cuenta limitados para operar, mantener y mejorar la Aplicación, como se describe en nuestra información de privacidad. No vendemos tus datos personales ni los usamos para publicidad ni para rastreo entre apps. Puedes gestionar el consentimiento de estadísticas en cualquier momento en Ajustes.</string>
+
+    <string name="legal_eula_heading_acceptable_use">3. Uso aceptable — Tolerancia cero con el contenido objetable</string>
+    <string name="legal_eula_body_acceptable_use">FoodRats te permite publicar fotos, descripciones, comentarios y otro contenido generado por el usuario. Existe tolerancia cero con el contenido objetable y con las conductas abusivas. Al usar la Aplicación aceptas que NO publicarás, subirás ni transmitirás contenido que sea ilícito, acosador, amenazante, de odio, difamatorio, obsceno, sexualmente explícito, o que represente o glorifique la violencia, o que vulnere los derechos de terceros. También aceptas no abusar, acosar, hostigar, intimidar ni suplantar a ningún otro usuario. Podemos eliminar el contenido objetable y suspender o cancelar las cuentas de los usuarios que incumplan esta cláusula, a nuestra entera discreción y sin previo aviso. La Aplicación ofrece herramientas para filtrar, denunciar y bloquear contenido objetable y usuarios abusivos; el uso indebido de estas herramientas constituye en sí mismo una infracción de este Acuerdo.</string>
+
+    <string name="legal_eula_heading_termination">4. Resolución</string>
+    <string name="legal_eula_body_termination">Este Acuerdo estará vigente hasta que lo resuelvas tú o nosotros. Tus derechos en virtud de este Acuerdo se extinguirán automáticamente, sin previo aviso, si incumples cualquiera de sus términos — en particular la cláusula de uso aceptable anterior. Tras la resolución debes dejar de usar la Aplicación y eliminar todas las copias.</string>
+
+    <string name="legal_eula_heading_warranty">5. Sin garantía</string>
+    <string name="legal_eula_body_warranty">La Aplicación se proporciona "TAL CUAL" y "SEGÚN DISPONIBILIDAD", sin garantía de ningún tipo. En la máxima medida permitida por la ley aplicable, renunciamos a toda garantía, ya sea expresa, implícita o legal, incluidas las garantías implícitas de comerciabilidad, idoneidad para un fin concreto y no infracción.</string>
+
+    <string name="legal_eula_heading_liability">6. Limitación de responsabilidad</string>
+    <string name="legal_eula_body_liability">En la medida en que la ley no lo prohíba, en ningún caso seremos responsables de daños personales ni de daños incidentales, especiales, indirectos o consecuentes derivados de tu uso o de la imposibilidad de usar la Aplicación, sea cual sea su causa.</string>
+
+    <string name="legal_eula_heading_contact">7. Contacto</string>
+    <string name="legal_eula_body_contact">Para preguntas, reclamaciones o quejas sobre la Aplicación, o para denunciar contenido objetable o usuarios abusivos, escríbenos a hello@chsumiapps.com o visita https://foodrats-de4ec.web.app. Respondemos a las denuncias de contenido objetable en un plazo de 24 horas.</string>
+
+    <!-- Normas de la comunidad. -->
+    <string name="legal_community_title">Normas de la comunidad</string>
+    <string name="legal_community_body_intro">FoodRats es un espacio cerrado para que cuadrillas pequeñas compartan sus comidas. Estas normas lo mantienen como un sitio donde todos quieren estar. Se aplican a todo lo que publiques: fotos, nombres de platos, descripciones, comentarios y reacciones. Incumplirlas puede hacer que se elimine tu contenido y se suspenda tu cuenta.</string>
+
+    <string name="legal_community_heading_respect">Sé respetuoso</string>
+    <string name="legal_community_body_respect">Trata a tu cuadrilla como te gustaría que te trataran a ti. Comparte comida, celebraos mutuamente y mantén el buen rollo. Discrepar está bien; la crueldad no.</string>
+
+    <string name="legal_community_heading_prohibited">Nada de contenido objetable</string>
+    <string name="legal_community_body_prohibited">No publiques contenido que sea, o que promueva:\n\n• Acoso, intimidación o amenazas contra cualquier persona\n• Discurso de odio o ataques por motivos de raza, etnia, religión, género, orientación sexual, discapacidad o cualquier característica protegida\n• Material sexual o sexualmente explícito\n• Violencia, contenido sangriento o que glorifique el daño\n• Cualquier cosa ilegal o que vulnere los derechos de otra persona\n\nFoodRats analiza el texto libre en busca de lenguaje objetable mientras escribes, pero las normas anteriores se aplican a todo lo que compartas, incluidas las fotos.</string>
+
+    <string name="legal_community_heading_reporting">Denuncias</string>
+    <string name="legal_community_body_reporting">Si ves contenido o conductas que incumplen estas normas, denúncialo. Cada comida, comentario y perfil tiene una opción de denuncia. Las denuncias son confidenciales: a la persona denunciada no se le dice quién la denunció.</string>
+
+    <string name="legal_community_heading_blocking">Bloqueos</string>
+    <string name="legal_community_body_blocking">Puedes bloquear a cualquier usuario. Una vez bloqueado, sus comidas, comentarios y reacciones desaparecen de tu inicio y ya no podrá interactuar contigo. Puedes gestionar los usuarios bloqueados desde tu Perfil.</string>
+
+    <string name="legal_community_heading_enforcement">Aplicación</string>
+    <string name="legal_community_body_enforcement">Revisamos las denuncias y eliminamos el contenido infractor en un plazo de 24 horas. El contenido denunciado por varias personas se oculta automáticamente a la espera de revisión. Los reincidentes son expulsados de FoodRats. Actuamos sobre el contenido objetable y los usuarios abusivos a nuestra entera discreción.</string>
+
+    <string name="legal_community_heading_contact">Contacto</string>
+    <string name="legal_community_body_contact">¿Preguntas o necesitas hablar con una persona? Escribe a hello@chsumiapps.com o visita https://foodrats-de4ec.web.app.</string>
+
     <!-- Banner de sin conexión en toda la app (offline-first §P1-T2): se muestra en la raíz del NavHost en todas las pantallas. -->
     <string name="offline_banner">Sin conexión — los cambios se sincronizarán al volver.</string>
 

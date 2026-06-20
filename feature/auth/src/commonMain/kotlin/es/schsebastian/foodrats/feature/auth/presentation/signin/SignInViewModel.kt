@@ -6,6 +6,9 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.AuthMethod
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
+import es.schsebastian.foodrats.core.domain.preferences.CURRENT_EULA_VERSION
+import es.schsebastian.foodrats.core.domain.preferences.EulaPort
+import es.schsebastian.foodrats.core.domain.preferences.NoopEulaAcceptance
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
@@ -16,6 +19,10 @@ class SignInViewModel(
     private val auth: AuthRepository,
     private val tokenRegistration: TokenRegistrationPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
+    // Acceptance is recorded IMPLICITLY on a successful sign-in (the agreement line on SignInScreen
+    // states that continuing accepts the Terms + Community Guidelines — UGC compliance §6). Defaults
+    // to NoopEulaAcceptance so existing fixtures that don't pass it stay green.
+    private val eula: EulaPort = NoopEulaAcceptance,
 ) : MviViewModel<SignInState, SignInIntent, SignInEffect>(SignInState()) {
 
     override suspend fun handle(intent: SignInIntent) = when (intent) {
@@ -72,6 +79,10 @@ class SignInViewModel(
             is Result.Ok  -> {
                 update { it.copy(isLoading = false, error = null) }
                 analytics.track(if (isSignUp) AnalyticsEvent.SignedUp(method) else AnalyticsEvent.LoggedIn(method))
+                // Implicit EULA / Community-Guidelines acceptance (UGC compliance §6): continuing
+                // through sign-in records acceptance at the current version. Fire-and-forget — a
+                // local-store write failure must never block the user from entering the app.
+                viewModelScope.launch { eula.accept(CURRENT_EULA_VERSION) }
                 viewModelScope.launch { tokenRegistration.registerCurrentDeviceToken() }
                 emit(SignInEffect.SignedIn)
             }

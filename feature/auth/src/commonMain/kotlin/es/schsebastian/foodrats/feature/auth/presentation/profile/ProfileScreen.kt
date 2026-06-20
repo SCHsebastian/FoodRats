@@ -63,6 +63,13 @@ import org.koin.compose.viewmodel.koinViewModel
 fun ProfileScreen(
     onBack: () -> Unit,
     onOpenAchievements: () -> Unit = {},
+    // The embedded EULA / Community Guidelines (Route.Eula / Route.CommunityGuidelines) live in
+    // `shared`; navigation is threaded in as callbacks so :feature:auth stays free of :shared's Route.
+    onOpenEula: () -> Unit = {},
+    onOpenGuidelines: () -> Unit = {},
+    // Blocked-users list (Route.BlockedUsers, UGC compliance §5) — threaded in so :feature:auth
+    // stays free of :shared's Route, like the legal-doc callbacks.
+    onOpenBlockedUsers: () -> Unit = {},
     vm: ProfileViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -149,8 +156,16 @@ fun ProfileScreen(
             }
             item { PreferencesSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 60)) }
             item { AchievementsSection(onOpenAchievements, modifier = Modifier.frRiseIn(delayMillis = 120)) }
-            item { DataExportSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 180)) }
-            item { DangerZoneSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 240)) }
+            item { SafetySection(onOpenBlockedUsers, modifier = Modifier.frRiseIn(delayMillis = 180)) }
+            item {
+                LegalSection(
+                    onOpenEula = onOpenEula,
+                    onOpenGuidelines = onOpenGuidelines,
+                    modifier = Modifier.frRiseIn(delayMillis = 240),
+                )
+            }
+            item { DataExportSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 300)) }
+            item { DangerZoneSection(state, vm, modifier = Modifier.frRiseIn(delayMillis = 360)) }
         }
     }
 
@@ -461,6 +476,39 @@ private fun AchievementsSection(onOpenAchievements: () -> Unit, modifier: Modifi
             subtitle = resolve(AuthStringKey.ProfileAchievementsSubtitle),
             icon = FrIcons.Trophy,
             onClick = onOpenAchievements,
+        )
+    }
+}
+
+@Composable
+private fun SafetySection(onOpenBlockedUsers: () -> Unit, modifier: Modifier = Modifier) {
+    FrSettingsSection(title = resolve(AuthStringKey.ProfileSafetySection), modifier = modifier) {
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileBlockedUsersRow),
+            subtitle = resolve(AuthStringKey.ProfileBlockedUsersSubtitle),
+            icon = FrIcons.Block,
+            onClick = onOpenBlockedUsers,
+        )
+    }
+}
+
+@Composable
+private fun LegalSection(
+    onOpenEula: () -> Unit,
+    onOpenGuidelines: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FrSettingsSection(title = resolve(AuthStringKey.ProfileLegalSection), modifier = modifier) {
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileLegalEulaRow),
+            icon = FrIcons.Public,
+            onClick = onOpenEula,
+        )
+        FrSettingsDivider()
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileLegalGuidelinesRow),
+            icon = FrIcons.Public,
+            onClick = onOpenGuidelines,
         )
     }
 }

@@ -8,6 +8,11 @@
     <string name="auth_signin_highlight_rate">Score your crew's cooking</string>
     <string name="auth_signin_highlight_feed">Keep the streak alive</string>
     <string name="auth_signin_footer">No public feed. Just your crew.</string>
+    <!-- UGC-compliance agreement line below the sign-in buttons; the two link labels are tappable. -->
+    <string name="auth_signin_agreement_prefix">By continuing, you accept the </string>
+    <string name="auth_signin_agreement_eula_link">Terms (EULA)</string>
+    <string name="auth_signin_agreement_connector"> and the </string>
+    <string name="auth_signin_agreement_guidelines_link">Community Guidelines</string>
     <string name="auth_field_email">Email</string>
     <string name="auth_field_password">Password</string>
     <string name="auth_mode_signin_cta">Sign in</string>
@@ -43,6 +48,14 @@
     <string name="auth_profile_achievements_section">Badges</string>
     <string name="auth_profile_achievements_row">Badges</string>
     <string name="auth_profile_achievements_subtitle">See your earned and locked achievements</string>
+    <!-- Profile "Safety" section (UGC compliance §5) — opens the blocked-users list. -->
+    <string name="auth_profile_safety_section">Safety</string>
+    <string name="auth_profile_blocked_users_row">Blocked users</string>
+    <string name="auth_profile_blocked_users_subtitle">Manage the people you've blocked</string>
+    <!-- Profile "Legal" section (UGC compliance §6) — opens the embedded EULA / Community Guidelines. -->
+    <string name="auth_profile_legal_section">Legal</string>
+    <string name="auth_profile_legal_eula_row">Terms (EULA)</string>
+    <string name="auth_profile_legal_guidelines_row">Community Guidelines</string>
     <string name="auth_profile_sign_out_cta">Sign out</string>
     <string name="auth_profile_sign_out_failed">Couldn't sign out. Try again.</string>
     <string name="auth_profile_display_name_blank">Display name can't be empty.</string>

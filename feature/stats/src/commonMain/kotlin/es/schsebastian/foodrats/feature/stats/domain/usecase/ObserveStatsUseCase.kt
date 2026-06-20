@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.domain.usecase
 
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.cuisine.Cuisine
 import es.schsebastian.foodrats.core.domain.cuisine.CuisinePassport
@@ -49,6 +50,7 @@ class ObserveStatsUseCase(
     private val mealRead: MealReadPort,
     private val ingredientRead: IngredientReadPort,
     private val cuisineRead: CuisineReadPort,
+    private val blockedAccounts: BlockedAccountsPort,
     private val clock: Clock,
     private val zone: TimeZone,
 ) {
@@ -88,11 +90,14 @@ class ObserveStatsUseCase(
                             }
                         val catalog: Flow<Map<IngredientSlug, Ingredient>> = ingredientRead.observeCatalog()
                         val cuisineCatalog: Flow<Map<CuisineSlug, Cuisine>> = cuisineRead.observeCatalog()
-                        combine(current, historic, catalog, cuisineCatalog) { c, h, cat, cuisines ->
+                        // UGC compliance §5 — blocked authors are excluded from every ranking. The set
+                        // is combined in so a new block re-emits and recomputes the leaderboards.
+                        val blocked: Flow<Set<AccountId>> = blockedAccounts.observeBlocked(sess.accountId)
+                        combine(current, historic, catalog, cuisineCatalog, blocked) { c, h, cat, cuisines, blockedSet ->
                             when (c) {
                                 is Result.Err -> Result.failure(c.error.toStatsError())
                                 is Result.Ok  -> Result.success(
-                                    compose(c.value, h, today, sess.accountId, cat, cuisines),
+                                    compose(c.value, h, today, sess.accountId, cat, cuisines, blockedSet),
                                 )
                             }
                         }
@@ -101,14 +106,19 @@ class ObserveStatsUseCase(
             }
 
     private fun compose(
-        currentMeals: List<MealWithRatings>,
+        currentMealsRaw: List<MealWithRatings>,
         historic: HistoricResult,
         today: LocalDate,
         accountId: AccountId,
         ingredientCatalog: Map<IngredientSlug, Ingredient>,
         cuisineCatalog: Map<CuisineSlug, Cuisine>,
+        blocked: Set<AccountId>,
     ): StatsSnapshot {
+        // UGC compliance §5 — drop blocked authors' meals BEFORE any ranking is computed so they
+        // never appear in streaks / leaderboards / collections.
+        val currentMeals = currentMealsRaw.filterNot { it.meal.author.accountId in blocked }
         val historicMeals: List<MealWithRatings>? = (historic as? HistoricResult.Ok)?.meals
+            ?.filterNot { it.meal.author.accountId in blocked }
         val historicError: StatsError? = (historic as? HistoricResult.Err)?.error
         val nameFor = ingredientNameResolver(ingredientCatalog)
         val weekFrom = startOfIsoWeek(today)

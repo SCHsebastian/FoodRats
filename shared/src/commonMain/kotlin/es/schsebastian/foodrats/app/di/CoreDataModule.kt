@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.data.datastore.providePreferencesDataStore
 import es.schsebastian.foodrats.core.data.analytics.AnalyticsIdentityBinder
 import es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver
 import es.schsebastian.foodrats.core.data.preferences.ConsentRepository
+import es.schsebastian.foodrats.core.data.preferences.EulaRepository
 import es.schsebastian.foodrats.core.data.preferences.LocaleRepository
 import es.schsebastian.foodrats.core.data.preferences.MealReminderScheduleRepository
 import es.schsebastian.foodrats.core.data.preferences.NotificationsPreferenceRepository
@@ -17,6 +18,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
+import es.schsebastian.foodrats.core.domain.preferences.EulaPort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
@@ -37,6 +39,9 @@ val coreDataModule = module {
     // AnalyticsPort is likewise bound per-platform (analyticsAndroidModule / analyticsIosModule);
     // these two common bindings are platform-agnostic: the consent store + the identity binder.
     single<ConsentPort> { ConsentRepository(prefs = get(), clock = get(), dispatchers = get()) }
+    // EULA / Community-Guidelines acceptance (UGC compliance §6). Local-first over DataStore; the
+    // login-screen acceptance gate reads `acceptedVersion`. NOT cleared on sign-out.
+    single<EulaPort> { EulaRepository(prefs = get(), dispatchers = get()) }
     // Eager: starts observing the session at boot so the account UID tracks sign-in/out for the whole
     // app lifetime. The actual setUserId stays consent-gated by ConsentGatedAnalytics.
     single(createdAtStart = true) { AnalyticsIdentityBinder(session = get(), analytics = get()) }

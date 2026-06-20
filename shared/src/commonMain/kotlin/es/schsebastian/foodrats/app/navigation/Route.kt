@@ -21,6 +21,20 @@ sealed interface Route {
     @Serializable data object Splash : Public
     @Serializable data object SignIn : Public
 
+    /**
+     * Embedded End User License Agreement (UGC compliance §6). [Public]: reachable from the SignIn
+     * links pre-auth (Apple requires the EULA + acceptable-use terms be readable before sign-up) and
+     * again from Profile.
+     */
+    @Serializable data object Eula : Public
+
+    /**
+     * Embedded Community Guidelines (UGC compliance §6) — the user-facing statement of prohibited
+     * content, the report/block mechanisms, and the moderation SLA. [Public] for the same reasons as
+     * [Eula].
+     */
+    @Serializable data object CommunityGuidelines : Public
+
     @Serializable data object NotificationPermission : Protected
     @Serializable data object Consent : Protected
     @Serializable data object CrewPicker : Protected
@@ -36,6 +50,9 @@ sealed interface Route {
     @Serializable data class InvitePreview(val code: String) : Protected
     @Serializable data object Profile : Protected
     @Serializable data object Achievements : Protected
+
+    /** The signed-in user's block list (UGC compliance §5), reached from Profile. */
+    @Serializable data object BlockedUsers : Protected
 
     @Serializable data object Main : Protected               // bottom-nav scaffold (Feed + Stats)
 
@@ -77,6 +94,8 @@ sealed interface MainTab : Route.Protected {
 fun Route.requiresSession(): Boolean = when (this) {
     Route.Splash,
     Route.SignIn,
+    Route.Eula,
+    Route.CommunityGuidelines,
         -> false
 
     Route.NotificationPermission,
@@ -86,6 +105,7 @@ fun Route.requiresSession(): Boolean = when (this) {
     is Route.InvitePreview,
     Route.Profile,
     Route.Achievements,
+    Route.BlockedUsers,
     Route.Main,
     Route.CaptureMeal,
     Route.ComposePlate,

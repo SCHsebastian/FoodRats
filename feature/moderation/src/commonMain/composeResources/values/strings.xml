@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moderation_blocked_title">Blocked users</string>
+    <string name="moderation_blocked_back_cta">Back</string>
+    <string name="moderation_blocked_empty_headline">No one blocked</string>
+    <string name="moderation_blocked_empty_subtext">People you block won\'t appear in your feed, stats, or comments.</string>
+    <string name="moderation_blocked_unblock_cta">Unblock</string>
+    <string name="moderation_blocked_member_deleted">Deleted user</string>
+
+    <!-- BlockError -->
+    <string name="moderation_error_block_self">You can\'t block yourself.</string>
+    <string name="moderation_error_block_unavailable">Couldn\'t update your block list. Check your connection and try again.</string>
+    <string name="moderation_error_block_read_unavailable">Couldn\'t load your block list. Check your connection and try again.</string>
+
+    <!-- ReportError -->
+    <string name="moderation_error_report_not_signed_in">Sign in to report content.</string>
+    <string name="moderation_error_report_self">You can\'t report your own content.</string>
+    <string name="moderation_error_report_already">You\'ve already reported this.</string>
+    <string name="moderation_error_report_unavailable">Couldn\'t submit your report. Check your connection and try again.</string>
+</resources>

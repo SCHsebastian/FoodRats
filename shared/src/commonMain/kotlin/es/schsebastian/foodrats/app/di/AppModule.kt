@@ -14,6 +14,7 @@ import es.schsebastian.foodrats.feature.feed.di.feedModule
 import es.schsebastian.foodrats.feature.ingredient.di.cuisineModule
 import es.schsebastian.foodrats.feature.ingredient.di.ingredientModule
 import es.schsebastian.foodrats.feature.meal.di.mealModule
+import es.schsebastian.foodrats.feature.moderation.di.moderationModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsModule
 import es.schsebastian.foodrats.feature.stats.di.statsModule
 import org.koin.core.module.dsl.viewModel
@@ -54,6 +55,9 @@ val appModules: List<org.koin.core.module.Module> = listOf(
     mealModule,
     feedModule,
     statsModule,
+    // UGC compliance (§7): block list + report queue ports over Firestore. Consumed by feed/stats/meal
+    // through the :core:domain ports (BlockedAccountsPort, ReportPort), so no feature depends on it.
+    moderationModule,
     notificationsModule,
     // Catalog + picker (:feature:ingredient). The MealClassifierPort is bound per
     // platform: mealAiAndroidModule (FoodRatsApplication) / mealAiIosModule (MainViewController).

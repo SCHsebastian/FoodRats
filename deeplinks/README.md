@@ -9,8 +9,8 @@ The route discriminator is always the **first path segment** (so parsing is sche
 see `shared/.../app/navigation/DeepLink.kt`):
 
 The web host is the **live** Firebase Hosting domain `foodrats-de4ec.web.app` (it serves the
-association files + `/invite` landing). `foodrats.app` is a future vanity domain — not used until
-it's mapped as a Hosting custom domain (see docs/store-release/PUBLICATION.md).
+association files + `/invite` landing). It is the single host the app links against — it must stay
+in sync with `DeepLinks.WEB_HOST` (see docs/store-release/PUBLICATION.md).
 
 | URL | Route |
 |---|---|
@@ -27,7 +27,7 @@ so a link opened while signed-out is **stashed and resumed after sign-in** (`Roo
 ### Invites are web-capable (since 2026-06-18)
 
 `DeepLinks.inviteUrl(code)` emits the **https** form on the live Firebase Hosting domain
-(`foodrats-de4ec.web.app`, not the not-yet-hosting `foodrats.app`), reversing the earlier
+(`foodrats-de4ec.web.app`), reversing the earlier
 "app-installed-only" custom-scheme contract. A recipient **with** the app opens it via
 App/Universal Links (or, before link verification is live, the landing page's "Open in app"
 custom-scheme button); a recipient **without** the app lands on the static page at

@@ -293,6 +293,54 @@ private val WarningVector: ImageVector = materialIcon(name = "Filled.Warning") {
     }
 }
 
+// Vendored Flag glyph (report action) — material-icons-core has no Filled.Flag.
+private val FlagVector: ImageVector = materialIcon(name = "Filled.Flag") {
+    materialPath {
+        moveTo(14.4f, 6f)
+        lineToRelative(-0.24f, -1.2f)
+        curveToRelative(-0.09f, -0.46f, -0.5f, -0.8f, -0.98f, -0.8f)
+        horizontalLineTo(6f)
+        curveToRelative(-0.55f, 0f, -1f, 0.45f, -1f, 1f)
+        verticalLineToRelative(15f)
+        curveToRelative(0f, 0.55f, 0.45f, 1f, 1f, 1f)
+        reflectiveCurveToRelative(1f, -0.45f, 1f, -1f)
+        verticalLineToRelative(-6f)
+        horizontalLineToRelative(5.6f)
+        lineToRelative(0.24f, 1.2f)
+        curveToRelative(0.09f, 0.47f, 0.5f, 0.8f, 0.98f, 0.8f)
+        horizontalLineTo(19f)
+        curveToRelative(0.55f, 0f, 1f, -0.45f, 1f, -1f)
+        verticalLineTo(7f)
+        curveToRelative(0f, -0.55f, -0.45f, -1f, -1f, -1f)
+        horizontalLineToRelative(-4.6f)
+        close()
+    }
+}
+
+// Vendored Block (no-entry) glyph — material-icons-core has no Filled.Block.
+private val BlockVector: ImageVector = materialIcon(name = "Filled.Block") {
+    materialPath(pathFillType = PathFillType.EvenOdd) {
+        moveTo(12f, 2f)
+        curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+        reflectiveCurveToRelative(4.48f, 10f, 10f, 10f)
+        reflectiveCurveToRelative(10f, -4.48f, 10f, -10f)
+        reflectiveCurveTo(17.52f, 2f, 12f, 2f)
+        close()
+        moveTo(4f, 12f)
+        curveToRelative(0f, -4.42f, 3.58f, -8f, 8f, -8f)
+        curveToRelative(1.85f, 0f, 3.55f, 0.63f, 4.9f, 1.69f)
+        lineTo(5.69f, 16.9f)
+        curveTo(4.63f, 15.55f, 4f, 13.85f, 4f, 12f)
+        close()
+        moveTo(12f, 20f)
+        curveToRelative(-1.85f, 0f, -3.55f, -0.63f, -4.9f, -1.69f)
+        lineTo(18.31f, 7.1f)
+        curveTo(19.37f, 8.45f, 20f, 10.15f, 20f, 12f)
+        curveToRelative(0f, 4.42f, -3.58f, 8f, -8f, 8f)
+        close()
+    }
+}
+
 // Vendored Delete (trash can) glyph — material-icons-core has no Filled.Delete.
 private val DeleteVector: ImageVector = materialIcon(name = "Filled.Delete") {
     materialPath {
@@ -748,6 +796,8 @@ object FrIcons {
     val Comment: ImageVector       = CommentVector
     val Group: ImageVector         = GroupVector
     val Warning: ImageVector       = WarningVector
+    val Flag: ImageVector          = FlagVector
+    val Block: ImageVector         = BlockVector
     val Delete: ImageVector        = DeleteVector
     // Profile / settings rows.
     val Person: ImageVector        = PersonVector

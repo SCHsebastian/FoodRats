@@ -2,6 +2,37 @@ package es.schsebastian.foodrats.app.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.shared.generated.resources.Res
+import foodrats.shared.generated.resources.legal_back_cta
+import foodrats.shared.generated.resources.legal_community_body_blocking
+import foodrats.shared.generated.resources.legal_community_body_contact
+import foodrats.shared.generated.resources.legal_community_body_enforcement
+import foodrats.shared.generated.resources.legal_community_body_intro
+import foodrats.shared.generated.resources.legal_community_body_prohibited
+import foodrats.shared.generated.resources.legal_community_body_reporting
+import foodrats.shared.generated.resources.legal_community_body_respect
+import foodrats.shared.generated.resources.legal_community_heading_blocking
+import foodrats.shared.generated.resources.legal_community_heading_contact
+import foodrats.shared.generated.resources.legal_community_heading_enforcement
+import foodrats.shared.generated.resources.legal_community_heading_prohibited
+import foodrats.shared.generated.resources.legal_community_heading_reporting
+import foodrats.shared.generated.resources.legal_community_heading_respect
+import foodrats.shared.generated.resources.legal_community_title
+import foodrats.shared.generated.resources.legal_eula_body_acceptable_use
+import foodrats.shared.generated.resources.legal_eula_body_consent_data
+import foodrats.shared.generated.resources.legal_eula_body_contact
+import foodrats.shared.generated.resources.legal_eula_body_intro
+import foodrats.shared.generated.resources.legal_eula_body_liability
+import foodrats.shared.generated.resources.legal_eula_body_scope
+import foodrats.shared.generated.resources.legal_eula_body_termination
+import foodrats.shared.generated.resources.legal_eula_body_warranty
+import foodrats.shared.generated.resources.legal_eula_heading_acceptable_use
+import foodrats.shared.generated.resources.legal_eula_heading_consent_data
+import foodrats.shared.generated.resources.legal_eula_heading_contact
+import foodrats.shared.generated.resources.legal_eula_heading_liability
+import foodrats.shared.generated.resources.legal_eula_heading_scope
+import foodrats.shared.generated.resources.legal_eula_heading_termination
+import foodrats.shared.generated.resources.legal_eula_heading_warranty
+import foodrats.shared.generated.resources.legal_eula_title
 import foodrats.shared.generated.resources.consent_allow
 import foodrats.shared.generated.resources.consent_body
 import foodrats.shared.generated.resources.consent_deny
@@ -52,6 +83,43 @@ enum class SharedStringKey(override val resourceId: StringResource) : StringKey 
     ConsentPrivacyNote(Res.string.consent_privacy_note),
     ConsentAllow(Res.string.consent_allow),
     ConsentDeny(Res.string.consent_deny),
+
+    // Embedded legal docs (UGC compliance §6) — surfaced at the login screen + Profile.
+    LegalBackCta(Res.string.legal_back_cta),
+
+    // End User License Agreement (adapted from Apple's standard Licensed Application EULA).
+    LegalEulaTitle(Res.string.legal_eula_title),
+    LegalEulaBodyIntro(Res.string.legal_eula_body_intro),
+    LegalEulaHeadingScope(Res.string.legal_eula_heading_scope),
+    LegalEulaBodyScope(Res.string.legal_eula_body_scope),
+    LegalEulaHeadingConsentData(Res.string.legal_eula_heading_consent_data),
+    LegalEulaBodyConsentData(Res.string.legal_eula_body_consent_data),
+    LegalEulaHeadingAcceptableUse(Res.string.legal_eula_heading_acceptable_use),
+    LegalEulaBodyAcceptableUse(Res.string.legal_eula_body_acceptable_use),
+    LegalEulaHeadingTermination(Res.string.legal_eula_heading_termination),
+    LegalEulaBodyTermination(Res.string.legal_eula_body_termination),
+    LegalEulaHeadingWarranty(Res.string.legal_eula_heading_warranty),
+    LegalEulaBodyWarranty(Res.string.legal_eula_body_warranty),
+    LegalEulaHeadingLiability(Res.string.legal_eula_heading_liability),
+    LegalEulaBodyLiability(Res.string.legal_eula_body_liability),
+    LegalEulaHeadingContact(Res.string.legal_eula_heading_contact),
+    LegalEulaBodyContact(Res.string.legal_eula_body_contact),
+
+    // Community Guidelines.
+    LegalCommunityTitle(Res.string.legal_community_title),
+    LegalCommunityBodyIntro(Res.string.legal_community_body_intro),
+    LegalCommunityHeadingRespect(Res.string.legal_community_heading_respect),
+    LegalCommunityBodyRespect(Res.string.legal_community_body_respect),
+    LegalCommunityHeadingProhibited(Res.string.legal_community_heading_prohibited),
+    LegalCommunityBodyProhibited(Res.string.legal_community_body_prohibited),
+    LegalCommunityHeadingReporting(Res.string.legal_community_heading_reporting),
+    LegalCommunityBodyReporting(Res.string.legal_community_body_reporting),
+    LegalCommunityHeadingBlocking(Res.string.legal_community_heading_blocking),
+    LegalCommunityBodyBlocking(Res.string.legal_community_body_blocking),
+    LegalCommunityHeadingEnforcement(Res.string.legal_community_heading_enforcement),
+    LegalCommunityBodyEnforcement(Res.string.legal_community_body_enforcement),
+    LegalCommunityHeadingContact(Res.string.legal_community_heading_contact),
+    LegalCommunityBodyContact(Res.string.legal_community_body_contact),
 
     // App-wide offline banner (offline-first §P1-T2)
     OfflineBanner(Res.string.offline_banner),

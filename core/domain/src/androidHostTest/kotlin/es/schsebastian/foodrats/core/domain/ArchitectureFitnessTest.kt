@@ -226,6 +226,14 @@ class ArchitectureFitnessTest {
      * use (it holds stale copies of `Fr*` composables that were later deleted from real source,
      * e.g. `FrShutterButton` removed in `b60aa12`), and any generated `build/` output. Those are
      * not project source and must not be scanned by the fitness rules. Scope to real source only.
+     *
+     * Exclude the whole `/.claude/` subtree: it holds both the `skills/**/_source/` snapshot AND any
+     * nested git worktrees (`.claude/worktrees/<branch>/`), each a FULL second checkout of the repo.
+     * If a worktree is nested under the main tree, `scopeFromProject()` run from the main tree would
+     * otherwise scan that worktree's source too — double-counting every binding (e.g. tripping the
+     * distinct-`OutboxCommandHandler`-qualifier rule with phantom duplicates). The canonical scan runs
+     * in a normal checkout (main tree / CI) where real source never lives under `/.claude/`; running
+     * the fitness tests from *inside* a worktree is not supported (it would exclude the whole tree).
      */
     private fun isNonSourceSnapshot(file: KoFileDeclaration): Boolean =
         file.path.contains("/.claude/") || file.path.contains("/build/")

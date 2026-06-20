@@ -121,7 +121,7 @@ class MealDetailViewModelTest {
         return MealDetailViewModel(
             mealId = "meal-1",
             dayIso = dayIso,
-            observeFeed = ObserveFeedUseCase(active, readPort),
+            observeFeed = ObserveFeedUseCase(active, readPort, session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
             rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
             connectivity = connectivity,

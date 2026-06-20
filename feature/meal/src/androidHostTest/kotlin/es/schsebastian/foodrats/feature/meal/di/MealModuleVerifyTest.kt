@@ -15,6 +15,8 @@ import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
+import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
+import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -72,6 +74,9 @@ class MealModuleVerifyTest {
                 MealClassifierPort::class,
                 IngredientReadPort::class,
                 CuisineReadPort::class,
+                // UGC §3 — the advisory description filter + the LocalePort it reads the language from.
+                TextModerationPort::class,
+                LocalePort::class,
                 FeatureFlagPort::class,
                 MealUploadScheduler::class,
                 ConnectivityPort::class,

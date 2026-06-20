@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.di
 
 import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
@@ -47,6 +48,14 @@ class FeedModuleVerifyTest {
                 CrewBlindVotingPort::class,
                 SessionProvider::class,
                 AccountReadPort::class,
+                // UGC compliance §3/§4/§5 — feed reads/filters blocked authors, reports + blocks
+                // from meal detail, and screens comments with the on-device text filter. All three
+                // ports are bound by :feature:moderation in the shared aggregator.
+                BlockedAccountsPort::class,
+                es.schsebastian.foodrats.core.domain.moderation.ReportPort::class,
+                es.schsebastian.foodrats.core.domain.moderation.TextModerationPort::class,
+                // LocalePort backs the named("moderationLanguageTag") Flow<String> the comment filter reads.
+                es.schsebastian.foodrats.core.domain.preferences.LocalePort::class,
                 CrewOwnerPort::class,
                 MealReadPort::class,
                 MealRatingPort::class,

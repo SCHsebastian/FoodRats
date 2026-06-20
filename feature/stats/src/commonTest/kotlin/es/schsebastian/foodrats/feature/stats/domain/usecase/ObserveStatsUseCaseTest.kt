@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.stats.domain.usecase
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.account.BlockError
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.cuisine.Cuisine
 import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
@@ -80,6 +82,18 @@ private class FakeCuisineRead(private val catalog: Map<CuisineSlug, Cuisine> = e
 
 private class FixedClock(val instant: Instant) : Clock { override fun now() = instant }
 
+/** Test double for [BlockedAccountsPort]; [blocked] is the live blocked set. */
+private class FakeBlockedAccountsPort(initial: Set<AccountId> = emptySet()) : BlockedAccountsPort {
+    val blocked = MutableStateFlow(initial)
+    override fun observeBlocked(owner: AccountId): Flow<Set<AccountId>> = blocked
+    override suspend fun block(owner: AccountId, target: AccountId): Result<Unit, BlockError> {
+        blocked.value = blocked.value + target; return Result.success(Unit)
+    }
+    override suspend fun unblock(owner: AccountId, target: AccountId): Result<Unit, BlockError> {
+        blocked.value = blocked.value - target; return Result.success(Unit)
+    }
+}
+
 /**
  * Serves the current window (any range spanning < ~60 days) and the historic 365-day window from
  * SEPARATE flows, so the historic read can fail while the current one stays OK. The historic range
@@ -132,7 +146,7 @@ class ObserveStatsUseCaseTest {
     private fun slug(raw: String) = (IngredientSlug.of(raw) as Result.Ok).value
 
     @Test fun emits_NotSignedIn_when_no_session() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), FakeBlockedAccountsPort(), clock, zone)
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NotSignedIn), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -140,7 +154,7 @@ class ObserveStatsUseCaseTest {
     }
 
     @Test fun emits_NoActiveCrew_when_no_crew() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), FakeBlockedAccountsPort(), clock, zone)
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NoActiveCrew), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -155,6 +169,7 @@ class ObserveStatsUseCaseTest {
             FakeRead(listOf(mine)),
             FakeIngredientRead(),
             FakeCuisineRead(),
+            FakeBlockedAccountsPort(),
             clock,
             zone,
         )
@@ -179,6 +194,7 @@ class ObserveStatsUseCaseTest {
             FakeRead(listOf(mine)),
             FakeIngredientRead(),
             FakeCuisineRead(),
+            FakeBlockedAccountsPort(),
             clock,
             zone,
         )
@@ -205,6 +221,7 @@ class ObserveStatsUseCaseTest {
             FakeRead(listOf(mine)),
             FakeIngredientRead(),
             FakeCuisineRead(),
+            FakeBlockedAccountsPort(),
             clock,
             zone,
         )
@@ -237,6 +254,7 @@ class ObserveStatsUseCaseTest {
             FakeRead(listOf(mine)),
             FakeIngredientRead(catalog),
             FakeCuisineRead(),
+            FakeBlockedAccountsPort(),
             clock,
             zone,
         )
@@ -261,6 +279,7 @@ class ObserveStatsUseCaseTest {
             FakeRead(listOf(mine)),
             FakeIngredientRead(emptyMap()),
             FakeCuisineRead(),
+            FakeBlockedAccountsPort(),
             clock,
             zone,
         )
@@ -272,6 +291,30 @@ class ObserveStatsUseCaseTest {
         }
     }
 
+    @Test fun blocked_authors_meals_excluded_from_rankings() = runTest {
+        val villain = (AccountId.of("villain") as Result.Ok).value
+        // Two meals today: mine + a blocked author's. Only mine should count.
+        val read = FakeRead(listOf(makeMeal(me, today), makeMeal(villain, today)))
+        val blocks = FakeBlockedAccountsPort(setOf(villain))
+        val uc = ObserveStatsUseCase(
+            FakeActive(crewId),
+            FakeSession(Session(me, null)),
+            read,
+            FakeIngredientRead(),
+            FakeCuisineRead(),
+            blocks,
+            clock,
+            zone,
+        )
+        uc(flowOf(false), flowOf(0)).test {
+            val r = awaitItem()
+            assertIs<Result.Ok<StatsSnapshot>>(r)
+            // The blocked author's meal is dropped before counting — only 1 plate today.
+            assertEquals(1, r.value.month.totalMeals)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test fun current_error_propagates() = runTest {
         val uc = ObserveStatsUseCase(
             FakeActive(crewId),
@@ -279,6 +322,7 @@ class ObserveStatsUseCaseTest {
             FakeRead(emptyList(), MealReadError.Unauthorized),
             FakeIngredientRead(),
             FakeCuisineRead(),
+            FakeBlockedAccountsPort(),
             clock,
             zone,
         )
@@ -302,6 +346,7 @@ class ObserveStatsUseCaseTest {
             read,
             FakeIngredientRead(),
             FakeCuisineRead(),
+            FakeBlockedAccountsPort(),
             clock,
             zone,
         )

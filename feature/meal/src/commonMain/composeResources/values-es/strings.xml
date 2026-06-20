@@ -9,6 +9,7 @@
     <string name="meal_classifier_load_failed">Detección de ingredientes no disponible</string>
     <string name="meal_ingredients_row_add">Añadir ingredientes</string>
     <string name="meal_ingredients_row_summary">%1$d ingredientes</string>
+    <string name="meal_description_moderation_warning">Aviso: esta descripción podría incumplir las normas de la comunidad.</string>
 
     <string name="meal_compose_audience_label">Compartir con</string>
     <string name="meal_compose_audience_all">Todos los grupos</string>

@@ -13,6 +13,10 @@ import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
+import es.schsebastian.foodrats.core.domain.preferences.AppLocale
+import es.schsebastian.foodrats.core.domain.preferences.LocalePort
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.CommentFirestoreDataSource
 import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseAuthorIdentity
@@ -57,7 +61,16 @@ import org.koin.core.module.dsl.viewModelOf
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
+/** Qualifier for the BCP-47 active-language flow the advisory description filter reads (UGC §3). */
+private val ModerationLanguageTag = named("mealModerationLanguageTag")
+
 val mealModule = module {
+    // Advisory language hint for the on-device description filter. The default filter screens ALL
+    // supported languages regardless of this tag (see WordlistTextModeration / Wordlists.ALL). Named
+    // distinctly from the feed module's same-purpose flow so the two don't collide in the merged graph.
+    single<Flow<String>>(ModerationLanguageTag) {
+        get<LocalePort>().locale.map { if (it == AppLocale.System) "en" else it.tag }
+    }
     singleOf(::MealFirestoreDataSource)
     singleOf(::CommentFirestoreDataSource)
     singleOf(::ReactionFirestoreDataSource)
@@ -246,7 +259,10 @@ val mealModule = module {
         ComposePlateViewModel(
             updateDraft = get(), repository = get(), crewMembership = get(),
             uploadCoordinator = get(), locationProvider = get(), classifyPlate = get(),
-            clock = get(), zone = get(), analytics = get(),
+            clock = get(), zone = get(),
+            // UGC §3 — explicit (default is a Clean no-op; the binding must inject the real port + tag).
+            textModeration = get(), languageTag = get<Flow<String>>(ModerationLanguageTag),
+            analytics = get(),
         )
     }
     viewModelOf(::CaptureNudgeViewModel)
