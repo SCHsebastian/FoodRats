@@ -257,10 +257,12 @@ fun FrFeedMealRow(
                     Dot()
                     if (hasVotes && avgRounded != null && avg != null) {
                         val rounded = round(avg).toInt().coerceIn(1, 5)
+                        // Stars keeps the ★-baked plural; Emoji/Numeric use the glyph-free
+                        // ScoreSummaryVotes so the ★ does not leak next to the emoji/number.
                         val scoreSummary = when (scoreStyle) {
                             FrScoreStyle.Stars   -> resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, avgRounded, ui.ratingCount)
-                            FrScoreStyle.Emoji   -> resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, scoreToEmoji(rounded), ui.ratingCount)
-                            FrScoreStyle.Numeric -> resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, avgRounded, ui.ratingCount)
+                            FrScoreStyle.Emoji   -> resolvePlural(FeedPluralKey.ScoreSummaryVotes, ui.ratingCount, scoreToEmoji(rounded), ui.ratingCount)
+                            FrScoreStyle.Numeric -> resolvePlural(FeedPluralKey.ScoreSummaryVotes, ui.ratingCount, avgRounded, ui.ratingCount)
                         }
                         FrText(
                             text = scoreSummary,
