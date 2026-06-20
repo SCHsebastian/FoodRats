@@ -138,4 +138,8 @@
     </plurals>
     <!-- C8b — puntuación del votante sin glifo cuando scoreStyle ≠ Stars. %1$s = valor prerenderizado. -->
     <string name="feed_voter_score_glyph_free">%1$s</string>
+    <!-- C9 — imagen de cabecera del grupo en la parte superior del feed. La descripción de contenido
+         sirve también de etiqueta para ampliar; la de cerrar es para el botón del visor a pantalla completa. -->
+    <string name="feed_crew_banner_cd">Imagen del grupo — toca para verla a pantalla completa</string>
+    <string name="feed_crew_banner_close_cd">Cerrar imagen</string>
 </resources>

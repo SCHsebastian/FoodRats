@@ -11,17 +11,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.draw.clip
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,12 +34,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
@@ -78,6 +92,10 @@ fun FeedScreen(
 
     // UGC compliance §5 — pending block confirmation: authorId to block after user confirms.
     var pendingBlockAuthorId by remember { mutableStateOf<String?>(null) }
+
+    // C9 — signed banner URL to open in the full-screen viewer (null = closed). Local UI state,
+    // mirrors pendingBlockAuthorId; no VM round-trip needed.
+    var bannerToView by remember { mutableStateOf<String?>(null) }
 
     Box {
     FrScreenScaffold(contentWindowInsets = WindowInsets(0)) {
@@ -208,19 +226,26 @@ fun FeedScreen(
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                             ) {
-                                // C9 — crew hero/banner image: shown at the top of the feed list
-                                // when the owner has set a banner. Signed URL resolved by the port
-                                // binding; hidden when null (no banner set or URL resolution failed).
+                                // C9 — crew hero/banner image: a full-bleed, fixed-height hero at the
+                                // top of the feed when the owner has set a banner. It cancels the list's
+                                // horizontal padding to span edge-to-edge, crops to the fixed height
+                                // (cut top & bottom) so any aspect ratio reads as a clean strip, and
+                                // opens full screen on tap. Signed URL resolved by the port binding;
+                                // hidden when null (no banner set or URL resolution failed).
                                 state.bannerImageUrl?.let { url ->
                                     item(key = "crew-banner-image") {
                                         val ctx = LocalPlatformContext.current
                                         AsyncImage(
                                             model = ImageRequest.Builder(ctx).data(url).build(),
-                                            contentDescription = null,
+                                            contentDescription = resolve(FeedStringKey.CrewBannerCd),
+                                            contentScale = ContentScale.Crop,
                                             modifier = Modifier
+                                                .bleedHorizontally(Spacing.md)
                                                 .fillMaxWidth()
-                                                .height(160.dp)
-                                                .clip(RoundedCornerShape(Radius.lg))
+                                                .height(180.dp)
+                                                .clickable(
+                                                    onClickLabel = resolve(FeedStringKey.CrewBannerCd),
+                                                ) { bannerToView = url }
                                                 .frRiseIn(delayMillis = 0),
                                         )
                                     }
@@ -338,6 +363,11 @@ fun FeedScreen(
             },
             onDismiss = { pendingBlockAuthorId = null },
         )
+    }
+
+    // C9 — full-screen crew-banner viewer, opened by tapping the feed hero.
+    bannerToView?.let { url ->
+        CrewBannerViewer(url = url, onDismiss = { bannerToView = null })
     }
 
     // UGC compliance §4/§5 — transient success toasts.
@@ -517,6 +547,90 @@ private fun FeedSuccessToast(message: String, onDismiss: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
         FrCard {
             FrText(text = message, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+}
+
+/**
+ * Lets a single list item ignore the enclosing [LazyColumn]'s horizontal content padding so it
+ * renders edge-to-edge (full-bleed). The child is measured [padding] wider on each side and drawn
+ * shifted left by [padding]; the node still reports the original (padded) width upward, so sibling
+ * rows are unaffected. Used by the C9 crew banner to span the full screen width.
+ */
+private fun Modifier.bleedHorizontally(padding: Dp): Modifier = layout { measurable, constraints ->
+    val extra = padding.roundToPx() * 2
+    val placeable = measurable.measure(
+        constraints.copy(maxWidth = constraints.maxWidth + extra),
+    )
+    layout(constraints.maxWidth, placeable.height) {
+        placeable.place(x = -padding.roundToPx(), y = 0)
+    }
+}
+
+/**
+ * Full-screen crew-banner viewer (C9). A tap on the feed hero opens the banner on a near-opaque
+ * scrim, fitted to the screen with pinch-to-zoom + drag-to-pan (1×–4×). Dismisses via the close
+ * button, a tap on the backdrop, or system back (the [Dialog] consumes back). [url] is the
+ * short-lived signed URL already resolved for the feed hero.
+ */
+@Composable
+private fun CrewBannerViewer(url: String, onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        val ctx = LocalPlatformContext.current
+        var scale by remember { mutableStateOf(1f) }
+        var offsetX by remember { mutableStateOf(0f) }
+        var offsetY by remember { mutableStateOf(0f) }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.96f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClickLabel = resolve(FeedStringKey.CrewBannerCloseCd),
+                    onClick = onDismiss,
+                ),
+            contentAlignment = Alignment.Center,
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(ctx).data(url).build(),
+                contentDescription = resolve(FeedStringKey.CrewBannerCd),
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(1f, 4f)
+                            if (scale > 1f) {
+                                offsetX += pan.x
+                                offsetY += pan.y
+                            } else {
+                                offsetX = 0f
+                                offsetY = 0f
+                            }
+                        }
+                    }
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offsetX
+                        translationY = offsetY
+                    },
+            )
+            // Light-tinted so it reads on the dark scrim.
+            CompositionLocalProvider(LocalContentColor provides Color.White) {
+                FrIconButton(
+                    icon = FrIcons.Close,
+                    onClick = onDismiss,
+                    contentDescription = resolve(FeedStringKey.CrewBannerCloseCd),
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(Spacing.sm),
+                )
+            }
         }
     }
 }

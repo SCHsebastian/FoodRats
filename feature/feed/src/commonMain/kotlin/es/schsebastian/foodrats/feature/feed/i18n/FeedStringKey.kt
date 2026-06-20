@@ -116,6 +116,8 @@ import foodrats.feature.feed.generated.resources.feed_badge_ten
 import foodrats.feature.feed.generated.resources.feed_badge_fifty
 import foodrats.feature.feed.generated.resources.feed_badge_hundred
 import foodrats.feature.feed.generated.resources.feed_voter_score_glyph_free
+import foodrats.feature.feed.generated.resources.feed_crew_banner_cd
+import foodrats.feature.feed.generated.resources.feed_crew_banner_close_cd
 import org.jetbrains.compose.resources.StringResource
 
 enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
@@ -246,4 +248,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     // viewer's own vote doesn't render a ★ next to the crew's emoji/numeric style.
     // Takes %1$s = pre-rendered score string (e.g. "😍", "4").
     YourVoteGlyphFree(Res.string.feed_your_vote_glyph_free),
+    // C9 — clickable crew banner hero + the close button of its full-screen viewer.
+    CrewBannerCd(Res.string.feed_crew_banner_cd),
+    CrewBannerCloseCd(Res.string.feed_crew_banner_close_cd),
 }

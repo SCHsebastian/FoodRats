@@ -138,4 +138,8 @@
     </plurals>
     <!-- C8b — glyph-free voter-row score used when scoreStyle ≠ Stars. %1$s = pre-rendered value. -->
     <string name="feed_voter_score_glyph_free">%1$s</string>
+    <!-- C9 — crew banner hero at the top of the feed. The content description doubles as the
+         tap-to-expand label; the close label is for the full-screen viewer's dismiss button. -->
+    <string name="feed_crew_banner_cd">Crew banner — tap to view full screen</string>
+    <string name="feed_crew_banner_close_cd">Close banner</string>
 </resources>
