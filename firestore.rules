@@ -354,6 +354,15 @@ service cloud.firestore {
     //    see, and a forged crewId/mealId pointing at nothing is rejected at create.
     //  - Account target: `accountId != reporter` (no self-report) and the account must
     //    exist. Account reports are human-reviewed only — never auto-actioned.
+    // Moderation audit trail (UGC hardening §7.1). Written exclusively by the
+    // `onReportCreated` Cloud Function via the Admin SDK (which bypasses rules).
+    // No client — not even the app owner — may read or write these docs: triage
+    // is done via the Firebase console or the Admin SDK in the RUNBOOK. Mirrors
+    // the `nudges` server-only pattern above.
+    match /moderationActions/{actionId} {
+      allow read, write: if false;
+    }
+
     match /reports/{reportId} {
       allow read:   if false;            // server-only (Admin SDK)
       allow update,

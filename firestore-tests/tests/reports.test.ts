@@ -233,3 +233,114 @@ describe("reports read/update/delete — server-only", () => {
     await assertFails(deleteDoc(doc(db, `reports/${docId("bob", MEAL_KEY)}`)));
   });
 });
+
+// ---------------------------------------------------------------------------
+// New: target existence gates — comment and account branches
+// ---------------------------------------------------------------------------
+
+describe("reports create — target existence (comment + account)", () => {
+  it("DENIES a report against a comment that does not exist", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    const ghostComment = "cmt-ghost";
+    const ghostKey = `comment|${CREW}|${MEAL}|${ghostComment}`;
+    await assertFails(
+      setDoc(
+        doc(db, `reports/${docId("bob", ghostKey)}`),
+        commentReport("bob", { commentId: ghostComment, targetKey: ghostKey }),
+      ),
+    );
+  });
+
+  it("DENIES a report against an account that does not exist", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    const ghostAccount = "ghost-user";
+    const ghostKey = `account|${ghostAccount}`;
+    await assertFails(
+      setDoc(
+        doc(db, `reports/${docId("bob", ghostKey)}`),
+        accountReport("bob", { accountId: ghostAccount, targetKey: ghostKey }),
+      ),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// New: timestamp window — stale and future createdAtEpochMs
+// ---------------------------------------------------------------------------
+
+describe("reports create — timestamp window", () => {
+  it("DENIES a report with a stale createdAtEpochMs (> 60s in the past)", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    const stale = Date.now() - 90_000; // 90s ago
+    await assertFails(
+      setDoc(
+        doc(db, `reports/${docId("bob", MEAL_KEY)}`),
+        mealReport("bob", { createdAtEpochMs: stale }),
+      ),
+    );
+  });
+
+  it("DENIES a report with a future createdAtEpochMs (> 60s ahead)", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    const future = Date.now() + 120_000; // 2 min in the future
+    await assertFails(
+      setDoc(
+        doc(db, `reports/${docId("bob", MEAL_KEY)}`),
+        mealReport("bob", { createdAtEpochMs: future }),
+      ),
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// New: moderationActions — client read + write denied
+// ---------------------------------------------------------------------------
+
+describe("moderationActions — server-only (client access denied)", () => {
+  const ACTION_ID = "action_meal|c1|c1_alice_2026-06-13_lunch";
+
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), `moderationActions/${ACTION_ID}`), {
+        targetKey: MEAL_KEY,
+        targetType: "meal",
+        action: "removed_meal",
+        reporters: ["bob"],
+        distinctCount: 1,
+        threshold: 3,
+        reasonHistogram: { spam: 1 },
+        crewId: CREW,
+        authorId: "alice",
+        createdAtEpochMs: Date.now(),
+      });
+    });
+  });
+
+  it("authenticated client CANNOT read a moderationActions doc", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(getDoc(doc(db, `moderationActions/${ACTION_ID}`)));
+  });
+
+  it("authenticated client CANNOT write a moderationActions doc", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      setDoc(doc(db, `moderationActions/action_meal|c1|forged`), {
+        targetKey: "meal|c1|forged",
+        targetType: "meal",
+        action: "removed_meal",
+        reporters: ["bob"],
+        distinctCount: 1,
+        threshold: 1,
+        reasonHistogram: {},
+        crewId: "c1",
+        authorId: "alice",
+        createdAtEpochMs: Date.now(),
+      }),
+    );
+  });
+
+  it("unauthenticated client CANNOT read a moderationActions doc", async () => {
+    const db = env.unauthenticatedContext().firestore();
+    await assertFails(getDoc(doc(db, `moderationActions/${ACTION_ID}`)));
+  });
+});
