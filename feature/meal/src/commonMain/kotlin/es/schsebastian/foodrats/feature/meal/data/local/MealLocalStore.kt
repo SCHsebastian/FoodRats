@@ -166,6 +166,13 @@ open class MealLocalStore(
      * P3b §P3b-T5): clears the meal `pending`/`idempotencyKey` and drops its still-unconfirmed
      * (`pending = 1`) rating rows, recomputing the denormalized totals from what remains, all in ONE
      * transaction. A no-op if no meal carries that key (the server snapshot already reconciled it).
+     *
+     * Uses the dedicated [rollbackMealRate][es.schsebastian.foodrats.core.database.MealQueries.rollbackMealRate]
+     * query (M3) to recompute totals WITHOUT first re-setting `pending = 1` (as the former
+     * [setMealOptimisticRate] would have done), avoiding a wasted intermediate write whose intent
+     * was confusing. Sequence: drop pending ratings → recompute totals (rollbackMealRate) → clear
+     * pending flag + key (clearMealPending). Result: `pending = 0`, `idempotencyKey = NULL`, totals
+     * reflect only the server-confirmed rating rows.
      */
     open suspend fun clearPending(idempotencyKey: String) = withContext(io) {
         queries.transaction {
@@ -173,10 +180,11 @@ open class MealLocalStore(
                 ?: return@transaction // already reconciled by a server snapshot
             queries.deletePendingRatings(mealId)
             val ratings = queries.selectRatingsForMeals(listOf(mealId)).executeAsList()
-            queries.setMealOptimisticRate(
+            // M3: dedicated rollback recompute — does NOT touch pending/idempotencyKey, so there
+            // is no wasted intermediate write that re-stamps pending = 1 before clearMealPending.
+            queries.rollbackMealRate(
                 ratingSum = ratings.sumOf { it.score },
                 voterCount = ratings.size.toLong(),
-                idempotencyKey = idempotencyKey,
                 mealId = mealId,
             )
             queries.clearMealPending(mealId)

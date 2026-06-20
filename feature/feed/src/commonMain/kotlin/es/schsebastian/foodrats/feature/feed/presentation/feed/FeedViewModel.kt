@@ -381,6 +381,14 @@ class FeedViewModel(
      * means the toggle was NOT durably parked, so the user must be told the reaction
      * did not land (rather than silently claiming success). The reaction has no
      * optimistic local state, so there is nothing to roll back on failure.
+     *
+     * **DELIBERATE asymmetry vs. offline rate (L5):** offline ratings write an optimistic local row
+     * so the star appears instantly before the network write. Reactions intentionally do NOT: there
+     * is no optimistic UI update here, so an offline reaction shows no immediate visual feedback
+     * until the outbox drains. This is a known trade-off — reactions are rare and less critical than
+     * ratings to feel instant; full optimistic reactions would require a local reaction store with
+     * rollback on failure, which is out of scope for the P1–P4 offline-first work. Do NOT treat
+     * the missing UI feedback as an oversight.
      */
     private suspend fun enqueueReaction(
         crewId: CrewId,

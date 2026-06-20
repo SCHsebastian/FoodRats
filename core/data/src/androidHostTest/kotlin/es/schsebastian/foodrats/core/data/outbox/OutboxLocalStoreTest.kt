@@ -152,4 +152,72 @@ class OutboxLocalStoreTest {
         val ordered = store.observe().first().map { it.id.value }
         assertEquals(listOf("entry-1", "entry-2"), ordered)
     }
+
+    // ── L4: selectById keyed update ───────────────────────────────────────────
+
+    @Test
+    fun update_uses_keyed_lookup_and_does_not_clobber_other_entries() = runTest {
+        // Two entries; update only entry-1 — entry-2 must be untouched.
+        store.add(entry(1, rateCommand("rater-A")))
+        store.add(entry(2, rateCommand("rater-B")))
+
+        store.update(OutboxEntryId("entry-1")) {
+            it.copy(
+                status = OutboxEntryStatus.Failed(errorKey = "rate.offline", retryable = true),
+                attemptCount = 3,
+            )
+        }
+
+        val all = store.read().associateBy { it.id.value }
+        val updated = all["entry-1"]!!
+        assertEquals(3, updated.attemptCount, "L4: targeted update must increment entry-1 only")
+        assertTrue(updated.status is OutboxEntryStatus.Failed)
+
+        val untouched = all["entry-2"]!!
+        assertEquals(0, untouched.attemptCount, "L4: entry-2 must not be affected")
+        assertEquals(OutboxEntryStatus.Pending, untouched.status)
+    }
+
+    // ── M5: terminal pruning ──────────────────────────────────────────────────
+
+    @Test
+    fun prune_terminal_before_drops_only_non_retryable_failed_entries() = runTest {
+        // Entry 1: terminally failed (retryable=false) — created early → should be pruned.
+        store.add(entry(1, rateCommand("rater-A")))
+        store.update(OutboxEntryId("entry-1")) {
+            it.copy(status = OutboxEntryStatus.Failed(errorKey = "x", retryable = false))
+        }
+
+        // Entry 2: retryable-failed — must NOT be pruned (still active).
+        store.add(entry(2, rateCommand("rater-B")))
+        store.update(OutboxEntryId("entry-2")) {
+            it.copy(status = OutboxEntryStatus.Failed(errorKey = "y", retryable = true))
+        }
+
+        // Entry 3: pending — must NOT be pruned.
+        store.add(entry(3, rateCommand("rater-C")))
+
+        // Prune everything with createdAt < 1_003 (entry-1 createdAt=1_001, entry-2=1_002, entry-3=1_003).
+        store.pruneTerminalBefore(beforeEpochMs = 1_003L)
+
+        val remaining = store.read().map { it.id.value }.toSet()
+        assertEquals(
+            setOf("entry-2", "entry-3"),
+            remaining,
+            "M5: only the non-retryable terminal entry older than the cutoff must be pruned",
+        )
+    }
+
+    @Test
+    fun prune_terminal_before_is_noop_when_no_entries_qualify() = runTest {
+        // Terminal entry but createdAt > cutoff → NOT pruned.
+        store.add(entry(10, rateCommand("rater-A"))) // createdAt = 1_010
+        store.update(OutboxEntryId("entry-10")) {
+            it.copy(status = OutboxEntryStatus.Failed(errorKey = "z", retryable = false))
+        }
+
+        store.pruneTerminalBefore(beforeEpochMs = 1_000L) // cutoff before entry's createdAt
+
+        assertEquals(1, store.read().size, "M5: terminal entry newer than cutoff must not be pruned")
+    }
 }

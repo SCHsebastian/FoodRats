@@ -48,6 +48,8 @@ val outboxModule = module {
         // writes through the same store the runner reads, so a pre-existing entry replays once
         // migrated. Idempotent across launches (the key is cleared).
         appScope.launch { get<OutboxJsonMigration>().run() }
+        // M5: prune stale terminal entries (older than 30 days) so they don't accumulate forever.
+        OutboxTerminalPruner(store = get(), clock = get(), appScope = appScope).start()
         OutboxRunner(
             outbox = get(),
             // Feature-owned handlers (MealOutboxCommandHandler / CrewOutboxCommandHandler)

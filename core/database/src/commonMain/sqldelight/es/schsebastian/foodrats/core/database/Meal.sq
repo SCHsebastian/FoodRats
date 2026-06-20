@@ -118,6 +118,14 @@ WHERE mealId = :mealId;
 clearMealPending:
 UPDATE meal SET pending = 0, idempotencyKey = NULL WHERE mealId = :mealId;
 
+-- Dedicated rollback recompute: set the denormalized rating totals without touching the pending flag
+-- or idempotencyKey. Used exclusively by clearPending to recompute totals AFTER the pending rating
+-- rows have been dropped — replacing the wasted setMealOptimisticRate(pending=1) intermediate write.
+rollbackMealRate:
+UPDATE meal
+SET ratingSum = :ratingSum, voterCount = :voterCount
+WHERE mealId = :mealId;
+
 -- Drop only the still-unconfirmed (pending=1) rating rows on a meal (optimistic-write rollback).
 -- Server-confirmed (pending=0) rows are untouched.
 deletePendingRatings:

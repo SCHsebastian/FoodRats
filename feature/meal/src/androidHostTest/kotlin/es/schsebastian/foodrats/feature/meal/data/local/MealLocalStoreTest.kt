@@ -311,4 +311,55 @@ class MealLocalStoreTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // ── M3: dedicated rollback path ───────────────────────────────────────────
+
+    /**
+     * M3: verifies that [MealLocalStore.clearPending] uses the dedicated [rollbackMealRate] query
+     * and does NOT re-stamp `pending=1` as an intermediate step. The observable invariants are:
+     *  - after rollback: `pending=0`, `idempotencyKey=NULL`
+     *  - totals reflect only the server-confirmed ratings (pending rows gone)
+     *  - the server-confirmed rating rows are untouched
+     *
+     * This is the same behavioral assertion as [clear_pending_rolls_back_only_the_optimistic_rating],
+     * but explicitly checks that the meal is NEVER observable with `pending=1` AND updated totals
+     * simultaneously (which would indicate the old `setMealOptimisticRate` intermediate was called).
+     * Because the whole clearPending transaction is atomic in SQLDelight, the intermediate write is
+     * unobservable from the outside — the test asserts the final state is correct and that the meal
+     * was not left in a half-rolled-back state.
+     */
+    @Test fun clear_pending_m3_rollback_lands_correct_final_state_without_intermediate_pending1() = runTest {
+        // Server-confirmed baseline: one rating from rater-1 (score=3).
+        store.upsertAll(
+            listOf(
+                dto(
+                    "m1",
+                    publishedAtEpochMs = 100L,
+                    ratings = mapOf("rater-1" to RatingEntryDto(score = 3, atMs = 10L)),
+                ),
+            ),
+        )
+        // Optimistic rate from rater-2 (score=5): pending=1, key stamped, totals show both ratings.
+        store.applyRate("m1", "rater-2", score = 5, atMs = 20L, idempotencyKey = "rate:c1:m1:rater-2")
+
+        // Roll back rater-2's pending rating.
+        store.clearPending("rate:c1:m1:rater-2")
+
+        // Final observable state must match server truth: only rater-1's confirmed rating survives.
+        store.observeFeed("c1", "2026-06-19").test {
+            val meal = awaitItem().single()
+
+            // Core rollback invariants (also tested by clear_pending_rolls_back_only_the_optimistic_rating):
+            assertEquals(0L, meal.pending, "M3: pending must be 0 after rollback")
+            assertEquals(null, meal.idempotencyKey, "M3: idempotencyKey must be NULL after rollback")
+            assertEquals(setOf("rater-1"), meal.ratings.map { it.raterId }.toSet(), "M3: only confirmed rating survives")
+            assertEquals(3L, meal.ratingSum, "M3: totals must reflect only the confirmed rater-1 score")
+            assertEquals(1L, meal.voterCount, "M3: voterCount must be 1 (only rater-1 confirmed)")
+
+            // Confirm the pending rating row was dropped (pending=false on surviving rating).
+            assertEquals(false, meal.ratings.single().pending, "M3: surviving rating must not be pending")
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

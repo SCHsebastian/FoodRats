@@ -97,6 +97,11 @@ WHERE id        = :id
 countChanges:
 SELECT changes();
 
+-- L4: Keyed read by primary key — used by update() to avoid a full-table scan.
+selectById:
+SELECT * FROM outbox
+WHERE id = :id;
+
 -- M1: Fetch a row by its idempotency key (used for the identity-preserving coalesce in add()).
 selectByIdempotencyKey:
 SELECT * FROM outbox
@@ -113,6 +118,14 @@ SET statusKind = 'pending',
     attemptCount = 0,
     lastAttemptAtEpochMs = NULL
 WHERE id = :id;
+
+-- M5: Age out terminally-failed entries to bound unbounded growth. Entries whose
+-- terminal failure was recorded before :beforeEpochMs are dropped. Only targets
+-- Failed(retryable=false) rows — pending/uploading/retryable rows are untouched.
+deleteTerminalBefore:
+DELETE FROM outbox
+WHERE statusKind = 'failed' AND retryable = 0
+  AND createdAtEpochMs < :beforeEpochMs;
 
 -- M1: Update payload + reset lifecycle columns on an existing row, preserving
 -- id / createdAt / attemptCount (intentionally — a re-issued command must not

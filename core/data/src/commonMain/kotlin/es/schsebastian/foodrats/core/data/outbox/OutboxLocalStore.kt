@@ -132,9 +132,10 @@ class OutboxLocalStore(
         // Read-then-write in ONE transaction so a concurrent status flip can't read the same
         // snapshot and clobber the other's write (lost update) — the SQLDelight equivalent of the
         // P2 store's serializing mutex.
+        // L4: keyed selectById (O(log n) index scan) instead of selectAll().firstOrNull { } (O(n)
+        // full-table scan that allocates the whole list just to find one row by PK).
         queries.transaction {
-            val current = queries.selectAll().executeAsList()
-                .firstOrNull { it.id == id.value }
+            val current = queries.selectById(id.value).executeAsOneOrNull()
                 ?.toDomain()
                 ?: return@transaction
             val next = transform(current)
@@ -152,6 +153,14 @@ class OutboxLocalStore(
 
     /** Remove the entry [id]; no-op if absent. */
     fun remove(id: OutboxEntryId) = queries.deleteById(id.value)
+
+    /**
+     * M5: Drop terminally-failed ([OutboxEntryStatus.Failed] with `retryable = false`) outbox
+     * entries whose [OutboxEntry.createdAt] is strictly older than [beforeEpochMs]. Pending,
+     * uploading, and retryable-failed entries are never touched. Called fire-and-forget from
+     * [OutboxTerminalPruner] at app start to bound unbounded growth of dismissed terminal entries.
+     */
+    fun pruneTerminalBefore(beforeEpochMs: Long) = queries.deleteTerminalBefore(beforeEpochMs)
 
     /**
      * User-initiated retry: flip [id] back to Pending and reset `attemptCount` to 0, granting

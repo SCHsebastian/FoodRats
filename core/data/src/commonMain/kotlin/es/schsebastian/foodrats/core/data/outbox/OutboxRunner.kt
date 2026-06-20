@@ -210,6 +210,14 @@ class OutboxRunner(
             // No feature handler can replay this command (e.g. a command persisted by a
             // newer build, handler module not loaded). It will never resolve on its own —
             // treat as terminal so the user can dismiss it rather than spinning forever.
+            // L2 — errorKey is DIAGNOSTIC-ONLY: these string literals (e.g. "outbox.error.noHandler",
+            // "meal.error.rateUnavailable", "crew.error.permissionDenied") are stored in
+            // OutboxEntryStatus.Failed.errorKey and surfaced ONLY via FrLog / Crashlytics.
+            // FrSyncStatusBar receives only aggregate counts (pending: Int, failed: Int) — the per-
+            // entry errorKey is never passed to the UI and never rendered as user-visible text.
+            // No StringKey mapping exists or is needed for these keys. They follow the reverse pattern
+            // of the meal-publish queue's MealUploadStatus.Failed.errorKey, which IS mapped to a
+            // StringKey by the BackgroundMealUploadCoordinator for the upload-queue error banner.
             FrLog.w("Outbox") { "no handler for ${entry.command::class.simpleName}; terminal" }
             outbox.markFailed(entry.id, errorKey = "outbox.error.noHandler", retryable = false)
             return AttemptOutcome.Terminal

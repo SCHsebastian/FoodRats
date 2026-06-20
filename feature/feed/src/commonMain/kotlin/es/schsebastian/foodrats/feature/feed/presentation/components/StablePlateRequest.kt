@@ -17,6 +17,12 @@ import coil3.request.crossfade
  *
  * [crossfade] preserves the soft fade-in from the ThumbHash placeholder; the caller still supplies
  * the placeholder/error painters on the `AsyncImage` itself.
+ *
+ * **M4 — cache-key stability:** a published meal's plate Storage path is upload-immutable. There is
+ * no replace-photo flow anywhere in the codebase (no `replacePlate`, `updatePlate`, or edit-photo
+ * use case). The path is written once at publish time and never changes for that meal's lifetime, so
+ * the stable-path cache key is always safe — no need to include `thumbHash` or `publishedAt` as a
+ * discriminator to force re-invalidation on replace.
  */
 @Composable
 internal fun stablePlateRequest(url: String, cacheKey: String): ImageRequest =

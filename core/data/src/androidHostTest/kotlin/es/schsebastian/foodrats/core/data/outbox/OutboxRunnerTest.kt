@@ -527,6 +527,79 @@ class OutboxRunnerTest {
         assertEquals(1, handler.executeCount, "debounce must coalesce 5 true signals into 1 drain")
     }
 
+    // ── Trigger integration: start() connectivity rising-edge ─────────────────
+
+    /**
+     * Integration test for [OutboxRunner.start]: enqueue an entry, drive [start], advance past
+     * the H6 connectivity debounce (1 s), and assert the entry drained.
+     *
+     * Uses [StandardTestDispatcher] so `debounce()` inside [start] respects virtual time — with
+     * [UnconfinedTestDispatcher] delays fire immediately and debounce collapses.
+     * [backgroundScope] hosts the long-lived `launchIn` coroutines so they don't block `runTest`.
+     */
+    @Test
+    fun start_drains_on_connectivity_rising_edge_after_debounce() = runTest(StandardTestDispatcher()) {
+        val box = outbox()
+        box.enqueue(rateCommand())
+
+        val handler = ScriptedRateHandler(List(5) { OutboxExecuteResult.Success })
+        val conn = FlowConnectivity()
+        val runner = OutboxRunner(box, listOf(handler), conn, OutboxRetryPolicy())
+
+        // Launch start on backgroundScope so the long-lived flows don't prevent runTest from completing.
+        runner.start(backgroundScope)
+
+        // Emit connectivity = false first (no drain), then true (should trigger a drain after debounce).
+        conn.state.value = false
+        advanceTimeBy(100)
+        conn.state.value = true
+        // Not yet drained — the 1 s debounce hasn't elapsed.
+        advanceTimeBy(500)
+        // Advance past the debounce window so the rising-edge trigger fires.
+        advanceTimeBy(1_000)
+        advanceUntilIdle()
+
+        assertEquals(1, handler.executeCount, "start() must drain on connectivity rising edge after debounce")
+        assertTrue(box.observePending().first().isEmpty(), "entry must be removed after successful drain via start()")
+    }
+
+    /**
+     * Integration test for [OutboxRunner.start]: the new-pending-entry trigger fires when an entry
+     * is enqueued AFTER [start] has already been called. Uses [StandardTestDispatcher].
+     *
+     * Strategy: start offline (connectivity=false, so connectivity trigger can't fire), enqueue an
+     * entry, advance virtual time to allow the pending-count trigger and drain to complete.
+     * The pending-count path has no debounce — `distinctUntilChanged()` fires on each count change
+     * without a delay gate — so advancing by a small amount after enqueue is enough to tick the
+     * scheduler past the `launchDrain → runOnce → handler.execute` chain.
+     */
+    @Test
+    fun start_drains_when_new_entry_enqueued_while_running() = runTest(StandardTestDispatcher()) {
+        val box = outbox()
+
+        val handler = ScriptedRateHandler(List(5) { OutboxExecuteResult.Success })
+        // Offline: connectivity trigger cannot fire (stays false throughout test).
+        val conn = FlowConnectivity()
+        conn.state.value = false
+        val runner = OutboxRunner(box, listOf(handler), conn, OutboxRetryPolicy())
+
+        runner.start(backgroundScope)
+        advanceTimeBy(100)
+        advanceUntilIdle()
+        assertEquals(0, handler.executeCount, "no entry yet — handler must not be called")
+
+        // Enqueue: pending-count changes 0→1 → distinctUntilChanged passes → launchDrain fires.
+        box.enqueue(rateCommand())
+        // Give the pending-count trigger coroutine (on backgroundScope/StandardTestDispatcher) time to
+        // process: the trigger fires via launchIn(backgroundScope), which queues the onEach block.
+        // A small advanceTimeBy unblocks any waiting work; advanceUntilIdle drains the queue.
+        advanceTimeBy(100)
+        advanceUntilIdle()
+
+        assertEquals(1, handler.executeCount, "start() must drain when a new entry is enqueued")
+        assertTrue(box.observePending().first().isEmpty(), "entry must be removed after drain via pending-entry trigger")
+    }
+
     @Test
     fun m1_reissue_preserves_id_created_at_and_attempt_count() = runTest {
         val clock = FixedClock(Instant.parse("2026-06-19T10:00:00Z"))
