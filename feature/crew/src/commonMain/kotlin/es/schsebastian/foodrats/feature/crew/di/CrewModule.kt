@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.di
 
+import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
@@ -38,7 +40,10 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUse
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource
 import es.schsebastian.foodrats.feature.crew.presentation.invite.AcceptInviteViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsViewModel
@@ -55,6 +60,8 @@ val crewModule = module {
     single { CrewCodeGenerator(random = Random.Default) }
     singleOf(::CrewErrorMapper)
     single<CrewDataSource> { CrewFirestoreDataSource(get(), get(), get(), get()) }
+    // C9 — banner storage adapter; FirebaseStorage is bound in :core:data's coreDataModule.
+    singleOf(::CrewBannerStorageDataSource)
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
     // Offline-first local read source-of-truth for the crew list (P3b §P3b-T7). Holds the
     // FoodRatsDatabase queries (FoodRatsDatabase is bound by :core:database's databaseModule); the
@@ -85,8 +92,8 @@ val crewModule = module {
         }
     }
     single<CrewRepository> {
-        // (dataSource, dispatchers, errorMapper, clock, local)
-        FirebaseCrewRepository(get(), get(), get(), get(), get())
+        // (dataSource, dispatchers, errorMapper, clock, local, bannerStorage)
+        FirebaseCrewRepository(get(), get(), get(), get(), get(), get())
     }
     // Live "is blind voting on?" for a crew, consumed by :feature:feed to mask author
     // identity without a :feature:crew dep. Mirrors CrewOwnerPort: reads the crew read
@@ -126,6 +133,7 @@ val crewModule = module {
     single<CrewWelcomePort> {
         val repo = get<CrewRepository>()
         val dismissal = get<WelcomeDismissalRepository>()
+        val imageUrls = get<ImageUrlPort>()
         object : CrewWelcomePort {
             override fun observeWelcomeMessage(crewId: CrewId): Flow<String?> =
                 repo.observeCrew(crewId).map { r ->
@@ -163,6 +171,20 @@ val crewModule = module {
                         is Result.Err -> CrewScoreStyle.Stars
                     }
                 }
+
+            // C9: crew hero/banner image URL. Resolves the Storage PATH stored in bannerPath to a
+            // short-lived signed URL via ImageUrlPort. Emits null when no banner is set, the crew is
+            // unreadable, or URL resolution fails (safe fallback = no banner shown).
+            override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> =
+                repo.observeCrew(crewId).map { r ->
+                    when (r) {
+                        is Result.Ok -> {
+                            val path = r.value.bannerPath ?: return@map null
+                            imageUrls.resolve(crewId, listOf(path)).getOrNull()?.get(path)
+                        }
+                        is Result.Err -> null
+                    }
+                }
         }
     }
 
@@ -191,6 +213,9 @@ val crewModule = module {
     factoryOf(::SetCrewWeeklyChallengeUseCase)
     factoryOf(::SetCrewScoreStyleUseCase)
     factoryOf(::RemoveMemberUseCase)
+    // C9 — crew banner use cases
+    factoryOf(::SetCrewBannerUseCase)
+    factoryOf(::RemoveCrewBannerUseCase)
 
     viewModel {
         CrewPickerViewModel(
@@ -221,6 +246,8 @@ val crewModule = module {
             setCrewScoreStyle = get(),
             leaveCrew = get(),
             removeMember = get(),
+            setCrewBanner = get(),
+            removeCrewBanner = get(),
             session = get(),
             accountRead = get(),
             analytics = get(),

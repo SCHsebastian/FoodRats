@@ -88,4 +88,12 @@
     <string name="crew_settings_score_style_stars">Stars (★ 4.2 · 3 votes)</string>
     <string name="crew_settings_score_style_emoji">Emoji (😍 4.2 · 3 votes)</string>
     <string name="crew_settings_score_style_numeric">Numeric (4.2 · 3 votes)</string>
+    <!-- C9 — crew banner image -->
+    <string name="crew_settings_banner_section">CREW BANNER</string>
+    <string name="crew_settings_banner_change">Change photo</string>
+    <string name="crew_settings_banner_remove">Remove banner</string>
+    <string name="crew_settings_banner_remove_title">Remove banner?</string>
+    <string name="crew_settings_banner_remove_body">The crew banner will be removed for all members.</string>
+    <string name="crew_error_banner_upload_failed">Failed to upload banner. Try again.</string>
+    <string name="crew_error_banner_delete_failed">Failed to remove banner. Try again.</string>
 </resources>

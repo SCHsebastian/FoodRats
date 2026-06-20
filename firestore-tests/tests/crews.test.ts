@@ -385,3 +385,55 @@ describe("crews — scoreStyle (owner-only, branch 10)", () => {
     );
   });
 });
+
+describe("crews — bannerPath (owner-only, branch 11)", () => {
+  beforeEach(async () => {
+    await seedCrew(env, "c1", {
+      ownerId: "alice",
+      name: "C1",
+      memberIds: ["alice", "bob"],
+      members: { alice: {}, bob: {} },
+    });
+  });
+
+  it("the owner can set the bannerPath to a Storage path string", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/c1"), { bannerPath: "crew_banners/c1/banner.jpg" }),
+    );
+  });
+
+  it("the owner can clear the bannerPath (set null = remove)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/c1"), { bannerPath: null }));
+  });
+
+  it("a non-owner member CANNOT set the bannerPath", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), { bannerPath: "crew_banners/c1/banner.jpg" }),
+    );
+  });
+
+  it("a stranger CANNOT set the bannerPath", async () => {
+    const db = env.authenticatedContext("mallory").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), { bannerPath: "crew_banners/c1/banner.jpg" }),
+    );
+  });
+
+  it("a non-string, non-null bannerPath is rejected", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { bannerPath: 1 }));
+  });
+
+  it("the bannerPath branch CANNOT also smuggle an ownerId change", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        bannerPath: "crew_banners/c1/banner.jpg",
+        ownerId: "bob",
+      }),
+    );
+  });
+});

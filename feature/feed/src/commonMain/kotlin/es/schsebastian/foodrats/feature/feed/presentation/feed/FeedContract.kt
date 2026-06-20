@@ -98,6 +98,12 @@ data class FeedState(
      * Derived from [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeScoreStyle].
      */
     val scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
+    /**
+     * Active crew's hero/banner image URL (C9). Non-null → show the banner image atop the feed.
+     * Null when no banner is set, the crew is unreadable, or URL resolution fails.
+     * Derived from [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeBannerImageUrl].
+     */
+    val bannerImageUrl: String? = null,
 ) : MviState
 
 /**

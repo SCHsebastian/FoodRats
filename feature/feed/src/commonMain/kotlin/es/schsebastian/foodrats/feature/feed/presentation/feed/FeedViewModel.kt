@@ -218,6 +218,7 @@ class FeedViewModel(
         observeWelcomeBanner()
         observeWeeklyChallengeBanner()
         observeScoreStyle()
+        observeBannerImageUrl()
     }
 
     /**
@@ -420,6 +421,24 @@ class FeedViewModel(
                 }
                 outbox.remove(entry.id)
             }
+    }
+
+    /**
+     * Observes the active crew's hero/banner image URL (C9). Re-subscribes on crew switch via
+     * [flatMapLatest]; a null crew or absent bannerPath emits `null` → banner hidden.
+     * Signed URL resolution runs inside the port binding (data layer); the VM sees a plain URL string.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeBannerImageUrl() {
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(null)
+                else welcomePort.observeBannerImageUrl(crewId)
+            }
+            .distinctUntilChanged()
+            .onEach { url -> update { it.copy(bannerImageUrl = url) } }
+            .launchIn(viewModelScope)
     }
 
     // ── Welcome banner (C6) ─────────────────────────────────────────────────────────────────────
@@ -629,4 +648,5 @@ private object NoopCrewWelcomePort : CrewWelcomePort {
     override suspend fun dismissWelcome(crewId: es.schsebastian.foodrats.core.domain.model.CrewId) = Unit
     override fun observeWeeklyChallenge(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
     override fun observeScoreStyle(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
+    override fun observeBannerImageUrl(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String?> = flowOf(null)
 }

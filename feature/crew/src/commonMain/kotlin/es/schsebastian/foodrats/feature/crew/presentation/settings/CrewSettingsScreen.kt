@@ -72,6 +72,11 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
+import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
+import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
+import io.github.ismoy.imagepickerkmp.domain.models.MimeType
+import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
+import kotlinx.io.readByteArray
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
@@ -251,6 +256,17 @@ fun CrewSettingsScreen(
                             modifier = Modifier.frRiseIn(delayMillis = 160),
                         )
                     }
+
+                    // C9 — crew banner image upload/remove (owner-only).
+                    item {
+                        BannerCard(
+                            hasBanner = crew.bannerPath != null,
+                            saving = state.isSavingBanner,
+                            onPicked = { bytes -> vm.onIntent(CrewSettingsIntent.BannerPicked(bytes)) },
+                            onRemove = { vm.onIntent(CrewSettingsIntent.RemoveBanner) },
+                            modifier = Modifier.frRiseIn(delayMillis = 180),
+                        )
+                    }
                 }
 
                 item {
@@ -338,6 +354,19 @@ fun CrewSettingsScreen(
                 },
             )
         }
+    }
+
+    // C9 — remove-banner confirmation dialog.
+    if (state.showRemoveBannerConfirm) {
+        FrConfirmDialog(
+            title = resolve(CrewStringKey.SettingsBannerRemoveTitle),
+            message = resolve(CrewStringKey.SettingsBannerRemoveBody),
+            confirmLabel = resolve(CrewStringKey.SettingsBannerRemove),
+            dismissLabel = resolve(CrewStringKey.SettingsCancel),
+            onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmRemoveBanner) },
+            onDismiss = { vm.onIntent(CrewSettingsIntent.CancelRemoveBanner) },
+            destructive = true,
+        )
     }
 
     memberPendingRemoval?.let { pendingId ->
@@ -849,6 +878,74 @@ private fun ScoreStyleCard(
                             image = FrIcons.ChevronRight,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(Sizes.iconSm),
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * C9 — owner-only crew banner image card. Shows a "Change photo" CTA (backed by [ImagePickerKMP]
+ * gallery picker) and, when a banner is already set, a "Remove banner" secondary button that
+ * triggers a confirmation dialog. [saving] disables both buttons while an upload or delete is in
+ * flight.
+ */
+@Composable
+private fun BannerCard(
+    hasBanner: Boolean,
+    saving: Boolean,
+    onPicked: (ByteArray) -> Unit,
+    onRemove: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val picker = rememberImagePickerKMP()
+    LaunchedEffect(picker.result) {
+        when (val r = picker.result) {
+            is ImagePickerResult.Success -> {
+                val photo = r.first ?: return@LaunchedEffect
+                val bytes = photo.asSource().readByteArray()
+                onPicked(bytes)
+                picker.reset()
+            }
+            is ImagePickerResult.Error,
+            is ImagePickerResult.Dismissed,
+            is ImagePickerResult.Loading,
+            is ImagePickerResult.Idle -> Unit
+        }
+    }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(
+            text = resolve(CrewStringKey.SettingsBannerSection),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        FrCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+            ) {
+                if (saving) {
+                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                    }
+                } else {
+                    FrButton(
+                        label = resolve(CrewStringKey.SettingsBannerChange),
+                        onClick = {
+                            picker.launchGallery(
+                                allowMultiple = false,
+                                mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    if (hasBanner) {
+                        FrButton(
+                            label = resolve(CrewStringKey.SettingsBannerRemove),
+                            onClick = onRemove,
+                            variant = FrButtonVariant.Secondary,
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }

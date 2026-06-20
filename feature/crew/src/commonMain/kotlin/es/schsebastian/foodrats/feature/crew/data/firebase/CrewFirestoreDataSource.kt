@@ -268,6 +268,22 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
+    override suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("bannerPath" to path)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("bannerPath" to null)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
     companion object { const val MAX_CODE_ATTEMPTS = 5 }
 }
 

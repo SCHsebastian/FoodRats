@@ -29,4 +29,7 @@ class CrewErrorToStringKeyTest {
     @Test fun maps_validation_tagline_too_long() = assertEquals(CrewStringKey.ErrorValidationTaglineTooLong, CrewError.Validation.TaglineTooLong.toStringKey())
     @Test fun maps_validation_welcome_message_too_long() = assertEquals(CrewStringKey.ErrorValidationWelcomeMessageTooLong, CrewError.Validation.WelcomeMessageTooLong.toStringKey())
     @Test fun maps_validation_weekly_challenge_too_long() = assertEquals(CrewStringKey.ErrorValidationWeeklyChallengeTooLong, CrewError.Validation.WeeklyChallengeTooLong.toStringKey())
+    // C9 — crew banner
+    @Test fun maps_banner_upload_failed() = assertEquals(CrewStringKey.ErrorBannerUploadFailed, CrewError.Banner.UploadFailed.toStringKey())
+    @Test fun maps_banner_delete_failed() = assertEquals(CrewStringKey.ErrorBannerDeleteFailed, CrewError.Banner.DeleteFailed.toStringKey())
 }

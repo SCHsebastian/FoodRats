@@ -41,6 +41,15 @@ interface CrewWelcomePort {
      * for pre-C8 crews (no stored field ⇒ legacy behavior preserved). Never emits `null`.
      */
     fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle>
+
+    /**
+     * Emits the crew's hero/banner image URL (C9), or `null` when no banner is set or the crew is
+     * unreadable. The URL is a short-lived signed URL resolved via `ImageUrlPort.resolve` at read
+     * time — callers must not cache it beyond a single screen composition.
+     *
+     * Feed consumes this to render a banner atop the meal list without depending on `:feature:crew`.
+     */
+    fun observeBannerImageUrl(crewId: CrewId): Flow<String?>
 }
 
 /**

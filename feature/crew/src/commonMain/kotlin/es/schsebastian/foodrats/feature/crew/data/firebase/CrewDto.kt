@@ -34,4 +34,8 @@ data class CrewDto(
     // on create — this is INTENTIONAL: the create whitelist now includes `scoreStyle`, and the default
     // value "stars" is a valid allowed string, so the initial create write is always permitted.
     val scoreStyle: String = "stars",
+    // Owner-settable hero/banner image Storage path (C9). `null` means no banner is set.
+    // Null-pinned so GitLive encodeDefaults=true doesn't emit `null` and fail an affectedKeys check it
+    // was not part of (same GitLive regression guard as `tagline`, `welcomeMessage`, etc.).
+    val bannerPath: String? = null,
 )

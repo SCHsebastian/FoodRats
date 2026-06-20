@@ -14,6 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -204,6 +208,23 @@ fun FeedScreen(
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                             ) {
+                                // C9 — crew hero/banner image: shown at the top of the feed list
+                                // when the owner has set a banner. Signed URL resolved by the port
+                                // binding; hidden when null (no banner set or URL resolution failed).
+                                state.bannerImageUrl?.let { url ->
+                                    item(key = "crew-banner-image") {
+                                        val ctx = LocalPlatformContext.current
+                                        AsyncImage(
+                                            model = ImageRequest.Builder(ctx).data(url).build(),
+                                            contentDescription = null,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(160.dp)
+                                                .clip(RoundedCornerShape(Radius.lg))
+                                                .frRiseIn(delayMillis = 0),
+                                        )
+                                    }
+                                }
                                 // C6 — pinned crew welcome banner: shown only when the owner has set a
                                 // message and the viewer has not dismissed it for this crew yet.
                                 state.welcomeMessage?.let { msg ->

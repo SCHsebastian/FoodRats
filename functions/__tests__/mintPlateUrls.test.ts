@@ -53,6 +53,17 @@ describe("authorizedPaths — crew-scoped allow-list (#15)", () => {
     const paths = ["avatars/alice.jpg", "avatars/alice.jpg"];
     expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(["avatars/alice.jpg"]);
   });
+
+  // C9 — crew banner image
+  it("allows the crew banner path for a member", () => {
+    const paths = ["crew_banners/c1/banner.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(paths);
+  });
+
+  it("drops another crew's banner path", () => {
+    const paths = ["crew_banners/c2/banner.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
+  });
 });
 
 describe("buildSignedUrls — membership-checked minting (#15)", () => {

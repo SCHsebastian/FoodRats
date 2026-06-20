@@ -66,6 +66,14 @@ data class Crew(
      * [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase].
      */
     val scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
+    /**
+     * Optional Storage object path for the crew's hero/banner image (C9). `null` means no banner is
+     * set. Stored as a path (e.g. `crew_banners/{crewId}/banner.jpg`), resolved to a short-lived
+     * signed URL at read time via `ImageUrlPort` — same posture as `accounts/{uid}.avatarPath`.
+     * Owner-settable via [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase];
+     * clearable via [es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase].
+     */
+    val bannerPath: String? = null,
 ) {
     val size: Int get() = members.size
 
@@ -101,6 +109,7 @@ data class Crew(
             weeklyChallenge: WeeklyChallenge? = null,
             weeklyChallengeSetAt: Instant? = null,
             scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle)
+            bannerPath: String? = null,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle, bannerPath)
     }
 }

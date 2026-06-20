@@ -86,6 +86,8 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             weeklyChallenge = weeklyChallenge,
             weeklyChallengeSetAt = weeklyChallengeSetAt,
             scoreStyle = scoreStyle,
+            // bannerPath: absent/null in old docs → null (no migration needed, tolerant deserialization).
+            bannerPath = bannerPath?.ifBlank { null },
         ),
     )
 }

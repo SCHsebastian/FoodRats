@@ -88,4 +88,12 @@
     <string name="crew_settings_score_style_stars">Estrellas (★ 4.2 · 3 votos)</string>
     <string name="crew_settings_score_style_emoji">Emoji (😍 4.2 · 3 votos)</string>
     <string name="crew_settings_score_style_numeric">Numérico (4.2 · 3 votos)</string>
+    <!-- C9 — imagen de portada del grupo -->
+    <string name="crew_settings_banner_section">PORTADA DEL GRUPO</string>
+    <string name="crew_settings_banner_change">Cambiar foto</string>
+    <string name="crew_settings_banner_remove">Quitar portada</string>
+    <string name="crew_settings_banner_remove_title">¿Quitar la portada?</string>
+    <string name="crew_settings_banner_remove_body">La portada del grupo se eliminará para todos los miembros.</string>
+    <string name="crew_error_banner_upload_failed">No se pudo subir la portada. Inténtalo de nuevo.</string>
+    <string name="crew_error_banner_delete_failed">No se pudo quitar la portada. Inténtalo de nuevo.</string>
 </resources>

@@ -48,6 +48,8 @@ class FakeCrewDataSource : CrewDataSource {
     var setWelcomeMessageResult: Result<Unit, CrewError> = Result.success(Unit)
     var setWeeklyChallengeResult: Result<Unit, CrewError> = Result.success(Unit)
     var setScoreStyleResult: Result<Unit, CrewError> = Result.success(Unit)
+    var setBannerPathResult: Result<Unit, CrewError> = Result.success(Unit)
+    var clearBannerPathResult: Result<Unit, CrewError> = Result.success(Unit)
 
     // ---- call captures ----
     var lastCreate: CreateCall? = null
@@ -145,4 +147,10 @@ class FakeCrewDataSource : CrewDataSource {
         lastSetScoreStyle = crewId to style
         return setScoreStyleResult
     }
+
+    override suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError> =
+        setBannerPathResult
+
+    override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> =
+        clearBannerPathResult
 }

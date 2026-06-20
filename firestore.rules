@@ -115,6 +115,14 @@ service cloud.firestore {
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreStyle'])
                        && request.resource.data.scoreStyle in ['stars', 'emoji', 'numeric'])
                       ||
+                      // (11) owner sets or clears the bannerPath (C9). null = removed; string = Storage
+                      // object path for the crew banner image. The Storage write is enforced by
+                      // storage.rules; this rule only locks the Firestore field pointer.
+                      (request.auth.uid in resource.data.memberIds
+                       && resource.data.ownerId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bannerPath'])
+                       && (request.resource.data.bannerPath == null || request.resource.data.bannerPath is string))
+                      ||
                       (request.auth.uid in resource.data.memberIds
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
                       ||

@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.feature.crew.di
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
+import dev.gitlive.firebase.storage.FirebaseStorage
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository
 import es.schsebastian.foodrats.core.database.FoodRatsDatabase
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
@@ -63,6 +65,9 @@ class CrewModuleVerifyTest {
                 WelcomeDismissalRepository::class,
                 // C5 — Clock is app-wide, passed to SetCrewWeeklyChallengeUseCase.
                 Clock::class,
+                // C9 — FirebaseStorage backs CrewBannerStorageDataSource; ImageUrlPort resolves banner URLs.
+                FirebaseStorage::class,
+                ImageUrlPort::class,
             ),
         )
     }

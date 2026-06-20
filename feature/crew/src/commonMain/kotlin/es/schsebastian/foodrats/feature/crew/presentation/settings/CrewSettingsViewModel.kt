@@ -16,8 +16,10 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
@@ -42,6 +44,8 @@ class CrewSettingsViewModel(
     private val setCrewScoreStyle: SetCrewScoreStyleUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val removeMember: RemoveMemberUseCase,
+    private val setCrewBanner: SetCrewBannerUseCase,
+    private val removeCrewBanner: RemoveCrewBannerUseCase,
     private val session: SessionProvider,
     private val accountRead: AccountReadPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
@@ -110,6 +114,11 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.OpenScoreStylePicker -> update { it.copy(showScoreStylePicker = true) }
         CrewSettingsIntent.DismissScoreStylePicker -> update { it.copy(showScoreStylePicker = false) }
         is CrewSettingsIntent.SetScoreStyle -> doSetScoreStyle(intent.style)
+        // C9 — banner
+        is CrewSettingsIntent.BannerPicked -> doSetBanner(intent.bytes)
+        CrewSettingsIntent.RemoveBanner -> update { it.copy(showRemoveBannerConfirm = true) }
+        CrewSettingsIntent.ConfirmRemoveBanner -> doRemoveBanner()
+        CrewSettingsIntent.CancelRemoveBanner -> update { it.copy(showRemoveBannerConfirm = false) }
     }
 
     private suspend fun doSaveCrewName() {
@@ -237,6 +246,24 @@ class CrewSettingsViewModel(
             is Result.Err -> update {
                 it.copy(removingMemberIds = it.removingMemberIds - target, error = r.error)
             }
+        }
+    }
+
+    // C9 — banner ─────────────────────────────────────────────────────────────────────────────────
+
+    private suspend fun doSetBanner(bytes: ByteArray) {
+        update { it.copy(isSavingBanner = true, error = null) }
+        when (val r = setCrewBanner(crewId, bytes)) {
+            is Result.Ok  -> update { it.copy(isSavingBanner = false) }
+            is Result.Err -> update { it.copy(isSavingBanner = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doRemoveBanner() {
+        update { it.copy(isSavingBanner = true, showRemoveBannerConfirm = false, error = null) }
+        when (val r = removeCrewBanner(crewId)) {
+            is Result.Ok  -> update { it.copy(isSavingBanner = false) }
+            is Result.Err -> update { it.copy(isSavingBanner = false, error = r.error) }
         }
     }
 }

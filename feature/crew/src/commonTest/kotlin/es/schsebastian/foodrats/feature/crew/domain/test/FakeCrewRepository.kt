@@ -41,6 +41,10 @@ class FakeCrewRepository(
     var nextRemoveMember: Result<Unit, CrewError>? = null
     /** When set, overrides the default setScoreStyle behavior (ownership check + mutation). */
     var nextSetScoreStyle: Result<Unit, CrewError>? = null
+    /** When set, overrides the default setBanner behavior. */
+    var nextSetBanner: Result<Unit, CrewError>? = null
+    /** When set, overrides the default removeBanner behavior. */
+    var nextRemoveBanner: Result<Unit, CrewError>? = null
 
     var lastRename: Pair<CrewId, String>? = null
     var lastMemberRename: Triple<CrewId, AccountId, String>? = null
@@ -228,6 +232,37 @@ class FakeCrewRepository(
         lastRemoveMember = Triple(crewId, requestedBy, target)
         crews.value = crews.value.map {
             if (it.id == crewId) it.copy(members = it.members.filterNot { m -> m.accountId == target }) else it
+        }
+        return Result.success(Unit)
+    }
+
+    // C9 — banner
+
+    override suspend fun setBanner(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        bytes: ByteArray,
+    ): Result<Unit, CrewError> {
+        nextSetBanner?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        crews.value = crews.value.map {
+            if (it.id == crewId) it.copy(bannerPath = "crew_banners/${crewId.value}/banner.jpg") else it
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun removeBanner(
+        crewId: CrewId,
+        requestedBy: AccountId,
+    ): Result<Unit, CrewError> {
+        nextRemoveBanner?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        crews.value = crews.value.map {
+            if (it.id == crewId) it.copy(bannerPath = null) else it
         }
         return Result.success(Unit)
     }

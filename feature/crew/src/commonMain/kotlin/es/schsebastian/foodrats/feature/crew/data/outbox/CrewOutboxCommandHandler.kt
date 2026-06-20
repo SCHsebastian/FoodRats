@@ -90,6 +90,9 @@ class CrewOutboxCommandHandler(
             CrewError.Create.CodeCollisionRetriesExhausted -> OutboxExecuteResult.Terminal("crew.error.codeCollision")
             CrewError.RemoveMember.NotOwner -> OutboxExecuteResult.Terminal("crew.error.removeNotOwner")
             CrewError.RemoveMember.CannotRemoveSelf -> OutboxExecuteResult.Terminal("crew.error.removeSelf")
+            // C9 — banner errors are never queued (bytes not serializable), but the when must be exhaustive.
+            CrewError.Banner.UploadFailed -> OutboxExecuteResult.Terminal("crew.error.bannerUploadFailed")
+            CrewError.Banner.DeleteFailed -> OutboxExecuteResult.Terminal("crew.error.bannerDeleteFailed")
         }
     }
 }

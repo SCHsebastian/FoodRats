@@ -61,6 +61,11 @@ data class CrewSettingsState(
     val isSavingScoreStyle: Boolean = false,
     /** True once the score-style picker sheet is showing. */
     val showScoreStylePicker: Boolean = false,
+    // ── Banner (C9) ──────────────────────────────────────────────────────────────────────────────
+    /** True while a banner upload or delete write is in flight. */
+    val isSavingBanner: Boolean = false,
+    /** True while the "Remove banner?" confirmation dialog is showing. */
+    val showRemoveBannerConfirm: Boolean = false,
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {
@@ -105,6 +110,17 @@ sealed interface CrewSettingsIntent : MviIntent {
     data object DismissScoreStylePicker : CrewSettingsIntent
     /** Owner selected [style] from the picker (optimistic; rolls back on error). */
     data class SetScoreStyle(val style: CrewScoreStyle) : CrewSettingsIntent
+
+    // ── Banner (C9) ──────────────────────────────────────────────────────────────────────────────
+
+    /** Owner picked a new banner image — [bytes] are the JPEG bytes from the image picker. */
+    data class BannerPicked(val bytes: ByteArray) : CrewSettingsIntent
+    /** Owner tapped "Remove banner"; triggers confirmation dialog. */
+    data object RemoveBanner : CrewSettingsIntent
+    /** Owner confirmed banner removal in the dialog. */
+    data object ConfirmRemoveBanner : CrewSettingsIntent
+    /** Owner dismissed the remove-banner dialog without confirming. */
+    data object CancelRemoveBanner : CrewSettingsIntent
 }
 
 sealed interface CrewSettingsEffect : MviEffect {

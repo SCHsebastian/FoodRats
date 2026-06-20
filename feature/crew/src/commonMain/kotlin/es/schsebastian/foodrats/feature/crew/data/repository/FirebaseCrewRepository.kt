@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
@@ -35,6 +36,8 @@ internal class FirebaseCrewRepository(
     // Offline-first read source-of-truth (P3b §P3b-T7): the crew picker observes this local
     // SQLDelight store; the CrewSyncEngine keeps it fresh off the Firestore listener.
     private val local: CrewLocalStore,
+    // C9 — crew banner Storage adapter (upload/delete). Null in tests that don't exercise banner.
+    private val bannerStorage: CrewBannerStorageDataSource? = null,
 ) : CrewRepository {
 
     override suspend fun create(
@@ -222,5 +225,34 @@ internal class FirebaseCrewRepository(
                 )
             },
         )
+    }
+
+    // C9 — crew banner ————————————————————————————————————————————————————————————————————————————
+
+    override suspend fun setBanner(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        bytes: ByteArray,
+    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
+        val crew = dataSource.fetchOnce(crewId) ?: return@withContext Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return@withContext Result.failure(CrewError.Authorization.NotOwner)
+        val storage = bannerStorage ?: return@withContext Result.failure(CrewError.Banner.UploadFailed)
+        runCatching {
+            val path = storage.upload(crewId, bytes)
+            dataSource.setBannerPath(crewId, path)
+        }.getOrElse { Result.failure(CrewError.Banner.UploadFailed) }
+    }
+
+    override suspend fun removeBanner(
+        crewId: CrewId,
+        requestedBy: AccountId,
+    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
+        val crew = dataSource.fetchOnce(crewId) ?: return@withContext Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return@withContext Result.failure(CrewError.Authorization.NotOwner)
+        val storage = bannerStorage ?: return@withContext Result.failure(CrewError.Banner.DeleteFailed)
+        runCatching {
+            storage.delete(crewId)
+            dataSource.clearBannerPath(crewId)
+        }.getOrElse { Result.failure(CrewError.Banner.DeleteFailed) }
     }
 }

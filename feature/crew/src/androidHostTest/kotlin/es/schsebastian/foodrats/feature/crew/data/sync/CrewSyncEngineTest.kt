@@ -212,6 +212,8 @@ private class FakeCrewListSource : CrewDataSource {
     override suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setWeeklyChallenge(crewId: CrewId, challenge: String?, setAtMillis: Long?): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setScoreStyle(crewId: CrewId, style: String): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> = Result.success(Unit)
 }
 
 /** Minimal [SessionProvider] backed by a [MutableStateFlow] the test flips. */

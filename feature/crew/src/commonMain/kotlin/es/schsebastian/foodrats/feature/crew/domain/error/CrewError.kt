@@ -45,4 +45,9 @@ sealed interface CrewError {
         data object CannotRemoveSelf : RemoveMember // the owner cannot remove themselves (leaving is a separate flow)
         data object MemberNotFound : RemoveMember  // the target is not a member of this crew
     }
+
+    sealed interface Banner : CrewError {
+        data object UploadFailed : Banner          // storage write failed (network / permission)
+        data object DeleteFailed : Banner          // storage delete failed (network / permission)
+    }
 }

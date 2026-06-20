@@ -86,4 +86,21 @@ interface CrewRepository {
      * in-domain by [es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase]).
      */
     suspend fun removeMember(crewId: CrewId, requestedBy: AccountId, target: AccountId): Result<Unit, CrewError>
+
+    /**
+     * Uploads [bytes] as the crew's hero/banner image (C9). Only the owner ([requestedBy]) may set
+     * it. Uploads bytes to Storage, then persists the path to `crews/{crewId}.bannerPath`.
+     * Returns [es.schsebastian.foodrats.feature.crew.domain.error.CrewError.Banner.UploadFailed] if
+     * the Storage write fails; [es.schsebastian.foodrats.feature.crew.domain.error.CrewError.Authorization.NotOwner]
+     * if the caller is not the crew owner.
+     */
+    suspend fun setBanner(crewId: CrewId, requestedBy: AccountId, bytes: ByteArray): Result<Unit, CrewError>
+
+    /**
+     * Removes the crew's hero/banner image (C9). Deletes the Storage object (NOT_FOUND-tolerant)
+     * then clears `crews/{crewId}.bannerPath`. Only the owner ([requestedBy]) may remove the banner.
+     * Returns [es.schsebastian.foodrats.feature.crew.domain.error.CrewError.Banner.DeleteFailed] if
+     * the Storage delete fails with a non-NOT_FOUND error.
+     */
+    suspend fun removeBanner(crewId: CrewId, requestedBy: AccountId): Result<Unit, CrewError>
 }

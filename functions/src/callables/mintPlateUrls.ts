@@ -45,6 +45,7 @@ export type SignReadUrl = (path: string, expiresAtMs: number) => Promise<string>
  * Keeps only the paths the caller's crew is allowed to read:
  *  - plate photos under this crew: `crews/{crewId}/meals/*.jpg`
  *  - avatars of accounts that are members of this crew: `avatars/{memberUid}.jpg`
+ *  - the crew banner (C9): `crew_banners/{crewId}/banner.jpg`
  * Anything else is silently dropped (a stale/foreign path must not break a whole screen).
  */
 export function authorizedPaths(
@@ -54,6 +55,7 @@ export function authorizedPaths(
 ): string[] {
   const members = new Set(memberIds);
   const platePrefix = `crews/${crewId}/meals/`;
+  const bannerPath = `crew_banners/${crewId}/banner.jpg`;
   const seen = new Set<string>();
   const out: string[] = [];
   for (const p of paths) {
@@ -62,7 +64,8 @@ export function authorizedPaths(
     const isPlate = p.startsWith(platePrefix) && p.endsWith(".jpg");
     const avatar = /^avatars\/([^/]+)\.jpg$/.exec(p);
     const isMemberAvatar = avatar !== null && members.has(avatar[1]);
-    if (isPlate || isMemberAvatar) out.push(p);
+    const isBanner = p === bannerPath;
+    if (isPlate || isMemberAvatar || isBanner) out.push(p);
   }
   return out;
 }

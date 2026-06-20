@@ -56,6 +56,13 @@ import foodrats.feature.crew.generated.resources.crew_settings_score_style_stars
 import foodrats.feature.crew.generated.resources.crew_settings_score_style_emoji
 import foodrats.feature.crew.generated.resources.crew_settings_score_style_numeric
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
+import foodrats.feature.crew.generated.resources.crew_settings_banner_section
+import foodrats.feature.crew.generated.resources.crew_settings_banner_change
+import foodrats.feature.crew.generated.resources.crew_settings_banner_remove
+import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_title
+import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_body
+import foodrats.feature.crew.generated.resources.crew_error_banner_upload_failed
+import foodrats.feature.crew.generated.resources.crew_error_banner_delete_failed
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
 import foodrats.feature.crew.generated.resources.crew_settings_danger_section
@@ -181,4 +188,12 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsScoreStyleStars(Res.string.crew_settings_score_style_stars),
     SettingsScoreStyleEmoji(Res.string.crew_settings_score_style_emoji),
     SettingsScoreStyleNumeric(Res.string.crew_settings_score_style_numeric),
+    // C9 — crew banner image
+    SettingsBannerSection(Res.string.crew_settings_banner_section),
+    SettingsBannerChange(Res.string.crew_settings_banner_change),
+    SettingsBannerRemove(Res.string.crew_settings_banner_remove),
+    SettingsBannerRemoveTitle(Res.string.crew_settings_banner_remove_title),
+    SettingsBannerRemoveBody(Res.string.crew_settings_banner_remove_body),
+    ErrorBannerUploadFailed(Res.string.crew_error_banner_upload_failed),
+    ErrorBannerDeleteFailed(Res.string.crew_error_banner_delete_failed),
 }
