@@ -8,7 +8,9 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
+import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
+import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -32,6 +34,8 @@ class FakeCrewRepository(
     var nextSetTagline: Result<Unit, CrewError>? = null
     /** When set, overrides the default setWelcomeMessage behavior (ownership check + mutation). */
     var nextSetWelcomeMessage: Result<Unit, CrewError>? = null
+    /** When set, overrides the default setWeeklyChallenge behavior (ownership check + mutation). */
+    var nextSetWeeklyChallenge: Result<Unit, CrewError>? = null
     /** When set, overrides the default removeMember behavior (ownership/self/membership checks + mutation). */
     var nextRemoveMember: Result<Unit, CrewError>? = null
 
@@ -41,6 +45,7 @@ class FakeCrewRepository(
     var lastSetBlindVoting: Pair<CrewId, Boolean>? = null
     var lastSetTagline: Pair<CrewId, String?>? = null
     var lastSetWelcomeMessage: Pair<CrewId, String?>? = null
+    var lastSetWeeklyChallenge: Triple<CrewId, String?, Long?>? = null
     var lastRemoveMember: Triple<CrewId, AccountId, AccountId>? = null
 
     override suspend fun create(
@@ -163,6 +168,30 @@ class FakeCrewRepository(
         }
         crews.value = crews.value.map {
             if (it.id == crewId) it.copy(welcomeMessage = parsedMessage) else it
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun setWeeklyChallenge(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        challenge: String?,
+        setAtMillis: Long?,
+    ): Result<Unit, CrewError> {
+        nextSetWeeklyChallenge?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        lastSetWeeklyChallenge = Triple(crewId, challenge, setAtMillis)
+        val parsedChallenge = challenge?.let {
+            when (val r = WeeklyChallenge.of(it)) {
+                is Result.Ok  -> r.value
+                is Result.Err -> return Result.failure(r.error)
+            }
+        }
+        val setAt = setAtMillis?.let { Instant.fromEpochMilliseconds(it) }
+        crews.value = crews.value.map {
+            if (it.id == crewId) it.copy(weeklyChallenge = parsedChallenge, weeklyChallengeSetAt = setAt) else it
         }
         return Result.success(Unit)
     }

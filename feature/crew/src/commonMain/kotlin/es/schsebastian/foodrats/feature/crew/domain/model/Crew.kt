@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import kotlin.time.Instant
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
+import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
 
 /**
  * The Crew aggregate root. The invariant this context exists to protect is the
@@ -45,6 +46,19 @@ data class Crew(
      * Capped at [WelcomeMessage.MAX_LEN] = 200 chars.
      */
     val welcomeMessage: WelcomeMessage? = null,
+    /**
+     * Optional owner-set weekly theme pinned to the crew feed header — e.g. "Taco Tuesday",
+     * "Soup week". `null` means no challenge is set. Auto-expires 7 days after [weeklyChallengeSetAt]
+     * (client-side check in the feed). Managed by
+     * [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase].
+     * Capped at [WeeklyChallenge.MAX_LEN] = 80 chars.
+     */
+    val weeklyChallenge: WeeklyChallenge? = null,
+    /**
+     * The instant when [weeklyChallenge] was last set. Used by the feed for the 7-day expiry
+     * check. `null` when no challenge is set.
+     */
+    val weeklyChallengeSetAt: Instant? = null,
 ) {
     val size: Int get() = members.size
 
@@ -77,6 +91,8 @@ data class Crew(
             blindVoting: Boolean = false,
             tagline: CrewTagline? = null,
             welcomeMessage: WelcomeMessage? = null,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage)
+            weeklyChallenge: WeeklyChallenge? = null,
+            weeklyChallengeSetAt: Instant? = null,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt)
     }
 }

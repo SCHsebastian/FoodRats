@@ -79,4 +79,8 @@
     <string name="crew_settings_welcome_message_label">Welcome message</string>
     <string name="crew_settings_welcome_message_placeholder">e.g. "We cook dinner together — post before 22:00." (max 200 chars)</string>
     <string name="crew_error_validation_welcome_message_too_long">Welcome message is too long (max 200 characters).</string>
+    <string name="crew_settings_weekly_challenge_section">WEEKLY CHALLENGE</string>
+    <string name="crew_settings_weekly_challenge_label">Weekly challenge</string>
+    <string name="crew_settings_weekly_challenge_placeholder">e.g. "Taco Tuesday" or "Soup week" (max 80 chars)</string>
+    <string name="crew_error_validation_weekly_challenge_too_long">Challenge is too long (max 80 characters).</string>
 </resources>

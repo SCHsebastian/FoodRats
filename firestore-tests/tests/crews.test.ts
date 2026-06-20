@@ -251,3 +251,82 @@ describe("crews — welcomeMessage (owner-only, branch 8)", () => {
     );
   });
 });
+
+describe("crews — weeklyChallenge (owner-only, branch 9)", () => {
+  beforeEach(async () => {
+    await seedCrew(env, "c1", {
+      ownerId: "alice",
+      name: "C1",
+      memberIds: ["alice", "bob"],
+      members: { alice: {}, bob: {} },
+    });
+  });
+
+  it("the owner can set the weekly challenge (both fields together)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/c1"), {
+        weeklyChallenge: "Taco Tuesday",
+        weeklyChallengeSetAtMillis: 1700000000000,
+      }),
+    );
+  });
+
+  it("the owner can clear the weekly challenge (both fields null)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/c1"), {
+        weeklyChallenge: null,
+        weeklyChallengeSetAtMillis: null,
+      }),
+    );
+  });
+
+  it("a non-owner member CANNOT set the weekly challenge", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        weeklyChallenge: "hijacked",
+        weeklyChallengeSetAtMillis: 1700000000000,
+      }),
+    );
+  });
+
+  it("a stranger CANNOT set the weekly challenge", async () => {
+    const db = env.authenticatedContext("mallory").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        weeklyChallenge: "hijacked",
+        weeklyChallengeSetAtMillis: 1700000000000,
+      }),
+    );
+  });
+
+  it("writing only weeklyChallenge without the timestamp is rejected", async () => {
+    // Branch (9) requires hasOnly(['weeklyChallenge','weeklyChallengeSetAtMillis']) — missing one field fails.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { weeklyChallenge: "Soup week" }));
+  });
+
+  it("a non-string, non-null weeklyChallenge is rejected", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        weeklyChallenge: 42,
+        weeklyChallengeSetAtMillis: 1700000000000,
+      }),
+    );
+  });
+
+  it("the weeklyChallenge branch CANNOT also smuggle an ownerId change", async () => {
+    // Branch (9) is gated by hasOnly(['weeklyChallenge','weeklyChallengeSetAtMillis']); touching ownerId fails.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), {
+        weeklyChallenge: "ok",
+        weeklyChallengeSetAtMillis: 1700000000000,
+        ownerId: "bob",
+      }),
+    );
+  });
+});

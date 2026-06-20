@@ -214,6 +214,7 @@ class FeedViewModel(
 
         observeReactions()
         observeWelcomeBanner()
+        observeWeeklyChallengeBanner()
     }
 
     /**
@@ -288,6 +289,32 @@ class FeedViewModel(
             }
             .distinctUntilChanged()
             .onEach { msg -> update { it.copy(welcomeMessage = msg) } }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * Observes the active crew's weekly challenge (C5). The `weeklyChallenge` in state is non-null
+     * only when the text is set AND `now - setAt < 7 days` (client-side expiry check).
+     * Re-subscribes on crew switch via [flatMapLatest]; a null crew hides the chip.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeWeeklyChallengeBanner() {
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(null)
+                else welcomePort.observeWeeklyChallenge(crewId)
+            }
+            .map { snapshot ->
+                if (snapshot == null) null
+                else {
+                    val sevenDaysMs = 7L * 24 * 60 * 60 * 1_000
+                    val ageMs = clock.now().toEpochMilliseconds() - snapshot.setAtMillis
+                    if (ageMs >= sevenDaysMs) null else snapshot.text
+                }
+            }
+            .distinctUntilChanged()
+            .onEach { text -> update { it.copy(weeklyChallenge = text) } }
             .launchIn(viewModelScope)
     }
 
@@ -572,4 +599,5 @@ private object NoopCrewWelcomePort : CrewWelcomePort {
     override fun observeWelcomeMessage(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String?> = flowOf(null)
     override fun isWelcomeDismissed(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<Boolean> = flowOf(false)
     override suspend fun dismissWelcome(crewId: es.schsebastian.foodrats.core.domain.model.CrewId) = Unit
+    override fun observeWeeklyChallenge(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
 }

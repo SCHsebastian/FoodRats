@@ -85,6 +85,12 @@ data class FeedState(
      * combined with [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.isWelcomeDismissed].
      */
     val welcomeMessage: String? = null,
+    /**
+     * Active crew's weekly challenge text (C5). Non-null → show the challenge chip above the feed.
+     * Null when no challenge is set or it has expired (now - setAt >= 7 days, client-side check).
+     * Derived from [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeWeeklyChallenge].
+     */
+    val weeklyChallenge: String? = null,
 ) : MviState
 
 /**

@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
+import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
 import kotlin.time.Instant
 
 fun CrewDto.toDomain(): Result<Crew, CrewError> {
@@ -53,6 +54,17 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             is Result.Err -> null   // silently ignore malformed message on read
         }
     }
+    // weeklyChallenge is optional: absent/blank → null; too-long silently ignored on read.
+    // weeklyChallengeSetAt is optional: absent → null (tolerated if challenge is also null).
+    val weeklyChallenge = weeklyChallenge?.let { raw ->
+        when (val c = WeeklyChallenge.of(raw)) {
+            is Result.Ok  -> c.value
+            is Result.Err -> null   // silently ignore malformed challenge on read
+        }
+    }
+    val weeklyChallengeSetAt = weeklyChallengeSetAtMillis?.let { ms ->
+        Instant.fromEpochMilliseconds(ms)
+    }
     return Result.success(
         Crew.of(
             id = crewId,
@@ -64,6 +76,8 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             blindVoting = blindVoting,
             tagline = tagline,
             welcomeMessage = welcomeMessage,
+            weeklyChallenge = weeklyChallenge,
+            weeklyChallengeSetAt = weeklyChallengeSetAt,
         ),
     )
 }

@@ -58,6 +58,21 @@ interface CrewRepository {
     suspend fun setWelcomeMessage(crewId: CrewId, requestedBy: AccountId, message: String?): Result<Unit, CrewError>
 
     /**
+     * Sets or clears the crew's weekly challenge. Only the owner may change it.
+     * Pass `null` for both to clear. Both [challenge] and [setAtMillis] are written together
+     * atomically — the `['weeklyChallenge','weeklyChallengeSetAtMillis']` Firestore rule arm
+     * enforces this. The raw string must be pre-validated via
+     * [es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge.of] before calling
+     * this method.
+     */
+    suspend fun setWeeklyChallenge(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        challenge: String?,
+        setAtMillis: Long?,
+    ): Result<Unit, CrewError>
+
+    /**
      * Removes [target] from the crew. Only the owner ([requestedBy]) may remove a member, and the
      * owner cannot remove themselves (leaving is a separate flow). Authorization, self-removal, and
      * membership invariants are enforced atomically server-side by the implementation (mirrored

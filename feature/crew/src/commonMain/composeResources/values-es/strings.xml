@@ -79,4 +79,8 @@
     <string name="crew_settings_welcome_message_label">Mensaje de bienvenida</string>
     <string name="crew_settings_welcome_message_placeholder">ej. "Cocinamos juntos — publica antes de las 22:00." (máx. 200 caracteres)</string>
     <string name="crew_error_validation_welcome_message_too_long">El mensaje de bienvenida es demasiado largo (máx. 200 caracteres).</string>
+    <string name="crew_settings_weekly_challenge_section">RETO SEMANAL</string>
+    <string name="crew_settings_weekly_challenge_label">Reto semanal</string>
+    <string name="crew_settings_weekly_challenge_placeholder">ej. "Martes de tacos" o "Semana de sopas" (máx. 80 caracteres)</string>
+    <string name="crew_error_validation_weekly_challenge_too_long">El reto es demasiado largo (máx. 80 caracteres).</string>
 </resources>

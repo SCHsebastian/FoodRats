@@ -244,6 +244,22 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
+    override suspend fun setWeeklyChallenge(
+        crewId: CrewId,
+        challenge: String?,
+        setAtMillis: Long?,
+    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
+        runCatching {
+            // Both fields are written together — the Firestore rule arm enforces the
+            // ['weeklyChallenge','weeklyChallengeSetAtMillis'] hasOnly constraint server-side.
+            crewsCol.document(crewId.value).update(
+                "weeklyChallenge" to challenge,
+                "weeklyChallengeSetAtMillis" to setAtMillis,
+            )
+            Result.success(Unit)
+        }.getOrElse { Result.failure(errorMapper.map(it)) }
+    }
+
     companion object { const val MAX_CODE_ATTEMPTS = 5 }
 }
 

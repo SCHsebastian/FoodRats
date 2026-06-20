@@ -83,4 +83,11 @@ interface CrewDataSource {
      * field — the `['welcomeMessage']` Firestore rule arm enforces this server-side.
      */
     suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError>
+
+    /**
+     * Sets or clears the crew's weekly challenge. Pass `null` for both to clear.
+     * Updates BOTH `weeklyChallenge` AND `weeklyChallengeSetAtMillis` together — the
+     * `['weeklyChallenge','weeklyChallengeSetAtMillis']` Firestore rule arm enforces this.
+     */
+    suspend fun setWeeklyChallenge(crewId: CrewId, challenge: String?, setAtMillis: Long?): Result<Unit, CrewError>
 }

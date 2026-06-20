@@ -47,6 +47,15 @@ data class CrewSettingsState(
     /** True once [editingWelcomeMessage] has been seeded from the first crew snapshot. */
     val welcomeMessageSeeded: Boolean = false,
     val isSavingWelcomeMessage: Boolean = false,
+    /**
+     * The weekly challenge the owner is currently editing. Seeded once from [Crew.weeklyChallenge]
+     * when the crew snapshot first arrives ([weeklyChallengeSeeded]). Same one-time-seed pattern as
+     * [editingTagline].
+     */
+    val editingWeeklyChallenge: String = "",
+    /** True once [editingWeeklyChallenge] has been seeded from the first crew snapshot. */
+    val weeklyChallengeSeeded: Boolean = false,
+    val isSavingWeeklyChallenge: Boolean = false,
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {
@@ -77,6 +86,11 @@ sealed interface CrewSettingsIntent : MviIntent {
     data class WelcomeMessageChanged(val value: String) : CrewSettingsIntent
     /** Owner tapped "Save" on the welcome message field. */
     data object SaveWelcomeMessage : CrewSettingsIntent
+
+    /** Owner is editing the weekly challenge text field. */
+    data class WeeklyChallengeChanged(val value: String) : CrewSettingsIntent
+    /** Owner tapped "Save" on the weekly challenge field. */
+    data object SaveWeeklyChallenge : CrewSettingsIntent
 }
 
 sealed interface CrewSettingsEffect : MviEffect {

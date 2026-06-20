@@ -215,6 +215,16 @@ fun FeedScreen(
                                         )
                                     }
                                 }
+                                // C5 — weekly challenge chip: shown only when the owner has pinned a
+                                // challenge AND it has not yet expired (7-day client-side expiry in VM).
+                                state.weeklyChallenge?.let { challenge ->
+                                    item(key = "weekly-challenge") {
+                                        WeeklyChallengeChip(
+                                            challenge = challenge,
+                                            modifier = Modifier.frRiseIn(delayMillis = 40),
+                                        )
+                                    }
+                                }
                                 item(key = "plates-count") {
                                     PlatesCountHeader(
                                         count = meals.size,
@@ -438,6 +448,35 @@ private fun FeedWelcomeBanner(
                 label = resolve(FeedStringKey.WelcomeDismiss),
                 onClick = onDismiss,
                 variant = FrButtonVariant.Ghost,
+            )
+        }
+    }
+}
+
+/**
+ * Weekly challenge chip (C5): the owner's pinned theme shown above the meal list.
+ * Non-dismissible (expires automatically after 7 days, managed by [FeedViewModel.observeWeeklyChallengeBanner]).
+ * Uses [FrCard] (Iron & Ember surface) with a leading trophy icon and [FrText] for the label.
+ */
+@Composable
+private fun WeeklyChallengeChip(
+    challenge: String,
+    modifier: Modifier = Modifier,
+) {
+    FrCard(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FrText(
+                text = "🏆",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            FrText(
+                text = resolve(FeedStringKey.WeeklyChallengeLabel, challenge),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }

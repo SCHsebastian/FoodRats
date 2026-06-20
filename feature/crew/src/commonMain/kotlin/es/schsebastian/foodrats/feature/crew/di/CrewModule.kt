@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
+import es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot
 import es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -34,6 +35,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUse
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.presentation.invite.AcceptInviteViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerViewModel
@@ -135,6 +137,20 @@ val crewModule = module {
                 dismissal.observeDismissed().map { dismissed -> crewId.value in dismissed }
 
             override suspend fun dismissWelcome(crewId: CrewId) = dismissal.dismiss(crewId)
+
+            override fun observeWeeklyChallenge(crewId: CrewId): Flow<WeeklyChallengeSnapshot?> =
+                repo.observeCrew(crewId).map { r ->
+                    when (r) {
+                        is Result.Ok -> {
+                            val crew = r.value
+                            val text = crew.weeklyChallenge?.value
+                            val setAtMs = crew.weeklyChallengeSetAt?.toEpochMilliseconds()
+                            if (text != null && setAtMs != null) WeeklyChallengeSnapshot(text, setAtMs)
+                            else null
+                        }
+                        is Result.Err -> null
+                    }
+                }
         }
     }
 
@@ -160,6 +176,7 @@ val crewModule = module {
     factoryOf(::SetBlindVotingUseCase)
     factoryOf(::SetCrewTaglineUseCase)
     factoryOf(::SetCrewWelcomeMessageUseCase)
+    factoryOf(::SetCrewWeeklyChallengeUseCase)
     factoryOf(::RemoveMemberUseCase)
 
     viewModel {
@@ -187,6 +204,7 @@ val crewModule = module {
             setBlindVoting = get(),
             setCrewTagline = get(),
             setCrewWelcomeMessage = get(),
+            setCrewWeeklyChallenge = get(),
             leaveCrew = get(),
             removeMember = get(),
             session = get(),

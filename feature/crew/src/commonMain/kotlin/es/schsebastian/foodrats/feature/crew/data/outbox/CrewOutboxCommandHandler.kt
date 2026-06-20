@@ -80,6 +80,7 @@ class CrewOutboxCommandHandler(
             CrewError.Validation.DisplayNameTooLong -> OutboxExecuteResult.Terminal("crew.error.displayNameTooLong")
             CrewError.Validation.TaglineTooLong -> OutboxExecuteResult.Terminal("crew.error.taglineTooLong")
             CrewError.Validation.WelcomeMessageTooLong -> OutboxExecuteResult.Terminal("crew.error.welcomeMessageTooLong")
+            CrewError.Validation.WeeklyChallengeTooLong -> OutboxExecuteResult.Terminal("crew.error.weeklyChallengeTooLong")
             CrewError.Membership.NotFound -> OutboxExecuteResult.Terminal("crew.error.crewNotFound")
             CrewError.Membership.Full -> OutboxExecuteResult.Terminal("crew.error.crewFull")
             CrewError.Membership.NotInvited -> OutboxExecuteResult.Terminal("crew.error.notInvited")

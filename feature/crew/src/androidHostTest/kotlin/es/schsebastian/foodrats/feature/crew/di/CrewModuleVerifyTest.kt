@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.database.FoodRatsDatabase
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
+import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
@@ -60,6 +61,8 @@ class CrewModuleVerifyTest {
                 OutboxPort::class,
                 // C6 — WelcomeDismissalRepository is bound in coreDataModule; CrewWelcomePort consumes it.
                 WelcomeDismissalRepository::class,
+                // C5 — Clock is app-wide, passed to SetCrewWeeklyChallengeUseCase.
+                Clock::class,
             ),
         )
     }

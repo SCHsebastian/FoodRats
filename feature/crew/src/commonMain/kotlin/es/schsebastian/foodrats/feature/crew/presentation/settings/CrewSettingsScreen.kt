@@ -229,6 +229,17 @@ fun CrewSettingsScreen(
                             modifier = Modifier.frRiseIn(delayMillis = 120),
                         )
                     }
+
+                    item {
+                        WeeklyChallengeCard(
+                            challenge = state.editingWeeklyChallenge,
+                            savedChallenge = crew.weeklyChallenge?.value.orEmpty(),
+                            saving = state.isSavingWeeklyChallenge,
+                            onChallengeChange = { vm.onIntent(CrewSettingsIntent.WeeklyChallengeChanged(it)) },
+                            onSave = { vm.onIntent(CrewSettingsIntent.SaveWeeklyChallenge) },
+                            modifier = Modifier.frRiseIn(delayMillis = 140),
+                        )
+                    }
                 }
 
                 item {
@@ -694,6 +705,46 @@ private fun WelcomeMessageCard(
                 label = resolve(CrewStringKey.SettingsSave),
                 onClick = onSave,
                 enabled = !saving && message.trim() != savedMessage,
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+            )
+        }
+    }
+}
+
+/**
+ * Owner-only weekly challenge field (C5). Shows the current challenge text editable by the owner,
+ * with a "Save" button that becomes enabled once the value differs from what was last saved.
+ * A blank value clears the challenge. The challenge auto-expires 7 days after being set
+ * (client-side expiry check in the feed — not enforced here).
+ */
+@Composable
+private fun WeeklyChallengeCard(
+    challenge: String,
+    savedChallenge: String,
+    saving: Boolean,
+    onChallengeChange: (String) -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(
+            text = resolve(CrewStringKey.SettingsWeeklyChallengeSection),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        FrCard(modifier = Modifier.fillMaxWidth()) {
+            FrTextField(
+                value = challenge,
+                onValueChange = onChallengeChange,
+                label = resolve(CrewStringKey.SettingsWeeklyChallengeLabel),
+                placeholder = resolve(CrewStringKey.SettingsWeeklyChallengePlaceholder),
+                enabled = !saving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FrButton(
+                label = resolve(CrewStringKey.SettingsSave),
+                onClick = onSave,
+                // Dirty check: trimmed edit must differ from the saved value (mirrors tagline gate).
+                enabled = !saving && challenge.trim() != savedChallenge,
                 modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
             )
         }

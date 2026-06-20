@@ -46,6 +46,10 @@ import foodrats.feature.crew.generated.resources.crew_settings_welcome_message_s
 import foodrats.feature.crew.generated.resources.crew_settings_welcome_message_label
 import foodrats.feature.crew.generated.resources.crew_settings_welcome_message_placeholder
 import foodrats.feature.crew.generated.resources.crew_error_validation_welcome_message_too_long
+import foodrats.feature.crew.generated.resources.crew_error_validation_weekly_challenge_too_long
+import foodrats.feature.crew.generated.resources.crew_settings_weekly_challenge_section
+import foodrats.feature.crew.generated.resources.crew_settings_weekly_challenge_label
+import foodrats.feature.crew.generated.resources.crew_settings_weekly_challenge_placeholder
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
@@ -163,4 +167,8 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsWelcomeMessageLabel(Res.string.crew_settings_welcome_message_label),
     SettingsWelcomeMessagePlaceholder(Res.string.crew_settings_welcome_message_placeholder),
     ErrorValidationWelcomeMessageTooLong(Res.string.crew_error_validation_welcome_message_too_long),
+    SettingsWeeklyChallengeSection(Res.string.crew_settings_weekly_challenge_section),
+    SettingsWeeklyChallengeLabel(Res.string.crew_settings_weekly_challenge_label),
+    SettingsWeeklyChallengePlaceholder(Res.string.crew_settings_weekly_challenge_placeholder),
+    ErrorValidationWeeklyChallengeTooLong(Res.string.crew_error_validation_weekly_challenge_too_long),
 }

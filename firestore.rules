@@ -100,6 +100,14 @@ service cloud.firestore {
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['welcomeMessage'])
                        && (request.resource.data.welcomeMessage == null || request.resource.data.welcomeMessage is string))
                       ||
+                      // (9) owner sets or clears the weeklyChallenge + weeklyChallengeSetAtMillis (both
+                      // must be written together — either both null (clear) or string + int (set)).
+                      (request.auth.uid in resource.data.memberIds
+                       && resource.data.ownerId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weeklyChallenge', 'weeklyChallengeSetAtMillis'])
+                       && (request.resource.data.weeklyChallenge == null || request.resource.data.weeklyChallenge is string)
+                       && (request.resource.data.weeklyChallengeSetAtMillis == null || request.resource.data.weeklyChallengeSetAtMillis is int))
+                      ||
                       (request.auth.uid in resource.data.memberIds
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
                       ||

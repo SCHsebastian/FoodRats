@@ -24,4 +24,9 @@ data class CrewDto(
     // (≤ 200 chars). `null` means no message is set; old docs without the field deserialize to null
     // (no migration needed). Null-pinned for the same GitLive encodeDefaults reason as `tagline`.
     val welcomeMessage: String? = null,
+    // Owner-settable weekly challenge text shown in the feed header (≤ 80 chars). Auto-expires
+    // 7 days after weeklyChallengeSetAtMillis (client-side check). Both fields are always written
+    // together (affectedKeys rule arm). Null-pinned to prevent GitLive encodeDefaults regression.
+    val weeklyChallenge: String? = null,
+    val weeklyChallengeSetAtMillis: Long? = null,
 )

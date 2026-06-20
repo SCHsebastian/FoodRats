@@ -19,6 +19,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -35,6 +36,7 @@ class CrewSettingsViewModel(
     private val setBlindVoting: SetBlindVotingUseCase,
     private val setCrewTagline: SetCrewTaglineUseCase,
     private val setCrewWelcomeMessage: SetCrewWelcomeMessageUseCase,
+    private val setCrewWeeklyChallenge: SetCrewWeeklyChallengeUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val removeMember: RemoveMemberUseCase,
     private val session: SessionProvider,
@@ -64,6 +66,9 @@ class CrewSettingsViewModel(
                                 editingWelcomeMessage = if (!it.welcomeMessageSeeded) crew.welcomeMessage?.value.orEmpty()
                                 else it.editingWelcomeMessage,
                                 welcomeMessageSeeded = true,
+                                editingWeeklyChallenge = if (!it.weeklyChallengeSeeded) crew.weeklyChallenge?.value.orEmpty()
+                                else it.editingWeeklyChallenge,
+                                weeklyChallengeSeeded = true,
                                 error = null,
                             )
                         }
@@ -97,6 +102,8 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.SaveTagline -> doSaveTagline()
         is CrewSettingsIntent.WelcomeMessageChanged -> update { it.copy(editingWelcomeMessage = intent.value) }
         CrewSettingsIntent.SaveWelcomeMessage -> doSaveWelcomeMessage()
+        is CrewSettingsIntent.WeeklyChallengeChanged -> update { it.copy(editingWeeklyChallenge = intent.value) }
+        CrewSettingsIntent.SaveWeeklyChallenge -> doSaveWeeklyChallenge()
     }
 
     private suspend fun doSaveCrewName() {
@@ -175,6 +182,23 @@ class CrewSettingsViewModel(
                 it.copy(
                     isSavingWelcomeMessage = false,
                     editingWelcomeMessage = previousMessage,
+                    error = r.error,
+                )
+            }
+        }
+    }
+
+    private suspend fun doSaveWeeklyChallenge() {
+        val challenge = currentState.editingWeeklyChallenge
+        val previousChallenge = currentState.crew?.weeklyChallenge?.value.orEmpty()
+        update { it.copy(isSavingWeeklyChallenge = true, error = null) }
+        when (val r = setCrewWeeklyChallenge(crewId, challenge)) {
+            is Result.Ok  -> update { it.copy(isSavingWeeklyChallenge = false) }
+            is Result.Err -> update {
+                // Roll back the text field to what was saved before the failed write.
+                it.copy(
+                    isSavingWeeklyChallenge = false,
+                    editingWeeklyChallenge = previousChallenge,
                     error = r.error,
                 )
             }
