@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -19,6 +20,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
@@ -46,6 +48,8 @@ class CrewSettingsViewModel(
     private val removeMember: RemoveMemberUseCase,
     private val setCrewBanner: SetCrewBannerUseCase,
     private val removeCrewBanner: RemoveCrewBannerUseCase,
+    private val setCrewBannerFocal: SetCrewBannerFocalUseCase,
+    private val welcomePort: CrewWelcomePort,
     private val session: SessionProvider,
     private val accountRead: AccountReadPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
@@ -91,6 +95,12 @@ class CrewSettingsViewModel(
                 .flatMapLatest { ids -> accountRead.observeMany(ids) }
                 .collect { identities -> update { it.copy(identities = identities) } }
         }
+        // C9 — resolve the current banner's signed URL so the owner's reposition preview can show the
+        // real image (the crew snapshot only carries the Storage path). Port resolves path → URL.
+        viewModelScope.launch {
+            welcomePort.observeBannerImageUrl(crewId)
+                .collect { url -> update { it.copy(bannerImageUrl = url) } }
+        }
     }
 
     override suspend fun handle(intent: CrewSettingsIntent) = when (intent) {
@@ -119,6 +129,7 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.RemoveBanner -> update { it.copy(showRemoveBannerConfirm = true) }
         CrewSettingsIntent.ConfirmRemoveBanner -> doRemoveBanner()
         CrewSettingsIntent.CancelRemoveBanner -> update { it.copy(showRemoveBannerConfirm = false) }
+        is CrewSettingsIntent.RepositionBanner -> doSetBannerFocal(intent.focalY)
     }
 
     private suspend fun doSaveCrewName() {
@@ -264,6 +275,18 @@ class CrewSettingsViewModel(
         when (val r = removeCrewBanner(crewId)) {
             is Result.Ok  -> update { it.copy(isSavingBanner = false) }
             is Result.Err -> update { it.copy(isSavingBanner = false, error = r.error) }
+        }
+    }
+
+    /**
+     * Persists the banner focal point after the owner drags the reposition preview. No saving
+     * spinner — the drag already shows the live crop, and the crew flow re-emits the new
+     * [Crew.bannerFocalY] once the write lands. Only surfaces an error if the write fails.
+     */
+    private suspend fun doSetBannerFocal(focalY: Float) {
+        when (val r = setCrewBannerFocal(crewId, focalY)) {
+            is Result.Ok  -> Unit
+            is Result.Err -> update { it.copy(error = r.error) }
         }
     }
 }

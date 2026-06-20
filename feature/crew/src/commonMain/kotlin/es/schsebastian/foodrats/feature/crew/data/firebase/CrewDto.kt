@@ -38,4 +38,8 @@ data class CrewDto(
     // Null-pinned so GitLive encodeDefaults=true doesn't emit `null` and fail an affectedKeys check it
     // was not part of (same GitLive regression guard as `tagline`, `welcomeMessage`, etc.).
     val bannerPath: String? = null,
+    // Owner-settable vertical focal point for the banner crop (C9), 0..1 (top..bottom). Firestore
+    // stores numbers as doubles. `null` means unset ⇒ 0.5 (center) on read. Null-pinned for the same
+    // GitLive encodeDefaults reason as the other optional fields above.
+    val bannerFocalY: Double? = null,
 )

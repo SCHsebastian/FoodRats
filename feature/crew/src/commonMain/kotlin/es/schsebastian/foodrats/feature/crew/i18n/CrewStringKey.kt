@@ -63,6 +63,8 @@ import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_tit
 import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_body
 import foodrats.feature.crew.generated.resources.crew_error_banner_upload_failed
 import foodrats.feature.crew.generated.resources.crew_error_banner_delete_failed
+import foodrats.feature.crew.generated.resources.crew_settings_banner_reposition_hint
+import foodrats.feature.crew.generated.resources.crew_settings_banner_preview_cd
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
 import foodrats.feature.crew.generated.resources.crew_settings_danger_section
@@ -198,6 +200,9 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsBannerRemove(Res.string.crew_settings_banner_remove),
     SettingsBannerRemoveTitle(Res.string.crew_settings_banner_remove_title),
     SettingsBannerRemoveBody(Res.string.crew_settings_banner_remove_body),
+    // C9 — drag-to-reposition banner preview: hint + a11y description.
+    SettingsBannerRepositionHint(Res.string.crew_settings_banner_reposition_hint),
+    SettingsBannerPreviewCd(Res.string.crew_settings_banner_preview_cd),
     ErrorBannerUploadFailed(Res.string.crew_error_banner_upload_failed),
     ErrorBannerDeleteFailed(Res.string.crew_error_banner_delete_failed),
     // U5b — badge labels rendered next to the member display name on crew member rows.

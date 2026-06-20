@@ -80,6 +80,13 @@ interface CrewRepository {
     suspend fun setScoreStyle(crewId: CrewId, requestedBy: AccountId, style: CrewScoreStyle): Result<Unit, CrewError>
 
     /**
+     * Sets the crew's banner vertical focal point (C9), in `0f..1f`. Only the owner may change it.
+     * Authorization is enforced in both the repository and by the `['bannerFocalY']` Firestore rule
+     * arm. [focalY] is expected pre-clamped to `0f..1f` by the use case.
+     */
+    suspend fun setBannerFocalY(crewId: CrewId, requestedBy: AccountId, focalY: Float): Result<Unit, CrewError>
+
+    /**
      * Removes [target] from the crew. Only the owner ([requestedBy]) may remove a member, and the
      * owner cannot remove themselves (leaving is a separate flow). Authorization, self-removal, and
      * membership invariants are enforced atomically server-side by the implementation (mirrored

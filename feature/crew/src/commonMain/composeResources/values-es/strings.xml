@@ -94,6 +94,9 @@
     <string name="crew_settings_banner_remove">Quitar portada</string>
     <string name="crew_settings_banner_remove_title">¿Quitar la portada?</string>
     <string name="crew_settings_banner_remove_body">La portada del grupo se eliminará para todos los miembros.</string>
+    <!-- C9 — sugerencia y descripción de accesibilidad de la vista previa para reposicionar la portada. -->
+    <string name="crew_settings_banner_reposition_hint">Arrastra la foto hacia arriba o abajo para elegir qué se ve en el feed.</string>
+    <string name="crew_settings_banner_preview_cd">Vista previa de la portada — arrastra arriba o abajo para reposicionar</string>
     <string name="crew_error_banner_upload_failed">No se pudo subir la portada. Inténtalo de nuevo.</string>
     <string name="crew_error_banner_delete_failed">No se pudo quitar la portada. Inténtalo de nuevo.</string>
     <!-- U5b — etiquetas del logro mostradas junto al nombre del miembro. -->

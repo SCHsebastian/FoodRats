@@ -45,6 +45,10 @@ class FakeCrewRepository(
     var nextSetBanner: Result<Unit, CrewError>? = null
     /** When set, overrides the default removeBanner behavior. */
     var nextRemoveBanner: Result<Unit, CrewError>? = null
+    /** When set, overrides the default setBannerFocalY behavior (ownership check + mutation). */
+    var nextSetBannerFocal: Result<Unit, CrewError>? = null
+    /** The last focal value passed to setBannerFocalY (for assertions). */
+    var lastSetBannerFocal: Pair<CrewId, Float>? = null
 
     var lastRename: Pair<CrewId, String>? = null
     var lastMemberRename: Triple<CrewId, AccountId, String>? = null
@@ -213,6 +217,20 @@ class FakeCrewRepository(
             ?: return Result.failure(CrewError.Membership.NotFound)
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
         crews.value = crews.value.map { if (it.id == crewId) it.copy(scoreStyle = style) else it }
+        return Result.success(Unit)
+    }
+
+    override suspend fun setBannerFocalY(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        focalY: Float,
+    ): Result<Unit, CrewError> {
+        nextSetBannerFocal?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        lastSetBannerFocal = crewId to focalY
+        crews.value = crews.value.map { if (it.id == crewId) it.copy(bannerFocalY = focalY) else it }
         return Result.success(Unit)
     }
 

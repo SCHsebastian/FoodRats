@@ -66,6 +66,12 @@ data class CrewSettingsState(
     val isSavingBanner: Boolean = false,
     /** True while the "Remove banner?" confirmation dialog is showing. */
     val showRemoveBannerConfirm: Boolean = false,
+    /**
+     * Signed URL of the current banner image, resolved from [Crew.bannerPath] via
+     * [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeBannerImageUrl]. Drives the
+     * owner's drag-to-reposition preview; `null` when no banner is set or the URL can't be resolved.
+     */
+    val bannerImageUrl: String? = null,
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {
@@ -121,6 +127,11 @@ sealed interface CrewSettingsIntent : MviIntent {
     data object ConfirmRemoveBanner : CrewSettingsIntent
     /** Owner dismissed the remove-banner dialog without confirming. */
     data object CancelRemoveBanner : CrewSettingsIntent
+    /**
+     * Owner dragged the banner reposition preview to [focalY] (`0f..1f`, top..bottom) and released —
+     * persist the new vertical focal point for the crop.
+     */
+    data class RepositionBanner(val focalY: Float) : CrewSettingsIntent
 }
 
 sealed interface CrewSettingsEffect : MviEffect {

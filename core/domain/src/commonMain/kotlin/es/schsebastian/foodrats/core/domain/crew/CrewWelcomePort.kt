@@ -50,6 +50,15 @@ interface CrewWelcomePort {
      * Feed consumes this to render a banner atop the meal list without depending on `:feature:crew`.
      */
     fun observeBannerImageUrl(crewId: CrewId): Flow<String?>
+
+    /**
+     * Emits the crew's banner vertical focal point (C9) in `0f..1f` — `0` anchors the crop to the
+     * top of the image, `0.5` centers it, `1` anchors the bottom. Owner-set via the crew settings
+     * reposition control; lets the fixed-height feed crop show the part of the image the owner chose.
+     * Defaults to `0.5f` (center) when unset (pre-reposition crews) or the crew is unreadable; never
+     * emits `null`, mirroring [observeScoreStyle].
+     */
+    fun observeBannerFocalY(crewId: CrewId): Flow<Float>
 }
 
 /**

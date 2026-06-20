@@ -219,6 +219,7 @@ class FeedViewModel(
         observeWeeklyChallengeBanner()
         observeScoreStyle()
         observeBannerImageUrl()
+        observeBannerFocalY()
     }
 
     /**
@@ -441,6 +442,24 @@ class FeedViewModel(
             .launchIn(viewModelScope)
     }
 
+    /**
+     * Observes the active crew's banner focal point (C9). Re-subscribes on crew switch; a null crew
+     * defaults to `0.5f` (center). Feeds [FeedState.bannerFocalY], which steers the hero crop's
+     * vertical alignment so it shows the slice the owner chose in crew settings.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeBannerFocalY() {
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(0.5f)
+                else welcomePort.observeBannerFocalY(crewId)
+            }
+            .distinctUntilChanged()
+            .onEach { focal -> update { it.copy(bannerFocalY = focal) } }
+            .launchIn(viewModelScope)
+    }
+
     // ── Welcome banner (C6) ─────────────────────────────────────────────────────────────────────
 
     /**
@@ -649,4 +668,5 @@ private object NoopCrewWelcomePort : CrewWelcomePort {
     override fun observeWeeklyChallenge(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
     override fun observeScoreStyle(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
     override fun observeBannerImageUrl(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String?> = flowOf(null)
+    override fun observeBannerFocalY(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<Float> = flowOf(0.5f)
 }

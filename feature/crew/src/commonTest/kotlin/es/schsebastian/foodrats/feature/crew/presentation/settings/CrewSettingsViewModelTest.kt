@@ -6,7 +6,11 @@ import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
+import es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot
 import es.schsebastian.foodrats.core.domain.model.AccountId
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
@@ -27,6 +31,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase
@@ -409,10 +414,23 @@ class CrewSettingsViewModelTest {
             removeMember = RemoveMemberUseCase(repo, session, connectivity, outbox),
             setCrewBanner = SetCrewBannerUseCase(repo, session),
             removeCrewBanner = RemoveCrewBannerUseCase(repo, session),
+            setCrewBannerFocal = SetCrewBannerFocalUseCase(repo, session),
+            welcomePort = TestCrewWelcomePort,
             session = session,
             accountRead = EmptyAccountReadPort,
             analytics = analytics,
         )
+    }
+
+    /** Minimal [CrewWelcomePort] for the VM under test — only the banner-URL flow is exercised. */
+    private object TestCrewWelcomePort : CrewWelcomePort {
+        override fun observeWelcomeMessage(crewId: CrewId): Flow<String?> = flowOf(null)
+        override fun isWelcomeDismissed(crewId: CrewId): Flow<Boolean> = flowOf(false)
+        override suspend fun dismissWelcome(crewId: CrewId) = Unit
+        override fun observeWeeklyChallenge(crewId: CrewId): Flow<WeeklyChallengeSnapshot?> = flowOf(null)
+        override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
+        override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
+        override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
     }
 
     private class FixedSessionProvider(private val session: Session?) : SessionProvider {

@@ -268,6 +268,14 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
+    override suspend fun setBannerFocalY(crewId: CrewId, focalY: Float): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("bannerFocalY" to focalY.toDouble())
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
     override suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {

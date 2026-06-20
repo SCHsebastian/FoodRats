@@ -41,6 +41,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCas
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource
@@ -185,6 +186,16 @@ val crewModule = module {
                         is Result.Err -> null
                     }
                 }
+
+            // C9: live banner focal point per crew. Defaults to 0.5 (center) on read failure or
+            // absent field. Never emits null — the feed crop can unconditionally apply it.
+            override fun observeBannerFocalY(crewId: CrewId): Flow<Float> =
+                repo.observeCrew(crewId).map { r ->
+                    when (r) {
+                        is Result.Ok  -> r.value.bannerFocalY
+                        is Result.Err -> 0.5f
+                    }
+                }
         }
     }
 
@@ -216,6 +227,7 @@ val crewModule = module {
     // C9 — crew banner use cases
     factoryOf(::SetCrewBannerUseCase)
     factoryOf(::RemoveCrewBannerUseCase)
+    factoryOf(::SetCrewBannerFocalUseCase)
 
     viewModel {
         CrewPickerViewModel(
@@ -248,6 +260,8 @@ val crewModule = module {
             removeMember = get(),
             setCrewBanner = get(),
             removeCrewBanner = get(),
+            setCrewBannerFocal = get(),
+            welcomePort = get(),
             session = get(),
             accountRead = get(),
             analytics = get(),

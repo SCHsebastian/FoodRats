@@ -99,6 +99,12 @@ interface CrewDataSource {
     suspend fun setScoreStyle(crewId: CrewId, style: String): Result<Unit, CrewError>
 
     /**
+     * Sets the crew's banner vertical focal point (C9), in `0f..1f`. Updates only the `bannerFocalY`
+     * field — the `['bannerFocalY']` Firestore rule arm enforces this.
+     */
+    suspend fun setBannerFocalY(crewId: CrewId, focalY: Float): Result<Unit, CrewError>
+
+    /**
      * Sets the crew's banner image path (C9). [path] is the Storage object path returned by
      * [es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource.upload].
      * Updates only the `bannerPath` field — the `['bannerPath']` Firestore rule arm enforces this.

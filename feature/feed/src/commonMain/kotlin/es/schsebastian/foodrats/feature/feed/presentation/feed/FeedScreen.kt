@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -239,6 +240,11 @@ fun FeedScreen(
                                             model = ImageRequest.Builder(ctx).data(url).build(),
                                             contentDescription = resolve(FeedStringKey.CrewBannerCd),
                                             contentScale = ContentScale.Crop,
+                                            // C9 — owner-chosen vertical focal point: 0=top, 0.5=center, 1=bottom.
+                                            alignment = BiasAlignment(
+                                                horizontalBias = 0f,
+                                                verticalBias = state.bannerFocalY * 2f - 1f,
+                                            ),
                                             modifier = Modifier
                                                 .bleedHorizontally(Spacing.md)
                                                 .fillMaxWidth()

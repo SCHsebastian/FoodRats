@@ -201,6 +201,16 @@ internal class FirebaseCrewRepository(
         return dataSource.setScoreStyle(crewId, style.toDto())
     }
 
+    override suspend fun setBannerFocalY(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        focalY: Float,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setBannerFocalY(crewId, focalY.coerceIn(0f, 1f))
+    }
+
     override suspend fun removeMember(
         crewId: CrewId,
         requestedBy: AccountId,

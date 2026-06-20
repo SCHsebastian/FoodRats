@@ -74,6 +74,14 @@ data class Crew(
      * clearable via [es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase].
      */
     val bannerPath: String? = null,
+    /**
+     * Vertical focal point for the banner crop (C9), in `0f..1f`: `0` shows the top of the image,
+     * `0.5` centers (default), `1` shows the bottom. Lets the owner pick what the fixed-height feed
+     * crop reveals (the image overflows vertically). Owner-settable via
+     * [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase]. Defaults to
+     * `0.5f` so pre-reposition crews keep a centered crop.
+     */
+    val bannerFocalY: Float = 0.5f,
 ) {
     val size: Int get() = members.size
 
@@ -110,6 +118,7 @@ data class Crew(
             weeklyChallengeSetAt: Instant? = null,
             scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
             bannerPath: String? = null,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle, bannerPath)
+            bannerFocalY: Float = 0.5f,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle, bannerPath, bannerFocalY)
     }
 }

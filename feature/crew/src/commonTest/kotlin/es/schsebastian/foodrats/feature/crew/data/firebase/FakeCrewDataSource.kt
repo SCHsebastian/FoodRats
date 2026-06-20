@@ -50,6 +50,7 @@ class FakeCrewDataSource : CrewDataSource {
     var setScoreStyleResult: Result<Unit, CrewError> = Result.success(Unit)
     var setBannerPathResult: Result<Unit, CrewError> = Result.success(Unit)
     var clearBannerPathResult: Result<Unit, CrewError> = Result.success(Unit)
+    var setBannerFocalResult: Result<Unit, CrewError> = Result.success(Unit)
 
     // ---- call captures ----
     var lastCreate: CreateCall? = null
@@ -153,4 +154,7 @@ class FakeCrewDataSource : CrewDataSource {
 
     override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> =
         clearBannerPathResult
+
+    override suspend fun setBannerFocalY(crewId: CrewId, focalY: Float): Result<Unit, CrewError> =
+        setBannerFocalResult
 }

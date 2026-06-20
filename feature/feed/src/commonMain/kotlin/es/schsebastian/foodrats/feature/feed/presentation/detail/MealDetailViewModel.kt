@@ -587,4 +587,5 @@ private object NoopMealDetailWelcomePort : CrewWelcomePort {
     ): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
     override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
     override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
+    override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
 }

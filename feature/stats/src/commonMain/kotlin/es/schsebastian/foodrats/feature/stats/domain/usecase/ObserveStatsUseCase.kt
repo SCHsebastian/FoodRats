@@ -211,4 +211,5 @@ private object NoopStatsWelcomePort : CrewWelcomePort {
     override fun observeWeeklyChallenge(crewId: CrewId): Flow<WeeklyChallengeSnapshot?> = flowOf(null)
     override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
     override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
+    override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
 }

@@ -150,6 +150,15 @@ service cloud.firestore {
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bannerPath'])
                        && (request.resource.data.bannerPath == null || request.resource.data.bannerPath is string))
                       ||
+                      // (12) owner sets the banner vertical focal point (C9): a number in 0..1 that
+                      // tells the fixed-height feed crop which slice of the image to show.
+                      (request.auth.uid in resource.data.memberIds
+                       && resource.data.ownerId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bannerFocalY'])
+                       && request.resource.data.bannerFocalY is number
+                       && request.resource.data.bannerFocalY >= 0
+                       && request.resource.data.bannerFocalY <= 1)
+                      ||
                       (request.auth.uid in resource.data.memberIds
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
                       ||

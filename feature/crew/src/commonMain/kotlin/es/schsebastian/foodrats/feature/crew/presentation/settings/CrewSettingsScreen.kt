@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.crew.presentation.settings
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,16 +31,25 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import coil3.request.ImageRequest
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
@@ -257,13 +267,16 @@ fun CrewSettingsScreen(
                         )
                     }
 
-                    // C9 — crew banner image upload/remove (owner-only).
+                    // C9 — crew banner image upload/remove + reposition (owner-only).
                     item {
                         BannerCard(
                             hasBanner = crew.bannerPath != null,
+                            imageUrl = state.bannerImageUrl,
+                            focalY = crew.bannerFocalY,
                             saving = state.isSavingBanner,
                             onPicked = { bytes -> vm.onIntent(CrewSettingsIntent.BannerPicked(bytes)) },
                             onRemove = { vm.onIntent(CrewSettingsIntent.RemoveBanner) },
+                            onReposition = { f -> vm.onIntent(CrewSettingsIntent.RepositionBanner(f)) },
                             modifier = Modifier.frRiseIn(delayMillis = 180),
                         )
                     }
@@ -887,17 +900,21 @@ private fun ScoreStyleCard(
 }
 
 /**
- * C9 — owner-only crew banner image card. Shows a "Change photo" CTA (backed by [ImagePickerKMP]
- * gallery picker) and, when a banner is already set, a "Remove banner" secondary button that
- * triggers a confirmation dialog. [saving] disables both buttons while an upload or delete is in
- * flight.
+ * C9 — owner-only crew banner image card. When a banner is set, shows a drag-to-reposition preview
+ * ([BannerRepositionPreview]) at the same fixed height + crop the feed uses, so the owner can choose
+ * which slice of the image the feed shows. Below it: a "Change photo" CTA (backed by [ImagePickerKMP]
+ * gallery picker) and, when a banner is already set, a "Remove banner" secondary button that triggers
+ * a confirmation dialog. [saving] disables everything while an upload or delete is in flight.
  */
 @Composable
 private fun BannerCard(
     hasBanner: Boolean,
+    imageUrl: String?,
+    focalY: Float,
     saving: Boolean,
     onPicked: (ByteArray) -> Unit,
     onRemove: () -> Unit,
+    onReposition: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val picker = rememberImagePickerKMP()
@@ -930,6 +947,18 @@ private fun BannerCard(
                         FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
                     }
                 } else {
+                    if (hasBanner && imageUrl != null) {
+                        BannerRepositionPreview(
+                            imageUrl = imageUrl,
+                            focalY = focalY,
+                            onReposition = onReposition,
+                        )
+                        FrText(
+                            text = resolve(CrewStringKey.SettingsBannerRepositionHint),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     FrButton(
                         label = resolve(CrewStringKey.SettingsBannerChange),
                         onClick = {
@@ -952,6 +981,48 @@ private fun BannerCard(
             }
         }
     }
+}
+
+/** Fixed height of the banner crop, shared by this preview and the feed hero so they match exactly. */
+private val BannerCropHeight = 180.dp
+
+/**
+ * C9 — drag-to-reposition banner preview. Renders the banner at the exact fixed height + [ContentScale.Crop]
+ * the feed uses, with a [BiasAlignment] driven by a local draft focal point so the crop is WYSIWYG.
+ * A vertical drag moves the focal point (0 = top, 1 = bottom); on release the final value is persisted
+ * via [onReposition]. Dragging the full preview height sweeps the focal point across its whole range.
+ */
+@Composable
+private fun BannerRepositionPreview(
+    imageUrl: String,
+    focalY: Float,
+    onReposition: (Float) -> Unit,
+) {
+    val ctx = LocalPlatformContext.current
+    val heightPx = with(LocalDensity.current) { BannerCropHeight.toPx() }
+    // Re-seed the draft whenever the persisted focal changes (e.g. after the write lands).
+    var draftFocalY by remember(focalY) { mutableStateOf(focalY) }
+    val cd = resolve(CrewStringKey.SettingsBannerPreviewCd)
+    AsyncImage(
+        model = ImageRequest.Builder(ctx).data(imageUrl).build(),
+        contentDescription = cd,
+        contentScale = ContentScale.Crop,
+        alignment = BiasAlignment(horizontalBias = 0f, verticalBias = draftFocalY * 2f - 1f),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(BannerCropHeight)
+            .clip(RoundedCornerShape(Radius.lg))
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
+                        // Drag down → reveal more of the top → focal toward 0.
+                        draftFocalY = (draftFocalY - dragAmount / heightPx).coerceIn(0f, 1f)
+                    },
+                    onDragEnd = { onReposition(draftFocalY) },
+                )
+            },
+    )
 }
 
 @Composable

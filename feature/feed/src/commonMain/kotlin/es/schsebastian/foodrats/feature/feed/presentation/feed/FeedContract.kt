@@ -104,6 +104,13 @@ data class FeedState(
      * Derived from [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeBannerImageUrl].
      */
     val bannerImageUrl: String? = null,
+    /**
+     * Active crew's banner vertical focal point (C9), `0f..1f` (top..bottom). Drives the fixed-height
+     * hero crop's [androidx.compose.ui.BiasAlignment] so it shows the slice the owner chose. Defaults
+     * to `0.5f` (center). Derived from
+     * [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeBannerFocalY].
+     */
+    val bannerFocalY: Float = 0.5f,
 ) : MviState
 
 /**
