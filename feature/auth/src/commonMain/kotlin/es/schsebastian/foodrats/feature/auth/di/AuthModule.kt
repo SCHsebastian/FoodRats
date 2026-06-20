@@ -24,6 +24,7 @@ import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAccentPaletteUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
@@ -91,6 +92,7 @@ val authModule = module {
     factoryOf(::SetNotificationsEnabledUseCase)
     factoryOf(::EnableNotificationsUseCase)
     factoryOf(::SetAiEnabledUseCase)
+    factoryOf(::SetAccentPaletteUseCase)
     factoryOf(::DeleteMyAccountUseCase)
     factoryOf(::ExportMyDataUseCase)
     viewModel { SignInViewModel(auth = get(), tokenRegistration = get(), analytics = get(), eula = get()) }
@@ -105,6 +107,7 @@ val authModule = module {
             localePort = get(),
             notificationsPort = get(),
             aiPreferencePort = get(),
+            accentPalettePort = get(),
             mealRemindersPort = get(),
             updateDisplayName = get(),
             updateBio = get(),
@@ -117,6 +120,7 @@ val authModule = module {
             setNotificationsEnabled = get(),
             enableNotifications = get(),
             setAiEnabled = get(),
+            setAccentPalette = get(),
             notificationPermission = get(),
             deleteMyAccount = get(),
             exportMyData = get(),

@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.EulaPort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
@@ -54,6 +55,7 @@ class AuthModuleVerifyTest {
                 AnalyticsPort::class,
                 ConsentPort::class,
                 AiPreferencePort::class,
+                AccentPalettePort::class,
                 EulaPort::class,
             ),
         )

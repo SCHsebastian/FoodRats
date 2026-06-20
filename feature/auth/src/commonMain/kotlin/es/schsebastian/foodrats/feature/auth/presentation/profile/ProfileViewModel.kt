@@ -10,6 +10,8 @@ import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.analytics.isAnalyticsGranted
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
@@ -29,6 +31,7 @@ import es.schsebastian.foodrats.core.domain.notifications.NotificationPermission
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAccentPaletteUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
@@ -82,6 +85,11 @@ data class ProfileState(
     val aiEnabled: Boolean = true,
     val aiError: StringKey? = null,
 
+    // Accent palette — reflects AccentPalettePort.palette (single source of truth).
+    val accentPalette: AccentPalette = AccentPalette.Ember,
+    val accentPickerOpen: Boolean = false,
+    val accentError: StringKey? = null,
+
     // Meal reminders — the user-configurable daily nudge times (max 3). The hour picker
     // edits/adds a slot; [reminderEditingIndex] is null when adding, else the slot being edited.
     val reminderTimes: List<LocalTime> = emptyList(),
@@ -134,6 +142,10 @@ sealed interface ProfileIntent : MviIntent {
 
     data class AiToggled(val enabled: Boolean) : ProfileIntent
 
+    data object AccentPickerOpen : ProfileIntent
+    data object AccentPickerDismiss : ProfileIntent
+    data class AccentSelected(val palette: AccentPalette) : ProfileIntent
+
     /** Open the hour picker to edit the reminder at [index]. */
     data class ReminderEditOpen(val index: Int) : ProfileIntent
     /** Open the hour picker to add a new reminder. */
@@ -173,6 +185,7 @@ class ProfileViewModel(
     localePort: LocalePort,
     notificationsPort: NotificationsPreferencePort,
     aiPreferencePort: AiPreferencePort,
+    accentPalettePort: AccentPalettePort,
     mealRemindersPort: MealReminderSchedulePort,
     private val updateDisplayName: UpdateMyDisplayNameUseCase,
     private val updateBio: UpdateMyBioUseCase,
@@ -185,6 +198,7 @@ class ProfileViewModel(
     private val setNotificationsEnabled: SetNotificationsEnabledUseCase,
     private val enableNotifications: EnableNotificationsUseCase,
     private val setAiEnabled: SetAiEnabledUseCase,
+    private val setAccentPalette: SetAccentPaletteUseCase,
     private val notificationPermission: NotificationPermissionPort,
     private val deleteMyAccount: DeleteMyAccountUseCase,
     private val exportMyData: ExportMyDataUseCase,
@@ -227,6 +241,12 @@ class ProfileViewModel(
             // Single source of truth: the AI opt-out state is driven by the persisted port value.
             aiPreferencePort.enabled.onEach { on ->
                 update { it.copy(aiEnabled = on) }
+            }.collect {}
+        }
+        viewModelScope.launch {
+            // Single source of truth: the accent palette is driven by the persisted port value.
+            accentPalettePort.palette.onEach { p ->
+                update { it.copy(accentPalette = p) }
             }.collect {}
         }
         viewModelScope.launch {
@@ -283,6 +303,12 @@ class ProfileViewModel(
             ProfileIntent.OpenNotificationSystemSettings -> notificationPermission.openSystemSettings()
 
             is ProfileIntent.AiToggled -> doSetAi(intent.enabled)
+
+            ProfileIntent.AccentPickerOpen ->
+                update { it.copy(accentPickerOpen = true, accentError = null) }
+            ProfileIntent.AccentPickerDismiss ->
+                update { it.copy(accentPickerOpen = false) }
+            is ProfileIntent.AccentSelected -> doSetAccent(intent.palette)
 
             is ProfileIntent.ReminderEditOpen ->
                 update { it.copy(reminderPickerOpen = true, reminderEditingIndex = intent.index, reminderError = null) }
@@ -442,6 +468,17 @@ class ProfileViewModel(
         when (val r = setAiEnabled(enabled)) {
             is Result.Ok -> Unit
             is Result.Err -> update { it.copy(aiEnabled = prev, aiError = r.error.toStringKey()) }
+        }
+    }
+
+    private suspend fun doSetAccent(palette: AccentPalette) {
+        // Optimistic: close the picker and update state immediately; roll back on error.
+        // The persisted-port collector is the single source of truth on success.
+        val prev = currentState.accentPalette
+        update { it.copy(accentPickerOpen = false, accentPalette = palette, accentError = null) }
+        when (val r = setAccentPalette(palette)) {
+            is Result.Ok -> Unit
+            is Result.Err -> update { it.copy(accentPalette = prev, accentError = r.error.toStringKey()) }
         }
     }
 

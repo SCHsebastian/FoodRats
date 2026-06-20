@@ -141,4 +141,14 @@
     <string name="auth_delete_account_error_phrase">La frase de confirmación no coincide. Escríbela exactamente.</string>
     <string name="auth_delete_account_error_backend">No se pudo contactar con el servicio de eliminación. Inténtalo de nuevo.</string>
     <string name="auth_delete_account_error_ownership">No se pudo reasignar la propiedad de tu grupo. Inténtalo de nuevo.</string>
+
+    <!-- Selector de color de acento (U6) -->
+    <string name="auth_profile_accent_row">Color de acento</string>
+    <string name="auth_profile_accent_picker_title">Elige tu acento</string>
+    <string name="auth_profile_accent_option_ember">Ember (predeterminado)</string>
+    <string name="auth_profile_accent_option_moss">Musgo</string>
+    <string name="auth_profile_accent_option_rust">Óxido</string>
+    <string name="auth_profile_accent_option_steel">Acero</string>
+    <string name="auth_profile_accent_option_berry">Mora</string>
+    <string name="auth_profile_accent_persist_failed">No se pudo guardar el acento. Inténtalo de nuevo.</string>
 </resources>

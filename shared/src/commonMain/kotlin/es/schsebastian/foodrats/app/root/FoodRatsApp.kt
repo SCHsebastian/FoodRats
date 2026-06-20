@@ -30,7 +30,10 @@ import es.schsebastian.foodrats.app.locale.ProvideAppLocale
 import es.schsebastian.foodrats.app.notifications.InAppPushBanner
 import es.schsebastian.foodrats.core.designsystem.atoms.FrOfflineBanner
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.designsystem.theme.FrAccent
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
@@ -121,6 +124,12 @@ fun FoodRatsApp() {
         ThemeMode.Light -> false
         ThemeMode.Dark -> true
     }
+    // Accent palette — collect the user's stored choice and map to the design-system enum.
+    // The AccentPalette→FrAccent mapping lives here in :shared (presentation), not in
+    // :core:designsystem, to keep the design system domain-free.
+    val accentPort = koinInject<AccentPalettePort>()
+    val accentPalette by accentPort.palette.collectAsState(initial = AccentPalette.Ember)
+    val frAccent = accentPalette.toFrAccent()
 
     // Foreground/in-app push surface: the OS suppresses tray notifications while the app is
     // foregrounded, so an app-level snackbar is the only place a foreground push is shown. Lives
@@ -135,7 +144,7 @@ fun FoodRatsApp() {
     val connectivityVm: ConnectivityViewModel = koinViewModel()
     val isOnline by connectivityVm.isOnline.collectAsState()
 
-    FoodRatsTheme(darkTheme = darkTheme) {
+    FoodRatsTheme(darkTheme = darkTheme, accent = frAccent) {
       // Re-keys the UI subtree on the chosen language so every resolve(...) re-resolves. The root
       // NavController is created above this block, so the back stack survives a language switch.
       ProvideAppLocale(languageTag = appLanguageTag) {
@@ -181,4 +190,16 @@ fun FoodRatsApp() {
         }
       }
     }
+}
+
+/**
+ * Presentation-layer mapping from the domain [AccentPalette] enum to the design-system [FrAccent]
+ * enum. Lives in `:shared` (presentation) so `:core:designsystem` stays domain-free.
+ */
+private fun AccentPalette.toFrAccent(): FrAccent = when (this) {
+    AccentPalette.Ember -> FrAccent.Ember
+    AccentPalette.Moss  -> FrAccent.Moss
+    AccentPalette.Rust  -> FrAccent.Rust
+    AccentPalette.Steel -> FrAccent.Steel
+    AccentPalette.Berry -> FrAccent.Berry
 }

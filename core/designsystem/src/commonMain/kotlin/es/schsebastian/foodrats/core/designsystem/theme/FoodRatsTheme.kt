@@ -14,11 +14,13 @@ import androidx.compose.ui.Modifier
 @Composable
 fun FoodRatsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: FrAccent = FrAccent.Ember,
     minotaur: Boolean = false,
     onMinotaurToggle: (Boolean) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    val colors = if (darkTheme) FoodRatsDarkColors else FoodRatsLightColors
+    val baseColors = if (darkTheme) FoodRatsDarkColors else FoodRatsLightColors
+    val colors = baseColors.applyAccent(accent, darkTheme)
     val semantic = if (darkTheme) FoodRatsDarkSemanticColors else FoodRatsLightSemanticColors
     val fontFamily = rememberFrFontFamily()
     val typography = rememberFoodRatsTypography(fontFamily)

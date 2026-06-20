@@ -14,6 +14,9 @@ import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
+import es.schsebastian.foodrats.core.domain.preferences.AccentPaletteError
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -38,6 +41,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAcco
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.RemoveMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAccentPaletteUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
@@ -125,6 +129,23 @@ class ProfileViewModelTest {
         override val enabled: Flow<Boolean> = flowOf(true)
         override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> =
             Result.failure(AiPreferenceError.Persist.Unavailable)
+    }
+
+    /** In-memory [AccentPalettePort]: `set` updates the observed flow (single source of truth). */
+    private class FakeAccentPalettePort(initial: AccentPalette = AccentPalette.Ember) : AccentPalettePort {
+        private val state = MutableStateFlow(initial)
+        override val palette: Flow<AccentPalette> = state.asStateFlow()
+        override suspend fun set(palette: AccentPalette): Result<Unit, AccentPaletteError> {
+            state.value = palette
+            return Result.success(Unit)
+        }
+    }
+
+    /** [AccentPalettePort] whose `set` always fails — for asserting the rollback branch. */
+    private class FailingAccentPalettePort : AccentPalettePort {
+        override val palette: Flow<AccentPalette> = flowOf(AccentPalette.Ember)
+        override suspend fun set(palette: AccentPalette): Result<Unit, AccentPaletteError> =
+            Result.failure(AccentPaletteError.Persist.Unavailable)
     }
 
     /** In-memory [MealReminderSchedulePort]: `set` updates the observed flow (single source of truth). */
@@ -242,6 +263,7 @@ class ProfileViewModelTest {
         themePort: ThemeModePort = NoopThemeModePort,
         localePort: LocalePort = NoopLocalePort,
         aiPreferencePort: AiPreferencePort = FakeAiPreferencePort(),
+        accentPalettePort: AccentPalettePort = FakeAccentPalettePort(),
         writePort: FakeAccountWritePort = FakeAccountWritePort(),
     ): ProfileViewModel {
         val session = FixedSessionProvider(Session(accountId = accountId, activeCrewId = null))
@@ -252,6 +274,7 @@ class ProfileViewModelTest {
             localePort = localePort,
             notificationsPort = NoopNotificationsPreferencePort,
             aiPreferencePort = aiPreferencePort,
+            accentPalettePort = accentPalettePort,
             mealRemindersPort = reminders,
             updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
             updateBio = UpdateMyBioUseCase(writePort, session),
@@ -264,6 +287,7 @@ class ProfileViewModelTest {
             setNotificationsEnabled = SetNotificationsEnabledUseCase(NoopNotificationsPreferencePort),
             enableNotifications = EnableNotificationsUseCase(NoopNotificationPermissionPort, NoopNotificationsPreferencePort),
             setAiEnabled = SetAiEnabledUseCase(aiPreferencePort),
+            setAccentPalette = SetAccentPaletteUseCase(accentPalettePort),
             notificationPermission = NoopNotificationPermissionPort,
             deleteMyAccount = DeleteMyAccountUseCase(session, FakeAccountDeletionPort(deletionResult)),
             exportMyData = ExportMyDataUseCase(exportPort),
@@ -827,6 +851,59 @@ class ProfileViewModelTest {
             val final = expectMostRecentItem()
             assertFalse(final.isRemovingAvatar)
             assertEquals(AuthStringKey.ProfileRemoveAvatarError, final.removeAvatarError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── Accent palette tests ──────────────────────────────────────────────────────────────────────
+
+    @Test fun accent_picker_open_sets_flag() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentPickerOpen)
+            val s = expectMostRecentItem()
+            assertTrue(s.accentPickerOpen)
+            assertNull(s.accentError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun accent_picker_dismiss_clears_flag() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentPickerOpen)
+            vm.onIntent(ProfileIntent.AccentPickerDismiss)
+            val s = expectMostRecentItem()
+            assertFalse(s.accentPickerOpen)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun accent_selected_updates_state_and_closes_picker() = runTest {
+        val port = FakeAccentPalettePort(AccentPalette.Ember)
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            accentPalettePort = port)
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentPickerOpen)
+            vm.onIntent(ProfileIntent.AccentSelected(AccentPalette.Steel))
+            val s = expectMostRecentItem()
+            assertFalse(s.accentPickerOpen)
+            assertEquals(AccentPalette.Steel, s.accentPalette)
+            assertNull(s.accentError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun accent_persist_failure_rolls_back_and_surfaces_error() = runTest {
+        val failingPort = FailingAccentPalettePort()
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            accentPalettePort = failingPort)
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentSelected(AccentPalette.Moss))
+            val s = expectMostRecentItem()
+            // rolled back to the initial Ember value
+            assertEquals(AccentPalette.Ember, s.accentPalette)
+            assertEquals(AuthStringKey.ProfileAccentPersistFailed, s.accentError)
             cancelAndIgnoreRemainingEvents()
         }
     }

@@ -59,4 +59,7 @@ class ProfileErrorToStringKeyTest {
 
     @Test fun avatar_remove_failed_maps_to_dedicated_key() =
         assertEquals(AuthStringKey.ProfileRemoveAvatarError, ProfileError.Avatar.RemoveFailed.toStringKey())
+
+    @Test fun accent_persist_failed_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileAccentPersistFailed, ProfileError.Accent.PersistFailed.toStringKey())
 }

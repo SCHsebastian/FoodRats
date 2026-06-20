@@ -1,7 +1,10 @@
 package es.schsebastian.foodrats.feature.auth.presentation.profile
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +21,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
@@ -45,6 +49,8 @@ import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.designsystem.theme.FrAccent
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
@@ -216,6 +222,18 @@ fun ProfileScreen(
             selectedId = selectedHour,
             onDismiss = { vm.onIntent(ProfileIntent.ReminderPickerDismiss) },
             onSelect = { id -> vm.onIntent(ProfileIntent.ReminderHourSelected(id.toInt())) },
+        )
+    }
+
+    if (state.accentPickerOpen) {
+        FrSettingsPicker(
+            title = resolve(AuthStringKey.ProfileAccentPickerTitle),
+            options = accentOptions(),
+            selectedId = state.accentPalette.name,
+            onDismiss = { vm.onIntent(ProfileIntent.AccentPickerDismiss) },
+            onSelect = { id ->
+                vm.onIntent(ProfileIntent.AccentSelected(AccentPalette.valueOf(id)))
+            },
         )
     }
 }
@@ -543,6 +561,24 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel, modifi
                 )
             },
         )
+
+        FrSettingsDivider()
+
+        // Accent-colour picker — lets the user personalise the app's primary palette from a
+        // curated set of Iron & Ember variants. The swatch dot previews the current accent.
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileAccentRow),
+            subtitle = resolveAccentLabel(state.accentPalette),
+            icon = FrIcons.Theme,
+            trailing = {
+                AccentSwatchDot(accent = state.accentPalette.toFrAccent())
+            },
+            onClick = { vm.onIntent(ProfileIntent.AccentPickerOpen) },
+        )
+        state.accentError?.let {
+            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
+            Spacer(Modifier.height(Spacing.xs))
+        }
     }
 }
 
@@ -689,3 +725,50 @@ private fun localeOptions(): List<Pair<String, String>> = listOf(
     AppLocale.En.name to resolve(AuthStringKey.ProfileLanguageOptionEn),
     AppLocale.Es.name to resolve(AuthStringKey.ProfileLanguageOptionEs),
 )
+
+// ── Accent helpers ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Presentation-layer mapping: [AccentPalette] → [FrAccent].
+ * Defined here (in `:feature:auth`'s presentation layer) because [ProfileScreen] needs it
+ * to render the swatch, and `:core:designsystem` must stay domain-free.
+ */
+private fun AccentPalette.toFrAccent(): FrAccent = when (this) {
+    AccentPalette.Ember -> FrAccent.Ember
+    AccentPalette.Moss  -> FrAccent.Moss
+    AccentPalette.Rust  -> FrAccent.Rust
+    AccentPalette.Steel -> FrAccent.Steel
+    AccentPalette.Berry -> FrAccent.Berry
+}
+
+@Composable
+private fun resolveAccentLabel(palette: AccentPalette): String = when (palette) {
+    AccentPalette.Ember -> resolve(AuthStringKey.ProfileAccentOptionEmber)
+    AccentPalette.Moss  -> resolve(AuthStringKey.ProfileAccentOptionMoss)
+    AccentPalette.Rust  -> resolve(AuthStringKey.ProfileAccentOptionRust)
+    AccentPalette.Steel -> resolve(AuthStringKey.ProfileAccentOptionSteel)
+    AccentPalette.Berry -> resolve(AuthStringKey.ProfileAccentOptionBerry)
+}
+
+@Composable
+private fun accentOptions(): List<Pair<String, String>> = listOf(
+    AccentPalette.Ember.name to resolve(AuthStringKey.ProfileAccentOptionEmber),
+    AccentPalette.Moss.name  to resolve(AuthStringKey.ProfileAccentOptionMoss),
+    AccentPalette.Rust.name  to resolve(AuthStringKey.ProfileAccentOptionRust),
+    AccentPalette.Steel.name to resolve(AuthStringKey.ProfileAccentOptionSteel),
+    AccentPalette.Berry.name to resolve(AuthStringKey.ProfileAccentOptionBerry),
+)
+
+/**
+ * Small filled circle previewing the accent's primary swatch colour. Lives in
+ * `:feature:auth`'s presentation, not in `:core:designsystem`, because it takes a
+ * domain-adjacent [FrAccent] and lives inside a feature screen, not a design-system atom.
+ */
+@Composable
+private fun AccentSwatchDot(accent: FrAccent, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(Sizes.iconMd)
+            .background(color = accent.swatch, shape = CircleShape),
+    )
+}

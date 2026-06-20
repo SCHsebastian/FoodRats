@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.domain.error
 import es.schsebastian.foodrats.core.domain.account.AccountDeletionError
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.core.domain.account.DataExportError
+import es.schsebastian.foodrats.core.domain.preferences.AccentPaletteError
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.LocalePreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderPreferenceError
@@ -72,6 +73,10 @@ sealed interface ProfileError {
     sealed interface Avatar : ProfileError {
         data object RemoveFailed : Avatar
     }
+
+    sealed interface Accent : ProfileError {
+        data object PersistFailed : Accent
+    }
 }
 
 internal fun AccountWriteError.toProfileError(): ProfileError = when (this) {
@@ -110,6 +115,10 @@ internal fun DataExportError.toProfileError(): ProfileError = when (this) {
 
 internal fun AiPreferenceError.toProfileError(): ProfileError = when (this) {
     AiPreferenceError.Persist.Unavailable -> ProfileError.Ai.PersistFailed
+}
+
+internal fun AccentPaletteError.toProfileError(): ProfileError = when (this) {
+    AccentPaletteError.Persist.Unavailable -> ProfileError.Accent.PersistFailed
 }
 
 internal fun AccountWriteError.toRemoveAvatarProfileError(): ProfileError = when (this) {

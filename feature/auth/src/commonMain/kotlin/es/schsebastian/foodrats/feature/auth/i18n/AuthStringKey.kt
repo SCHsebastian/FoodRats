@@ -51,6 +51,14 @@ import foodrats.feature.auth.generated.resources.auth_profile_bio_save
 import foodrats.feature.auth.generated.resources.auth_profile_bio_too_long
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_subtitle
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_berry
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_ember
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_moss
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_rust
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_steel
+import foodrats.feature.auth.generated.resources.auth_profile_accent_persist_failed
+import foodrats.feature.auth.generated.resources.auth_profile_accent_picker_title
+import foodrats.feature.auth.generated.resources.auth_profile_accent_row
 import foodrats.feature.auth.generated.resources.auth_profile_ai_row
 import foodrats.feature.auth.generated.resources.auth_profile_ai_subtitle_on
 import foodrats.feature.auth.generated.resources.auth_profile_ai_subtitle_off
@@ -246,6 +254,15 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileAiSubtitleOn(Res.string.auth_profile_ai_subtitle_on),
     ProfileAiSubtitleOff(Res.string.auth_profile_ai_subtitle_off),
     ProfileAiPersistFailed(Res.string.auth_profile_ai_persist_failed),
+
+    ProfileAccentRow(Res.string.auth_profile_accent_row),
+    ProfileAccentPickerTitle(Res.string.auth_profile_accent_picker_title),
+    ProfileAccentOptionEmber(Res.string.auth_profile_accent_option_ember),
+    ProfileAccentOptionMoss(Res.string.auth_profile_accent_option_moss),
+    ProfileAccentOptionRust(Res.string.auth_profile_accent_option_rust),
+    ProfileAccentOptionSteel(Res.string.auth_profile_accent_option_steel),
+    ProfileAccentOptionBerry(Res.string.auth_profile_accent_option_berry),
+    ProfileAccentPersistFailed(Res.string.auth_profile_accent_persist_failed),
 
     ProfileAnalyticsRow(Res.string.auth_profile_analytics_row),
     ProfileAnalyticsSubtitleOn(Res.string.auth_profile_analytics_subtitle_on),

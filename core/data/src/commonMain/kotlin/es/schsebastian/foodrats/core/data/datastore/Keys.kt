@@ -91,6 +91,13 @@ object Keys {
     val AiUsageEnabled = StoreKey(booleanPreferencesKey("ai_usage_enabled"))
 
     /**
+     * Serialised name of the user's chosen [es.schsebastian.foodrats.core.domain.preferences.AccentPalette]
+     * enum entry, e.g. `"Ember"`. Absent = not set yet → callers default to [AccentPalette.Ember].
+     * Owned by [es.schsebastian.foodrats.core.data.preferences.AccentPaletteRepository].
+     */
+    val AccentPalette = StoreKey(stringPreferencesKey("accent_palette"))
+
+    /**
      * Pipe-delimited set of Crew ID strings representing the user's most recently chosen
      * publish audience, e.g. `"crewId1|crewId2"`. Absent = no saved preference → callers
      * default to all the user's current crews. Owned by

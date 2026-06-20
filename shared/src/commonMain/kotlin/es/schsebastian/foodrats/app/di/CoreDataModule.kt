@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.providePreferencesDataStore
 import es.schsebastian.foodrats.core.data.analytics.AnalyticsIdentityBinder
 import es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver
+import es.schsebastian.foodrats.core.data.preferences.AccentPaletteRepository
 import es.schsebastian.foodrats.core.data.preferences.ConsentRepository
 import es.schsebastian.foodrats.core.data.preferences.EulaRepository
 import es.schsebastian.foodrats.core.data.preferences.LocaleRepository
@@ -21,6 +22,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.preferences.EulaPort
@@ -59,6 +61,9 @@ val coreDataModule = module {
     }
     single<AiPreferencePort> {
         AiPreferenceRepository(prefs = get(), dispatchers = get())
+    }
+    single<AccentPalettePort> {
+        AccentPaletteRepository(prefs = get(), dispatchers = get())
     }
     single<DefaultAudiencePort> {
         DefaultAudienceRepository(prefs = get(), dispatchers = get())

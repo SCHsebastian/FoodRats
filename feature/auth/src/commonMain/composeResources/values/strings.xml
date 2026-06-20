@@ -141,4 +141,14 @@
     <string name="auth_delete_account_error_phrase">The confirmation phrase didn't match. Type it exactly.</string>
     <string name="auth_delete_account_error_backend">Couldn't reach the deletion service. Try again.</string>
     <string name="auth_delete_account_error_ownership">Couldn't reassign your crew's owner. Please try again.</string>
+
+    <!-- Accent-colour picker (U6) -->
+    <string name="auth_profile_accent_row">Accent colour</string>
+    <string name="auth_profile_accent_picker_title">Choose your accent</string>
+    <string name="auth_profile_accent_option_ember">Ember (default)</string>
+    <string name="auth_profile_accent_option_moss">Moss</string>
+    <string name="auth_profile_accent_option_rust">Rust</string>
+    <string name="auth_profile_accent_option_steel">Steel</string>
+    <string name="auth_profile_accent_option_berry">Berry</string>
+    <string name="auth_profile_accent_persist_failed">Couldn\'t save your accent. Try again.</string>
 </resources>
