@@ -469,7 +469,6 @@ export const onReportCreated = onDocumentCreated(
     document: "reports/{reportId}",
     region: "europe-west3",
     retry: true,
-    maxRetrySeconds: 60,
   },
   async (event) => {
     const snap = event.data;
