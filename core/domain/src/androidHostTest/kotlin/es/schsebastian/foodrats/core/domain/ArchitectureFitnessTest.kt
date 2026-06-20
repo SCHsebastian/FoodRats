@@ -167,6 +167,56 @@ class ArchitectureFitnessTest {
     }
 
     // ---------------------------------------------------------------------------------------------
+    // Rule 6 — Outbox handler registry: distinct Koin qualifiers.
+    // The write outbox's `OutboxRunner` (in `:core:data`) collects every feature-owned handler via
+    // `getAll<OutboxCommandHandler>()`. Koin stores each `single<T>` at an index keyed by (type,
+    // qualifier); two *unqualified* `single<OutboxCommandHandler>` bindings collide at the same
+    // index and one SILENTLY OVERRIDES the other, so `getAll()` returns a single handler and half
+    // the offline commands never replay (the real P2 device-caught bug — a live Koin graph + a
+    // device launch were needed to see it; module `verify()` and unit tests can't). Guard the root
+    // cause structurally: every `single<OutboxCommandHandler>` binding must carry a `named(…)`
+    // qualifier, and all qualifiers must be distinct. A revert to a plain binding fails here at
+    // test time instead of silently dropping writes in production.
+    // ---------------------------------------------------------------------------------------------
+    @Test
+    fun outbox_command_handlers_register_with_distinct_qualifiers() {
+        val bindings = Konsist.scopeFromProject()
+            .files
+            .filterNot(::isNonSourceSnapshot)
+            // Real bindings live in feature `commonMain` DI modules, never in test sources.
+            .filterNot { file -> file.path.contains(Regex("/src/[^/]*[Tt]est/")) }
+            .flatMap { file -> OUTBOX_HANDLER_BINDING.findAll(file.text).map { file.path to it } }
+            .toList()
+
+        // Sanity: prove the scan found the bindings (guards a silent empty scope, and trips loudly
+        // if the binding mechanism is ever refactored away from `single<OutboxCommandHandler>(…)`).
+        if (bindings.size < 2) {
+            fail(
+                "Expected >= 2 single<OutboxCommandHandler> bindings (meal + crew), found " +
+                    "${bindings.size}. If the outbox handler binding style changed, update this rule.",
+            )
+        }
+
+        val unqualified = bindings.filter { (_, m) -> m.groupValues[1].isEmpty() }.map { it.first }
+        if (unqualified.isNotEmpty()) {
+            fail(
+                "single<OutboxCommandHandler> bound WITHOUT a named(…) qualifier in: $unqualified. " +
+                    "Unqualified handlers collide at one Koin index → getAll() drops all but one → " +
+                    "half the outbox never replays. Add a distinct named(\"…\") qualifier.",
+            )
+        }
+
+        val duplicates = bindings.map { (_, m) -> m.groupValues[1] }
+            .groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+        if (duplicates.isNotEmpty()) {
+            fail(
+                "Duplicate OutboxCommandHandler qualifier(s) $duplicates — colliding qualifiers " +
+                    "override each other in Koin, so getAll() drops handlers. Make each unique.",
+            )
+        }
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Helpers
     // ---------------------------------------------------------------------------------------------
 
@@ -206,5 +256,15 @@ class ArchitectureFitnessTest {
 
         /** `Text("…")` or `FrText("…")` with a non-empty string literal first argument. */
         private val TEXT_STRING_LITERAL = Regex("""\b(Fr)?Text\s*\(\s*"[^"]""")
+
+        /**
+         * A Koin `single<OutboxCommandHandler>(named("x")) { … }` binding (group 1 = the qualifier
+         * name) or a plain, unqualified `single<OutboxCommandHandler> { … }` (group 1 empty). The
+         * trailing `{` is required so prose mentions of the type in comments/KDoc (which aren't
+         * followed by a lambda) don't register as bindings.
+         */
+        private val OUTBOX_HANDLER_BINDING = Regex(
+            """single<\s*OutboxCommandHandler\s*>\s*(?:\(\s*named\s*\(\s*"([^"]+)"\s*\)\s*\)\s*)?\{""",
+        )
     }
 }

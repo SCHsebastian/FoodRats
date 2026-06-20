@@ -155,6 +155,148 @@ class MealLocalStoreTest {
         }
     }
 
+    @Test fun apply_rate_writes_a_pending_row_and_recomputes_totals_then_sync_clears_it() = runTest {
+        // A meal already held locally (server-confirmed, no ratings yet).
+        store.upsertAll(listOf(dto("m1", publishedAtEpochMs = 100L)))
+
+        // Optimistic offline rate: pending=1 mealRating row + meal pending=1 + idempotencyKey stamped.
+        store.applyRate(
+            mealId = "m1",
+            raterId = "rater-1",
+            score = 4,
+            atMs = 42L,
+            idempotencyKey = "rate:c1:m1:rater-1",
+        )
+
+        store.observeFeed("c1", "2026-06-19").test {
+            val meal = awaitItem().single()
+            assertEquals(1L, meal.pending)
+            assertEquals("rate:c1:m1:rater-1", meal.idempotencyKey)
+            assertEquals(4L, meal.ratingSum)
+            assertEquals(1L, meal.voterCount)
+            val rating = meal.ratings.single()
+            assertEquals("rater-1", rating.raterId)
+            assertEquals(4, rating.score)
+            assertEquals(true, rating.pending)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // The rated meal syncs back from the server (confirmed rating) — overwrites the pending row.
+        store.upsertAll(
+            listOf(
+                dto(
+                    "m1",
+                    publishedAtEpochMs = 100L,
+                    ratings = mapOf("rater-1" to RatingEntryDto(score = 4, atMs = 50L)),
+                ),
+            ),
+        )
+
+        store.observeFeed("c1", "2026-06-19").test {
+            val meal = awaitItem().single()
+            assertEquals(0L, meal.pending, "server snapshot clears the meal pending flag")
+            assertEquals(null, meal.idempotencyKey)
+            assertEquals(4L, meal.ratingSum)
+            assertEquals(1L, meal.voterCount)
+            assertEquals(false, meal.ratings.single().pending, "the confirmed rating is no longer pending")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun apply_rate_on_uncached_meal_is_a_noop() = runTest {
+        // No meal m-absent held locally → optimistic rate has nothing to render against.
+        store.applyRate(
+            mealId = "m-absent",
+            raterId = "rater-1",
+            score = 5,
+            atMs = 1L,
+            idempotencyKey = "rate:c1:m-absent:rater-1",
+        )
+
+        store.observeFeed("c1", "2026-06-19").test {
+            assertEquals(emptyList(), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun clear_pending_rolls_back_only_the_optimistic_rating() = runTest {
+        // A confirmed rating from rater-1, plus an optimistic pending rate from rater-2.
+        store.upsertAll(
+            listOf(
+                dto(
+                    "m1",
+                    publishedAtEpochMs = 100L,
+                    ratings = mapOf("rater-1" to RatingEntryDto(score = 3, atMs = 10L)),
+                ),
+            ),
+        )
+        store.applyRate("m1", "rater-2", score = 5, atMs = 20L, idempotencyKey = "rate:c1:m1:rater-2")
+
+        // Terminal failure → roll back the optimistic write keyed by its idempotency token.
+        store.clearPending("rate:c1:m1:rater-2")
+
+        store.observeFeed("c1", "2026-06-19").test {
+            val meal = awaitItem().single()
+            assertEquals(0L, meal.pending)
+            assertEquals(null, meal.idempotencyKey)
+            // Only the confirmed rater-1 rating survives; totals recomputed from it alone.
+            assertEquals(setOf("rater-1"), meal.ratings.map { it.raterId }.toSet())
+            assertEquals(3L, meal.ratingSum)
+            assertEquals(1L, meal.voterCount)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun clear_pending_for_unknown_key_is_a_noop() = runTest {
+        store.upsertAll(listOf(dto("m1", publishedAtEpochMs = 100L)))
+
+        store.clearPending("rate:c1:nope:rater-1")
+
+        store.observeFeed("c1", "2026-06-19").test {
+            assertEquals(listOf("m1"), awaitItem().map { it.mealId })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun prune_older_than_drops_pre_cutoff_meals_and_their_ratings_only() = runTest {
+        store.upsertAll(
+            listOf(
+                // Well before the cutoff → pruned (with its ratings).
+                dto(
+                    "ancient",
+                    dayKey = "2026-01-01",
+                    publishedAtEpochMs = 1L,
+                    ratings = mapOf("rater-1" to RatingEntryDto(score = 5, atMs = 1L)),
+                ),
+                // The day before the cutoff → pruned (strictly older than cutoff).
+                dto("day-before", dayKey = "2026-03-20", publishedAtEpochMs = 2L),
+                // Exactly the cutoff day → KEPT (delete is `< cutoff`, not `<=`).
+                dto("on-cutoff", dayKey = "2026-03-21", publishedAtEpochMs = 3L),
+                // After the cutoff → KEPT (with its ratings).
+                dto(
+                    "recent",
+                    dayKey = "2026-06-15",
+                    publishedAtEpochMs = 4L,
+                    ratings = mapOf("rater-2" to RatingEntryDto(score = 4, atMs = 5L)),
+                ),
+            ),
+        )
+
+        store.pruneOlderThan("2026-03-21")
+
+        // Within-retention meals (on-cutoff + recent) survive; the older two are gone.
+        store.observeRange("c1", "2026-01-01", "2026-06-20").test {
+            assertEquals(setOf("on-cutoff", "recent"), awaitItem().map { it.mealId }.toSet())
+            cancelAndIgnoreRemainingEvents()
+        }
+        // The pruned meal's ratings cascaded away; the kept meal's rating remains.
+        val ratingsByMeal = FoodRatsDatabase(driver).mealQueries
+            .selectRatingsForMeals(listOf("ancient", "recent")).executeAsList()
+            .groupBy { it.mealId }
+        assertEquals(null, ratingsByMeal["ancient"], "pruned meal's ratings cascade away")
+        assertEquals(setOf("rater-2"), ratingsByMeal["recent"].orEmpty().map { it.raterId }.toSet())
+    }
+
     @Test fun upsert_all_replaces_an_existing_row_in_place() = runTest {
         store.upsertAll(listOf(dto("m1", publishedAtEpochMs = 100L)))
         store.upsertAll(

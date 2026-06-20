@@ -1,10 +1,5 @@
 package es.schsebastian.foodrats.core.data.outbox
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.mutablePreferencesOf
-import es.schsebastian.foodrats.core.data.datastore.AppPreferences
-import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -14,13 +9,11 @@ import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.time.FixedClock
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -30,25 +23,10 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class OutboxRepositoryTest {
 
-    /** Backing store shared across "process restarts" — a fresh store instance over the SAME data. */
-    private class SharedDataStore : DataStore<Preferences> {
-        private val state = MutableStateFlow<Preferences>(mutablePreferencesOf())
-        override val data: Flow<Preferences> = state
-        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
-            val newValue = transform(state.value)
-            state.value = newValue
-            return newValue
-        }
-    }
+    private lateinit var db: OutboxTestDb
 
-    private fun dispatchers(): DispatcherProvider {
-        val d = UnconfinedTestDispatcher()
-        return object : DispatcherProvider {
-            override val main: CoroutineDispatcher = d
-            override val io: CoroutineDispatcher = d
-            override val default: CoroutineDispatcher = d
-        }
-    }
+    @BeforeTest fun setUp() { db = OutboxTestDb() }
+    @AfterTest fun tearDown() = db.close()
 
     private val crew = (CrewId.of("crew-1") as Result.Ok).value
     private val meal = (MealId.of("meal-1") as Result.Ok).value
@@ -61,21 +39,21 @@ class OutboxRepositoryTest {
         score = Score.of(score).getOrNull()!!,
     )
 
-    private fun repo(backing: DataStore<Preferences>, clock: FixedClock) =
-        OutboxRepository(OutboxLocalStore(AppPreferences(backing)), clock, dispatchers())
+    /** A fresh repo + store over the SAME in-memory table — the process-restart proxy. */
+    private fun repo(clock: FixedClock) =
+        OutboxRepository(db.store(), clock, db.dispatchers)
 
     @Test
     fun enqueue_persists_and_survives_a_fresh_store_instance() = runTest {
-        val backing = SharedDataStore()
         val clock = FixedClock(Instant.parse("2026-06-19T10:00:00Z"))
 
-        val repo1 = repo(backing, clock)
+        val repo1 = repo(clock)
         val enqueued = repo1.enqueue(rateCommand())
         assertTrue(enqueued is Result.Ok)
         val entry = enqueued.value
 
-        // Process-death proxy: a brand-new store + repo over the SAME backing data.
-        val repo2 = repo(backing, clock)
+        // Process-death proxy: a brand-new store + repo over the SAME backing table.
+        val repo2 = repo(clock)
         val restored = repo2.observePending().first()
         assertEquals(1, restored.size)
         val r = restored.single()
@@ -87,9 +65,8 @@ class OutboxRepositoryTest {
 
     @Test
     fun enqueue_coalesces_on_idempotency_key() = runTest {
-        val backing = SharedDataStore()
         val clock = FixedClock(Instant.parse("2026-06-19T10:00:00Z"))
-        val repo = repo(backing, clock)
+        val repo = repo(clock)
 
         repo.enqueue(rateCommand(score = 3))
         clock.set(Instant.parse("2026-06-19T11:00:00Z"))
@@ -102,8 +79,7 @@ class OutboxRepositoryTest {
 
     @Test
     fun markUploading_then_markFailed_increments_attempt_and_sets_failed() = runTest {
-        val backing = SharedDataStore()
-        val repo = repo(backing, FixedClock(Instant.parse("2026-06-19T10:00:00Z")))
+        val repo = repo(FixedClock(Instant.parse("2026-06-19T10:00:00Z")))
         val id = (repo.enqueue(rateCommand()) as Result.Ok).value.id
 
         repo.markUploading(id)
@@ -119,8 +95,7 @@ class OutboxRepositoryTest {
 
     @Test
     fun remove_dequeues_the_entry_and_is_noop_safe() = runTest {
-        val backing = SharedDataStore()
-        val repo = repo(backing, FixedClock(Instant.parse("2026-06-19T10:00:00Z")))
+        val repo = repo(FixedClock(Instant.parse("2026-06-19T10:00:00Z")))
         val id = (repo.enqueue(rateCommand()) as Result.Ok).value.id
 
         repo.remove(id)
@@ -131,9 +106,8 @@ class OutboxRepositoryTest {
 
     @Test
     fun observePending_orders_by_createdAt() = runTest {
-        val backing = SharedDataStore()
         val clock = FixedClock(Instant.parse("2026-06-19T10:00:00Z"))
-        val repo = repo(backing, clock)
+        val repo = repo(clock)
 
         // Two distinct commands (different raters → different idempotency keys, both survive).
         val firstCmd = PendingCommand.RateMeal(

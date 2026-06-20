@@ -47,6 +47,7 @@ val feedModule = module {
             queuedUploadActions = get(),
             connectivity = get(),
             outbox = get(),
+            syncStatus = get(),
             analytics = get(),
         )
     }

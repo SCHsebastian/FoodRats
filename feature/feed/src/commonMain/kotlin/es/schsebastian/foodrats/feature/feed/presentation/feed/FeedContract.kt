@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviState
 import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.RelativeTimestamp
 import kotlinx.datetime.LocalDate
 
 data class FeedState(
@@ -47,6 +48,17 @@ data class FeedState(
     val syncFailed: Int = 0,
     /** Active crew's blind-voting flag; masks meal authors until the viewer rates. */
     val blindVoting: Boolean = false,
+    /**
+     * Freshness of the active crew's cached feed (offline-first P4-T2): a relative "synced X ago"
+     * timestamp resolved against the clock when the last successful window sync landed, or `null` if
+     * it has not synced yet this session. The VM owns the clock (mirrors `MealDetailViewModel`'s
+     * comment relatives), so the screen just resolves the [RelativeTimestamp]. Derived solely from
+     * [es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort.lastSyncedAt] — single source of
+     * truth.
+     */
+    val syncedRelative: RelativeTimestamp? = null,
+    /** True while a user-triggered pull-to-refresh re-pull is in flight; drives the spinner. */
+    val isRefreshing: Boolean = false,
 ) : MviState
 
 sealed interface FeedIntent : MviIntent {
@@ -69,6 +81,9 @@ sealed interface FeedIntent : MviIntent {
 
     /** Drop the terminal-failed outbox commands from the outbox. */
     data object DismissSyncOutbox : FeedIntent
+
+    /** Force a re-pull of the active crew's window (pull-to-refresh). */
+    data object Refresh : FeedIntent
 }
 
 sealed interface FeedEffect : MviEffect

@@ -15,6 +15,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -106,12 +108,36 @@ fun FeedScreen(
                         onPrev = { vm.onIntent(FeedIntent.PrevDay) },
                         onNext = { vm.onIntent(FeedIntent.NextDay) },
                     )
+                    // Cached-feed freshness (offline-first P4-T2): a subtle "synced X ago" line under
+                    // the day header. Hidden until the first sync of the session lands.
+                    state.syncedRelative?.let { rel ->
+                        FrText(
+                            text = resolve(FeedStringKey.SyncedAgo, resolve(rel.key, rel.amount)),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .frContentWidth()
+                                .fillMaxWidth()
+                                .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                        )
+                    }
                 }
             },
             list = {
                 // Read the state fields once; the body branches off these locals.
                 val meals = state.meals
                 val error = state.error
+                // Pull-to-refresh (offline-first P4-T2): a downward swipe forces a re-pull of the
+                // active crew's window via FeedIntent.Refresh; the spinner clears when the fresh
+                // sync stamp lands (isRefreshing reset in the VM). Disabled while there's no active
+                // crew (nothing to refresh). PullToRefreshBox is the CMP material3 affordance.
+                val refreshState = rememberPullToRefreshState()
+                PullToRefreshBox(
+                    isRefreshing = state.isRefreshing,
+                    onRefresh = { vm.onIntent(FeedIntent.Refresh) },
+                    state = refreshState,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
                 Column(modifier = Modifier.fillMaxSize()) {
                     when {
                         error is FeedError.Session.NoActiveCrew -> {
@@ -200,6 +226,7 @@ fun FeedScreen(
                     state.reactError?.let { err ->
                         FrErrorBanner(text = resolve(err.toStringKey()))
                     }
+                }
                 }
             },
         )

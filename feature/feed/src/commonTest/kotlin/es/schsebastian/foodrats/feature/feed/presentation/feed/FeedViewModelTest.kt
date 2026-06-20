@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
+import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealReaction
@@ -36,7 +37,9 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
+import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -130,6 +133,18 @@ class FakeQueuedUploadActionsPort : QueuedUploadActionsPort {
     override suspend fun dismissFailed() { dismissCount++ }
 }
 
+/**
+ * Controllable [FeedSyncStatusPort] (P4-T2): the test drives the per-crew last-synced stamp via
+ * [emit] and records [refresh] calls so the Refresh intent can be asserted.
+ */
+class FakeFeedSyncStatusPort(initial: Instant? = null) : FeedSyncStatusPort {
+    private val flow = MutableStateFlow(initial)
+    val refreshedCrews = mutableListOf<String>()
+    fun emit(stamp: Instant?) { flow.value = stamp }
+    override fun lastSyncedAt(crewId: CrewId): Flow<Instant?> = flow
+    override suspend fun refresh(crewId: CrewId) { refreshedCrews += crewId.value }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedViewModelTest {
 
@@ -177,11 +192,12 @@ class FeedViewModelTest {
         queuedActions: QueuedUploadActionsPort = FakeQueuedUploadActionsPort(),
         connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
         outbox: RecordingOutboxPort = RecordingOutboxPort(),
+        syncStatus: FakeFeedSyncStatusPort = FakeFeedSyncStatusPort(),
         blockedAccounts: es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort =
             es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort(),
     ) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(active, port, sessionProvider, blockedAccounts),
-        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox),
+        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox, RecordingOptimisticMealWritePort()),
         activeCrew = active,
         session = sessionProvider,
         clock = clock,
@@ -192,6 +208,7 @@ class FeedViewModelTest {
         queuedUploadActions = queuedActions,
         connectivity = connectivity,
         outbox = outbox,
+        syncStatus = syncStatus,
         analytics = analytics,
     )
 
@@ -562,6 +579,51 @@ class FeedViewModelTest {
             ),
             analytics.events.toList(),
         )
+    }
+
+    // --- feed freshness + pull-to-refresh (offline-first P4-T2) -----------------
+
+    @Test fun last_synced_stamp_maps_to_relative_in_state() = runTest {
+        // The clock is fixed at 12:00:00Z; a stamp 5 minutes earlier resolves to "5 min ago".
+        val syncStatus = FakeFeedSyncStatusPort(
+            initial = Instant.parse("2026-05-16T11:55:00Z"),
+        )
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(FeedStringKey.CommentsRelativeMinutes, s.syncedRelative?.key)
+            assertEquals(5, s.syncedRelative?.amount)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun no_sync_yet_keeps_synced_relative_null() = runTest {
+        val vm = buildVm(syncStatus = FakeFeedSyncStatusPort(initial = null))
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(null, s.syncedRelative)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun fresh_stamp_clears_the_refreshing_spinner() = runTest {
+        val syncStatus = FakeFeedSyncStatusPort(initial = null)
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.onIntent(FeedIntent.Refresh)
+        runCurrent()
+        assertTrue(vm.state.value.isRefreshing, "refresh kicks the spinner on")
+        // A fresh stamp arriving (the re-pull's snapshot) drops the spinner.
+        syncStatus.emit(Instant.parse("2026-05-16T12:00:00Z"))
+        runCurrent()
+        assertEquals(false, vm.state.value.isRefreshing)
+    }
+
+    @Test fun refresh_intent_calls_the_port_with_active_crew() = runTest {
+        val syncStatus = FakeFeedSyncStatusPort()
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.onIntent(FeedIntent.Refresh)
+        runCurrent()
+        assertEquals(listOf("c-1"), syncStatus.refreshedCrews)
     }
 
     @Test fun published_queued_draft_is_not_double_rendered() = runTest {

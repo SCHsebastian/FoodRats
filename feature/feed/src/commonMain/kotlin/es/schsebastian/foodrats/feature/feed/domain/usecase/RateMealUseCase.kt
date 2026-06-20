@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.feed.domain.usecase
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
+import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -24,11 +25,20 @@ import kotlinx.coroutines.flow.first
  * [RateError.RateUnavailable]) — the command is durably parked in the [OutboxPort] and the
  * use case returns [Result.Ok], so the UI treats it as accepted; the `OutboxRunner` replays
  * it (idempotently — rate overwrites `ratings[uid]`) when connectivity returns.
+ *
+ * OPTIMISTIC RENDER (P3b §P3b-T5). On that offline-fallback path the rate is also written into the
+ * meal feed's local read source-of-truth via [OptimisticMealWritePort] BEFORE the command is
+ * enqueued, so the star appears in the feed instantly (the feed renders from that local store). The
+ * pending row carries the command's [PendingCommand.idempotencyKey]; when the rated meal next syncs
+ * from the server the optimistic row is overwritten with server truth (pending auto-clears). The
+ * online success path does NOT write optimistically — the server snapshot is the source of truth
+ * and arrives via sync.
  */
 class RateMealUseCase(
     private val ratings: MealRatingPort,
     private val connectivity: ConnectivityPort,
     private val outbox: OutboxPort,
+    private val optimistic: OptimisticMealWritePort,
 ) {
     suspend operator fun invoke(
         crewId: CrewId,
@@ -55,7 +65,12 @@ class RateMealUseCase(
         raterId: AccountId,
         score: Score,
     ): Result<Unit, RateError> {
-        outbox.enqueue(PendingCommand.RateMeal(crewId, mealId, raterId, score))
+        val cmd = PendingCommand.RateMeal(crewId, mealId, raterId, score)
+        // Render the star immediately (the feed reads the local store); the pending row carries the
+        // command's idempotency key so the next server snapshot of this meal overwrites it. Applied
+        // BEFORE enqueue so the optimistic write is visible the moment the command is durably parked.
+        optimistic.applyRate(crewId, mealId, raterId, score, cmd.idempotencyKey)
+        outbox.enqueue(cmd)
         return Result.success(Unit)
     }
 }

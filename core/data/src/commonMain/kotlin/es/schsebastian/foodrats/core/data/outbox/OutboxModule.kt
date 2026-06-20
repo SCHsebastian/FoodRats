@@ -3,6 +3,8 @@ package es.schsebastian.foodrats.core.data.outbox
 import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.outbox.OutboxRetryPolicy
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
@@ -13,8 +15,10 @@ import org.koin.dsl.module
  *
  * `:core:data` must NEVER import a `:feature:*` module, so this module binds only
  * the platform-agnostic pieces:
- *  - the single [OutboxLocalStore] (durable JSON list in DataStore),
- *  - the single [OutboxPort] [OutboxRepository] (the IO boundary), and
+ *  - the single [OutboxLocalStore] (durable SQLDelight `outbox` table; P3b-T6),
+ *  - the single [OutboxPort] [OutboxRepository] (the IO boundary),
+ *  - the one-shot [OutboxJsonMigration] (lifts any leftover P2 DataStore-JSON
+ *    entries into the table once at boot, then clears the legacy key), and
  *  - the single, eager [OutboxRunner] that drains the queue.
  *
  * The runner dispatches each command to the first matching [OutboxCommandHandler];
@@ -29,12 +33,21 @@ import org.koin.dsl.module
  * must be live without any screen having resolved the outbox first.
  */
 val outboxModule = module {
-    single { OutboxLocalStore(prefs = get(), json = get()) }
+    // SQLDelight-backed (P3b-T6): the durable outbox is now the `outbox` table in FoodRatsDatabase
+    // (databaseModule, wired before this module), not a DataStore-JSON blob.
+    single { OutboxLocalStore(database = get(), dispatchers = get()) }
     single<OutboxPort> {
         OutboxRepository(store = get(), clock = get(), dispatchers = get())
     }
     single { OutboxRetryPolicy() }
+    single { OutboxJsonMigration(prefs = get(), store = get(), dispatchers = get(), json = get()) }
     single(createdAtStart = true) {
+        val appScope = get<CoroutineScope>(named("appScope"))
+        // One-shot lift of any leftover P2 DataStore-JSON entries into the table, then clear the
+        // legacy key. Fire-and-forget on appScope before the drainer subscribes — the migration
+        // writes through the same store the runner reads, so a pre-existing entry replays once
+        // migrated. Idempotent across launches (the key is cleared).
+        appScope.launch { get<OutboxJsonMigration>().run() }
         OutboxRunner(
             outbox = get(),
             // Feature-owned handlers (MealOutboxCommandHandler / CrewOutboxCommandHandler)
@@ -44,6 +57,6 @@ val outboxModule = module {
             connectivity = get(),
             policy = get(),
             analytics = get(),
-        ).also { it.start(get(named("appScope"))) }
+        ).also { it.start(appScope) }
     }
 }

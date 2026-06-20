@@ -1,12 +1,7 @@
 package es.schsebastian.foodrats.core.data.outbox
 
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.mutablePreferencesOf
 import app.cash.turbine.test
-import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
-import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -19,14 +14,13 @@ import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.time.FixedClock
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -36,22 +30,10 @@ import kotlin.time.Instant
 @OptIn(ExperimentalCoroutinesApi::class)
 class OutboxRunnerTest {
 
-    private class FakeDataStore : DataStore<Preferences> {
-        private val state = MutableStateFlow<Preferences>(mutablePreferencesOf())
-        override val data: Flow<Preferences> = state
-        override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences {
-            val newValue = transform(state.value)
-            state.value = newValue
-            return newValue
-        }
-    }
+    private lateinit var db: OutboxTestDb
 
-    private val testDispatcher = UnconfinedTestDispatcher()
-    private val dispatchers = object : DispatcherProvider {
-        override val main: CoroutineDispatcher = testDispatcher
-        override val io: CoroutineDispatcher = testDispatcher
-        override val default: CoroutineDispatcher = testDispatcher
-    }
+    @BeforeTest fun setUp() { db = OutboxTestDb() }
+    @AfterTest fun tearDown() = db.close()
 
     private class FakeConnectivity(private val online: Boolean = true) : ConnectivityPort {
         override fun isOnline(): Flow<Boolean> = flowOf(online)
@@ -71,11 +53,11 @@ class OutboxRunnerTest {
         }
     }
 
-    private fun outbox(backing: DataStore<Preferences> = FakeDataStore()): OutboxRepository =
+    private fun outbox(): OutboxRepository =
         OutboxRepository(
-            OutboxLocalStore(AppPreferences(backing)),
+            db.store(),
             FixedClock(Instant.parse("2026-06-19T10:00:00Z")),
-            dispatchers,
+            db.dispatchers,
         )
 
     private val crew = (CrewId.of("crew-1") as Result.Ok).value
@@ -221,15 +203,15 @@ class OutboxRunnerTest {
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
         val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
 
-        // Enqueue first, then observe — the conflated store flow emits the latest value on
-        // subscribe, so the pending entry is the first item Turbine sees.
+        // Enqueue first, then observe — the store flow emits the latest value on subscribe, so the
+        // pending entry is the first item Turbine sees.
         box.enqueue(rateCommand())
         box.observePending().test {
             assertEquals(1, awaitItem().size, "the pending entry is observable")
 
             runner.runOnce(scope = null)
-            // The drain may collapse the transient Uploading state under the conflated flow;
-            // assert on the terminal emission (entry removed → empty).
+            // The drain may collapse the transient Uploading state; assert on the terminal emission
+            // (entry removed → empty).
             assertTrue(expectMostRecentItem().isEmpty(), "drained entry is removed → observePending goes empty")
 
             cancelAndIgnoreRemainingEvents()

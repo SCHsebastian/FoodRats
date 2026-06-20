@@ -14,20 +14,15 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotFoundException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotMemberException
 import es.schsebastian.foodrats.feature.crew.data.firebase.toDomain
-import es.schsebastian.foodrats.feature.crew.data.local.CrewListCache
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.merge
-import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class FirebaseCrewRepository(
@@ -35,10 +30,9 @@ internal class FirebaseCrewRepository(
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
     private val clock: Clock,
-    // BRIDGE (offline-first P1): keeps the crew picker populated offline by replaying the
-    // last live snapshot. Removed when SQLDelight becomes the read source-of-truth (P3).
-    private val crewListCache: CrewListCache,
-    private val appScope: CoroutineScope,
+    // Offline-first read source-of-truth (P3b §P3b-T7): the crew picker observes this local
+    // SQLDelight store; the CrewSyncEngine keeps it fresh off the Firestore listener.
+    private val local: CrewLocalStore,
 ) : CrewRepository {
 
     override suspend fun create(
@@ -116,22 +110,14 @@ internal class FirebaseCrewRepository(
             )
         }
 
-    // BRIDGE (offline-first P1): merge the DataStore cache with the live Firestore snapshot
-    // so the crew picker renders offline, writing each live snapshot through to the cache.
-    // Mirrors :feature:ingredient's IngredientRepository.observeCatalog. Cached DTOs are
-    // mapped through the SAME CrewMapper.toDomain so the offline list is identical to the
-    // online one. Disposable when SQLDelight lands (P3).
+    // Offline-first read source-of-truth (P3b §P3b-T7): the crew picker reads the local SQLDelight
+    // store (CrewLocalStore.observeMyCrews) — NOT Firestore. The CrewSyncEngine is the only consumer
+    // of the Firestore crew-list listener and mirrors each snapshot in; this stream reads it back.
+    // Rebuilt DTOs go through the SAME CrewMapper.toDomain so the offline list is identical to the
+    // online one. The `.catch` is defensive — the local read shouldn't throw, but a benign-empty
+    // failure keeps the picker rendering.
     override fun observeMyCrews(accountId: AccountId): Flow<Result<List<Crew>, CrewError>> =
-        merge(
-            crewListCache.observe()
-                .map { cached -> cached ?: emptyList() },
-            dataSource.observeMyCrews(accountId)
-                .onEach { dtos ->
-                    // Fire-and-forget so cache IO doesn't stall the collecting flow.
-                    appScope.launch { crewListCache.save(dtos) }
-                },
-        )
-            .distinctUntilChanged() // suppress the double-emit from cache + first live snapshot
+        local.observeMyCrews()
             .map<List<es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto>, Result<List<Crew>, CrewError>> { dtos ->
                 Result.success(dtos.mapNotNull { (it.toDomain() as? Result.Ok)?.value })
             }

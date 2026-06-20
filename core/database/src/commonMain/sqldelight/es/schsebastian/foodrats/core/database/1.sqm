@@ -1,0 +1,42 @@
+-- Migration v1 -> v2 (offline-first P3b). v1 (P3a) shipped only `meal` + `mealRating`.
+-- P3b added the `outbox` (T6) and `crew` (T7) tables; this migration creates them on an
+-- EXISTING database so an upgraded install isn't left querying tables that don't exist
+-- (a fresh install runs Schema.create() at v2 and gets all four tables directly).
+-- Keep these CREATE statements byte-identical to Outbox.sq / Crew.sq so upgraded and fresh
+-- databases converge on the same schema.
+
+CREATE TABLE outbox (
+    id                   TEXT    NOT NULL PRIMARY KEY,
+    type                 TEXT    NOT NULL,
+    idempotencyKey       TEXT    NOT NULL,
+    statusKind           TEXT    NOT NULL,
+    errorKey             TEXT,
+    retryable            INTEGER NOT NULL DEFAULT 0,
+    attemptCount         INTEGER NOT NULL DEFAULT 0,
+    createdAtEpochMs     INTEGER NOT NULL,
+    lastAttemptAtEpochMs INTEGER,
+    crewId               TEXT,
+    mealId               TEXT,
+    accountId            TEXT,
+    commentId            TEXT,
+    text                 TEXT,
+    score                INTEGER,
+    reactionKindKey      TEXT,
+    desiredPresent       INTEGER,
+    enabled              INTEGER,
+    targetAccountId      TEXT,
+    newName              TEXT
+);
+
+CREATE UNIQUE INDEX outbox_idem ON outbox(idempotencyKey);
+
+CREATE INDEX outbox_status ON outbox(statusKind);
+
+CREATE TABLE crew (
+    crewId            TEXT    NOT NULL PRIMARY KEY,
+    name              TEXT    NOT NULL,
+    ownerId           TEXT    NOT NULL,
+    blindVoting       INTEGER NOT NULL DEFAULT 0,
+    memberIdsCsv      TEXT    NOT NULL DEFAULT '',
+    createdAtEpochMs  INTEGER NOT NULL
+);

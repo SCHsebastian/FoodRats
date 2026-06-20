@@ -183,6 +183,40 @@ class MealSyncEngineTest {
         // The second call is a no-op: only ONE listener is subscribed.
         assertEquals(1, firestore.subscriptions)
     }
+
+    // --- feed freshness + manual refresh (P4-T2) --------------------------------
+
+    @Test fun lastSyncedAt_is_stamped_with_clock_after_a_window_write() = runTest {
+        val firestore = FakeSyncFirestore()
+        val engine = engine(firestore)
+        engine.syncCrew(crew)
+
+        engine.lastSyncedAt(crew).test {
+            assertEquals(null, awaitItem()) // not synced yet
+            firestore.emit(listOf(dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)))
+            // Stamped with the fixed clock once the window write commits.
+            assertEquals(clock.now(), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun refresh_re_subscribes_the_listener_for_the_crew() = runTest {
+        val firestore = FakeSyncFirestore()
+        val engine = engine(firestore)
+        engine.syncCrew(crew)
+        firestore.emit(listOf(dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)))
+        assertEquals(1, firestore.subscriptions)
+
+        // A manual refresh cancels the running job and re-subscribes a fresh listener.
+        engine.refresh(crew)
+        assertEquals(2, firestore.subscriptions)
+
+        // Cached rows survive the cancel — refresh never wipes.
+        store.observeRange("c1", "2026-05-21", "2026-06-19").test {
+            assertEquals(listOf("m1"), awaitItem().map { it.mealId })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
 
 /**

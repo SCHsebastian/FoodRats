@@ -111,4 +111,6 @@
     <!-- Write-outbox sync indicator in the feed top bar (P2 §1 T8): rate/comment/reaction/crew-admin mutations parked while offline. -->
     <string name="feed_sync_pending">%1$d waiting to sync</string>
     <string name="feed_sync_failed">%1$d failed to sync</string>
+    <!-- Cached-feed freshness line (offline-first P4-T2). %1$s is a relative time like "just now" / "5 min ago". -->
+    <string name="feed_synced_ago">Synced %1$s</string>
 </resources>

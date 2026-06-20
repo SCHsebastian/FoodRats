@@ -1,0 +1,203 @@
+package es.schsebastian.foodrats.feature.crew.data.sync
+
+import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import app.cash.turbine.test
+import es.schsebastian.foodrats.core.database.FoodRatsDatabase
+import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.model.AccountId
+import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.session.Session
+import es.schsebastian.foodrats.core.domain.session.SessionError
+import es.schsebastian.foodrats.core.domain.session.SessionProvider
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto
+import es.schsebastian.foodrats.feature.crew.data.firebase.MemberDto
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
+import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
+import es.schsebastian.foodrats.feature.crew.domain.model.Crew
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+/**
+ * Host-test (JVM) coverage of [CrewSyncEngine] over the REAL SQLDelight store: a controllable
+ * [FakeCrewListSource] emits server crew-list snapshots, the engine folds them into
+ * [CrewLocalStore], and we assert (1) rows land, (2) a later snapshot full-replaces the set, (3) a
+ * `PERMISSION_DENIED` throw stops the sync WITHOUT wiping the cached rows, and (4) [CrewSyncEngine.start]
+ * drives the sync off the session and skips a signed-out (`null`) session.
+ */
+@OptIn(ExperimentalCoroutinesApi::class)
+class CrewSyncEngineTest {
+
+    private val account = (AccountId.of("acct-1") as Result.Ok).value
+
+    private lateinit var driver: JdbcSqliteDriver
+    private lateinit var store: CrewLocalStore
+    private lateinit var appScope: CoroutineScope
+
+    private val dispatchers = object : DispatcherProvider {
+        private val d: CoroutineDispatcher = UnconfinedTestDispatcher()
+        override val main = d
+        override val io = d
+        override val default = d
+    }
+
+    @BeforeTest fun setUp() {
+        driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY).apply {
+            FoodRatsDatabase.Schema.create(this)
+        }
+        store = CrewLocalStore(FoodRatsDatabase(driver), dispatchers)
+        appScope = CoroutineScope(SupervisorJob() + dispatchers.default)
+    }
+
+    @AfterTest fun tearDown() {
+        driver.close()
+    }
+
+    private fun engine(
+        source: FakeCrewListSource,
+        session: SessionProvider = FakeSessionProvider(Session(account, activeCrewId = null)),
+    ) = CrewSyncEngine(session = session, dataSource = source, local = store, appScope = appScope)
+
+    private fun dto(id: String, name: String = "Crew $id", createdAtEpochMs: Long) = CrewDto(
+        id = id,
+        name = name,
+        code = "ABCD23",
+        ownerId = "acct-1",
+        createdAtEpochMs = createdAtEpochMs,
+        memberIds = listOf("acct-1"),
+        members = mapOf("acct-1" to MemberDto(joinedAtEpochMs = createdAtEpochMs)),
+    )
+
+    @Test fun syncAccount_mirrors_a_server_snapshot_into_the_local_store() = runTest {
+        val source = FakeCrewListSource()
+        engine(source).syncAccount(account)
+
+        source.emit(listOf(dto("c1", createdAtEpochMs = 200L), dto("c2", createdAtEpochMs = 100L)))
+
+        store.observeMyCrews().test {
+            assertEquals(listOf("c1", "c2"), awaitItem().map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun a_later_snapshot_full_replaces_the_set() = runTest {
+        val source = FakeCrewListSource()
+        engine(source).syncAccount(account)
+
+        source.emit(listOf(dto("c1", createdAtEpochMs = 1L), dto("c2", createdAtEpochMs = 2L)))
+        // The member left c2 → next snapshot omits it → full replace drops it.
+        source.emit(listOf(dto("c1", createdAtEpochMs = 1L)))
+
+        store.observeMyCrews().test {
+            assertEquals(listOf("c1"), awaitItem().map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun permission_denied_throw_stops_sync_without_wiping_rows() = runTest {
+        val source = FakeCrewListSource()
+        engine(source).syncAccount(account)
+
+        source.emit(listOf(dto("c1", createdAtEpochMs = 1L)))
+        source.fail(RuntimeException("PERMISSION_DENIED: Missing or insufficient permissions."))
+
+        // The cached crew SURVIVES the benign sign-out throw — the engine stopped, it didn't wipe.
+        store.observeMyCrews().test {
+            assertEquals(listOf("c1"), awaitItem().map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun start_drives_syncAccount_off_session_and_skips_a_null_session() = runTest {
+        val source = FakeCrewListSource()
+        val session = FakeSessionProvider(initial = null)
+        engine(source, session).start()
+
+        // No session yet → no sync job, no listener subscribed.
+        assertEquals(0, source.subscriptions)
+
+        session.set(Session(account, activeCrewId = null))
+        source.emit(listOf(dto("c1", createdAtEpochMs = 1L)))
+
+        assertEquals(1, source.subscriptions)
+        store.observeMyCrews().test {
+            assertEquals(listOf("c1"), awaitItem().map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun syncAccount_is_idempotent_for_an_already_running_account() = runTest {
+        val source = FakeCrewListSource()
+        val engine = engine(source)
+
+        engine.syncAccount(account)
+        engine.syncAccount(account)
+
+        // The second call is a no-op: only ONE listener is subscribed.
+        assertEquals(1, source.subscriptions)
+    }
+}
+
+/**
+ * Controllable [CrewDataSource] for the sync engine: `observeMyCrews` returns a hot flow the test
+ * drives via [emit] (a crew-list snapshot) and [fail] (an upstream throw, e.g. PERMISSION_DENIED on
+ * sign-out). Counts live [subscriptions] so a test can assert exactly one listener per account. All
+ * other members are unused by the engine and stubbed.
+ */
+private class FakeCrewListSource : CrewDataSource {
+    private val emissions = MutableSharedFlow<Signal>(replay = 1, extraBufferCapacity = 16)
+    var subscriptions = 0
+        private set
+
+    private sealed interface Signal {
+        data class Snapshot(val dtos: List<CrewDto>) : Signal
+        data class Throw(val error: Throwable) : Signal
+    }
+
+    suspend fun emit(dtos: List<CrewDto>) = emissions.emit(Signal.Snapshot(dtos))
+    suspend fun fail(error: Throwable) = emissions.emit(Signal.Throw(error))
+
+    override fun observeMyCrews(accountId: AccountId): Flow<List<CrewDto>> {
+        subscriptions++
+        return emissions.map { signal ->
+            when (signal) {
+                is Signal.Snapshot -> signal.dtos
+                is Signal.Throw -> throw signal.error
+            }
+        }
+    }
+
+    override suspend fun createCrew(name: String, founder: AccountId, nowMs: Long): CrewDto = error("unused")
+    override suspend fun joinByCode(code: CrewCode, joiner: AccountId, nowMs: Long): CrewDto = error("unused")
+    override suspend fun leave(crewId: CrewId, leaver: AccountId) = Unit
+    override suspend fun removeMember(crewId: CrewId, target: AccountId) = Unit
+    override fun observeCrew(crewId: CrewId): Flow<CrewDto?> = error("unused")
+    override suspend fun fetchOnce(crewId: CrewId): Crew? = null
+    override suspend fun fetchByCode(code: CrewCode): Crew = error("unused")
+    override suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun setBlindVoting(crewId: CrewId, enabled: Boolean): Result<Unit, CrewError> = Result.success(Unit)
+}
+
+/** Minimal [SessionProvider] backed by a [MutableStateFlow] the test flips. */
+private class FakeSessionProvider(initial: Session?) : SessionProvider {
+    private val state = MutableStateFlow(initial)
+    override val current: Flow<Session?> = state
+    fun set(session: Session?) { state.value = session }
+    override suspend fun requireCurrent(): Result<Session, SessionError> =
+        state.value?.let { Result.success(it) } ?: Result.failure(SessionError.NotSignedIn)
+}

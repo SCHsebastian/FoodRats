@@ -51,6 +51,14 @@ SELECT * FROM meal
 WHERE crewId = :crewId AND dayKey = :dayKey
 ORDER BY publishedAtEpochMs DESC;
 
+-- Single meal row by id (optimistic-write path P3b: read to recompute denormalized totals).
+selectMealById:
+SELECT * FROM meal WHERE mealId = :mealId;
+
+-- The meal id currently carrying an optimistic-write idempotency key (P3b rollback lookup).
+mealIdForIdempotencyKey:
+SELECT mealId FROM meal WHERE idempotencyKey = :idempotencyKey;
+
 -- One crew's meals across an inclusive day-key range, newest first (rolling window + stats history).
 selectRangeByCrew:
 SELECT * FROM meal
@@ -82,8 +90,38 @@ WHERE crewId = :crewId AND dayKey >= :fromDayKey AND dayKey <= :toDayKey;
 deleteMealsByIds:
 DELETE FROM meal WHERE mealId IN :mealIds;
 
+-- Bound local DB growth (offline-first P4-T1): drop every meal older than a retention cutoff.
+-- The sync engine's delete-by-absence is window-scoped (30 days), so rows that age out of the
+-- window accumulate forever; a CachePruner runs this at app start with a 90-day cutoff. Ratings
+-- cascade away via the mealRating FK ON DELETE CASCADE (foreign_keys is PRAGMA-enabled at runtime).
+deleteMealsBeforeDay:
+DELETE FROM meal WHERE dayKey < :dayKey;
+
+-- Defensive companion to deleteMealsBeforeDay: drops any rating row whose meal is no longer held
+-- (i.e. orphaned because foreign_keys was off when the meal was deleted). A correctly-configured
+-- driver makes this a no-op, but it guarantees ratings of pruned meals never linger.
+deleteRatingsForAbsentMeals:
+DELETE FROM mealRating WHERE mealId NOT IN (SELECT mealId FROM meal);
+
 setMealPending:
 UPDATE meal SET pending = :pending WHERE mealId = :mealId;
+
+-- Optimistic RATE (P3b): set the recomputed denormalized totals, mark the meal in-flight, and stamp
+-- the command's idempotency key so the rollback / sync-reconcile can find the row.
+setMealOptimisticRate:
+UPDATE meal
+SET ratingSum = :ratingSum, voterCount = :voterCount, pending = 1, idempotencyKey = :idempotencyKey
+WHERE mealId = :mealId;
+
+-- Roll back the optimistic bookkeeping on a meal (clear pending + idempotency key). Totals are left
+-- as-is; the next server snapshot upsert overwrites them with truth.
+clearMealPending:
+UPDATE meal SET pending = 0, idempotencyKey = NULL WHERE mealId = :mealId;
+
+-- Drop only the still-unconfirmed (pending=1) rating rows on a meal (optimistic-write rollback).
+-- Server-confirmed (pending=0) rows are untouched.
+deletePendingRatings:
+DELETE FROM mealRating WHERE mealId = :mealId AND pending = 1;
 
 upsertRating:
 INSERT OR REPLACE INTO mealRating(mealId, raterId, score, atMs, pending)

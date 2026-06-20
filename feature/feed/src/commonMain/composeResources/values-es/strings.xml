@@ -111,4 +111,6 @@
     <!-- Indicador del outbox de escritura en la barra superior del feed (P2 §1 T8): valoraciones/comentarios/reacciones/admin de crew en espera mientras estás sin conexión. -->
     <string name="feed_sync_pending">%1$d esperando sincronizar</string>
     <string name="feed_sync_failed">%1$d no se pudieron sincronizar</string>
+    <!-- Línea de frescura del feed en caché (offline-first P4-T2). %1$s es un tiempo relativo como "ahora mismo" / "hace 5 min". -->
+    <string name="feed_synced_ago">Sincronizado %1$s</string>
 </resources>

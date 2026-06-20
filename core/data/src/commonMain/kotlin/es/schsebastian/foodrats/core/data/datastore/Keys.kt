@@ -59,14 +59,6 @@ object Keys {
     val OutboxJson           = StoreKey(stringPreferencesKey("outbox_json"))
 
     /**
-     * BRIDGE (offline-first P1): the last-seen crew list for the signed-in member,
-     * persisted as a JSON array of `CrewDto` so the crew picker survives offline.
-     * Disposable — replaced by the SQLDelight read model in offline-first P3. Owned
-     * by `:feature:crew`'s `CrewListCache`.
-     */
-    val CrewListJson         = StoreKey(stringPreferencesKey("crew_list_json"))
-
-    /**
      * The EULA / Community-Guidelines version the user accepted at the login-screen gate (UGC
      * compliance §6). Absent = never accepted → the gate requires acceptance before sign-in. NOT
      * cleared on sign-out (a EULA is accepted by the human/device, not the account). Owned by

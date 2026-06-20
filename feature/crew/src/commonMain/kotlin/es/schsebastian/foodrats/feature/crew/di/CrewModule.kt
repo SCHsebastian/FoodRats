@@ -15,9 +15,9 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
-import es.schsebastian.foodrats.feature.crew.data.local.CrewListCache
-import es.schsebastian.foodrats.feature.crew.data.local.DataStoreCrewListCache
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.outbox.CrewOutboxCommandHandler
+import es.schsebastian.foodrats.feature.crew.data.sync.CrewSyncEngine
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
@@ -48,9 +48,25 @@ val crewModule = module {
     singleOf(::CrewErrorMapper)
     single<CrewDataSource> { CrewFirestoreDataSource(get(), get(), get(), get()) }
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
-    // BRIDGE (offline-first P1): last-seen crew list cache so the picker survives offline.
-    // prefs + Json (lenient, ignoreUnknownKeys) come from the shared coreDataModule.
-    single<CrewListCache> { DataStoreCrewListCache(prefs = get(), dispatchers = get(), json = get()) }
+    // Offline-first local read source-of-truth for the crew list (P3b §P3b-T7). Holds the
+    // FoodRatsDatabase queries (FoodRatsDatabase is bound by :core:database's databaseModule); the
+    // repository's observeMyCrews reads through this store and the CrewSyncEngine writes into it.
+    // Explicit `single` (not singleOf): the ctor params are nullable to admit the override-only
+    // commonTest fake, so singleOf's nullable-param `getOrNull` would silently bind null.
+    single { CrewLocalStore(database = get(), dispatchers = get()) }
+    // Offline-first crew-list sync engine (P3b §P3b-T7): the ONLY consumer of the Firestore
+    // crew-list listener. Mirrors the signed-in member's crew list into CrewLocalStore (full
+    // replace). `createdAtStart = true` + `start()` so it subscribes to SessionProvider at app
+    // boot — the cached picker must stay fresh without any screen having resolved it first. Runs on
+    // the app-lifetime named("appScope") scope (bound by ingredientModule), like the MealSyncEngine.
+    single(createdAtStart = true) {
+        CrewSyncEngine(
+            session = get(),
+            dataSource = get<CrewDataSource>(),
+            local = get(),
+            appScope = get(named("appScope")),
+        ).also { it.start() }
+    }
     single<CrewOwnerPort> {
         object : CrewOwnerPort {
             private val ds = get<CrewDataSource>()
@@ -61,8 +77,8 @@ val crewModule = module {
         }
     }
     single<CrewRepository> {
-        // (dataSource, dispatchers, errorMapper, clock, crewListCache, appScope)
-        FirebaseCrewRepository(get(), get(), get(), get(), get(), get(named("appScope")))
+        // (dataSource, dispatchers, errorMapper, clock, local)
+        FirebaseCrewRepository(get(), get(), get(), get(), get())
     }
     // Live "is blind voting on?" for a crew, consumed by :feature:feed to mask author
     // identity without a :feature:crew dep. Mirrors CrewOwnerPort: reads the crew read
