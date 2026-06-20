@@ -97,6 +97,10 @@ import foodrats.feature.crew.generated.resources.crew_invite_decline_cta
 import foodrats.feature.crew.generated.resources.crew_invite_back_cta
 import foodrats.feature.crew.generated.resources.crew_settings_switch_crew
 import foodrats.feature.crew.generated.resources.crew_settings_title
+import foodrats.feature.crew.generated.resources.crew_badge_first
+import foodrats.feature.crew.generated.resources.crew_badge_ten
+import foodrats.feature.crew.generated.resources.crew_badge_fifty
+import foodrats.feature.crew.generated.resources.crew_badge_hundred
 import org.jetbrains.compose.resources.StringResource
 
 enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
@@ -196,4 +200,9 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsBannerRemoveBody(Res.string.crew_settings_banner_remove_body),
     ErrorBannerUploadFailed(Res.string.crew_error_banner_upload_failed),
     ErrorBannerDeleteFailed(Res.string.crew_error_banner_delete_failed),
+    // U5b — badge labels rendered next to the member display name on crew member rows.
+    BadgeFirst(Res.string.crew_badge_first),
+    BadgeTen(Res.string.crew_badge_ten),
+    BadgeFifty(Res.string.crew_badge_fifty),
+    BadgeHundred(Res.string.crew_badge_hundred),
 }

@@ -110,6 +110,10 @@ import foodrats.feature.feed.generated.resources.feed_location_map_cta
 import foodrats.feature.feed.generated.resources.feed_welcome_dismiss
 import foodrats.feature.feed.generated.resources.feed_weekly_challenge_label
 import foodrats.feature.feed.generated.resources.feed_your_vote
+import foodrats.feature.feed.generated.resources.feed_badge_first
+import foodrats.feature.feed.generated.resources.feed_badge_ten
+import foodrats.feature.feed.generated.resources.feed_badge_fifty
+import foodrats.feature.feed.generated.resources.feed_badge_hundred
 import org.jetbrains.compose.resources.StringResource
 
 enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
@@ -228,4 +232,9 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     WelcomeDismiss(Res.string.feed_welcome_dismiss),
     // C5 — weekly challenge chip label prefix shown in the feed header.
     WeeklyChallengeLabel(Res.string.feed_weekly_challenge_label),
+    // U5b — author badge labels rendered next to the author name on feed rows.
+    BadgeFirst(Res.string.feed_badge_first),
+    BadgeTen(Res.string.feed_badge_ten),
+    BadgeFifty(Res.string.feed_badge_fifty),
+    BadgeHundred(Res.string.feed_badge_hundred),
 }

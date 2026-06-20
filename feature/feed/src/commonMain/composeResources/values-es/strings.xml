@@ -124,4 +124,9 @@
     <string name="feed_welcome_dismiss">Entendido</string>
     <!-- C5 — etiqueta del reto semanal en el encabezado del feed. -->
     <string name="feed_weekly_challenge_label">Esta semana: %1$s</string>
+    <!-- U5b — etiquetas del logro mostradas junto al nombre del autor en las filas del feed. -->
+    <string name="feed_badge_first">Primer Plato</string>
+    <string name="feed_badge_ten">10 Platos</string>
+    <string name="feed_badge_fifty">50 Platos</string>
+    <string name="feed_badge_hundred">100 Platos</string>
 </resources>

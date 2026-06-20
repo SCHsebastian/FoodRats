@@ -149,7 +149,7 @@ internal class FirebaseMealRepository(
                     .getOrNull().orEmpty()
                 accountRead.observeMany(ids).map { identities ->
                     val lookup = identities.entries.mapNotNull { (id, acc) ->
-                        acc?.let { id.value to CrewMemberLookup(acc.displayName, acc.avatarUrl) }
+                        acc?.let { id.value to CrewMemberLookup(acc.displayName, acc.avatarUrl, acc.bio, acc.badgeId) }
                     }.toMap()
                     dtos.mapNotNull { dto ->
                         (dto.toMealWithRatings(lookup) as? Result.Ok)?.value?.let { mwr ->

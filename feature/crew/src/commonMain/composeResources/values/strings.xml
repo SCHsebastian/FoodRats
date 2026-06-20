@@ -96,4 +96,9 @@
     <string name="crew_settings_banner_remove_body">The crew banner will be removed for all members.</string>
     <string name="crew_error_banner_upload_failed">Failed to upload banner. Try again.</string>
     <string name="crew_error_banner_delete_failed">Failed to remove banner. Try again.</string>
+    <!-- U5b — achievement badge labels rendered next to the member display name. -->
+    <string name="crew_badge_first">First Plate</string>
+    <string name="crew_badge_ten">10 Plates</string>
+    <string name="crew_badge_fifty">50 Plates</string>
+    <string name="crew_badge_hundred">100 Plates</string>
 </resources>

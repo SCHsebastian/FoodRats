@@ -124,4 +124,9 @@
     <string name="feed_welcome_dismiss">Got it</string>
     <!-- C5 — weekly challenge chip label prefix in the feed header. -->
     <string name="feed_weekly_challenge_label">This week: %1$s</string>
+    <!-- U5b — achievement badge labels rendered next to the author name on feed rows. -->
+    <string name="feed_badge_first">First Plate</string>
+    <string name="feed_badge_ten">10 Plates</string>
+    <string name="feed_badge_fifty">50 Plates</string>
+    <string name="feed_badge_hundred">100 Plates</string>
 </resources>

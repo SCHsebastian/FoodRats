@@ -105,6 +105,18 @@ data class FeedMealUi(
      */
     val authorMasked: Boolean = false,
     /**
+     * Author's personal bio — surfaced in the U5b identity-display pass.
+     * Null when the author hasn't set a bio, or when [authorMasked] is true (see [toFeedUi]).
+     * Callers must gate display on `!authorMasked` (the row does this already).
+     */
+    val authorBio: String? = null,
+    /**
+     * Server-assigned achievement badge id (e.g. "first", "ten", "fifty", "hundred").
+     * Null when the author has no badge, or when [authorMasked] is true (see [toFeedUi]).
+     * Callers must gate display on `!authorMasked` (the row does this already).
+     */
+    val authorBadgeId: String? = null,
+    /**
      * Reactions (the daily-emote react) on this meal. [reactionCount] is the badge number and
      * [viewerReacted] highlights the react button as toggled-on. The displayed glyph is [dayEmote]
      * (the meal-day's [DailyEmote], identical for every crew member). Defaults are the "no
@@ -212,5 +224,9 @@ fun MealWithRatings.toFeedUi(
         longitude = meal.coordinates?.longitude,
         ingredients = ingredientNames,
         authorMasked = authorMasked,
+        // Bio and badge are identity signals — suppress them under blind voting exactly like the
+        // author name/avatar. They are never null when unmasked if the author has them set.
+        authorBio = if (authorMasked) null else meal.author.bio?.value,
+        authorBadgeId = if (authorMasked) null else meal.author.badgeId,
     )
 }

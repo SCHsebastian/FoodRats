@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import es.schsebastian.foodrats.core.designsystem.molecules.FrProfileBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
@@ -208,12 +209,34 @@ fun FrFeedMealRow(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
+                    // U5b — achievement badge chip, hidden under blind voting (authorMasked=true
+                    // means ui.authorBadgeId is already null — see toFeedUi).
+                    val badgeId = ui.authorBadgeId
+                    if (!ui.authorMasked && badgeId != null) {
+                        val badgeLabel = feedBadgeLabel(badgeId)
+                        if (badgeLabel != null) {
+                            FrProfileBadge(badgeId = badgeId, label = badgeLabel)
+                        }
+                    }
                     Dot()
                     FrText(
                         text = resolve(ui.slot.labelKey()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
+                    )
+                }
+
+                // U5b — author bio line, hidden under blind voting (authorMasked=true means
+                // ui.authorBio is already null — see toFeedUi). Single line, ellipsized.
+                val authorBio = ui.authorBio
+                if (!ui.authorMasked && !authorBio.isNullOrBlank()) {
+                    FrText(
+                        text = authorBio,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
 
@@ -455,6 +478,20 @@ private fun ScoreBadge(
             }
         }
     }
+}
+
+/**
+ * Maps a [badgeId] to its feed-scoped i18n label. Returns `null` for unrecognised ids so
+ * the chip is silently hidden. Feed cannot import `:feature:auth`'s `resolveBadgeLabel` —
+ * each feature owns its `<Feature>StringKey` (i18n rule).
+ */
+@Composable
+private fun feedBadgeLabel(badgeId: String): String? = when (badgeId) {
+    "first"   -> resolve(FeedStringKey.BadgeFirst)
+    "ten"     -> resolve(FeedStringKey.BadgeTen)
+    "fifty"   -> resolve(FeedStringKey.BadgeFifty)
+    "hundred" -> resolve(FeedStringKey.BadgeHundred)
+    else      -> null
 }
 
 /** Neutral round bullet used as an inline separator between meta segments. */

@@ -96,4 +96,9 @@
     <string name="crew_settings_banner_remove_body">La portada del grupo se eliminará para todos los miembros.</string>
     <string name="crew_error_banner_upload_failed">No se pudo subir la portada. Inténtalo de nuevo.</string>
     <string name="crew_error_banner_delete_failed">No se pudo quitar la portada. Inténtalo de nuevo.</string>
+    <!-- U5b — etiquetas del logro mostradas junto al nombre del miembro. -->
+    <string name="crew_badge_first">Primer Plato</string>
+    <string name="crew_badge_ten">10 Platos</string>
+    <string name="crew_badge_fifty">50 Platos</string>
+    <string name="crew_badge_hundred">100 Platos</string>
 </resources>
