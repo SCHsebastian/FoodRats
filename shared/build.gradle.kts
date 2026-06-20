@@ -46,6 +46,9 @@ kotlin {
             // compose(5) + koin(3) + lifecycle(2)
             implementation(libs.bundles.feature.ui)
             implementation(libs.compose.uiToolingPreview)
+            // BackHandler for non-skippable screens (EulaGateScreen). The multiplatform artifact
+            // ships in org.jetbrains.compose.ui:ui-backhandler (same version as composeMultiplatform).
+            implementation(libs.compose.ui.backhandler)
 
             // Module graph
             implementation(projects.core.domain)

@@ -39,6 +39,7 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.ScreenName
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.app.legal.EulaGateScreen
 import es.schsebastian.foodrats.app.legal.LegalDoc
 import es.schsebastian.foodrats.app.legal.LegalDocScreen
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
@@ -119,6 +120,20 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             // Continue is a no-op: writing the consent decision (grant/deny) drives
             // RootNavViewModel to emit NavigateTopLevel(Main), which navigateTopLevel handles.
             ConsentScreen(onDecided = {})
+        }
+
+        composable<Route.EulaGate> {
+            // Acceptance is a no-op here: EulaGateScreen calls EulaPort.accept() directly via
+            // koinInject. The acceptedVersion flow re-emits, RootNavViewModel clears NeedsEulaGate,
+            // and emits NavigateTopLevel(Main) — no callback needed, same pattern as ConsentScreen.
+            // The two doc-link callbacks navigate forward to the public legal-doc screens; back from
+            // either returns to this gate (Apple G1.2 requires the EULA be readable at acceptance).
+            EulaGateScreen(
+                onReadEula = { controller.navigate(Route.Eula) { launchSingleTop = true } },
+                onReadGuidelines = {
+                    controller.navigate(Route.CommunityGuidelines) { launchSingleTop = true }
+                },
+            )
         }
 
         composable<Route.CrewPicker> {

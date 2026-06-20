@@ -157,14 +157,27 @@ fun ComposePlateScreen(
                 }
 
                 AnimatedFormItem(delay = Motion.short + Motion.quick) {
-                    FrLabeledTextField(
-                        label = resolve(MealStringKey.ComposeDishLabel),
-                        value = state.dish,
-                        onValueChange = { vm.onIntent(ComposePlateIntent.DishChanged(it)) },
-                        isError = state.error is MealError.Validation &&
-                            state.error !is MealError.Validation.DescriptionTooLong,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        FrLabeledTextField(
+                            label = resolve(MealStringKey.ComposeDishLabel),
+                            value = state.dish,
+                            onValueChange = { vm.onIntent(ComposePlateIntent.DishChanged(it)) },
+                            isError = state.dishWarning || (state.error is MealError.Validation &&
+                                state.error !is MealError.Validation.DescriptionTooLong),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        // UGC §3 HARD-BLOCK: dish moderation banner — danger tone, gates publish.
+                        AnimatedVisibility(
+                            visible = state.dishWarning,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+                        ) {
+                            ModerationBlockBanner(
+                                text = resolve(MealStringKey.DishModerationWarning),
+                                modifier = Modifier.padding(top = Spacing.sm),
+                            )
+                        }
+                    }
                 }
 
                 AnimatedFormItem(delay = Motion.medium) {
@@ -185,13 +198,14 @@ fun ComposePlateScreen(
                             ),
                             modifier = Modifier.padding(top = Spacing.xs),
                         )
-                        // Advisory moderation banner (UGC §3) — warning tone, never blocks publish.
+                        // UGC §3 HARD-BLOCK: description moderation banner — danger tone, gates publish.
                         AnimatedVisibility(
                             visible = state.descriptionWarning,
                             enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
                             exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
                         ) {
-                            DescriptionModerationBanner(
+                            ModerationBlockBanner(
+                                text = resolve(MealStringKey.DescriptionModerationWarning),
                                 modifier = Modifier.padding(top = Spacing.sm),
                             )
                         }
@@ -285,25 +299,25 @@ private fun AnimatedFormItem(
 }
 
 /**
- * Advisory description-moderation banner (UGC compliance §3). Uses the `warning` semantic tone — NOT
- * `danger` — because it never blocks publishing; it nudges the author to reconsider their prose.
+ * HARD-BLOCK moderation banner (UGC compliance §3). Uses the `danger` semantic tone because it
+ * prevents publishing — the author must rephrase the flagged field before they can continue.
  */
 @Composable
-private fun DescriptionModerationBanner(modifier: Modifier = Modifier) {
+private fun ModerationBlockBanner(text: String, modifier: Modifier = Modifier) {
     val semantic = LocalFrSemanticColors.current
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(Radius.sm))
-            .background(semantic.warning)
+            .background(semantic.danger)
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        FrIcon(image = FrIcons.Warning, tint = semantic.onWarning)
+        FrIcon(image = FrIcons.Warning, tint = semantic.onDanger)
         FrText(
-            text = resolve(MealStringKey.DescriptionModerationWarning),
-            color = semantic.onWarning,
+            text = text,
+            color = semantic.onDanger,
         )
     }
 }

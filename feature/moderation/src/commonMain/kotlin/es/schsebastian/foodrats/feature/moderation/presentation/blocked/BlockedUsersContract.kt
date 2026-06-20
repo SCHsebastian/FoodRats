@@ -21,11 +21,14 @@ data class BlockedUsersState(
     /** Accounts whose unblock write is in flight; their row renders disabled + a spinner. */
     val unblockingIds: Set<AccountId> = emptySet(),
     val error: BlockError? = null,
+    /** Transient success toast shown after an unblock write succeeds. */
+    val unblockSuccess: Boolean = false,
 ) : MviState
 
 sealed interface BlockedUsersIntent : MviIntent {
     data class Unblock(val accountId: AccountId) : BlockedUsersIntent
     data object DismissError : BlockedUsersIntent
+    data object DismissUnblockSuccess : BlockedUsersIntent
 }
 
 sealed interface BlockedUsersEffect : MviEffect

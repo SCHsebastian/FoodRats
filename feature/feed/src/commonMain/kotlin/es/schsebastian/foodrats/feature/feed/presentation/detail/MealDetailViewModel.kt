@@ -325,6 +325,7 @@ class MealDetailViewModel(
         MealDetailIntent.DismissReportSuccess      -> update { it.copy(reportSuccess = false) }
         MealDetailIntent.BlockAuthor               -> blockAuthor()
         is MealDetailIntent.BlockCommentAuthor     -> blockAccount(intent.commentAuthorId)
+        MealDetailIntent.DismissBlockSuccess       -> update { it.copy(blockSuccess = false) }
     }
 
     /** Maps the presentation reason option to the domain [ReportReason]. */
@@ -372,7 +373,7 @@ class MealDetailViewModel(
         val owner = session.current.first()?.accountId ?: return
         val target = AccountId.of(rawAccountId).getOrNull() ?: return
         when (val r = blockedAccounts.block(owner, target)) {
-            is Result.Ok  -> Unit // content vanishes via observeBlocked re-emission.
+            is Result.Ok  -> update { it.copy(blockSuccess = true) } // content vanishes via observeBlocked re-emission.
             is Result.Err -> update { it.copy(blockError = r.error) }
         }
     }

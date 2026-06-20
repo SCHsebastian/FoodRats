@@ -2,7 +2,7 @@ package es.schsebastian.foodrats.core.domain.preferences
 
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * Current EULA / Community-Guidelines revision. Bump when the legal text changes materially → users
@@ -37,11 +37,13 @@ interface EulaPort {
 
 /**
  * No-op acceptance recorder — the default for ViewModels/previews/tests so fixtures that don't care
- * about EULA persistence stay green (mirrors `NoopAnalyticsTracker`). [acceptedVersion] never emits
- * (acceptance is irrelevant in those contexts) and [accept] always succeeds.
+ * about EULA persistence stay green (mirrors `NoopAnalyticsTracker`). [acceptedVersion] emits
+ * [CURRENT_EULA_VERSION] once (pre-accepted) so a `combine`-based stage machine that includes this
+ * port never stalls on the EULA flow — the gate resolves to "not needed" immediately. [accept]
+ * always succeeds.
  */
 object NoopEulaAcceptance : EulaPort {
-    override val acceptedVersion: Flow<Int?> = emptyFlow()
+    override val acceptedVersion: Flow<Int?> = flowOf(CURRENT_EULA_VERSION)
     override suspend fun accept(version: Int): Result<Unit, EulaError> = Result.success(Unit)
 }
 

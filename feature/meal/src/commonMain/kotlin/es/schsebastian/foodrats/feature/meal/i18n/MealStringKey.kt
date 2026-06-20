@@ -18,6 +18,7 @@ import foodrats.feature.meal.generated.resources.meal_compose_description_placeh
 import foodrats.feature.meal.generated.resources.meal_compose_dish_label
 import foodrats.feature.meal.generated.resources.meal_compose_locating
 import foodrats.feature.meal.generated.resources.meal_description_moderation_warning
+import foodrats.feature.meal.generated.resources.meal_dish_moderation_warning
 import foodrats.feature.meal.generated.resources.meal_compose_title
 import foodrats.feature.meal.generated.resources.meal_error_already_posted
 import foodrats.feature.meal.generated.resources.meal_error_location_permission
@@ -72,8 +73,9 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ClassifierBannerLoadFailed(Res.string.meal_classifier_load_failed),
     IngredientsRowAdd(Res.string.meal_ingredients_row_add),
     IngredientsRowSummary(Res.string.meal_ingredients_row_summary),
-    // UGC compliance §3 — advisory (non-blocking) description moderation banner.
+    // UGC compliance §3 — HARD-BLOCK moderation banners for dish and description.
     DescriptionModerationWarning(Res.string.meal_description_moderation_warning),
+    DishModerationWarning(Res.string.meal_dish_moderation_warning),
     MealErrorAlreadyPosted(Res.string.meal_error_already_posted),
     MealErrorPublishNoCrewSelected(Res.string.meal_error_no_crew_selected),
     MealErrorNotToday(Res.string.meal_error_not_today),

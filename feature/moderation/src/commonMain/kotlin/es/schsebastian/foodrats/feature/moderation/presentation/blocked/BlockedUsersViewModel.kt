@@ -57,6 +57,7 @@ class BlockedUsersViewModel(
     override suspend fun handle(intent: BlockedUsersIntent) = when (intent) {
         is BlockedUsersIntent.Unblock -> doUnblock(intent.accountId)
         BlockedUsersIntent.DismissError -> update { it.copy(error = null) }
+        BlockedUsersIntent.DismissUnblockSuccess -> update { it.copy(unblockSuccess = false) }
     }
 
     private suspend fun doUnblock(target: AccountId) {
@@ -65,7 +66,7 @@ class BlockedUsersViewModel(
         when (val r = blocked.unblock(owner, target)) {
             // On success the live block-list flow re-emits without `target`; `blockedIds` is the
             // single source of truth for the list, so no local removal here.
-            is Result.Ok -> update { it.copy(unblockingIds = it.unblockingIds - target) }
+            is Result.Ok -> update { it.copy(unblockingIds = it.unblockingIds - target, unblockSuccess = true) }
             is Result.Err -> update {
                 it.copy(unblockingIds = it.unblockingIds - target, error = r.error)
             }

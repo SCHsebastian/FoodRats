@@ -25,7 +25,20 @@ private val rootNavModule = module {
     // App-lifetime conduit for external URIs; published to by platform entry points
     // (Android MainActivity, iOS IosDeepLinkBridge), consumed by RootNavViewModel.
     single { DeepLinkBus() }
-    viewModelOf(::RootNavViewModel)
+    // Explicit binding (NOT viewModelOf): RootNavViewModel.eulaPort has a NoopEulaAcceptance default
+    // whose acceptedVersion emits CURRENT_EULA_VERSION — viewModelOf would short-circuit graph
+    // resolution and bind the no-op, making needsEulaAcceptance always false → gate NEVER fires.
+    // All params passed via get() so the Koin graph always supplies the real EulaRepository.
+    viewModel {
+        RootNavViewModel(
+            session = get(),
+            activeCrew = get(),
+            notifications = get(),
+            consent = get(),
+            deepLinks = get(),
+            eulaPort = get(),
+        )
+    }
     // App-wide offline banner (offline-first §P1-T2): projects ConnectivityPort.isOnline (bound per
     // platform in connectivity{Android,Ios}Module) into a StateFlow for the root NavHost.
     viewModelOf(::ConnectivityViewModel)

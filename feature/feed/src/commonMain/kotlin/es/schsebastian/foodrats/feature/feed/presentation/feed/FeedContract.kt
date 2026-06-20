@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.domain.account.BlockError
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.ReactionError
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
@@ -59,7 +61,37 @@ data class FeedState(
     val syncedRelative: RelativeTimestamp? = null,
     /** True while a user-triggered pull-to-refresh re-pull is in flight; drives the spinner. */
     val isRefreshing: Boolean = false,
+    /**
+     * Pending report opened from the feed overflow menu (UGC compliance §4).
+     * When non-null the [FrReportSheet] is shown; on dismiss or submit it is cleared.
+     */
+    val feedReportTarget: FeedReportTarget? = null,
+    /** True while the report write is in flight; disables the submit button. */
+    val feedReportSubmitting: Boolean = false,
+    /** Transient toast shown after a successful report from the feed (UGC compliance §4). */
+    val feedReportSuccess: Boolean = false,
+    /** Transient toast shown after a successful block from the feed (UGC compliance §5). */
+    val feedBlockSuccess: Boolean = false,
+    /**
+     * Transient error surfaced when a block from the feed overflow fails (UGC compliance §5).
+     * Mirrors [MealDetailViewModel]'s `blockError` pattern — failures are not silently dropped.
+     * Cleared by [FeedIntent.DismissFeedBlockError] or by the next [FeedIntent.BlockFeedAuthor].
+     */
+    val feedBlockError: BlockError? = null,
 ) : MviState
+
+/**
+ * The entity the user chose to report from the feed overflow menu (UGC compliance §4).
+ * Carries both the meal id and author id regardless of variant so the sheet can route to the
+ * correct [es.schsebastian.foodrats.core.domain.moderation.ReportPort] method.
+ */
+sealed interface FeedReportTarget {
+    val mealId: String
+    val authorId: String
+
+    data class Meal(override val mealId: String, override val authorId: String) : FeedReportTarget
+    data class Author(override val mealId: String, override val authorId: String) : FeedReportTarget
+}
 
 sealed interface FeedIntent : MviIntent {
     data object PrevDay : FeedIntent
@@ -84,6 +116,33 @@ sealed interface FeedIntent : MviIntent {
 
     /** Force a re-pull of the active crew's window (pull-to-refresh). */
     data object Refresh : FeedIntent
+
+    // ── Feed overflow UGC actions (UGC compliance §4 / §5) ──────────────────────────────────────
+
+    /** Open the [FrReportSheet] targeting the given meal or its author from the feed overflow. */
+    data class OpenFeedReport(val target: FeedReportTarget) : FeedIntent
+
+    /** Submit the report reason chosen in the [FrReportSheet] from the feed (UGC compliance §4). */
+    data class SubmitFeedReport(val reason: FrReportReasonOption) : FeedIntent
+
+    /** Dismiss the report sheet without submitting. */
+    data object DismissFeedReport : FeedIntent
+
+    /**
+     * Block the meal's author directly from the feed overflow (UGC compliance §5).
+     * A [es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog] is shown by the
+     * screen BEFORE dispatching this intent so the write only fires after explicit confirmation.
+     */
+    data class BlockFeedAuthor(val authorId: String) : FeedIntent
+
+    /** Clear the transient report-success toast. */
+    data object DismissFeedReportSuccess : FeedIntent
+
+    /** Clear the transient block-success toast. */
+    data object DismissFeedBlockSuccess : FeedIntent
+
+    /** Clear the transient block-error toast (UGC compliance §5). */
+    data object DismissFeedBlockError : FeedIntent
 }
 
 sealed interface FeedEffect : MviEffect

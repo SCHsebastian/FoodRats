@@ -16,6 +16,12 @@ import foodrats.feature.feed.generated.resources.feed_block_confirm_title
 import foodrats.feature.feed.generated.resources.feed_block_confirm_body
 import foodrats.feature.feed.generated.resources.feed_block_confirm_cta
 import foodrats.feature.feed.generated.resources.feed_report_success
+import foodrats.feature.feed.generated.resources.feed_block_success
+
+import foodrats.feature.feed.generated.resources.feed_overflow_menu_cd
+import foodrats.feature.feed.generated.resources.feed_report_submit_meal
+import foodrats.feature.feed.generated.resources.feed_report_submit_user
+import foodrats.feature.feed.generated.resources.feed_report_submit_comment
 import foodrats.feature.feed.generated.resources.feed_report_error_already_reported
 import foodrats.feature.feed.generated.resources.feed_report_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_block_error_unavailable
@@ -180,6 +186,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     BlockConfirmBody(Res.string.feed_block_confirm_body),
     BlockConfirmCta(Res.string.feed_block_confirm_cta),
     ReportSuccess(Res.string.feed_report_success),
+    BlockSuccess(Res.string.feed_block_success),
     // ReportError / BlockError → user message (feed owns the report+block UI surface here).
     ReportErrorAlreadyReported(Res.string.feed_report_error_already_reported),
     ReportErrorUnavailable(Res.string.feed_report_error_unavailable),
@@ -209,4 +216,10 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     SyncPending(Res.string.feed_sync_pending),
     SyncFailed(Res.string.feed_sync_failed),
     SyncedAgo(Res.string.feed_synced_ago),
+    // Feed card overflow menu (UGC compliance §4/§5).
+    OverflowMenuCd(Res.string.feed_overflow_menu_cd),
+    // Report-sheet submit labels per target type (UGC compliance §4 Item 5).
+    ReportSubmitMeal(Res.string.feed_report_submit_meal),
+    ReportSubmitUser(Res.string.feed_report_submit_user),
+    ReportSubmitComment(Res.string.feed_report_submit_comment),
 }

@@ -3,6 +3,11 @@ package es.schsebastian.foodrats.app.i18n
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.shared.generated.resources.Res
 import foodrats.shared.generated.resources.legal_back_cta
+import foodrats.shared.generated.resources.legal_eula_gate_title
+import foodrats.shared.generated.resources.legal_eula_gate_body
+import foodrats.shared.generated.resources.legal_eula_accept_cta
+import foodrats.shared.generated.resources.legal_eula_gate_read_eula_cta
+import foodrats.shared.generated.resources.legal_eula_gate_read_guidelines_cta
 import foodrats.shared.generated.resources.legal_community_body_blocking
 import foodrats.shared.generated.resources.legal_community_body_contact
 import foodrats.shared.generated.resources.legal_community_body_enforcement
@@ -86,6 +91,13 @@ enum class SharedStringKey(override val resourceId: StringResource) : StringKey 
 
     // Embedded legal docs (UGC compliance §6) — surfaced at the login screen + Profile.
     LegalBackCta(Res.string.legal_back_cta),
+    // EULA gate re-acceptance screen (UGC compliance §6 — shown when CURRENT_EULA_VERSION > accepted).
+    LegalEulaGateTitle(Res.string.legal_eula_gate_title),
+    LegalEulaGateBody(Res.string.legal_eula_gate_body),
+    LegalEulaAcceptCta(Res.string.legal_eula_accept_cta),
+    // Link buttons to the full legal docs shown on the gate (Apple G1.2 — must be readable at acceptance).
+    LegalEulaGateReadEulaCta(Res.string.legal_eula_gate_read_eula_cta),
+    LegalEulaGateReadGuidelinesCta(Res.string.legal_eula_gate_read_guidelines_cta),
 
     // End User License Agreement (adapted from Apple's standard Licensed Application EULA).
     LegalEulaTitle(Res.string.legal_eula_title),

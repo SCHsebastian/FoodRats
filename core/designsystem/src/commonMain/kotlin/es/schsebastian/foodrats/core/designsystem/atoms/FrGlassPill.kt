@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,7 +38,10 @@ fun FrGlassPill(
 ) {
     Surface(
         onClick = onClick,
-        modifier = modifier.size(size),
+        // minimumInteractiveComponentSize() ensures at least 48×48dp touch target (WCAG §2.5.5 /
+        // a11y audit fix) without changing the visible 40dp pill silhouette — the extra tap area is
+        // transparent and extends outside the painted circle (mirrors FrIconButton.kt).
+        modifier = modifier.minimumInteractiveComponentSize().size(size),
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
         contentColor = MaterialTheme.colorScheme.onSurface,

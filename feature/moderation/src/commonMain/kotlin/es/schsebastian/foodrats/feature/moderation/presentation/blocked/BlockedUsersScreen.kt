@@ -13,6 +13,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
@@ -46,6 +48,7 @@ fun BlockedUsersScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
 
+    Box {
     FrScreenScaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -104,6 +107,30 @@ fun BlockedUsersScreen(
                     }
                 }
             }
+        }
+    }
+    if (state.unblockSuccess) {
+        UnblockSuccessToast(
+            message = resolve(ModerationStringKey.UnblockSuccess),
+            onDismiss = { vm.onIntent(BlockedUsersIntent.DismissUnblockSuccess) },
+        )
+    }
+    } // end Box
+}
+
+/**
+ * Auto-dismissing overlay toast that confirms a successful unblock (UGC compliance §5).
+ * Mirrors the `ShareOutcomeToast` pattern in `:feature:feed` — no cross-module import needed.
+ */
+@Composable
+private fun UnblockSuccessToast(message: String, onDismiss: () -> Unit) {
+    LaunchedEffect(message) {
+        kotlinx.coroutines.delay(2500)
+        onDismiss()
+    }
+    Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
+        FrCard {
+            FrText(text = message, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

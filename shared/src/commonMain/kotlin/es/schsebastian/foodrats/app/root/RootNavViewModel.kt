@@ -7,7 +7,11 @@ import es.schsebastian.foodrats.app.navigation.parseDeepLink
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.needsDecision
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.preferences.CURRENT_EULA_VERSION
+import es.schsebastian.foodrats.core.domain.preferences.EulaPort
+import es.schsebastian.foodrats.core.domain.preferences.NoopEulaAcceptance
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
+import es.schsebastian.foodrats.core.domain.preferences.needsEulaAcceptance
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -36,6 +40,9 @@ class RootNavViewModel(
     private val notifications: NotificationsPreferencePort,
     private val consent: ConsentPort,
     private val deepLinks: DeepLinkBus,
+    // UGC compliance §6 re-acceptance gate — defaults to noop so existing tests compile without
+    // providing this port; the Koin module always passes the real EulaRepository.
+    private val eulaPort: EulaPort = NoopEulaAcceptance,
 ) : MviViewModel<RootNavState, RootNavIntent, RootNavEffect>(RootNavState()) {
 
     private val navLock = Mutex()
@@ -59,17 +66,22 @@ class RootNavViewModel(
             val consentNeeded = consent.decision
                 .map { it.needsDecision }
                 .distinctUntilChanged()
+            val eulaNeeded = eulaPort.acceptedVersion
+                .map { needsEulaAcceptance(CURRENT_EULA_VERSION, it) }
+                .distinctUntilChanged()
             combine(
                 session.current,
                 activeCrew.current,
                 notifications.prompted,
                 consentNeeded,
-            ) { sess, crewId, prompted, needsConsent ->
+                eulaNeeded,
+            ) { sess, crewId, prompted, needsConsent, needsEula ->
                 when {
                     sess == null   -> RootStage.NeedsSignIn
                     !prompted      -> RootStage.NeedsNotificationPermission
                     crewId == null -> RootStage.NeedsCrew
                     needsConsent   -> RootStage.NeedsConsent
+                    needsEula      -> RootStage.NeedsEulaGate
                     else           -> RootStage.Ready
                 }
             }.collect { nextStage -> navLock.withLock { applyStage(nextStage) } }
@@ -92,6 +104,7 @@ class RootNavViewModel(
             RootStage.NeedsNotificationPermission -> emit(RootNavEffect.NavigateTopLevel(Route.NotificationPermission))
             RootStage.NeedsCrew                   -> emit(RootNavEffect.NavigateTopLevel(Route.CrewPicker))
             RootStage.NeedsConsent                -> emit(RootNavEffect.NavigateTopLevel(Route.Consent))
+            RootStage.NeedsEulaGate               -> emit(RootNavEffect.NavigateTopLevel(Route.EulaGate))
             RootStage.Ready                       -> emitReady()
         }
     }

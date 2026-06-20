@@ -113,6 +113,14 @@ fun MealDetailScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showDeleteMealDialog by remember { mutableStateOf(false) }
+    // UGC compliance §5 — block-confirmation dialog.
+    // [pendingBlockAccountId] carries the raw account-id string of whoever is about to be blocked.
+    // [pendingBlockIsMealAuthor] distinguishes the two intents: true → BlockAuthor (meal-level,
+    // dispatch removes meal content reactively), false → BlockCommentAuthor(id) (comment-level).
+    // Both ultimately call the same blockAccount() path in the VM, but keeping the intents separate
+    // preserves the typed contract and makes each path independently testable.
+    var pendingBlockAccountId by remember { mutableStateOf<String?>(null) }
+    var pendingBlockIsMealAuthor by remember { mutableStateOf(false) }
     LaunchedEffect(state.mealDeleted) { if (state.mealDeleted) onBack() }
 
     // Exclude the IME from the scaffold insets: this screen has a bottom-pinned comment
@@ -135,6 +143,18 @@ fun MealDetailScreen(
                 onIntent = vm::onIntent,
                 onBack = onBack,
                 onRequestDeleteMeal = { showDeleteMealDialog = true },
+                // UGC §5 — set pending block target (author or comment author); the confirm dialog is
+                // rendered at screen level so it overlays the full surface cleanly. The flag
+                // pendingBlockIsMealAuthor selects the correct intent on confirm so BlockAuthor and
+                // BlockCommentAuthor both reach their respective VM paths (H2 fix).
+                onRequestBlockAuthor = {
+                    pendingBlockIsMealAuthor = true
+                    pendingBlockAccountId = state.meal?.authorId
+                },
+                onRequestBlockCommentAuthor = { authorId ->
+                    pendingBlockIsMealAuthor = false
+                    pendingBlockAccountId = authorId
+                },
             )
         }
     }
@@ -166,6 +186,29 @@ fun MealDetailScreen(
         )
     }
 
+    // UGC compliance §5 — block confirmation dialog (author or comment author).
+    // Dispatches BlockAuthor when the pending target is the meal's author (pendingBlockIsMealAuthor),
+    // or BlockCommentAuthor(id) when it is a comment author — both intents have distinct VM paths.
+    pendingBlockAccountId?.let { accountId ->
+        FrConfirmDialog(
+            title = resolve(FeedStringKey.BlockConfirmTitle),
+            message = resolve(FeedStringKey.BlockConfirmBody),
+            confirmLabel = resolve(FeedStringKey.BlockConfirmCta),
+            dismissLabel = resolve(FeedStringKey.DeleteCancelCta),
+            onConfirm = {
+                pendingBlockAccountId = null
+                val intent = if (pendingBlockIsMealAuthor) {
+                    MealDetailIntent.BlockAuthor
+                } else {
+                    MealDetailIntent.BlockCommentAuthor(accountId)
+                }
+                vm.onIntent(intent)
+            },
+            onDismiss = { pendingBlockAccountId = null },
+            destructive = true,
+        )
+    }
+
     // Report sheet (UGC compliance §4). Open against the meal / author / a comment; on submit the
     // VM dispatches through the :core:domain ReportPort and the sheet closes.
     state.reportTarget?.let { target ->
@@ -176,10 +219,18 @@ fun MealDetailScreen(
                 ReportTargetUi.Meal         -> FeedStringKey.ReportMealCta
             },
         )
+        // Item 5 (UGC compliance §4): submit label reflects the report target, not always "meal".
+        val submitLabel = resolve(
+            when (target) {
+                ReportTargetUi.Author       -> FeedStringKey.ReportSubmitUser
+                is ReportTargetUi.Comment   -> FeedStringKey.ReportSubmitComment
+                ReportTargetUi.Meal         -> FeedStringKey.ReportSubmitMeal
+            },
+        )
         FrReportSheet(
             title = title,
             reasonLabels = reportReasonLabels(),
-            submitLabel = resolve(FeedStringKey.ReportMealCta),
+            submitLabel = submitLabel,
             cancelLabel = resolve(FeedStringKey.DeleteCancelCta),
             submitting = state.reportSubmitting,
             onSubmit = { reason -> vm.onIntent(MealDetailIntent.SubmitReport(reason)) },
@@ -205,6 +256,13 @@ fun MealDetailScreen(
         ShareOutcomeToast(
             message = resolve(err.toStringKey()),
             onDismiss = { vm.onIntent(MealDetailIntent.DismissError) },
+        )
+    }
+    // Block-success toast (UGC §5).
+    if (state.blockSuccess) {
+        ShareOutcomeToast(
+            message = resolve(FeedStringKey.BlockSuccess),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissBlockSuccess) },
         )
     }
 }
@@ -352,6 +410,8 @@ private fun MealDetailBody(
     onIntent: (MealDetailIntent) -> Unit,
     onBack: () -> Unit,
     onRequestDeleteMeal: () -> Unit,
+    onRequestBlockAuthor: () -> Unit = {},
+    onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     val meal = state.meal ?: return
     var pendingDeleteCommentId by remember { mutableStateOf<MealCommentId?>(null) }
@@ -376,7 +436,8 @@ private fun MealDetailBody(
                 onDelete = onRequestDeleteMeal,
                 onShare = { onIntent(MealDetailIntent.ShareTapped) },
                 onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Meal)) },
-                onBlock = { onIntent(MealDetailIntent.BlockAuthor) },
+                // UGC §5 — show confirmation dialog before dispatching the block.
+                onBlock = onRequestBlockAuthor,
                 modifier = Modifier.frRevealScale(),
             )
 
@@ -413,6 +474,7 @@ private fun MealDetailBody(
                 CommentsSection(
                     state = state,
                     onRequestDeleteComment = { pendingDeleteCommentId = it },
+                    onRequestBlockCommentAuthor = onRequestBlockCommentAuthor,
                     onIntent = onIntent,
                 )
 
@@ -568,6 +630,7 @@ private fun PhotoHero(
                 )
                 FrGlassPill(
                     icon = FrIcons.Block,
+                    // UGC §5: show confirm dialog before dispatching the block intent.
                     onClick = onBlock,
                     contentDescription = resolve(FeedStringKey.BlockAuthorCta),
                 )
@@ -794,6 +857,8 @@ private fun CommentsSection(
     state: MealDetailState,
     onRequestDeleteComment: (MealCommentId) -> Unit,
     onIntent: (MealDetailIntent) -> Unit,
+    // UGC §5 — confirm dialog is rendered at screen level; this callback just sets the pending target.
+    onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         SectionEyebrow(resolve(FeedStringKey.CommentsTitle))
@@ -815,7 +880,8 @@ private fun CommentsSection(
                     onDelete = { onRequestDeleteComment(c.id) },
                     canModerate = c.canModerate,
                     onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Comment(c.id))) },
-                    onBlock = { onIntent(MealDetailIntent.BlockCommentAuthor(c.authorId)) },
+                    // UGC §5 — route through the confirm dialog at screen level instead of directly.
+                    onBlock = { onRequestBlockCommentAuthor(c.authorId) },
                 )
             }
         }

@@ -81,6 +81,7 @@
     <string name="feed_block_confirm_body">No verás sus comidas ni sus comentarios. Puedes desbloquearlo más tarde desde tu perfil.</string>
     <string name="feed_block_confirm_cta">Bloquear</string>
     <string name="feed_report_success">Gracias: lo revisaremos en menos de 24 horas.</string>
+    <string name="feed_block_success">Usuario bloqueado. No verás más su contenido.</string>
     <string name="feed_report_error_already_reported">Ya has reportado esto.</string>
     <string name="feed_report_error_unavailable">No se pudo enviar tu reporte. Intenta de nuevo.</string>
     <string name="feed_block_error_unavailable">No se pudo bloquear a este usuario. Intenta de nuevo.</string>
@@ -113,4 +114,10 @@
     <string name="feed_sync_failed">%1$d no se pudieron sincronizar</string>
     <!-- Línea de frescura del feed en caché (offline-first P4-T2). %1$s es un tiempo relativo como "ahora mismo" / "hace 5 min". -->
     <string name="feed_synced_ago">Sincronizado %1$s</string>
+    <!-- Menú de desbordamiento de tarjeta de feed (cumplimiento UGC §4/§5). -->
+    <string name="feed_overflow_menu_cd">Más opciones</string>
+    <!-- Etiquetas de envío del formulario de reporte por tipo de objetivo (cumplimiento UGC §4 punto 5). -->
+    <string name="feed_report_submit_meal">Enviar reporte de plato</string>
+    <string name="feed_report_submit_user">Enviar reporte de usuario</string>
+    <string name="feed_report_submit_comment">Enviar reporte de comentario</string>
 </resources>

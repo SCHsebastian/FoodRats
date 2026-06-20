@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
@@ -21,6 +23,9 @@ import es.schsebastian.foodrats.core.domain.meal.ReactionToggle
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.moderation.ReportPort
+import es.schsebastian.foodrats.core.domain.moderation.ReportReason
+import es.schsebastian.foodrats.core.domain.moderation.ReportTarget
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryStatus
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPendingSnapshot
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
@@ -35,6 +40,7 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -70,6 +76,10 @@ class FeedViewModel(
     private val outbox: OutboxPort,
     private val syncStatus: FeedSyncStatusPort,
     private val optimistic: OptimisticMealWritePort,
+    // UGC compliance §4/§5 — report/block from the feed overflow. Defaults are no-ops so existing
+    // tests compile without injecting these ports; Koin always passes the real implementations.
+    private val reportPort: ReportPort = NoopFeedReportPort,
+    private val blockedAccounts: BlockedAccountsPort = NoopFeedBlockedAccountsPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
     FeedState(
@@ -259,7 +269,7 @@ class FeedViewModel(
     override suspend fun handle(intent: FeedIntent) = when (intent) {
         FeedIntent.PrevDay      -> { navigatePrev(); Unit }
         FeedIntent.NextDay      -> { navigateNext(); Unit }
-        FeedIntent.DismissError -> update { it.copy(error = null, rateError = null, reactError = null) }
+        FeedIntent.DismissError -> update { it.copy(error = null, rateError = null, reactError = null, feedBlockError = null) }
         is FeedIntent.RateMeal  -> rate(intent.mealId, intent.score)
         is FeedIntent.ReactMeal -> react(intent.mealId)
         FeedIntent.RetryQueuedDrafts   -> queuedUploadActions.retryFailed()
@@ -267,6 +277,14 @@ class FeedViewModel(
         FeedIntent.RetrySyncOutbox     -> retrySyncOutbox()
         FeedIntent.DismissSyncOutbox   -> dismissSyncOutbox()
         FeedIntent.Refresh             -> refresh()
+        // UGC compliance §4/§5 — overflow report/block from the feed card.
+        is FeedIntent.OpenFeedReport         -> update { it.copy(feedReportTarget = intent.target) }
+        is FeedIntent.SubmitFeedReport       -> submitFeedReport(intent.reason)
+        FeedIntent.DismissFeedReport         -> update { it.copy(feedReportTarget = null, feedReportSubmitting = false) }
+        is FeedIntent.BlockFeedAuthor        -> blockFeedAuthor(intent.authorId)
+        FeedIntent.DismissFeedReportSuccess  -> update { it.copy(feedReportSuccess = false) }
+        FeedIntent.DismissFeedBlockSuccess   -> update { it.copy(feedBlockSuccess = false) }
+        FeedIntent.DismissFeedBlockError     -> update { it.copy(feedBlockError = null) }
     }
 
     /**
@@ -321,6 +339,53 @@ class FeedViewModel(
                 }
                 outbox.remove(entry.id)
             }
+    }
+
+    // ── Feed overflow UGC actions ────────────────────────────────────────────────────────────────
+
+    /** Maps the presentation reason option to the domain [ReportReason]. */
+    private fun FrReportReasonOption.toReason(): ReportReason = when (this) {
+        FrReportReasonOption.SPAM       -> ReportReason.Spam
+        FrReportReasonOption.HARASSMENT -> ReportReason.Harassment
+        FrReportReasonOption.HATE       -> ReportReason.Hate
+        FrReportReasonOption.SEXUAL     -> ReportReason.Sexual
+        FrReportReasonOption.VIOLENCE   -> ReportReason.Violence
+        FrReportReasonOption.OTHER      -> ReportReason.Other
+    }
+
+    /** Submits the feed report against the pending [FeedState.feedReportTarget] (UGC compliance §4). */
+    private suspend fun submitFeedReport(reasonOption: FrReportReasonOption) {
+        val target = currentState.feedReportTarget ?: return
+        val crewId = activeCrew.current.first() ?: return
+        val reporter = session.current.first()?.accountId ?: return
+        val parsedMealId = MealId.of(target.mealId).getOrElse { return }
+        val domainTarget: ReportTarget = when (target) {
+            is FeedReportTarget.Meal   -> ReportTarget.Meal(parsedMealId, crewId)
+            is FeedReportTarget.Author -> ReportTarget.Account(
+                AccountId.of(target.authorId).getOrElse { return },
+            )
+        }
+        update { it.copy(feedReportSubmitting = true) }
+        when (reportPort.report(reporter, domainTarget, reasonOption.toReason())) {
+            is Result.Ok  -> update {
+                it.copy(feedReportSubmitting = false, feedReportTarget = null, feedReportSuccess = true)
+            }
+            is Result.Err -> update { it.copy(feedReportSubmitting = false, feedReportTarget = null) }
+        }
+    }
+
+    /**
+     * Blocks the meal's author directly from the feed overflow (UGC compliance §5). The confirm
+     * dialog is shown by the screen before this intent fires, so no guard is needed here.
+     */
+    private suspend fun blockFeedAuthor(rawAuthorId: String) {
+        val owner = session.current.first()?.accountId ?: return
+        val target = AccountId.of(rawAuthorId).getOrElse { return }
+        update { it.copy(feedBlockError = null) }
+        when (val r = blockedAccounts.block(owner, target)) {
+            is Result.Ok  -> update { it.copy(feedBlockSuccess = true) }
+            is Result.Err -> update { it.copy(feedBlockError = r.error) }
+        }
     }
 
     private suspend fun rate(mealIdRaw: String, scoreRaw: Int) {
@@ -437,4 +502,29 @@ class FeedViewModel(
             canGoPrev = FeedDay.isWithinWindow(candidate.previous().day.date, today),
         ) }
     }
+}
+
+/**
+ * No-op [ReportPort] used as the constructor default so the existing test surface keeps compiling.
+ * The Koin binding always passes the real Firestore-backed port; production never sees this.
+ */
+private object NoopFeedReportPort : ReportPort {
+    override suspend fun report(
+        reporter: AccountId,
+        target: ReportTarget,
+        reason: ReportReason,
+    ): Result<Unit, es.schsebastian.foodrats.core.domain.moderation.ReportError> = Result.success(Unit)
+}
+
+/** No-op [BlockedAccountsPort] default for [FeedViewModel] (see [NoopFeedReportPort]). */
+private object NoopFeedBlockedAccountsPort : BlockedAccountsPort {
+    override fun observeBlocked(owner: AccountId): Flow<Set<AccountId>> = flowOf(emptySet())
+    override suspend fun block(
+        owner: AccountId,
+        target: AccountId,
+    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
+    override suspend fun unblock(
+        owner: AccountId,
+        target: AccountId,
+    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
 }

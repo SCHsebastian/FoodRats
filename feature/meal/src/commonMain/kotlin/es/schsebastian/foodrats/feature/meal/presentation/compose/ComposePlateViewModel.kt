@@ -76,6 +76,8 @@ class ComposePlateViewModel(
                     canContinue = computeCanContinue(
                         dish = it.dish,
                         descriptionTooLong = it.descriptionTooLong,
+                        descriptionFlagged = it.descriptionWarning,
+                        dishFlagged = it.dishWarning,
                         photo = draft?.plate?.photoBytes,
                         slot = it.selectedSlot,
                         taken = it.takenSlots,
@@ -180,7 +182,8 @@ class ComposePlateViewModel(
                 takenSlots = taken,
                 selectedSlot = slot,
                 canContinue = computeCanContinue(
-                    it.dish, it.descriptionTooLong, it.photoBytes, slot, taken, it.selectedCrewIds,
+                    it.dish, it.descriptionTooLong, it.descriptionWarning, it.dishWarning,
+                    it.photoBytes, slot, taken, it.selectedCrewIds,
                 ),
             )
         }
@@ -189,19 +192,25 @@ class ComposePlateViewModel(
 
     override suspend fun handle(intent: ComposePlateIntent) {
         when (intent) {
-            is ComposePlateIntent.DishChanged -> update {
-                it.copy(
-                    dish = intent.value,
-                    error = null,
-                    canContinue = computeCanContinue(
-                        intent.value, it.descriptionTooLong, it.photoBytes, it.selectedSlot, it.takenSlots, it.selectedCrewIds,
-                    ),
-                )
+            is ComposePlateIntent.DishChanged -> {
+                // UGC §3 HARD-BLOCK: screen the dish title and block publish if objectionable.
+                val dishFlagged = textModeration.evaluate(intent.value, languageTag.first()) is
+                    TextModerationVerdict.Objectionable
+                update {
+                    it.copy(
+                        dish = intent.value,
+                        dishWarning = dishFlagged,
+                        error = null,
+                        canContinue = computeCanContinue(
+                            intent.value, it.descriptionTooLong, it.descriptionWarning, dishFlagged,
+                            it.photoBytes, it.selectedSlot, it.takenSlots, it.selectedCrewIds,
+                        ),
+                    )
+                }
             }
             is ComposePlateIntent.DescriptionChanged -> {
                 val tooLong = intent.value.trim().length > Description.MAX_LEN
-                // Advisory only (UGC §3): screen the description and raise a non-blocking warning. It
-                // NEVER feeds computeCanContinue / publish — a flagged description still publishes.
+                // UGC §3 HARD-BLOCK: screen the description and block publish if objectionable.
                 val warning = textModeration.evaluate(intent.value, languageTag.first()) is
                     TextModerationVerdict.Objectionable
                 update {
@@ -210,7 +219,7 @@ class ComposePlateViewModel(
                         descriptionTooLong = tooLong,
                         descriptionWarning = warning,
                         error = if (tooLong) MealError.Validation.DescriptionTooLong else null,
-                        canContinue = computeCanContinue(it.dish, tooLong, it.photoBytes, it.selectedSlot, it.takenSlots, it.selectedCrewIds),
+                        canContinue = computeCanContinue(it.dish, tooLong, warning, it.dishWarning, it.photoBytes, it.selectedSlot, it.takenSlots, it.selectedCrewIds),
                     )
                 }
             }
@@ -218,7 +227,10 @@ class ComposePlateViewModel(
                 update {
                     it.copy(
                         selectedSlot = intent.slot,
-                        canContinue = computeCanContinue(it.dish, it.descriptionTooLong, it.photoBytes, intent.slot, it.takenSlots, it.selectedCrewIds),
+                        canContinue = computeCanContinue(
+                            it.dish, it.descriptionTooLong, it.descriptionWarning, it.dishWarning,
+                            it.photoBytes, intent.slot, it.takenSlots, it.selectedCrewIds,
+                        ),
                     )
                 }
                 updateDraft(UpdateMealDraftCommand.SetSlot(intent.slot))
@@ -285,6 +297,11 @@ class ComposePlateViewModel(
      * Persists the in-memory draft (dish + description) to the draft store so
      * the background coordinator can read it via `observeDraft().first()`.
      * Returns false (and surfaces an error) when validation fails.
+     *
+     * Defense-in-depth (M1): re-evaluates the text moderation verdict on dish + description before
+     * returning true, regardless of [canContinue] state. This prevents a future [canContinue]
+     * recompute race from opening a publish hole — the coordinator will never receive a draft whose
+     * text is Objectionable because [persistDraft] refuses to write it.
      */
     private suspend fun persistDraft(): Boolean {
         val state = currentState
@@ -300,6 +317,19 @@ class ComposePlateViewModel(
             update { it.copy(error = MealError.Publish.NoCrewSelected) }
             return false
         }
+        // Re-assert moderation verdict as defense-in-depth: canContinue already blocks the button,
+        // but a subsequent canContinue recompute (e.g. audience change) could clear the flag before
+        // the confirm dialog fires. Re-running here guarantees objectionable text can never reach
+        // the upload coordinator, even if the button were somehow enabled.
+        val lang = languageTag.first()
+        if (textModeration.evaluate(dish.value, lang) is TextModerationVerdict.Objectionable) {
+            update { it.copy(dishWarning = true, canContinue = false) }
+            return false
+        }
+        if (textModeration.evaluate(state.descriptionInput, lang) is TextModerationVerdict.Objectionable) {
+            update { it.copy(descriptionWarning = true, canContinue = false) }
+            return false
+        }
         updateDraft(UpdateMealDraftCommand.SetSlot(state.selectedSlot))
         updateDraft(UpdateMealDraftCommand.SetDish(dish))
         val r = updateDraft(UpdateMealDraftCommand.SetDescription(description))
@@ -313,12 +343,16 @@ class ComposePlateViewModel(
     private fun computeCanContinue(
         dish: String,
         descriptionTooLong: Boolean,
+        descriptionFlagged: Boolean,
+        dishFlagged: Boolean,
         photo: ByteArray?,
         slot: MealSlot,
         taken: Set<MealSlot>,
         audience: Set<CrewId>,
     ): Boolean = dish.isNotBlank() &&
         !descriptionTooLong &&
+        !descriptionFlagged &&
+        !dishFlagged &&
         photo != null &&
         slot !in taken &&
         audience.isNotEmpty()

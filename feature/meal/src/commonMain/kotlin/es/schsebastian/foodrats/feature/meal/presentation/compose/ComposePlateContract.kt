@@ -16,10 +16,15 @@ data class ComposePlateState(
     val descriptionInput: String = "",
     val descriptionTooLong: Boolean = false,
     /**
-     * Advisory (UGC compliance §3): the on-device text filter flagged the description. NEVER gates
-     * `canContinue`/publish — it only surfaces a non-blocking warning banner, like the AI classifier.
+     * UGC compliance §3 HARD-BLOCK: the on-device text filter flagged the description. Gates
+     * `canContinue`/publish — an objectionable description cannot be published.
      */
     val descriptionWarning: Boolean = false,
+    /**
+     * UGC compliance §3 HARD-BLOCK: the on-device text filter flagged the dish title. Gates
+     * `canContinue`/publish — an objectionable dish title cannot be published.
+     */
+    val dishWarning: Boolean = false,
     val error: MealError? = null,
     val selectedSlot: MealSlot = MealSlot.Lunch,
     val takenSlots: Set<MealSlot> = emptySet(),
@@ -49,6 +54,7 @@ data class ComposePlateState(
             descriptionInput == other.descriptionInput &&
             descriptionTooLong == other.descriptionTooLong &&
             descriptionWarning == other.descriptionWarning &&
+            dishWarning == other.dishWarning &&
             error == other.error &&
             selectedSlot == other.selectedSlot &&
             takenSlots == other.takenSlots &&
@@ -70,6 +76,7 @@ data class ComposePlateState(
         result = 31 * result + descriptionInput.hashCode()
         result = 31 * result + descriptionTooLong.hashCode()
         result = 31 * result + descriptionWarning.hashCode()
+        result = 31 * result + dishWarning.hashCode()
         result = 31 * result + (error?.hashCode() ?: 0)
         result = 31 * result + selectedSlot.hashCode()
         result = 31 * result + takenSlots.hashCode()

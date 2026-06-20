@@ -91,4 +91,10 @@
     <string name="recap_empty_title">Una semana tranquila</string>
     <string name="recap_empty_subtitle">Aún no hay platos — el resumen de tu cuadrilla se irá llenando según publiquéis.</string>
     <string name="recap_share_cta">Compartir resumen</string>
+    <!-- Puerta de re-aceptación de EULA (cumplimiento UGC §6 — se muestra cuando CURRENT_EULA_VERSION aumenta). -->
+    <string name="legal_eula_gate_title">Términos de uso actualizados</string>
+    <string name="legal_eula_gate_body">Nuestro Contrato de licencia de usuario final ha sido actualizado. Por favor revisa y acepta los nuevos términos para continuar usando FoodRats.</string>
+    <string name="legal_eula_accept_cta">Aceptar y continuar</string>
+    <string name="legal_eula_gate_read_eula_cta">Leer los Términos de uso completos</string>
+    <string name="legal_eula_gate_read_guidelines_cta">Leer las Normas de la comunidad</string>
 </resources>

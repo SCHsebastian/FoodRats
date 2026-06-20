@@ -8,6 +8,7 @@ import foodrats.feature.moderation.generated.resources.moderation_blocked_empty_
 import foodrats.feature.moderation.generated.resources.moderation_blocked_member_deleted
 import foodrats.feature.moderation.generated.resources.moderation_blocked_title
 import foodrats.feature.moderation.generated.resources.moderation_blocked_unblock_cta
+import foodrats.feature.moderation.generated.resources.moderation_unblock_success
 import foodrats.feature.moderation.generated.resources.moderation_error_block_read_unavailable
 import foodrats.feature.moderation.generated.resources.moderation_error_block_self
 import foodrats.feature.moderation.generated.resources.moderation_error_block_unavailable
@@ -24,6 +25,8 @@ enum class ModerationStringKey(override val resourceId: StringResource) : String
     BlockedEmptySubtext(Res.string.moderation_blocked_empty_subtext),
     BlockedUnblockCta(Res.string.moderation_blocked_unblock_cta),
     BlockedMemberDeleted(Res.string.moderation_blocked_member_deleted),
+    /** Transient toast shown after a successful unblock (UGC compliance §5 success feedback). */
+    UnblockSuccess(Res.string.moderation_unblock_success),
 
     // BlockError
     ErrorBlockSelf(Res.string.moderation_error_block_self),

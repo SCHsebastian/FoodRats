@@ -18,7 +18,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -31,6 +35,9 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportSheet
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
@@ -64,6 +71,11 @@ fun FeedScreen(
     vm: FeedViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+
+    // UGC compliance §5 — pending block confirmation: authorId to block after user confirms.
+    var pendingBlockAuthorId by remember { mutableStateOf<String?>(null) }
+
+    Box {
     FrScreenScaffold(contentWindowInsets = WindowInsets(0)) {
         // FrFeedLayout slots are `dayHeader` and `list` (not header/body per plan).
         FrFeedLayout(
@@ -203,6 +215,18 @@ fun FeedScreen(
                                         ui = ui,
                                         onClick = { onMealClick(ui.mealId, dayIso) },
                                         onReact = { vm.onIntent(FeedIntent.ReactMeal(ui.mealId)) },
+                                        // UGC compliance §4/§5 overflow menu callbacks.
+                                        onReportMeal = {
+                                            vm.onIntent(FeedIntent.OpenFeedReport(
+                                                FeedReportTarget.Meal(ui.mealId, ui.authorId),
+                                            ))
+                                        },
+                                        onReportAuthor = {
+                                            vm.onIntent(FeedIntent.OpenFeedReport(
+                                                FeedReportTarget.Author(ui.mealId, ui.authorId),
+                                            ))
+                                        },
+                                        onBlockAuthor = { pendingBlockAuthorId = ui.authorId },
                                         // Bespoke fade+rise cascade on first compose. The window is
                                         // kept small (index % 6) so rows scrolled into view later
                                         // still pop promptly instead of waiting on a long stagger.
@@ -230,7 +254,71 @@ fun FeedScreen(
                 }
             },
         )
+    } // end FrScreenScaffold
+
+    // UGC compliance §4 — report sheet from the feed overflow menu.
+    state.feedReportTarget?.let { target ->
+        val title = resolve(
+            when (target) {
+                is FeedReportTarget.Meal   -> FeedStringKey.ReportMealCta
+                is FeedReportTarget.Author -> FeedStringKey.ReportUserCta
+            },
+        )
+        val submitLabel = resolve(
+            when (target) {
+                is FeedReportTarget.Meal   -> FeedStringKey.ReportSubmitMeal
+                is FeedReportTarget.Author -> FeedStringKey.ReportSubmitUser
+            },
+        )
+        FrReportSheet(
+            title = title,
+            reasonLabels = feedReportReasonLabels(),
+            submitLabel = submitLabel,
+            cancelLabel = resolve(FeedStringKey.DeleteCancelCta),
+            submitting = state.feedReportSubmitting,
+            onSubmit = { reason -> vm.onIntent(FeedIntent.SubmitFeedReport(reason)) },
+            onDismiss = { vm.onIntent(FeedIntent.DismissFeedReport) },
+        )
     }
+
+    // UGC compliance §5 — block confirm dialog from the feed overflow menu.
+    pendingBlockAuthorId?.let { authorId ->
+        FrConfirmDialog(
+            title = resolve(FeedStringKey.BlockConfirmTitle),
+            message = resolve(FeedStringKey.BlockConfirmBody),
+            confirmLabel = resolve(FeedStringKey.BlockConfirmCta),
+            dismissLabel = resolve(FeedStringKey.DeleteCancelCta),
+            destructive = true,
+            onConfirm = {
+                pendingBlockAuthorId = null
+                vm.onIntent(FeedIntent.BlockFeedAuthor(authorId))
+            },
+            onDismiss = { pendingBlockAuthorId = null },
+        )
+    }
+
+    // UGC compliance §4/§5 — transient success toasts.
+    if (state.feedReportSuccess) {
+        FeedSuccessToast(
+            message = resolve(FeedStringKey.ReportSuccess),
+            onDismiss = { vm.onIntent(FeedIntent.DismissFeedReportSuccess) },
+        )
+    }
+    if (state.feedBlockSuccess) {
+        FeedSuccessToast(
+            message = resolve(FeedStringKey.BlockSuccess),
+            onDismiss = { vm.onIntent(FeedIntent.DismissFeedBlockSuccess) },
+        )
+    }
+    // UGC compliance §5 — block failure toast (mirrors MealDetailScreen's blockError path).
+    state.feedBlockError?.let { err ->
+        FeedSuccessToast(
+            message = resolve(err.toStringKey()),
+            onDismiss = { vm.onIntent(FeedIntent.DismissFeedBlockError) },
+        )
+    }
+
+    } // end Box
 }
 
 /**
@@ -299,6 +387,34 @@ private fun FeedSkeletonRow() {
                     shape = RoundedCornerShape(Radius.sm),
                 )
             }
+        }
+    }
+}
+
+/** Localised report-reason labels for the feed [FrReportSheet] (UGC compliance §4). */
+@Composable
+private fun feedReportReasonLabels(): Map<FrReportReasonOption, String> = mapOf(
+    FrReportReasonOption.SPAM       to resolve(FeedStringKey.ReportReasonSpam),
+    FrReportReasonOption.HARASSMENT to resolve(FeedStringKey.ReportReasonHarassment),
+    FrReportReasonOption.HATE       to resolve(FeedStringKey.ReportReasonHate),
+    FrReportReasonOption.SEXUAL     to resolve(FeedStringKey.ReportReasonSexual),
+    FrReportReasonOption.VIOLENCE   to resolve(FeedStringKey.ReportReasonViolence),
+    FrReportReasonOption.OTHER      to resolve(FeedStringKey.ReportReasonOther),
+)
+
+/**
+ * Auto-dismissing overlay toast for report/block success from the feed overflow (UGC compliance §4/§5).
+ * Mirrors the `ShareOutcomeToast` in `:feature:feed`'s meal-detail screen — same 2500 ms window.
+ */
+@Composable
+private fun FeedSuccessToast(message: String, onDismiss: () -> Unit) {
+    LaunchedEffect(message) {
+        kotlinx.coroutines.delay(2500)
+        onDismiss()
+    }
+    Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
+        FrCard {
+            FrText(text = message, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

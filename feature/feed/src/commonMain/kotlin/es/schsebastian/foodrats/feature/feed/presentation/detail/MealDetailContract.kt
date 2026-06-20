@@ -46,6 +46,8 @@ data class MealDetailState(
     val reportSuccess: Boolean = false,
     val reportError: ReportError? = null,
     val blockError: es.schsebastian.foodrats.core.domain.account.BlockError? = null,
+    /** Transient success toast shown after a block succeeds. */
+    val blockSuccess: Boolean = false,
 ) : MviState
 
 /**
@@ -90,6 +92,8 @@ sealed interface MealDetailIntent : MviIntent {
     data object BlockAuthor : MealDetailIntent
     /** Block a comment's author by id. */
     data class BlockCommentAuthor(val commentAuthorId: String) : MealDetailIntent
+    /** Clear the transient block-success toast. */
+    data object DismissBlockSuccess : MealDetailIntent
 }
 
 sealed interface MealDetailEffect : MviEffect

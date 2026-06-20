@@ -81,6 +81,7 @@
     <string name="feed_block_confirm_body">You won't see their meals or comments. You can unblock them later from your profile.</string>
     <string name="feed_block_confirm_cta">Block</string>
     <string name="feed_report_success">Thanks — we'll review this within 24 hours.</string>
+    <string name="feed_block_success">User blocked. You won't see their content anymore.</string>
     <string name="feed_report_error_already_reported">You've already reported this.</string>
     <string name="feed_report_error_unavailable">Couldn't send your report. Try again.</string>
     <string name="feed_block_error_unavailable">Couldn't block this user. Try again.</string>
@@ -113,4 +114,10 @@
     <string name="feed_sync_failed">%1$d failed to sync</string>
     <!-- Cached-feed freshness line (offline-first P4-T2). %1$s is a relative time like "just now" / "5 min ago". -->
     <string name="feed_synced_ago">Synced %1$s</string>
+    <!-- Feed card overflow menu (UGC compliance §4/§5). -->
+    <string name="feed_overflow_menu_cd">More options</string>
+    <!-- Report-sheet submit labels per target type (UGC compliance §4 Item 5). -->
+    <string name="feed_report_submit_meal">Submit meal report</string>
+    <string name="feed_report_submit_user">Submit user report</string>
+    <string name="feed_report_submit_comment">Submit comment report</string>
 </resources>

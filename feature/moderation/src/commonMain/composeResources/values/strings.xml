@@ -7,6 +7,9 @@
     <string name="moderation_blocked_unblock_cta">Unblock</string>
     <string name="moderation_blocked_member_deleted">Deleted user</string>
 
+    <!-- Success feedback -->
+    <string name="moderation_unblock_success">User unblocked successfully.</string>
+
     <!-- BlockError -->
     <string name="moderation_error_block_self">You can\'t block yourself.</string>
     <string name="moderation_error_block_unavailable">Couldn\'t update your block list. Check your connection and try again.</string>

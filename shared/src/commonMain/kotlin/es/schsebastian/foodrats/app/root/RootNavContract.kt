@@ -11,6 +11,12 @@ sealed interface RootStage {
     data object NeedsNotificationPermission : RootStage
     data object NeedsConsent : RootStage
     data object NeedsCrew : RootStage
+    /**
+     * The user has never accepted the current EULA version (or the version was bumped since their
+     * last acceptance). Gated AFTER [NeedsConsent] so consent is always the last analytics step;
+     * the EULA gate leads directly to [Ready] once accepted (UGC compliance §6 re-acceptance).
+     */
+    data object NeedsEulaGate : RootStage
     data object Ready : RootStage
 }
 

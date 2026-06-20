@@ -50,6 +50,9 @@ val feedModule = module {
             outbox = get(),
             syncStatus = get(),
             optimistic = get(),
+            // UGC compliance §4/§5 — passed EXPLICITLY (the VM ctor defaults are test-only no-ops).
+            reportPort = get(),
+            blockedAccounts = get(),
             analytics = get(),
         )
     }

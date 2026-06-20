@@ -7,6 +7,9 @@
     <string name="moderation_blocked_unblock_cta">Desbloquear</string>
     <string name="moderation_blocked_member_deleted">Usuario eliminado</string>
 
+    <!-- Success feedback -->
+    <string name="moderation_unblock_success">Usuario desbloqueado correctamente.</string>
+
     <!-- BlockError -->
     <string name="moderation_error_block_self">No puedes bloquearte a ti mismo.</string>
     <string name="moderation_error_block_unavailable">No se pudo actualizar tu lista de bloqueos. Revisa tu conexión e inténtalo de nuevo.</string>

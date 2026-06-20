@@ -9,7 +9,8 @@
     <string name="meal_classifier_load_failed">Ingredient detection unavailable</string>
     <string name="meal_ingredients_row_add">Add ingredients</string>
     <string name="meal_ingredients_row_summary">%1$d ingredients</string>
-    <string name="meal_description_moderation_warning">Heads up — this description may break the community guidelines.</string>
+    <string name="meal_description_moderation_warning">This description may break the community guidelines. Please rephrase it to publish.</string>
+    <string name="meal_dish_moderation_warning">This dish name may break the community guidelines. Please rephrase it to publish.</string>
 
     <string name="meal_compose_audience_label">Share with</string>
     <string name="meal_compose_audience_all">All crews</string>

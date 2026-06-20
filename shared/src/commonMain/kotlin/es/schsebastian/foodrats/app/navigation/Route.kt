@@ -37,6 +37,14 @@ sealed interface Route {
 
     @Serializable data object NotificationPermission : Protected
     @Serializable data object Consent : Protected
+
+    /**
+     * EULA re-acceptance gate shown when the user has never accepted or when [CURRENT_EULA_VERSION]
+     * was bumped since their last acceptance (UGC compliance §6). [Protected]: a signed-out user is
+     * routed to [SignIn] first; the gate only fires for authenticated users who need to re-accept.
+     * Once accepted, the stage machine re-emits [RootStage.Ready] and navigation proceeds to [Main].
+     */
+    @Serializable data object EulaGate : Protected
     @Serializable data object CrewPicker : Protected
     @Serializable data class CrewSettings(val crewId: String) : Protected
 
@@ -100,6 +108,7 @@ fun Route.requiresSession(): Boolean = when (this) {
 
     Route.NotificationPermission,
     Route.Consent,
+    Route.EulaGate,
     Route.CrewPicker,
     is Route.CrewSettings,
     is Route.InvitePreview,

@@ -15,8 +15,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +39,7 @@ import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.image.rememberThumbHashPainter
@@ -62,11 +69,21 @@ fun FrFeedMealRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onReact: () -> Unit = {},
+    /** Open the report sheet targeting the meal (UGC compliance §4). */
+    onReportMeal: () -> Unit = {},
+    /** Open the report sheet targeting the meal's author (UGC compliance §4). */
+    onReportAuthor: () -> Unit = {},
+    /**
+     * Request to block the meal's author; the screen must present a [FrConfirmDialog] before this
+     * actually fires the block write (UGC compliance §5).
+     */
+    onBlockAuthor: () -> Unit = {},
 ) {
     val semantic = LocalFrSemanticColors.current
     val avg = ui.averageScore
     val hasVotes = avg != null && ui.ratingCount > 0
     val avgRounded = avg?.let { (round(it * 10) / 10.0).toString() }
+    var overflowExpanded by remember { mutableStateOf(false) }
 
     FrCard(
         modifier = modifier.fillMaxWidth(),
@@ -121,12 +138,47 @@ fun FrFeedMealRow(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
             ) {
-                FrText(
-                    text = ui.dishName,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                // Dish title + overflow UGC menu on the same row.
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    FrText(
+                        text = ui.dishName,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Box {
+                        FrIconButton(
+                            icon = FrIcons.MoreVert,
+                            onClick = { overflowExpanded = true },
+                            contentDescription = resolve(FeedStringKey.OverflowMenuCd),
+                        )
+                        DropdownMenu(
+                            expanded = overflowExpanded,
+                            onDismissRequest = { overflowExpanded = false },
+                        ) {
+                            DropdownMenuItem(
+                                text = { FrText(resolve(FeedStringKey.ReportMealCta)) },
+                                onClick = { overflowExpanded = false; onReportMeal() },
+                                leadingIcon = { FrIcon(FrIcons.Flag, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                            )
+                            DropdownMenuItem(
+                                text = { FrText(resolve(FeedStringKey.ReportUserCta)) },
+                                onClick = { overflowExpanded = false; onReportAuthor() },
+                                leadingIcon = { FrIcon(FrIcons.Flag, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                            )
+                            DropdownMenuItem(
+                                text = { FrText(resolve(FeedStringKey.BlockAuthorCta), color = MaterialTheme.colorScheme.error) },
+                                onClick = { overflowExpanded = false; onBlockAuthor() },
+                                leadingIcon = { FrIcon(FrIcons.Block, tint = MaterialTheme.colorScheme.error) },
+                            )
+                        }
+                    }
+                }
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

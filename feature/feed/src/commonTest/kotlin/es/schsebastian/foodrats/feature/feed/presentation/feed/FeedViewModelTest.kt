@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.account.BlockError
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -51,6 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -64,6 +67,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class FixedClockTest(private val instant: Instant) : Clock {
@@ -148,6 +153,25 @@ class TerminalEntryOutboxPort(private val entries: List<OutboxEntry>) : OutboxPo
     override suspend fun requeue(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
 }
 
+/**
+ * Scriptable [BlockedAccountsPort] for [FeedViewModel]'s `blockedAccounts` constructor slot.
+ * Distinct from [es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort] which
+ * is used inside [ObserveFeedUseCase] for filtering. This one records block calls and allows scripting
+ * the result so the feed block-error path can be asserted.
+ */
+class FakeFeedBlockedAccountsPort(
+    var nextBlockResult: Result<Unit, BlockError> = Result.success(Unit),
+) : BlockedAccountsPort {
+    val blockCalls = mutableListOf<Pair<AccountId, AccountId>>()
+    override fun observeBlocked(owner: AccountId): Flow<Set<AccountId>> = flowOf(emptySet())
+    override suspend fun block(owner: AccountId, target: AccountId): Result<Unit, BlockError> {
+        blockCalls += owner to target
+        return nextBlockResult
+    }
+    override suspend fun unblock(owner: AccountId, target: AccountId): Result<Unit, BlockError> =
+        Result.success(Unit)
+}
+
 /** Records retry/dismiss calls so the queue-action intents can be asserted. */
 class FakeQueuedUploadActionsPort : QueuedUploadActionsPort {
     var retryCount = 0
@@ -219,6 +243,7 @@ class FeedViewModelTest {
         optimistic: RecordingOptimisticMealWritePort = RecordingOptimisticMealWritePort(),
         blockedAccounts: es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort =
             es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort(),
+        feedBlockedAccounts: BlockedAccountsPort = FakeFeedBlockedAccountsPort(),
     ) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(active, port, sessionProvider, blockedAccounts),
         rateMeal = RateMealUseCase(ratingPort, connectivity, outbox, optimistic),
@@ -235,6 +260,7 @@ class FeedViewModelTest {
         syncStatus = syncStatus,
         optimistic = optimistic,
         analytics = analytics,
+        blockedAccounts = feedBlockedAccounts,
     )
 
     @Test fun initial_state_today_with_meals() = runTest {
@@ -704,5 +730,54 @@ class FeedViewModelTest {
             assertEquals("m-1", s.meals.single().mealId)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // ─── Feed block author (UGC compliance §5) ──────────────────────────────────
+
+    @Test fun block_feed_author_success_sets_feedBlockSuccess_and_no_error() = runTest {
+        val blockPort = FakeFeedBlockedAccountsPort(nextBlockResult = Result.success(Unit))
+        val vm = buildVm(feedBlockedAccounts = blockPort)
+        runCurrent()
+        vm.onIntent(FeedIntent.BlockFeedAuthor("u-1"))
+        runCurrent()
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertTrue(s.feedBlockSuccess)
+            assertNull(s.feedBlockError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun block_feed_author_failure_surfaces_feedBlockError() = runTest {
+        val blockPort = FakeFeedBlockedAccountsPort(
+            nextBlockResult = Result.failure(BlockError.Write.Unavailable),
+        )
+        val vm = buildVm(feedBlockedAccounts = blockPort)
+        runCurrent()
+        vm.onIntent(FeedIntent.BlockFeedAuthor("u-1"))
+        runCurrent()
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertNotNull(s.feedBlockError, "a failed feed block must surface feedBlockError")
+            assertEquals(BlockError.Write.Unavailable, s.feedBlockError)
+            assertEquals(false, s.feedBlockSuccess)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun dismiss_feed_block_error_clears_the_error() = runTest {
+        val blockPort = FakeFeedBlockedAccountsPort(
+            nextBlockResult = Result.failure(BlockError.Write.Unavailable),
+        )
+        val vm = buildVm(feedBlockedAccounts = blockPort)
+        runCurrent()
+        vm.onIntent(FeedIntent.BlockFeedAuthor("u-1"))
+        runCurrent()
+        // Error is set…
+        assertNotNull(vm.state.value.feedBlockError)
+        // …dismiss clears it.
+        vm.onIntent(FeedIntent.DismissFeedBlockError)
+        runCurrent()
+        assertNull(vm.state.value.feedBlockError)
     }
 }
