@@ -281,8 +281,15 @@ fun FrFeedMealRow(
                 }
 
                 ui.viewerRating?.let { viewerRating ->
+                    // Honor the crew's score style here too; Stars keeps the ★ form, Emoji/Numeric
+                    // use the glyph-free "Tu voto: %s" so no ★ leaks next to the emoji/number.
+                    val yourVoteText = when (scoreStyle) {
+                        FrScoreStyle.Stars   -> resolve(FeedStringKey.YourVote, viewerRating)
+                        FrScoreStyle.Emoji   -> resolve(FeedStringKey.YourVoteGlyphFree, scoreToEmoji(viewerRating))
+                        FrScoreStyle.Numeric -> resolve(FeedStringKey.YourVoteGlyphFree, viewerRating.toString())
+                    }
                     FrText(
-                        text = resolve(FeedStringKey.YourVote, viewerRating),
+                        text = yourVoteText,
                         style = MaterialTheme.typography.labelMedium,
                         color = semantic.celebration,
                         maxLines = 1,

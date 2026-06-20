@@ -110,6 +110,7 @@ import foodrats.feature.feed.generated.resources.feed_location_map_cta
 import foodrats.feature.feed.generated.resources.feed_welcome_dismiss
 import foodrats.feature.feed.generated.resources.feed_weekly_challenge_label
 import foodrats.feature.feed.generated.resources.feed_your_vote
+import foodrats.feature.feed.generated.resources.feed_your_vote_glyph_free
 import foodrats.feature.feed.generated.resources.feed_badge_first
 import foodrats.feature.feed.generated.resources.feed_badge_ten
 import foodrats.feature.feed.generated.resources.feed_badge_fifty
@@ -241,4 +242,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     // C8b — glyph-free voter-row score used when scoreStyle ≠ Stars on the detail screen.
     // Takes %1$s = pre-rendered score string (e.g. "😋", "3").
     VoterScoreGlyphFree(Res.string.feed_voter_score_glyph_free),
+    // C8b — glyph-free "your vote" used on the feed card when scoreStyle ≠ Stars, so the
+    // viewer's own vote doesn't render a ★ next to the crew's emoji/numeric style.
+    // Takes %1$s = pre-rendered score string (e.g. "😍", "4").
+    YourVoteGlyphFree(Res.string.feed_your_vote_glyph_free),
 }
