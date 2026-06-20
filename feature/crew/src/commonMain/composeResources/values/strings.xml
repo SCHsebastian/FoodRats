@@ -83,4 +83,9 @@
     <string name="crew_settings_weekly_challenge_label">Weekly challenge</string>
     <string name="crew_settings_weekly_challenge_placeholder">e.g. "Taco Tuesday" or "Soup week" (max 80 chars)</string>
     <string name="crew_error_validation_weekly_challenge_too_long">Challenge is too long (max 80 characters).</string>
+    <string name="crew_settings_score_style_section">SCORE STYLE</string>
+    <string name="crew_settings_score_style_label">How scores appear</string>
+    <string name="crew_settings_score_style_stars">Stars (★ 4.2 · 3 votes)</string>
+    <string name="crew_settings_score_style_emoji">Emoji (😍 4.2 · 3 votes)</string>
+    <string name="crew_settings_score_style_numeric">Numeric (4.2 · 3 votes)</string>
 </resources>

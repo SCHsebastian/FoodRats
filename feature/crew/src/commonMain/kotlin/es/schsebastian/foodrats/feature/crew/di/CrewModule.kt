@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot
 import es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository
@@ -33,6 +34,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase
@@ -151,6 +153,16 @@ val crewModule = module {
                         is Result.Err -> null
                     }
                 }
+
+            // C8: live score-style per crew. Defaults to Stars on read failure or absent field
+            // (pre-C8 crews). Never emits null — callers can unconditionally treat the value.
+            override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> =
+                repo.observeCrew(crewId).map { r ->
+                    when (r) {
+                        is Result.Ok  -> r.value.scoreStyle
+                        is Result.Err -> CrewScoreStyle.Stars
+                    }
+                }
         }
     }
 
@@ -177,6 +189,7 @@ val crewModule = module {
     factoryOf(::SetCrewTaglineUseCase)
     factoryOf(::SetCrewWelcomeMessageUseCase)
     factoryOf(::SetCrewWeeklyChallengeUseCase)
+    factoryOf(::SetCrewScoreStyleUseCase)
     factoryOf(::RemoveMemberUseCase)
 
     viewModel {
@@ -205,6 +218,7 @@ val crewModule = module {
             setCrewTagline = get(),
             setCrewWelcomeMessage = get(),
             setCrewWeeklyChallenge = get(),
+            setCrewScoreStyle = get(),
             leaveCrew = get(),
             removeMember = get(),
             session = get(),

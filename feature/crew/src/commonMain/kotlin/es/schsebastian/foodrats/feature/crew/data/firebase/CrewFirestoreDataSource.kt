@@ -260,6 +260,14 @@ class CrewFirestoreDataSource(
         }.getOrElse { Result.failure(errorMapper.map(it)) }
     }
 
+    override suspend fun setScoreStyle(crewId: CrewId, style: String): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("scoreStyle" to style)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
     companion object { const val MAX_CODE_ATTEMPTS = 5 }
 }
 

@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
 import es.schsebastian.foodrats.core.domain.account.Account
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
@@ -56,6 +57,10 @@ data class CrewSettingsState(
     /** True once [editingWeeklyChallenge] has been seeded from the first crew snapshot. */
     val weeklyChallengeSeeded: Boolean = false,
     val isSavingWeeklyChallenge: Boolean = false,
+    /** True while a score-style write is in flight (C8). */
+    val isSavingScoreStyle: Boolean = false,
+    /** True once the score-style picker sheet is showing. */
+    val showScoreStylePicker: Boolean = false,
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {
@@ -91,6 +96,15 @@ sealed interface CrewSettingsIntent : MviIntent {
     data class WeeklyChallengeChanged(val value: String) : CrewSettingsIntent
     /** Owner tapped "Save" on the weekly challenge field. */
     data object SaveWeeklyChallenge : CrewSettingsIntent
+
+    // ── Score style (C8) ─────────────────────────────────────────────────────────────────────────
+
+    /** Owner tapped the Score-style row; show the picker sheet. */
+    data object OpenScoreStylePicker : CrewSettingsIntent
+    /** Owner dismissed the picker without selecting. */
+    data object DismissScoreStylePicker : CrewSettingsIntent
+    /** Owner selected [style] from the picker (optimistic; rolls back on error). */
+    data class SetScoreStyle(val style: CrewScoreStyle) : CrewSettingsIntent
 }
 
 sealed interface CrewSettingsEffect : MviEffect {

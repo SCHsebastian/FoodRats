@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.data.firebase
 
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -65,6 +66,12 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
     val weeklyChallengeSetAt = weeklyChallengeSetAtMillis?.let { ms ->
         Instant.fromEpochMilliseconds(ms)
     }
+    // scoreStyle: absent / unknown string ⇒ Stars (pre-C8 crews keep legacy behavior).
+    val scoreStyle = when (scoreStyle) {
+        "emoji"   -> CrewScoreStyle.Emoji
+        "numeric" -> CrewScoreStyle.Numeric
+        else      -> CrewScoreStyle.Stars  // "stars" or unknown
+    }
     return Result.success(
         Crew.of(
             id = crewId,
@@ -78,6 +85,14 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             welcomeMessage = welcomeMessage,
             weeklyChallenge = weeklyChallenge,
             weeklyChallengeSetAt = weeklyChallengeSetAt,
+            scoreStyle = scoreStyle,
         ),
     )
+}
+
+/** Maps a [CrewScoreStyle] to the Firestore string stored in [CrewDto.scoreStyle]. */
+fun CrewScoreStyle.toDto(): String = when (this) {
+    CrewScoreStyle.Stars   -> "stars"
+    CrewScoreStyle.Emoji   -> "emoji"
+    CrewScoreStyle.Numeric -> "numeric"
 }

@@ -29,4 +29,9 @@ data class CrewDto(
     // together (affectedKeys rule arm). Null-pinned to prevent GitLive encodeDefaults regression.
     val weeklyChallenge: String? = null,
     val weeklyChallengeSetAtMillis: Long? = null,
+    // Owner-settable Score vocabulary (C8): "stars" | "emoji" | "numeric". Absent / unknown ⇒ "stars"
+    // (pre-C8 crews). Non-null with a default so GitLive encodeDefaults=true sends the default "stars"
+    // on create — this is INTENTIONAL: the create whitelist now includes `scoreStyle`, and the default
+    // value "stars" is a valid allowed string, so the initial create write is always permitted.
+    val scoreStyle: String = "stars",
 )

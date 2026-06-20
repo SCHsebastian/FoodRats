@@ -90,4 +90,11 @@ interface CrewDataSource {
      * `['weeklyChallenge','weeklyChallengeSetAtMillis']` Firestore rule arm enforces this.
      */
     suspend fun setWeeklyChallenge(crewId: CrewId, challenge: String?, setAtMillis: Long?): Result<Unit, CrewError>
+
+    /**
+     * Sets the crew's Score display vocabulary (C8). [style] is the Firestore string
+     * ("stars" | "emoji" | "numeric"). Updates only the `scoreStyle` field — the
+     * `['scoreStyle']` Firestore rule arm enforces this.
+     */
+    suspend fun setScoreStyle(crewId: CrewId, style: String): Result<Unit, CrewError>
 }

@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.domain.model
 
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -59,6 +60,12 @@ data class Crew(
      * check. `null` when no challenge is set.
      */
     val weeklyChallengeSetAt: Instant? = null,
+    /**
+     * The crew's chosen Score vocabulary (C8). Defaults to [CrewScoreStyle.Stars] so pre-C8 crews
+     * behave exactly as before. Owner-settable via
+     * [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase].
+     */
+    val scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
 ) {
     val size: Int get() = members.size
 
@@ -93,6 +100,7 @@ data class Crew(
             welcomeMessage: WelcomeMessage? = null,
             weeklyChallenge: WeeklyChallenge? = null,
             weeklyChallengeSetAt: Instant? = null,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt)
+            scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle)
     }
 }

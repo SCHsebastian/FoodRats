@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.domain.account.BlockError
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.ReactionError
@@ -91,6 +92,12 @@ data class FeedState(
      * Derived from [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeWeeklyChallenge].
      */
     val weeklyChallenge: String? = null,
+    /**
+     * Active crew's chosen Score display vocabulary (C8). Defaults to [FrScoreStyle.Stars] for
+     * pre-C8 crews. Passed to the meal-card rating summary and the voting picker in the detail screen.
+     * Derived from [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeScoreStyle].
+     */
+    val scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
 ) : MviState
 
 /**

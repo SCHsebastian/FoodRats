@@ -4,9 +4,9 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlinx.coroutines.flow.Flow
 
 /**
- * Live welcome-message, dismissal state, and weekly-challenge for a crew. Consumed by
- * `:feature:feed` to show a dismissible welcome banner and a weekly challenge chip without
- * depending on `:feature:crew`.
+ * Live welcome-message, dismissal state, weekly-challenge, and score style for a crew. Consumed by
+ * `:feature:feed` to show a dismissible welcome banner, a weekly challenge chip, and the
+ * crew-chosen Score vocabulary — all without depending on `:feature:crew`.
  *
  * Lives in `:core:domain` — mirroring [CrewBlindVotingPort] — and is bound in `crewModule`.
  *
@@ -16,6 +16,8 @@ import kotlinx.coroutines.flow.Flow
  * since a failed dismissal just re-shows the banner).
  * [observeWeeklyChallenge] emits the raw challenge text + setAt epoch millis; both `null` when no
  * challenge is set. The feed performs the 7-day expiry check client-side.
+ * [observeScoreStyle] emits the crew's chosen [CrewScoreStyle]; defaults to [CrewScoreStyle.Stars]
+ * when the field is absent (pre-C8 crews) or unreadable.
  */
 interface CrewWelcomePort {
     /** Emits the crew's current welcome message, or `null` when none is set. */
@@ -33,6 +35,12 @@ interface CrewWelcomePort {
      * [WeeklyChallengeSnapshot.setAtMillis].
      */
     fun observeWeeklyChallenge(crewId: CrewId): Flow<WeeklyChallengeSnapshot?>
+
+    /**
+     * Emits the crew's chosen Score display vocabulary (C8). Defaults to [CrewScoreStyle.Stars]
+     * for pre-C8 crews (no stored field ⇒ legacy behavior preserved). Never emits `null`.
+     */
+    fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle>
 }
 
 /**

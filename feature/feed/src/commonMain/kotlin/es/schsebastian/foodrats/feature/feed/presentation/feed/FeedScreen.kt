@@ -236,6 +236,7 @@ fun FeedScreen(
                                         ui = ui,
                                         onClick = { onMealClick(ui.mealId, dayIso) },
                                         onReact = { vm.onIntent(FeedIntent.ReactMeal(ui.mealId)) },
+                                        scoreStyle = state.scoreStyle,
                                         // UGC compliance §4/§5 overflow menu callbacks.
                                         onReportMeal = {
                                             vm.onIntent(FeedIntent.OpenFeedReport(

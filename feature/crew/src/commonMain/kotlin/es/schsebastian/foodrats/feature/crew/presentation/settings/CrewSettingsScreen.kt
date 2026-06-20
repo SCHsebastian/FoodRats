@@ -56,6 +56,8 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsPicker
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
 import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
@@ -240,6 +242,15 @@ fun CrewSettingsScreen(
                             modifier = Modifier.frRiseIn(delayMillis = 140),
                         )
                     }
+
+                    item {
+                        ScoreStyleCard(
+                            current = crew.scoreStyle,
+                            saving = state.isSavingScoreStyle,
+                            onOpen = { vm.onIntent(CrewSettingsIntent.OpenScoreStylePicker) },
+                            modifier = Modifier.frRiseIn(delayMillis = 160),
+                        )
+                    }
                 }
 
                 item {
@@ -297,6 +308,36 @@ fun CrewSettingsScreen(
             onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmDelete) },
             onDismiss = { vm.onIntent(CrewSettingsIntent.CancelDelete) },
         )
+    }
+
+    // C8 — score-style bottom-sheet. Shown outside the LazyColumn so ModalBottomSheet renders
+    // as a proper overlay (can't be a LazyColumn item). Guard on `crew != null` so we can
+    // read the current scoreStyle for the initial selection.
+    if (state.showScoreStylePicker) {
+        state.crew?.let { c ->
+            FrSettingsPicker(
+                title = resolve(CrewStringKey.SettingsScoreStyleLabel),
+                options = listOf(
+                    "stars"   to resolve(CrewStringKey.SettingsScoreStyleStars),
+                    "emoji"   to resolve(CrewStringKey.SettingsScoreStyleEmoji),
+                    "numeric" to resolve(CrewStringKey.SettingsScoreStyleNumeric),
+                ),
+                selectedId = when (c.scoreStyle) {
+                    CrewScoreStyle.Stars   -> "stars"
+                    CrewScoreStyle.Emoji   -> "emoji"
+                    CrewScoreStyle.Numeric -> "numeric"
+                },
+                onDismiss = { vm.onIntent(CrewSettingsIntent.DismissScoreStylePicker) },
+                onSelect = { id ->
+                    val style = when (id) {
+                        "emoji"   -> CrewScoreStyle.Emoji
+                        "numeric" -> CrewScoreStyle.Numeric
+                        else      -> CrewScoreStyle.Stars
+                    }
+                    vm.onIntent(CrewSettingsIntent.SetScoreStyle(style))
+                },
+            )
+        }
     }
 
     memberPendingRemoval?.let { pendingId ->
@@ -747,6 +788,71 @@ private fun WeeklyChallengeCard(
                 enabled = !saving && challenge.trim() != savedChallenge,
                 modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
             )
+        }
+    }
+}
+
+/**
+ * Owner-only Score-style row (C8). Shows the section header, the currently-chosen style as a
+ * read-only label, and a tappable row that opens the [FrSettingsPicker] bottom sheet.
+ * The [FrSettingsPicker] itself is rendered outside the LazyColumn in [CrewSettingsScreen]
+ * to avoid nesting a ModalBottomSheet inside a list item.
+ */
+@Composable
+private fun ScoreStyleCard(
+    current: CrewScoreStyle,
+    saving: Boolean,
+    onOpen: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val currentLabel = when (current) {
+        CrewScoreStyle.Stars   -> resolve(CrewStringKey.SettingsScoreStyleStars)
+        CrewScoreStyle.Emoji   -> resolve(CrewStringKey.SettingsScoreStyleEmoji)
+        CrewScoreStyle.Numeric -> resolve(CrewStringKey.SettingsScoreStyleNumeric)
+    }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(
+            text = resolve(CrewStringKey.SettingsScoreStyleSection),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        FrCard(
+            modifier = Modifier.fillMaxWidth(),
+            onClick = if (saving) null else onOpen,
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                FrText(
+                    text = resolve(CrewStringKey.SettingsScoreStyleLabel),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                if (saving) {
+                    FrProgressIndicator(
+                        modifier = Modifier.size(Sizes.iconMd),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
+                    ) {
+                        FrText(
+                            text = currentLabel,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                        FrIcon(
+                            image = FrIcons.ChevronRight,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(Sizes.iconSm),
+                        )
+                    }
+                }
+            }
         }
     }
 }

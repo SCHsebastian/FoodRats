@@ -330,3 +330,58 @@ describe("crews — weeklyChallenge (owner-only, branch 9)", () => {
     );
   });
 });
+
+describe("crews — scoreStyle (owner-only, branch 10)", () => {
+  beforeEach(async () => {
+    await seedCrew(env, "c1", {
+      ownerId: "alice",
+      name: "C1",
+      memberIds: ["alice", "bob"],
+      members: { alice: {}, bob: {} },
+      scoreStyle: "stars",
+    });
+  });
+
+  it("the owner can set scoreStyle to 'emoji'", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/c1"), { scoreStyle: "emoji" }));
+  });
+
+  it("the owner can set scoreStyle to 'numeric'", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/c1"), { scoreStyle: "numeric" }));
+  });
+
+  it("the owner can set scoreStyle back to 'stars'", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/c1"), { scoreStyle: "stars" }));
+  });
+
+  it("a non-owner member CANNOT set the scoreStyle", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { scoreStyle: "emoji" }));
+  });
+
+  it("a stranger CANNOT set the scoreStyle", async () => {
+    const db = env.authenticatedContext("mallory").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { scoreStyle: "emoji" }));
+  });
+
+  it("an unknown scoreStyle value is rejected", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { scoreStyle: "hearts" }));
+  });
+
+  it("a non-string scoreStyle is rejected", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { scoreStyle: 1 }));
+  });
+
+  it("the scoreStyle branch CANNOT also smuggle an ownerId change", async () => {
+    // Branch (10) is gated by hasOnly(['scoreStyle']); touching ownerId fails every update branch.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), { scoreStyle: "emoji", ownerId: "bob" }),
+    );
+  });
+});

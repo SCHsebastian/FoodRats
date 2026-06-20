@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
@@ -15,6 +16,8 @@ import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
 import es.schsebastian.foodrats.core.domain.meal.CommentError
@@ -81,6 +84,10 @@ class MealDetailViewModel(
     private val ingredientRead: IngredientReadPort,
     private val activeCrew: ActiveCrewProvider,
     private val blindVoting: CrewBlindVotingPort,
+    // C8 — active crew's Score vocabulary, so the voting picker renders Stars/Emoji/Numeric to
+    // match the feed. Default no-op keeps the large existing test surface compiling; the Koin
+    // binding passes the real port explicitly.
+    private val welcomePort: CrewWelcomePort = NoopMealDetailWelcomePort,
     private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
@@ -122,6 +129,33 @@ class MealDetailViewModel(
                 else blindVoting.observeBlindVoting(crewId)
             }
             .distinctUntilChanged()
+
+    /**
+     * Live Score vocabulary for the active crew (C8) → presentation [FrScoreStyle]. Mirrors
+     * [blindVotingFlow]: re-subscribes on crew switch, defaults to [FrScoreStyle.Stars] when no
+     * crew is active. Surfaced in [MealDetailState.scoreStyle] so the voting picker matches the feed.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val scoreStyleFlow =
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(FrScoreStyle.Stars)
+                else welcomePort.observeScoreStyle(crewId).map { domain ->
+                    when (domain) {
+                        CrewScoreStyle.Stars   -> FrScoreStyle.Stars
+                        CrewScoreStyle.Emoji   -> FrScoreStyle.Emoji
+                        CrewScoreStyle.Numeric -> FrScoreStyle.Numeric
+                    }
+                }
+            }
+            .distinctUntilChanged()
+
+    init {
+        viewModelScope.launch {
+            scoreStyleFlow.collect { style -> update { it.copy(scoreStyle = style) } }
+        }
+    }
 
     init {
         val parsedDay = runCatching { LocalDate.parse(dayIso) }.getOrNull()
@@ -541,4 +575,15 @@ private object NoopBlockedAccountsPort : BlockedAccountsPort {
         owner: AccountId,
         target: AccountId,
     ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
+}
+
+/** No-op [CrewWelcomePort] default for [MealDetailViewModel] tests — always Stars (C8). */
+private object NoopMealDetailWelcomePort : CrewWelcomePort {
+    override fun observeWelcomeMessage(crewId: CrewId): Flow<String?> = flowOf(null)
+    override fun isWelcomeDismissed(crewId: CrewId): Flow<Boolean> = flowOf(false)
+    override suspend fun dismissWelcome(crewId: CrewId) = Unit
+    override fun observeWeeklyChallenge(
+        crewId: CrewId,
+    ): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
+    override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
 }

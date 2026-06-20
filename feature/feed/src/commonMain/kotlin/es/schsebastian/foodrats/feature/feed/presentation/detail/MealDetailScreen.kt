@@ -79,6 +79,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportSheet
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
@@ -467,7 +468,12 @@ private fun MealDetailBody(
 
                 Box(modifier = Modifier.frRiseIn(delayMillis = 180)) { ScoreStoryCard(meal) }
 
-                RatingSection(meal = meal, pendingRate = state.pendingRate, onIntent = onIntent)
+                RatingSection(
+                    meal = meal,
+                    pendingRate = state.pendingRate,
+                    scoreStyle = state.scoreStyle,
+                    onIntent = onIntent,
+                )
 
                 if (meal.votes.isNotEmpty()) VotersCard(meal)
 
@@ -747,7 +753,12 @@ private fun ScoreStoryCard(meal: FeedMealUi) {
 }
 
 @Composable
-private fun RatingSection(meal: FeedMealUi, pendingRate: Boolean, onIntent: (MealDetailIntent) -> Unit) {
+private fun RatingSection(
+    meal: FeedMealUi,
+    pendingRate: Boolean,
+    scoreStyle: FrScoreStyle,
+    onIntent: (MealDetailIntent) -> Unit,
+) {
     val celebration = LocalFrSemanticColors.current.celebration
     // Captured while still on the picker stage; stays null until the viewer votes this session.
     val initialRating = remember { meal.viewerRating }
@@ -780,6 +791,7 @@ private fun RatingSection(meal: FeedMealUi, pendingRate: Boolean, onIntent: (Mea
                 FrStarRatingPicker(
                     onSelect = { score -> onIntent(MealDetailIntent.RateMeal(score)) },
                     enabled = !pendingRate,
+                    style = scoreStyle,
                 )
             }
         }

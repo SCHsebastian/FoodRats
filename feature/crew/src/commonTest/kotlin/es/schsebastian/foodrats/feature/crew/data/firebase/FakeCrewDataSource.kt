@@ -47,6 +47,7 @@ class FakeCrewDataSource : CrewDataSource {
     var setTaglineResult: Result<Unit, CrewError> = Result.success(Unit)
     var setWelcomeMessageResult: Result<Unit, CrewError> = Result.success(Unit)
     var setWeeklyChallengeResult: Result<Unit, CrewError> = Result.success(Unit)
+    var setScoreStyleResult: Result<Unit, CrewError> = Result.success(Unit)
 
     // ---- call captures ----
     var lastCreate: CreateCall? = null
@@ -60,6 +61,7 @@ class FakeCrewDataSource : CrewDataSource {
     var lastSetTagline: Pair<CrewId, String?>? = null
     var lastSetWelcomeMessage: Pair<CrewId, String?>? = null
     var lastSetWeeklyChallenge: Triple<CrewId, String?, Long?>? = null
+    var lastSetScoreStyle: Pair<CrewId, String>? = null
 
     data class CreateCall(val name: String, val founder: AccountId, val nowMs: Long)
     data class JoinCall(val code: CrewCode, val joiner: AccountId, val nowMs: Long)
@@ -137,5 +139,10 @@ class FakeCrewDataSource : CrewDataSource {
     override suspend fun setWeeklyChallenge(crewId: CrewId, challenge: String?, setAtMillis: Long?): Result<Unit, CrewError> {
         lastSetWeeklyChallenge = Triple(crewId, challenge, setAtMillis)
         return setWeeklyChallengeResult
+    }
+
+    override suspend fun setScoreStyle(crewId: CrewId, style: String): Result<Unit, CrewError> {
+        lastSetScoreStyle = crewId to style
+        return setScoreStyleResult
     }
 }

@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -17,6 +18,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase
@@ -37,6 +39,7 @@ class CrewSettingsViewModel(
     private val setCrewTagline: SetCrewTaglineUseCase,
     private val setCrewWelcomeMessage: SetCrewWelcomeMessageUseCase,
     private val setCrewWeeklyChallenge: SetCrewWeeklyChallengeUseCase,
+    private val setCrewScoreStyle: SetCrewScoreStyleUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val removeMember: RemoveMemberUseCase,
     private val session: SessionProvider,
@@ -104,6 +107,9 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.SaveWelcomeMessage -> doSaveWelcomeMessage()
         is CrewSettingsIntent.WeeklyChallengeChanged -> update { it.copy(editingWeeklyChallenge = intent.value) }
         CrewSettingsIntent.SaveWeeklyChallenge -> doSaveWeeklyChallenge()
+        CrewSettingsIntent.OpenScoreStylePicker -> update { it.copy(showScoreStylePicker = true) }
+        CrewSettingsIntent.DismissScoreStylePicker -> update { it.copy(showScoreStylePicker = false) }
+        is CrewSettingsIntent.SetScoreStyle -> doSetScoreStyle(intent.style)
     }
 
     private suspend fun doSaveCrewName() {
@@ -202,6 +208,17 @@ class CrewSettingsViewModel(
                     error = r.error,
                 )
             }
+        }
+    }
+
+    private suspend fun doSetScoreStyle(style: CrewScoreStyle) {
+        // Optimistic: close the picker immediately. The live crew listener re-emits the actual
+        // value from Firestore, so we do not need an explicit rollback — just clear the saving
+        // flag and surface the error on failure.
+        update { it.copy(isSavingScoreStyle = true, showScoreStylePicker = false, error = null) }
+        when (val r = setCrewScoreStyle(crewId, style)) {
+            is Result.Ok  -> update { it.copy(isSavingScoreStyle = false) }
+            is Result.Err -> update { it.copy(isSavingScoreStyle = false, error = r.error) }
         }
     }
 

@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.domain.repository
 
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -71,6 +72,12 @@ interface CrewRepository {
         challenge: String?,
         setAtMillis: Long?,
     ): Result<Unit, CrewError>
+
+    /**
+     * Sets the crew's Score display vocabulary (C8). Only the owner may change it.
+     * Authorization is enforced in both the repository and by the `['scoreStyle']` Firestore rule arm.
+     */
+    suspend fun setScoreStyle(crewId: CrewId, requestedBy: AccountId, style: CrewScoreStyle): Result<Unit, CrewError>
 
     /**
      * Removes [target] from the crew. Only the owner ([requestedBy]) may remove a member, and the

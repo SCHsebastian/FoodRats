@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
@@ -48,6 +49,11 @@ data class MealDetailState(
     val blockError: es.schsebastian.foodrats.core.domain.account.BlockError? = null,
     /** Transient success toast shown after a block succeeds. */
     val blockSuccess: Boolean = false,
+    /**
+     * Active crew's chosen Score display vocabulary (C8). Defaults to [FrScoreStyle.Stars] for
+     * pre-C8 crews. Drives the voting picker so it matches the feed meal-card badge.
+     */
+    val scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
 ) : MviState
 
 /**

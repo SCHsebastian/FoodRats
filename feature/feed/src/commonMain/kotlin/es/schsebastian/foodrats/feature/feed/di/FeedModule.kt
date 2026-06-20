@@ -71,6 +71,8 @@ val feedModule = module {
             ingredientRead = get(),
             activeCrew = get(),
             blindVoting = get(),
+            // C8 — passed EXPLICITLY so the noop default never short-circuits graph resolution.
+            welcomePort = get(),
             session = get(),
             clock = get(),
             zone = get(),

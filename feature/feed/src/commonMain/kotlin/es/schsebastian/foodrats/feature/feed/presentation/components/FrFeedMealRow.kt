@@ -36,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
+import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
@@ -78,6 +80,8 @@ fun FrFeedMealRow(
      * actually fires the block write (UGC compliance §5).
      */
     onBlockAuthor: () -> Unit = {},
+    /** Active crew's chosen Score display vocabulary (C8). Defaults to Stars for pre-C8 crews. */
+    scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
 ) {
     val semantic = LocalFrSemanticColors.current
     val avg = ui.averageScore
@@ -123,9 +127,10 @@ fun FrFeedMealRow(
                     }
                 }
                 if (avg != null && avgRounded != null && ui.ratingCount > 0) {
-                    val rounded = round(avg).toInt().coerceIn(1, 10)
-                    StarScoreBadge(
+                    val rounded = round(avg).toInt().coerceIn(1, 5)
+                    ScoreBadge(
                         score = rounded,
+                        style = scoreStyle,
                         contentDescription = resolve(FeedStringKey.RatingSummary, avgRounded, ui.ratingCount),
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
@@ -227,9 +232,15 @@ fun FrFeedMealRow(
                         maxLines = 1,
                     )
                     Dot()
-                    if (hasVotes && avgRounded != null) {
+                    if (hasVotes && avgRounded != null && avg != null) {
+                        val rounded = round(avg).toInt().coerceIn(1, 5)
+                        val scoreSummary = when (scoreStyle) {
+                            FrScoreStyle.Stars   -> resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, avgRounded, ui.ratingCount)
+                            FrScoreStyle.Emoji   -> resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, scoreToEmoji(rounded), ui.ratingCount)
+                            FrScoreStyle.Numeric -> resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, avgRounded, ui.ratingCount)
+                        }
                         FrText(
-                            text = resolvePlural(FeedPluralKey.RatingSummaryVotes, ui.ratingCount, avgRounded, ui.ratingCount),
+                            text = scoreSummary,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary,
                             maxLines = 1,
@@ -369,40 +380,80 @@ private fun IngredientChip(label: String, modifier: Modifier = Modifier) {
 }
 
 /**
- * Star-shaped score badge overlaid on the feed thumbnail (replaces the old circular badge):
- * a celebration-tinted star with the rounded score centred on it, backed by a surface-coloured
- * star halo so it reads on any photo.
+ * Score badge overlaid on the feed thumbnail. Rendering varies by [style]:
+ * - [FrScoreStyle.Stars] — star-shaped, celebration-tinted (legacy appearance).
+ * - [FrScoreStyle.Emoji] — circular chip showing the emoji for [score].
+ * - [FrScoreStyle.Numeric] — circular chip showing the raw numeric value.
+ *
+ * All three variants share the same [Sizes.scoreStar] footprint so the thumbnail
+ * layout is undisturbed by a crew's style choice.
  */
 @Composable
-private fun StarScoreBadge(
+private fun ScoreBadge(
     score: Int,
+    style: FrScoreStyle,
     contentDescription: String,
     modifier: Modifier = Modifier,
 ) {
     val semantic = LocalFrSemanticColors.current
-    Box(
-        modifier = modifier
-            .size(Sizes.scoreStar)
-            .semantics(mergeDescendants = true) { this.contentDescription = contentDescription },
-        contentAlignment = Alignment.Center,
-    ) {
-        FrIcon(
-            image = FrIcons.Star,
-            tint = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.size(Sizes.scoreStar),
-        )
-        FrIcon(
-            image = FrIcons.Star,
-            tint = semantic.celebration,
-            modifier = Modifier.size(Sizes.scoreStar - Spacing.xs),
-        )
-        FrText(
-            text = score.toString(),
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = semantic.onCelebration,
-            // Nudge up to the star's optical centre — the lower points pull weight down.
-            modifier = Modifier.offset(y = -Spacing.xxs),
-        )
+    when (style) {
+        FrScoreStyle.Stars -> {
+            Box(
+                modifier = modifier
+                    .size(Sizes.scoreStar)
+                    .semantics(mergeDescendants = true) { this.contentDescription = contentDescription },
+                contentAlignment = Alignment.Center,
+            ) {
+                FrIcon(
+                    image = FrIcons.Star,
+                    tint = MaterialTheme.colorScheme.surface,
+                    modifier = Modifier.size(Sizes.scoreStar),
+                )
+                FrIcon(
+                    image = FrIcons.Star,
+                    tint = semantic.celebration,
+                    modifier = Modifier.size(Sizes.scoreStar - Spacing.xs),
+                )
+                FrText(
+                    text = score.toString(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = semantic.onCelebration,
+                    // Nudge up to the star's optical centre — the lower points pull weight down.
+                    modifier = Modifier.offset(y = -Spacing.xxs),
+                )
+            }
+        }
+        FrScoreStyle.Emoji -> {
+            Box(
+                modifier = modifier
+                    .size(Sizes.scoreStar)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f))
+                    .semantics(mergeDescendants = true) { this.contentDescription = contentDescription },
+                contentAlignment = Alignment.Center,
+            ) {
+                FrText(
+                    text = scoreToEmoji(score),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+        }
+        FrScoreStyle.Numeric -> {
+            Box(
+                modifier = modifier
+                    .size(Sizes.scoreStar)
+                    .clip(CircleShape)
+                    .background(semantic.celebration)
+                    .semantics(mergeDescendants = true) { this.contentDescription = contentDescription },
+                contentAlignment = Alignment.Center,
+            ) {
+                FrText(
+                    text = score.toString(),
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = semantic.onCelebration,
+                )
+            }
+        }
     }
 }
 

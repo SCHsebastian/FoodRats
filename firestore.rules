@@ -108,6 +108,13 @@ service cloud.firestore {
                        && (request.resource.data.weeklyChallenge == null || request.resource.data.weeklyChallenge is string)
                        && (request.resource.data.weeklyChallengeSetAtMillis == null || request.resource.data.weeklyChallengeSetAtMillis is int))
                       ||
+                      // (10) owner sets the scoreStyle vocabulary (C8). Only the three valid
+                      // string values are accepted; any unknown value or type is rejected.
+                      (request.auth.uid in resource.data.memberIds
+                       && resource.data.ownerId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreStyle'])
+                       && request.resource.data.scoreStyle in ['stars', 'emoji', 'numeric'])
+                      ||
                       (request.auth.uid in resource.data.memberIds
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
                       ||

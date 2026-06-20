@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
@@ -9,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -215,6 +217,7 @@ class FeedViewModel(
         observeReactions()
         observeWelcomeBanner()
         observeWeeklyChallengeBanner()
+        observeScoreStyle()
     }
 
     /**
@@ -315,6 +318,31 @@ class FeedViewModel(
             }
             .distinctUntilChanged()
             .onEach { text -> update { it.copy(weeklyChallenge = text) } }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * Observes the active crew's Score display vocabulary (C8). Re-subscribes on crew switch via
+     * [flatMapLatest]; a null crew defaults to [FrScoreStyle.Stars] (no active crew = safe default).
+     * Maps domain [CrewScoreStyle] → presentation [FrScoreStyle] here so feature/feed stays free
+     * of a direct domain-to-DS-type dependency in the VM (the mapping is a single-line when).
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeScoreStyle() {
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(FrScoreStyle.Stars)
+                else welcomePort.observeScoreStyle(crewId).map { domain ->
+                    when (domain) {
+                        CrewScoreStyle.Stars   -> FrScoreStyle.Stars
+                        CrewScoreStyle.Emoji   -> FrScoreStyle.Emoji
+                        CrewScoreStyle.Numeric -> FrScoreStyle.Numeric
+                    }
+                }
+            }
+            .distinctUntilChanged()
+            .onEach { style -> update { it.copy(scoreStyle = style) } }
             .launchIn(viewModelScope)
     }
 
@@ -600,4 +628,5 @@ private object NoopCrewWelcomePort : CrewWelcomePort {
     override fun isWelcomeDismissed(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<Boolean> = flowOf(false)
     override suspend fun dismissWelcome(crewId: es.schsebastian.foodrats.core.domain.model.CrewId) = Unit
     override fun observeWeeklyChallenge(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
+    override fun observeScoreStyle(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
 }

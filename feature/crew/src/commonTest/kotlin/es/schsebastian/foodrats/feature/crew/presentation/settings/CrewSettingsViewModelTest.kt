@@ -27,6 +27,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
@@ -401,6 +402,7 @@ class CrewSettingsViewModelTest {
             setCrewTagline = SetCrewTaglineUseCase(repo, session),
             setCrewWelcomeMessage = SetCrewWelcomeMessageUseCase(repo, session),
             setCrewWeeklyChallenge = SetCrewWeeklyChallengeUseCase(repo, session, FixedClock(Instant.fromEpochMilliseconds(1700000000000))),
+            setCrewScoreStyle = SetCrewScoreStyleUseCase(repo, session),
             leaveCrew = LeaveCrewUseCase(repo, connectivity, outbox),
             removeMember = RemoveMemberUseCase(repo, session, connectivity, outbox),
             session = session,

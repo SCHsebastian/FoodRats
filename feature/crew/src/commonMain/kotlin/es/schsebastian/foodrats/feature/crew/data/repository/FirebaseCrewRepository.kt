@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.crew.data.repository
 
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
+import es.schsebastian.foodrats.feature.crew.data.firebase.toDto
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -184,6 +186,16 @@ internal class FirebaseCrewRepository(
         val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
         return dataSource.setWeeklyChallenge(crewId, challenge, setAtMillis)
+    }
+
+    override suspend fun setScoreStyle(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        style: CrewScoreStyle,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setScoreStyle(crewId, style.toDto())
     }
 
     override suspend fun removeMember(

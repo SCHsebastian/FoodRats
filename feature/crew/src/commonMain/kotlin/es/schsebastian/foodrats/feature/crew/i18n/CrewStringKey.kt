@@ -50,6 +50,11 @@ import foodrats.feature.crew.generated.resources.crew_error_validation_weekly_ch
 import foodrats.feature.crew.generated.resources.crew_settings_weekly_challenge_section
 import foodrats.feature.crew.generated.resources.crew_settings_weekly_challenge_label
 import foodrats.feature.crew.generated.resources.crew_settings_weekly_challenge_placeholder
+import foodrats.feature.crew.generated.resources.crew_settings_score_style_section
+import foodrats.feature.crew.generated.resources.crew_settings_score_style_label
+import foodrats.feature.crew.generated.resources.crew_settings_score_style_stars
+import foodrats.feature.crew.generated.resources.crew_settings_score_style_emoji
+import foodrats.feature.crew.generated.resources.crew_settings_score_style_numeric
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
@@ -171,4 +176,9 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsWeeklyChallengeLabel(Res.string.crew_settings_weekly_challenge_label),
     SettingsWeeklyChallengePlaceholder(Res.string.crew_settings_weekly_challenge_placeholder),
     ErrorValidationWeeklyChallengeTooLong(Res.string.crew_error_validation_weekly_challenge_too_long),
+    SettingsScoreStyleSection(Res.string.crew_settings_score_style_section),
+    SettingsScoreStyleLabel(Res.string.crew_settings_score_style_label),
+    SettingsScoreStyleStars(Res.string.crew_settings_score_style_stars),
+    SettingsScoreStyleEmoji(Res.string.crew_settings_score_style_emoji),
+    SettingsScoreStyleNumeric(Res.string.crew_settings_score_style_numeric),
 }

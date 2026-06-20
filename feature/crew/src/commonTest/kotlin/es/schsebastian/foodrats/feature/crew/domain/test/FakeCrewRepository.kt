@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
 import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
@@ -38,6 +39,8 @@ class FakeCrewRepository(
     var nextSetWeeklyChallenge: Result<Unit, CrewError>? = null
     /** When set, overrides the default removeMember behavior (ownership/self/membership checks + mutation). */
     var nextRemoveMember: Result<Unit, CrewError>? = null
+    /** When set, overrides the default setScoreStyle behavior (ownership check + mutation). */
+    var nextSetScoreStyle: Result<Unit, CrewError>? = null
 
     var lastRename: Pair<CrewId, String>? = null
     var lastMemberRename: Triple<CrewId, AccountId, String>? = null
@@ -193,6 +196,19 @@ class FakeCrewRepository(
         crews.value = crews.value.map {
             if (it.id == crewId) it.copy(weeklyChallenge = parsedChallenge, weeklyChallengeSetAt = setAt) else it
         }
+        return Result.success(Unit)
+    }
+
+    override suspend fun setScoreStyle(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        style: CrewScoreStyle,
+    ): Result<Unit, CrewError> {
+        nextSetScoreStyle?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        crews.value = crews.value.map { if (it.id == crewId) it.copy(scoreStyle = style) else it }
         return Result.success(Unit)
     }
 
