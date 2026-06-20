@@ -89,4 +89,12 @@ object Keys {
      * Owned by [es.schsebastian.foodrats.core.data.preferences.AiPreferenceRepository].
      */
     val AiUsageEnabled = StoreKey(booleanPreferencesKey("ai_usage_enabled"))
+
+    /**
+     * Pipe-delimited set of Crew ID strings representing the user's most recently chosen
+     * publish audience, e.g. `"crewId1|crewId2"`. Absent = no saved preference → callers
+     * default to all the user's current crews. Owned by
+     * [es.schsebastian.foodrats.core.data.preferences.DefaultAudienceRepository].
+     */
+    val DefaultAudienceCrewIds = StoreKey(stringPreferencesKey("default_audience_crew_ids"))
 }

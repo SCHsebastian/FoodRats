@@ -14,6 +14,7 @@ import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
+import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -254,6 +255,7 @@ val mealModule = module {
         CaptureMealViewModel(
             startDraft = get(), updateDraft = get(),
             sessionProvider = get(), crewMembership = get(),
+            defaultAudience = get<DefaultAudiencePort>(),
             analytics = get(),
         )
     }
@@ -264,6 +266,7 @@ val mealModule = module {
             clock = get(), zone = get(),
             // UGC §3 — explicit (default is a Clean no-op; the binding must inject the real port + tag).
             textModeration = get(), languageTag = get<Flow<String>>(ModerationLanguageTag),
+            defaultAudience = get<DefaultAudiencePort>(),
             analytics = get(),
         )
     }

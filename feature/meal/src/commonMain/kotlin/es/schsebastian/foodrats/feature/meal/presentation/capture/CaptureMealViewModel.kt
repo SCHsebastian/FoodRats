@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.CaptureSource
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
@@ -20,6 +21,8 @@ class CaptureMealViewModel(
     private val updateDraft: UpdateMealDraftUseCase,
     private val sessionProvider: SessionProvider,
     private val crewMembership: CrewMembershipPort,
+    // Noop default (null) keeps existing tests green; the Koin binding passes the real port.
+    private val defaultAudience: DefaultAudiencePort? = null,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<CaptureMealState, CaptureMealIntent, CaptureMealEffect>(CaptureMealState()) {
 
@@ -30,12 +33,18 @@ class CaptureMealViewModel(
                     is Result.Ok  -> r.value
                     is Result.Err -> { update { it.copy(error = MealStringKey.CaptureSessionError) }; return }
                 }
-                // Default the audience to ALL the author's crews; the composer lets the user
-                // narrow it before publishing. No crews → nothing to publish to.
-                val crewIds = crewMembership.observeMyCrews(session.accountId).first().map { it.id }.toSet()
-                if (crewIds.isEmpty()) { update { it.copy(error = MealStringKey.CaptureNoCrews) }; return }
+                val allCrewIds = crewMembership.observeMyCrews(session.accountId).first().map { it.id }.toSet()
+                if (allCrewIds.isEmpty()) { update { it.copy(error = MealStringKey.CaptureNoCrews) }; return }
+                // Seed the audience from the persisted default (intersected with current memberships),
+                // falling back to ALL crews when no preference has been saved or the saved set no
+                // longer intersects the user's current crews (e.g. they left every saved crew).
+                val savedDefault = defaultAudience?.defaultAudience?.first()
+                val audienceCrewIds = savedDefault
+                    ?.intersect(allCrewIds)
+                    ?.takeIf { it.isNotEmpty() }
+                    ?: allCrewIds
                 update { it.copy(error = null) }
-                startDraft(session.accountId, crewIds).also { result ->
+                startDraft(session.accountId, audienceCrewIds).also { result ->
                     if (result is Result.Err) update { it.copy(error = MealStringKey.CaptureDraftFailed) }
                     else analytics.track(AnalyticsEvent.MealCaptureStarted(CaptureSource.UNKNOWN))
                 }

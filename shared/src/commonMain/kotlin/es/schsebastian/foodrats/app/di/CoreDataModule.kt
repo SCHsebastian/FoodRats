@@ -13,6 +13,7 @@ import es.schsebastian.foodrats.core.data.preferences.EulaRepository
 import es.schsebastian.foodrats.core.data.preferences.LocaleRepository
 import es.schsebastian.foodrats.core.data.preferences.MealReminderScheduleRepository
 import es.schsebastian.foodrats.core.data.preferences.AiPreferenceRepository
+import es.schsebastian.foodrats.core.data.preferences.DefaultAudienceRepository
 import es.schsebastian.foodrats.core.data.preferences.NotificationsPreferenceRepository
 import es.schsebastian.foodrats.core.data.preferences.ThemeModeRepository
 import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
@@ -20,6 +21,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
+import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.preferences.EulaPort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
@@ -56,6 +58,9 @@ val coreDataModule = module {
     }
     single<AiPreferencePort> {
         AiPreferenceRepository(prefs = get(), dispatchers = get())
+    }
+    single<DefaultAudiencePort> {
+        DefaultAudienceRepository(prefs = get(), dispatchers = get())
     }
     single<MealReminderSchedulePort> {
         MealReminderScheduleRepository(prefs = get(), dispatchers = get())

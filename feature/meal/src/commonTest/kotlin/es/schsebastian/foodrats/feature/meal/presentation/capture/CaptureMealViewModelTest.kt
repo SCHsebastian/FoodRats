@@ -8,6 +8,8 @@ import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.preferences.DefaultAudienceError
+import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
@@ -58,17 +60,28 @@ class CaptureMealViewModelTest {
             MutableStateFlow(crews.map { CrewSummary(it, "Crew ${it.value}") })
     }
 
+    private class FakeDefaultAudiencePort(
+        private val saved: Set<CrewId>? = null,
+    ) : DefaultAudiencePort {
+        override val defaultAudience: Flow<Set<CrewId>?> = MutableStateFlow(saved)
+        override suspend fun set(crewIds: Set<CrewId>): Result<Unit, DefaultAudienceError> =
+            Result.success(Unit)
+    }
+
     private val analytics = RecordingAnalyticsTracker()
+    private val crew2 = (CrewId.of("crew-2") as Result.Ok).value
 
     private fun viewModel(
         repo: FakeMealRepository = FakeMealRepository(),
         session: Session? = Session(account, crew),
         crews: List<CrewId> = listOf(crew),
+        savedDefaultAudience: Set<CrewId>? = null,
     ) = CaptureMealViewModel(
         startDraft = StartMealDraftUseCase(repo, clock, zone),
         updateDraft = UpdateMealDraftUseCase(repo),
         sessionProvider = FakeSessionProvider(session),
         crewMembership = FakeCrewMembership(crews),
+        defaultAudience = FakeDefaultAudiencePort(savedDefaultAudience),
         analytics = analytics,
     )
 
@@ -117,5 +130,51 @@ class CaptureMealViewModelTest {
             assertEquals(MealStringKey.CaptureDraftFailed, expectMostRecentItem().error)
         }
         assertEquals(emptyList(), analytics.events)
+    }
+
+    @Test fun no_saved_default_seeds_draft_with_all_crews() = runTest {
+        val repo = FakeMealRepository()
+        val crews = listOf(crew, crew2)
+        val vm = viewModel(repo = repo, crews = crews, savedDefaultAudience = null)
+        vm.state.test {
+            vm.onIntent(CaptureMealIntent.Start)
+            expectMostRecentItem()
+        }
+        repo.observeDraft().test {
+            val draft = awaitItem()
+            assertEquals(setOf(crew, crew2), draft?.audienceCrewIds)
+        }
+    }
+
+    @Test fun saved_default_seeds_draft_with_saved_subset() = runTest {
+        val repo = FakeMealRepository()
+        // Only crew is in the saved default; crew2 is available but not saved.
+        val crews = listOf(crew, crew2)
+        val vm = viewModel(repo = repo, crews = crews, savedDefaultAudience = setOf(crew))
+        vm.state.test {
+            vm.onIntent(CaptureMealIntent.Start)
+            expectMostRecentItem()
+        }
+        repo.observeDraft().test {
+            val draft = awaitItem()
+            assertEquals(setOf(crew), draft?.audienceCrewIds)
+        }
+    }
+
+    @Test fun saved_default_outside_current_crews_falls_back_to_all_crews() = runTest {
+        // The saved default references a crew the user has since left.
+        val leftCrew = (CrewId.of("left-crew") as Result.Ok).value
+        val repo = FakeMealRepository()
+        val crews = listOf(crew)
+        val vm = viewModel(repo = repo, crews = crews, savedDefaultAudience = setOf(leftCrew))
+        vm.state.test {
+            vm.onIntent(CaptureMealIntent.Start)
+            expectMostRecentItem()
+        }
+        repo.observeDraft().test {
+            val draft = awaitItem()
+            // Intersection is empty → fall back to all current crews.
+            assertEquals(setOf(crew), draft?.audienceCrewIds)
+        }
     }
 }

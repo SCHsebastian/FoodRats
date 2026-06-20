@@ -15,6 +15,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationVerdict
+import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -46,6 +47,8 @@ class ComposePlateViewModel(
     // Koin binding passes the real on-device port + active-language tag explicitly.
     private val textModeration: TextModerationPort = TextModerationPort { _, _ -> TextModerationVerdict.Clean },
     private val languageTag: Flow<String> = flowOf("en"),
+    // Noop default (null) keeps existing tests green; the Koin binding passes the real port.
+    private val defaultAudience: DefaultAudiencePort? = null,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<ComposePlateState, ComposePlateIntent, ComposePlateEffect>(ComposePlateState()) {
 
@@ -246,6 +249,9 @@ class ComposePlateViewModel(
                     updateDraft(UpdateMealDraftCommand.SetAudience(next))
                     update { it.copy(selectedCrewIds = next) }
                     recomputeTaken()
+                    // Fire-and-forget: persist the new selection as the default for the next
+                    // compose session. Failures are silently ignored (best-effort preference).
+                    defaultAudience?.set(next)
                 }
             }
             ComposePlateIntent.AllCrewsSelected -> {
@@ -254,6 +260,8 @@ class ComposePlateViewModel(
                     updateDraft(UpdateMealDraftCommand.SetAudience(all))
                     update { it.copy(selectedCrewIds = all) }
                     recomputeTaken()
+                    // Persist the "all crews" choice as the new default.
+                    defaultAudience?.set(all)
                 }
             }
             ComposePlateIntent.RequestLocation -> requestLocation()
