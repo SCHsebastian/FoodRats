@@ -35,4 +35,5 @@ class RecordingOutboxPort : OutboxPort {
     override suspend fun updateStatus(id: OutboxEntryId, status: OutboxEntryStatus): Result<Unit, OutboxError> =
         Result.success(Unit)
     override suspend fun remove(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun requeue(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
 }

@@ -150,14 +150,18 @@ class OutboxRunner(
                     }
                     if (scope != null && delayMs != null) scheduleRetry(scope, entry.id, delayMs)
                 } else {
+                    // Budget exhausted — this is now terminal. Notify the handler so it can
+                    // roll back any optimistic side-effects (e.g. the phantom rating star).
                     FrLog.w("Outbox") { "${entry.command::class.simpleName} exhausted retries; terminal" }
+                    handler.onTerminal(entry.command)
                 }
             }
             // A permanent failure (auth, invalid input) — retrying cannot fix it. Land
-            // terminal immediately, regardless of the attempt budget.
+            // terminal immediately, regardless of the attempt budget. Notify the handler.
             is OutboxExecuteResult.Terminal -> {
                 FrLog.w("Outbox") { "${entry.command::class.simpleName} terminal: ${r.errorKey}" }
                 outbox.markFailed(entry.id, r.errorKey, retryable = false)
+                handler.onTerminal(entry.command)
             }
         }
     }

@@ -197,6 +197,99 @@ class OutboxRunnerTest {
         assertTrue(box.observePending().first().isEmpty())
     }
 
+    // ─── C1: manual retry resets attempt budget ───────────────────────────────
+
+    /**
+     * A terminal entry has `attemptCount == maxAttempts`. If [OutboxPort.requeue] is called
+     * (user presses Retry) it must reset `attemptCount` to 0. On the next drain the runner
+     * then sees attempt 1 of `maxAttempts` — still retryable — granting a fresh backoff
+     * budget, rather than instantly landing terminal again (the bug this fixes).
+     */
+    @Test
+    fun requeue_grants_fresh_budget_so_runner_retries_rather_than_instantly_terminal() = runTest {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        // Drive to terminal: maxAttempts = 2, two Retryable results.
+        val handler = ScriptedRateHandler(
+            listOf(
+                OutboxExecuteResult.Retryable("rate.offline"),
+                OutboxExecuteResult.Retryable("rate.offline"),
+            ),
+        )
+        val policy = OutboxRetryPolicy(maxAttempts = 2)
+        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), policy)
+
+        runner.runOnce(scope = null)          // attempt 1 → Failed(retryable = true)
+        box.rearm(id)                          // proxy elapsed backoff
+        runner.runOnce(scope = null)          // attempt 2 → Failed(retryable = false, terminal)
+
+        val terminal = box.observePending().first().single { it.id == id }
+        assertEquals(2, terminal.attemptCount, "sanity: terminal with 2 attempts")
+        assertTrue((terminal.status as OutboxEntryStatus.Failed).let { !it.retryable }, "sanity: terminal")
+
+        // User-initiated retry via requeue (resets attemptCount = 0).
+        box.requeue(id)
+        val requeued = box.observePending().first().single { it.id == id }
+        assertEquals(0, requeued.attemptCount, "requeue must reset attemptCount to 0")
+        assertEquals(OutboxEntryStatus.Pending, requeued.status, "requeue must set status to Pending")
+
+        // Next drain: handler gets a fresh scripted outcome (success this time).
+        val finalHandler = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
+        val runner2 = OutboxRunner(box, listOf(finalHandler), FakeConnectivity(), policy)
+        runner2.runOnce(scope = null)
+
+        assertTrue(box.observePending().first().isEmpty(), "after success the entry must be removed")
+        assertEquals(1, finalHandler.executeCount, "entry replayed exactly once with fresh budget")
+    }
+
+    // ─── C3: Terminal runner path calls onTerminal ─────────────────────────────
+
+    /**
+     * When the runner receives [OutboxExecuteResult.Terminal] from a handler, it must call
+     * [OutboxCommandHandler.onTerminal] on that handler so side-effects (e.g. the phantom
+     * optimistic star) can be rolled back. Tests both the direct-Terminal path and the
+     * budget-exhausted path.
+     */
+    @Test
+    fun terminal_execute_result_calls_on_terminal() = runTest {
+        val box = outbox()
+        box.enqueue(rateCommand())
+        val onTerminalCalls = mutableListOf<PendingCommand>()
+        val handler = object : OutboxCommandHandler {
+            override fun handles(cmd: PendingCommand) = cmd is PendingCommand.RateMeal
+            override suspend fun execute(cmd: PendingCommand) =
+                OutboxExecuteResult.Terminal("rate.unauthorized")
+            override suspend fun onTerminal(command: PendingCommand) { onTerminalCalls += command }
+        }
+        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
+
+        runner.runOnce(scope = null)
+
+        assertEquals(1, onTerminalCalls.size, "onTerminal must fire once for a Terminal result")
+        assertTrue(onTerminalCalls.single() is PendingCommand.RateMeal)
+    }
+
+    @Test
+    fun budget_exhausted_calls_on_terminal() = runTest {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        val onTerminalCalls = mutableListOf<PendingCommand>()
+        val handler = object : OutboxCommandHandler {
+            override fun handles(cmd: PendingCommand) = cmd is PendingCommand.RateMeal
+            override suspend fun execute(cmd: PendingCommand) =
+                OutboxExecuteResult.Retryable("rate.offline")
+            override suspend fun onTerminal(command: PendingCommand) { onTerminalCalls += command }
+        }
+        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
+
+        runner.runOnce(scope = null) // attempt 1 → retryable
+        box.rearm(id)
+        runner.runOnce(scope = null) // attempt 2 → budget exhausted → terminal
+
+        assertEquals(1, onTerminalCalls.size, "onTerminal must fire once when budget is exhausted")
+        assertTrue(onTerminalCalls.single() is PendingCommand.RateMeal)
+    }
+
     @Test
     fun observePending_reflects_a_pending_entry_then_its_drain() = runTest {
         val box = outbox()

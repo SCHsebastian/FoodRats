@@ -25,6 +25,24 @@ interface OutboxCommandHandler {
      * failure.
      */
     suspend fun execute(cmd: PendingCommand): OutboxExecuteResult
+
+    /**
+     * Called by the runner whenever a command this handler [handles] reaches a
+     * TERMINAL state by either route:
+     *  - the handler itself returns [OutboxExecuteResult.Terminal],
+     *  - the retry budget is exhausted ([OutboxExecuteResult.Retryable] after
+     *    `maxAttempts` with `retryable = false`).
+     *
+     * (The no-handler-found case marks the entry terminal without a handler to
+     * notify, so `onTerminal` cannot — and need not — fire there.)
+     *
+     * Default is a no-op. Feature handlers override to clean up side-effects that
+     * were applied optimistically before the command was enqueued (e.g., rolling
+     * back a phantom rating star when [PendingCommand.RateMeal] lands terminal).
+     * The runner stays feature-free because it only calls this interface method —
+     * it never imports the feature's cleanup logic directly.
+     */
+    suspend fun onTerminal(command: PendingCommand) {}
 }
 
 /**

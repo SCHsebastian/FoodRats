@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
+import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.ReactionError
 import es.schsebastian.foodrats.core.domain.meal.ReactionKind
@@ -38,6 +39,7 @@ class MealOutboxCommandHandler(
     private val rating: MealRatingPort,
     private val comments: MealCommentPort,
     private val reactions: MealReactionPort,
+    private val optimistic: OptimisticMealWritePort,
 ) : OutboxCommandHandler {
 
     override fun handles(cmd: PendingCommand): Boolean = when (cmd) {
@@ -62,6 +64,20 @@ class MealOutboxCommandHandler(
         is PendingCommand.SetBlindVoting,
         is PendingCommand.RemoveMember,
         is PendingCommand.LeaveCrew -> OutboxExecuteResult.Terminal("outbox.error.wrongHandler")
+    }
+
+    /**
+     * When a [PendingCommand.RateMeal] command reaches a terminal state (permanent
+     * failure like [RateError.Unauthorized] / [RateError.CannotRateOwnMeal] /
+     * [RateError.RatingWindowClosed], or exhausted retry budget), the phantom
+     * optimistic star that was written before enqueue must be rolled back. Calls
+     * [OptimisticMealWritePort.clearPending] which is idempotent — safe to call even
+     * if the server snapshot already reconciled the row.
+     */
+    override suspend fun onTerminal(command: PendingCommand) {
+        if (command is PendingCommand.RateMeal) {
+            optimistic.clearPending(command.idempotencyKey)
+        }
     }
 
     private suspend fun rate(cmd: PendingCommand.RateMeal): OutboxExecuteResult =

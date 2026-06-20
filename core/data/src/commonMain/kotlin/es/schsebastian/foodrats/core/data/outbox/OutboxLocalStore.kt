@@ -124,6 +124,14 @@ class OutboxLocalStore(
     /** Remove the entry [id]; no-op if absent. */
     fun remove(id: OutboxEntryId) = queries.deleteById(id.value)
 
+    /**
+     * User-initiated retry: transition entry [id] back to `pending` with a fresh
+     * attempt budget (`attemptCount = 0`, `lastAttemptAt = null`). Only used via
+     * [OutboxRepository.requeue]; the automatic backoff re-arm path uses [update]
+     * and does NOT reset the count.
+     */
+    fun requeue(id: OutboxEntryId) = queries.requeueById(id.value)
+
     // ── command type discriminators (mirror the P2 CommandJson tags) ───────────
 
     private object CommandType {

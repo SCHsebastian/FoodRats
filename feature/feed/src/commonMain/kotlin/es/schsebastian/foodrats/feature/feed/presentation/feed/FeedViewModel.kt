@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
+import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.MealReactions
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
@@ -68,6 +69,7 @@ class FeedViewModel(
     private val connectivity: ConnectivityPort,
     private val outbox: OutboxPort,
     private val syncStatus: FeedSyncStatusPort,
+    private val optimistic: OptimisticMealWritePort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
     FeedState(
@@ -291,20 +293,34 @@ class FeedViewModel(
 
     /**
      * Re-arm every terminally-failed outbox entry (`Failed(retryable = false)`) by
-     * returning it to [OutboxEntryStatus.Pending], so the runner replays it on the
-     * next drain. Reads the current outbox snapshot once (single source of truth).
+     * requeueing it with a fresh attempt budget, so the runner grants a full backoff
+     * cycle on the next drain. Uses [OutboxPort.requeue] (not [OutboxPort.updateStatus])
+     * so `attemptCount` is reset to 0 — a terminal entry has `attemptCount == maxAttempts`,
+     * meaning the automatic path would see attempt N+1 and instantly land terminal again.
      */
     private suspend fun retrySyncOutbox() {
         val entries = outbox.observePending().first()
         entries.filter { it.status.let { s -> s is OutboxEntryStatus.Failed && !s.retryable } }
-            .forEach { outbox.updateStatus(it.id, OutboxEntryStatus.Pending) }
+            .forEach { outbox.requeue(it.id) }
     }
 
-    /** Drop every terminally-failed outbox entry from the outbox. */
+    /**
+     * Drop every terminally-failed outbox entry. For [PendingCommand.RateMeal] entries,
+     * also rolls back the phantom optimistic star via [OptimisticMealWritePort.clearPending]
+     * before removal — the runner's [OutboxCommandHandler.onTerminal] only fires on
+     * runner-detected terminal transitions, not on user-initiated dismissal.
+     * [OptimisticMealWritePort.clearPending] is idempotent: safe if the server snapshot
+     * already reconciled the row.
+     */
     private suspend fun dismissSyncOutbox() {
         val entries = outbox.observePending().first()
         entries.filter { it.status.let { s -> s is OutboxEntryStatus.Failed && !s.retryable } }
-            .forEach { outbox.remove(it.id) }
+            .forEach { entry ->
+                if (entry.command is PendingCommand.RateMeal) {
+                    optimistic.clearPending(entry.command.idempotencyKey)
+                }
+                outbox.remove(entry.id)
+            }
     }
 
     private suspend fun rate(mealIdRaw: String, scoreRaw: Int) {
@@ -359,6 +375,13 @@ class FeedViewModel(
         }
     }
 
+    /**
+     * Durably parks a [PendingCommand.ToggleReaction] in the outbox. Checks the
+     * [OutboxPort.enqueue] result: a [es.schsebastian.foodrats.core.domain.outbox.OutboxError.PersistenceUnavailable]
+     * means the toggle was NOT durably parked, so the user must be told the reaction
+     * did not land (rather than silently claiming success). The reaction has no
+     * optimistic local state, so there is nothing to roll back on failure.
+     */
     private suspend fun enqueueReaction(
         crewId: CrewId,
         mealId: MealId,
@@ -366,7 +389,7 @@ class FeedViewModel(
         kind: ReactionKind,
         desiredPresent: Boolean,
     ) {
-        outbox.enqueue(
+        val result = outbox.enqueue(
             PendingCommand.ToggleReaction(
                 crewId = crewId,
                 mealId = mealId,
@@ -375,6 +398,11 @@ class FeedViewModel(
                 desiredPresent = desiredPresent,
             ),
         )
+        if (result is Result.Err) {
+            // Persistence failure: the toggle was not durably saved. Surface the offline
+            // error so the user knows the reaction did not land (no optimistic state to roll back).
+            update { it.copy(reactError = ReactionError.Toggle.Offline) }
+        }
     }
 
     private fun navigatePrev() {

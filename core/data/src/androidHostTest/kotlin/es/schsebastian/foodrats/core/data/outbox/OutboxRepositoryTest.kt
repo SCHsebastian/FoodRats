@@ -105,6 +105,37 @@ class OutboxRepositoryTest {
     }
 
     @Test
+    fun requeue_resets_attempt_count_and_status_to_pending() = runTest {
+        val clock = FixedClock(Instant.parse("2026-06-19T10:00:00Z"))
+        val repo = repo(clock)
+        val id = (repo.enqueue(rateCommand()) as Result.Ok).value.id
+
+        // Simulate the runner exhausting the budget: 5 failed attempts → terminal.
+        repeat(5) { _ ->
+            repo.markUploading(id)
+            repo.markFailed(id, errorKey = "rate.offline", retryable = false)
+        }
+        val terminal = repo.observePending().first().single()
+        assertEquals(5, terminal.attemptCount, "sanity: should have 5 failed attempts")
+        assertTrue(
+            terminal.status.let { it is OutboxEntryStatus.Failed && !it.retryable },
+            "sanity: terminal before requeue",
+        )
+
+        // User-initiated retry: requeue must reset the budget.
+        val result = repo.requeue(id)
+        assertTrue(result is Result.Ok, "requeue must succeed")
+
+        val requeued = repo.observePending().first().single()
+        assertEquals(0, requeued.attemptCount, "requeue resets attemptCount to 0")
+        assertNull(requeued.lastAttemptAt, "requeue clears lastAttemptAt")
+        assertEquals(
+            OutboxEntryStatus.Pending, requeued.status,
+            "requeue returns status to Pending",
+        )
+    }
+
+    @Test
     fun observePending_orders_by_createdAt() = runTest {
         val clock = FixedClock(Instant.parse("2026-06-19T10:00:00Z"))
         val repo = repo(clock)

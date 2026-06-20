@@ -81,3 +81,16 @@ WHERE id = :id;
 
 deleteById:
 DELETE FROM outbox WHERE id = :id;
+
+-- Manual user retry: resets the entry to Pending with a fresh attempt budget
+-- (attemptCount=0, lastAttemptAt=NULL). Only used for user-initiated retries;
+-- the automatic backoff re-arm path (OutboxRunner.scheduleRetry) uses updateStatus
+-- so it does NOT reset the count.
+requeueById:
+UPDATE outbox
+SET statusKind = 'pending',
+    errorKey = NULL,
+    retryable = 0,
+    attemptCount = 0,
+    lastAttemptAtEpochMs = NULL
+WHERE id = :id;

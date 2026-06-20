@@ -99,6 +99,12 @@ class OutboxRepository(
                 .fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("remove", it) })
         }
 
+    override suspend fun requeue(id: OutboxEntryId): Result<Unit, OutboxError> =
+        withContext(dispatchers.io) {
+            runCatching { store.requeue(id) }
+                .fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("requeue", it) })
+        }
+
     private fun fail(op: String, t: Throwable): Result<Nothing, OutboxError> {
         FrLog.w("Outbox", t) { "outbox op '$op' failed: ${t.message}" }
         return Result.Err(OutboxError.PersistenceUnavailable)

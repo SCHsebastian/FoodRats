@@ -70,7 +70,14 @@ class RateMealUseCase(
         // command's idempotency key so the next server snapshot of this meal overwrites it. Applied
         // BEFORE enqueue so the optimistic write is visible the moment the command is durably parked.
         optimistic.applyRate(crewId, mealId, raterId, score, cmd.idempotencyKey)
-        outbox.enqueue(cmd)
-        return Result.success(Unit)
+        return when (outbox.enqueue(cmd)) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> {
+                // The command could not be durably persisted. Roll back the phantom star so
+                // the UI does not show an accepted vote that will never reach the server.
+                optimistic.clearPending(cmd.idempotencyKey)
+                Result.failure(RateError.RateUnavailable)
+            }
+        }
     }
 }

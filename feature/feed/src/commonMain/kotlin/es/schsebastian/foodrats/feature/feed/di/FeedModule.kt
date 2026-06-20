@@ -35,6 +35,7 @@ val feedModule = module {
             connectivity = get(),
             outbox = get(),
             syncStatus = get(),
+            optimistic = get(),
             analytics = get(),
         )
     }

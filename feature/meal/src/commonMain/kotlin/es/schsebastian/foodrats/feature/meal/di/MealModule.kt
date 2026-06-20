@@ -177,6 +177,7 @@ val mealModule = module {
             rating = get<MealRatingPort>(),
             comments = get<MealCommentPort>(),
             reactions = get<MealReactionPort>(),
+            optimistic = get<OptimisticMealWritePort>(),
         )
     }
 

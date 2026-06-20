@@ -61,4 +61,14 @@ interface OutboxPort {
      * removed.
      */
     suspend fun remove(id: OutboxEntryId): Result<Unit, OutboxError>
+
+    /**
+     * User-initiated retry: transition the terminally-failed entry [id] back to
+     * [OutboxEntryStatus.Pending] AND reset its attempt counter to 0 so the runner
+     * grants a fresh backoff budget. Unlike [updateStatus], this is the ONLY path
+     * that resets `attemptCount`. The automatic backoff re-arm path
+     * (`OutboxRunner.scheduleRetry`) calls [updateStatus] and must NOT reset the
+     * count — only an explicit user retry gets a fresh budget.
+     */
+    suspend fun requeue(id: OutboxEntryId): Result<Unit, OutboxError>
 }

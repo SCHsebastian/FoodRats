@@ -40,6 +40,12 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
+import es.schsebastian.foodrats.core.domain.meal.Score
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntry
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryStatus
+import es.schsebastian.foodrats.core.domain.outbox.OutboxError
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -125,6 +131,23 @@ class FakeUploadProgressPort(
     override val queue = MutableStateFlow(queue)
 }
 
+/**
+ * [OutboxPort] that returns a scripted list of [OutboxEntry] from [observePending] and
+ * records [remove] calls. Used in the C3 dismiss test to verify that
+ * [FeedViewModel.dismissSyncOutbox] clears optimistic pending before removing entries.
+ */
+class TerminalEntryOutboxPort(private val entries: List<OutboxEntry>) : OutboxPort {
+    val removed = mutableListOf<OutboxEntryId>()
+    override fun observePending() = MutableStateFlow(entries)
+    override suspend fun enqueue(cmd: PendingCommand): Result<OutboxEntry, OutboxError> =
+        Result.failure(OutboxError.PersistenceUnavailable)
+    override suspend fun markUploading(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun markFailed(id: OutboxEntryId, errorKey: String, retryable: Boolean): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun updateStatus(id: OutboxEntryId, status: OutboxEntryStatus): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun remove(id: OutboxEntryId): Result<Unit, OutboxError> { removed += id; return Result.success(Unit) }
+    override suspend fun requeue(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
+}
+
 /** Records retry/dismiss calls so the queue-action intents can be asserted. */
 class FakeQueuedUploadActionsPort : QueuedUploadActionsPort {
     var retryCount = 0
@@ -191,11 +214,12 @@ class FeedViewModelTest {
         uploadProgress: MealUploadProgressPort = idleUploadProgress,
         queuedActions: QueuedUploadActionsPort = FakeQueuedUploadActionsPort(),
         connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
-        outbox: RecordingOutboxPort = RecordingOutboxPort(),
+        outbox: OutboxPort = RecordingOutboxPort(),
         syncStatus: FakeFeedSyncStatusPort = FakeFeedSyncStatusPort(),
+        optimistic: RecordingOptimisticMealWritePort = RecordingOptimisticMealWritePort(),
     ) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(active, port),
-        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox, RecordingOptimisticMealWritePort()),
+        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox, optimistic),
         activeCrew = active,
         session = sessionProvider,
         clock = clock,
@@ -207,6 +231,7 @@ class FeedViewModelTest {
         connectivity = connectivity,
         outbox = outbox,
         syncStatus = syncStatus,
+        optimistic = optimistic,
         analytics = analytics,
     )
 
@@ -622,6 +647,41 @@ class FeedViewModelTest {
         vm.onIntent(FeedIntent.Refresh)
         runCurrent()
         assertEquals(listOf("c-1"), syncStatus.refreshedCrews)
+    }
+
+    // ─── C3: dismiss outbox clears optimistic pending for RateMeal ──────────────
+
+    /**
+     * [FeedIntent.DismissSyncOutbox] must call [OptimisticMealWritePort.clearPending] for each
+     * terminally-failed [PendingCommand.RateMeal] entry before removing it. This covers the
+     * user-dismiss rollback path (the runner's [OutboxCommandHandler.onTerminal] only fires
+     * on runner-detected terminal transitions, not on user dismissal).
+     */
+    @Test fun dismiss_outbox_clears_optimistic_pending_for_rate_meal_entries() = runTest {
+        val crew = (CrewId.of("c-1") as Result.Ok).value
+        val meal = (MealId.of("m-1") as Result.Ok).value
+        val rater = (AccountId.of("u-viewer") as Result.Ok).value
+        val score = (Score.of(4) as Result.Ok).value
+        val cmd = PendingCommand.RateMeal(crew, meal, rater, score)
+        val terminalEntry = OutboxEntry(
+            id = OutboxEntryId("e-1"),
+            command = cmd,
+            status = OutboxEntryStatus.Failed(errorKey = "meal.error.rateUnauthorized", retryable = false),
+            attemptCount = 5,
+            createdAt = Instant.fromEpochMilliseconds(0L),
+        )
+        // A controllable outbox that returns the terminal entry from observePending().
+        val controllableOutbox = TerminalEntryOutboxPort(listOf(terminalEntry))
+        val optimistic = RecordingOptimisticMealWritePort()
+        val vm = buildVm(outbox = controllableOutbox, optimistic = optimistic)
+
+        vm.onIntent(FeedIntent.DismissSyncOutbox)
+        runCurrent()
+
+        assertEquals(
+            listOf(cmd.idempotencyKey), optimistic.cleared,
+            "dismissSyncOutbox must clearPending for each terminal RateMeal entry",
+        )
     }
 
     @Test fun published_queued_draft_is_not_double_rendered() = runTest {
