@@ -38,6 +38,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSection
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSectionTone
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
+import es.schsebastian.foodrats.core.designsystem.molecules.FrProfileBadge
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -59,6 +60,7 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.segmented",        CatalogGroup.MOLECULES, "FrSegmented",       "Single-select segmented pill row") { SegmentedStory() },
     CatalogEntry("molecule.votebars",         CatalogGroup.MOLECULES, "FrVoteBars",        "Vote-distribution histogram (scores 1..10)") { VoteBarsStory() },
     CatalogEntry("molecule.reportsheet",      CatalogGroup.MOLECULES, "FrReportSheet",     "Bottom-sheet reason picker for reporting content/users") { ReportSheetStory() },
+    CatalogEntry("molecule.profilebadge",    CatalogGroup.MOLECULES, "FrProfileBadge",    "Compact achievement-badge chip (first/ten/fifty/hundred plates)") { ProfileBadgeStory() },
 )
 
 @Composable
@@ -472,6 +474,23 @@ private fun ComposerHeroCardStory() {
             FrComposerHeroCard(contentKey = "demo", modifier = Modifier.width(280.dp)) {
                 FrAvatarWithName(initials = "FR", name = "Demo plate")
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileBadgeStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "All four tiers") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FrProfileBadge(badgeId = "first",   label = "First Plate")
+                FrProfileBadge(badgeId = "ten",     label = "10 Plates")
+                FrProfileBadge(badgeId = "fifty",   label = "50 Plates")
+                FrProfileBadge(badgeId = "hundred", label = "100 Plates")
+            }
+        }
+        CatalogScene(label = "Unknown tier (forwards-compatible fallback)") {
+            FrProfileBadge(badgeId = "future_tier", label = "Future Badge")
         }
     }
 }

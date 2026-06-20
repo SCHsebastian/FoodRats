@@ -37,6 +37,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.molecules.FrProfileBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsDivider
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRow
@@ -275,10 +276,22 @@ private fun GeneralSection(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
                     verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                 ) {
-                    FrText(
-                        text = acc.displayName,
-                        style = MaterialTheme.typography.titleLarge,
-                    )
+                    // Display name + earned badge (hidden when null) on the same row.
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        FrText(
+                            text = acc.displayName,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                        acc.badgeId?.let { badgeId ->
+                            FrProfileBadge(
+                                badgeId = badgeId,
+                                label = resolveBadgeLabel(badgeId),
+                            )
+                        }
+                    }
                     acc.email?.let { email ->
                         FrText(
                             text = email,
@@ -696,6 +709,22 @@ private fun DangerZoneSection(state: ProfileState, vm: ProfileViewModel, modifie
             onClick = { vm.onIntent(ProfileIntent.OpenDeleteAccount) },
         )
     }
+}
+
+// ── Badge helpers ─────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Resolves a localised badge label string from the server-assigned [badgeId] token.
+ * Unknown tiers return an empty string so the chip renders gracefully (the caller passes
+ * a non-null badgeId only when the account has earned one).
+ */
+@Composable
+private fun resolveBadgeLabel(badgeId: String): String = when (badgeId) {
+    "first"   -> resolve(AuthStringKey.ProfileBadgeFirst)
+    "ten"     -> resolve(AuthStringKey.ProfileBadgeTen)
+    "fifty"   -> resolve(AuthStringKey.ProfileBadgeFifty)
+    "hundred" -> resolve(AuthStringKey.ProfileBadgeHundred)
+    else      -> badgeId // unknown tier: surface the raw id so the chip is still visible
 }
 
 @Composable

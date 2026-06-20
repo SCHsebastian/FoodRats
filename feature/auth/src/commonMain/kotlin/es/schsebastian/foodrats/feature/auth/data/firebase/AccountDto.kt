@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.auth.data.firebase
 
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.Serializable
 
 /**
@@ -9,6 +11,7 @@ import kotlinx.serialization.Serializable
  * world-readable doc. If email display is ever reintroduced it belongs under the
  * owner-only `accounts/{uid}/private/{doc}` subcollection.
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class AccountDto(
     val id: String? = null,
@@ -19,10 +22,16 @@ data class AccountDto(
     val avatarPath: String? = null,
     // Personal tagline / bio (≤ 100 chars). Null-pinned default: GitLive encodeDefaults=true
     // serializes this field as `null` on every write, which is safe because the accounts/{uid}
-    // write rule is the owner-only broad allow (no affectedKeys whitelist to violate).
+    // write rule allows it.
     val bio: String? = null,
     val createdAtEpochMs: Long? = null,
     // Reserved data-consent fields (spec §13); default 0 / null = "no consent recorded".
     val dataConsentVersion: Int = 0,
     val dataConsentGrantedAtEpochMs: Long? = null,
+    // Server-assigned badge id — written only by the Admin SDK (onMealCreated Cloud Function).
+    // @EncodeDefault(NEVER) prevents this field from being included in client writes even when
+    // the GitLive encoder uses encodeDefaults=true, so the client can never clobber a
+    // server-assigned badge by sending null. The field IS decoded from Firestore on reads.
+    @EncodeDefault(EncodeDefault.Mode.NEVER)
+    val badgeId: String? = null,
 )

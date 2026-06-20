@@ -24,6 +24,8 @@ fun AccountDto.toAccount(): Account? {
         bio = bio?.let { raw -> Bio.of(raw).getOrElse { null } },
         dataConsentVersion = dataConsentVersion,
         dataConsentGrantedAt = dataConsentGrantedAtEpochMs?.let { Instant.fromEpochMilliseconds(it) },
+        // badgeId is null when the server hasn't assigned any yet (≤0 publishes).
+        badgeId = badgeId,
     )
 }
 

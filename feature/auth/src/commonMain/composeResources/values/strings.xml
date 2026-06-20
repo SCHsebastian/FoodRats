@@ -55,6 +55,11 @@
     <string name="auth_profile_achievements_section">Badges</string>
     <string name="auth_profile_achievements_row">Badges</string>
     <string name="auth_profile_achievements_subtitle">See your earned and locked achievements</string>
+    <!-- Profile badge — earned tier labels rendered next to the display name. -->
+    <string name="auth_profile_badge_first">First Plate</string>
+    <string name="auth_profile_badge_ten">10 Plates</string>
+    <string name="auth_profile_badge_fifty">50 Plates</string>
+    <string name="auth_profile_badge_hundred">100 Plates</string>
     <!-- Profile "Safety" section (UGC compliance §5) — opens the blocked-users list. -->
     <string name="auth_profile_safety_section">Safety</string>
     <string name="auth_profile_blocked_users_row">Blocked users</string>

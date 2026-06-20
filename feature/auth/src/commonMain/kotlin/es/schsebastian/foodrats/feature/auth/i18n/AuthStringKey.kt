@@ -45,6 +45,10 @@ import foodrats.feature.auth.generated.resources.auth_mode_signup_cta
 import foodrats.feature.auth.generated.resources.auth_or_divider
 import foodrats.feature.auth.generated.resources.auth_profile_account_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_row
+import foodrats.feature.auth.generated.resources.auth_profile_badge_first
+import foodrats.feature.auth.generated.resources.auth_profile_badge_ten
+import foodrats.feature.auth.generated.resources.auth_profile_badge_fifty
+import foodrats.feature.auth.generated.resources.auth_profile_badge_hundred
 import foodrats.feature.auth.generated.resources.auth_profile_bio_label
 import foodrats.feature.auth.generated.resources.auth_profile_bio_placeholder
 import foodrats.feature.auth.generated.resources.auth_profile_bio_save
@@ -204,6 +208,12 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileAchievementsSection(Res.string.auth_profile_achievements_section),
     ProfileAchievementsRow(Res.string.auth_profile_achievements_row),
     ProfileAchievementsSubtitle(Res.string.auth_profile_achievements_subtitle),
+
+    // Badge labels — one per tier; rendered next to the display name when earned.
+    ProfileBadgeFirst(Res.string.auth_profile_badge_first),
+    ProfileBadgeTen(Res.string.auth_profile_badge_ten),
+    ProfileBadgeFifty(Res.string.auth_profile_badge_fifty),
+    ProfileBadgeHundred(Res.string.auth_profile_badge_hundred),
 
     // Profile "Legal" section (UGC compliance §6) — opens the embedded EULA / Community Guidelines.
     // Profile "Safety" section (UGC compliance §5) — opens the blocked-users list.

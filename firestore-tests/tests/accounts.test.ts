@@ -3,7 +3,7 @@ import {
   assertSucceeds,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { afterAll, beforeAll, beforeEach, describe, it } from "vitest";
 import { makeEnv } from "./helpers";
 
@@ -51,9 +51,54 @@ describe("accounts/{uid} — public profile", () => {
     await assertFails(setDoc(doc(db, "accounts/alice"), { displayName: "Hacked" }));
   });
 
-  it("owner can write own profile", async () => {
+  it("owner can update own profile display name", async () => {
     const db = env.authenticatedContext("alice").firestore();
-    await assertSucceeds(setDoc(doc(db, "accounts/alice"), { displayName: "Alice B." }));
+    await assertSucceeds(updateDoc(doc(db, "accounts/alice"), { displayName: "Alice B." }));
+  });
+
+  it("owner CANNOT set badgeId on their own profile (server-only field — U8 badge spec)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    // Attempting to change badgeId via update must be denied; only the Admin SDK
+    // (onMealCreated Cloud Function) may write this field.
+    await assertFails(updateDoc(doc(db, "accounts/alice"), { badgeId: "hundred" }));
+  });
+
+  it("owner CANNOT create a profile doc with badgeId set (server-only field)", async () => {
+    // newuser has no seeded doc (beforeEach only seeds alice), so setDoc here is a create.
+    const db = env.authenticatedContext("newuser").firestore();
+    // setDoc on a non-existent doc = create.  badgeId must be absent.
+    await assertFails(
+      setDoc(doc(db, "accounts/newuser"), {
+        id: "newuser",
+        displayName: "New User",
+        badgeId: "first",
+      }),
+    );
+  });
+
+  it("owner can create own profile without badgeId", async () => {
+    const db = env.authenticatedContext("newuser").firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "accounts/newuser"), {
+        id: "newuser",
+        displayName: "New User",
+      }),
+    );
+  });
+
+  it("owner CANNOT read or write the server-only badge counter (no leaderboard arms race / self-cheat)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    // The lifetime publish counter is server-only bookkeeping (Admin SDK bypasses rules).
+    await assertFails(getDoc(doc(db, "accounts/alice/badgeProgress/counter")));
+    await assertFails(setDoc(doc(db, "accounts/alice/badgeProgress/counter"), { mealPublishCount: 999 }));
+  });
+
+  it("owner CANNOT read or write the server-only publish dedup markers", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(getDoc(doc(db, "accounts/alice/publishedMealKeys/alice_2026-06-20_lunch")));
+    await assertFails(
+      setDoc(doc(db, "accounts/alice/publishedMealKeys/alice_2026-06-20_lunch"), { markedAtEpochMs: 1 }),
+    );
   });
 });
 

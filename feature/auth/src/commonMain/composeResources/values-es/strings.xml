@@ -55,6 +55,11 @@
     <string name="auth_profile_achievements_section">Insignias</string>
     <string name="auth_profile_achievements_row">Insignias</string>
     <string name="auth_profile_achievements_subtitle">Mira tus logros conseguidos y bloqueados</string>
+    <!-- Etiquetas de insignia de perfil — nivel ganado mostrado junto al nombre. -->
+    <string name="auth_profile_badge_first">Primer Plato</string>
+    <string name="auth_profile_badge_ten">10 Platos</string>
+    <string name="auth_profile_badge_fifty">50 Platos</string>
+    <string name="auth_profile_badge_hundred">100 Platos</string>
     <!-- Sección "Seguridad" del perfil (cumplimiento UGC §5) — abre la lista de usuarios bloqueados. -->
     <string name="auth_profile_safety_section">Seguridad</string>
     <string name="auth_profile_blocked_users_row">Usuarios bloqueados</string>
