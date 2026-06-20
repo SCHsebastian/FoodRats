@@ -77,6 +77,8 @@ kotlin {
             // PreferenceDataStoreFactory (JVM/Android) is provided by datastore-preferences artifact
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
             implementation(project.dependencies.platform(libs.firebase.bom))
+            // WorkManager — backs WorkManagerOutboxDrainScheduler + OutboxDrainWorker.
+            implementation(libs.androidx.work.runtime)
             // Crashlytics has no GitLive KMP binding — AndroidCrashReporter (androidMain) wraps the
             // native SDK directly. Version pinned by the BOM above.
             implementation(libs.firebase.crashlytics)

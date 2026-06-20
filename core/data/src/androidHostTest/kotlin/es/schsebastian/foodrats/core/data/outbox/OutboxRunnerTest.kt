@@ -99,8 +99,14 @@ class OutboxRunnerTest {
         assertTrue(box.observePending().first().isEmpty(), "already-applied entry must be removed, not failed")
     }
 
+    /**
+     * Worker path (scope = null) + retryable failure: the M2 fix re-arms the entry to
+     * [OutboxEntryStatus.Pending] immediately (so WorkManager's backoff drives the next
+     * attempt, not an in-process delay). [runOnce] must return `false` — pending work
+     * remains — and `attemptCount` must be incremented to track the retry budget.
+     */
     @Test
-    fun retryable_increments_attempt_and_stays_retryable() = runTest {
+    fun worker_path_retryable_rearmed_to_pending_and_returns_false() = runTest {
         val box = outbox()
         val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Retryable("rate.offline")))
@@ -108,11 +114,32 @@ class OutboxRunnerTest {
 
         val drained = runner.runOnce(scope = null)
 
+        // M2: after worker-path retryable failure the entry is re-armed to Pending immediately.
+        assertFalse(drained, "re-armed Pending entry means the outbox is not fully drained")
+        val entry = box.observePending().first().single { it.id == id }
+        assertEquals(1, entry.attemptCount, "attemptCount incremented so budget is consumed")
+        assertEquals(OutboxEntryStatus.Pending, entry.status, "re-armed to Pending for WM backoff")
+    }
+
+    /**
+     * In-process path (scope != null): a retryable failure leaves the entry as
+     * [OutboxEntryStatus.Failed] with a scheduled in-coroutine backoff delay, not re-armed
+     * immediately. This is the EXISTING in-process behavior — must be unchanged by M2.
+     */
+    @Test
+    fun in_process_path_retryable_stays_failed_with_retryable_true() = runTest {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Retryable("rate.offline")))
+        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+
+        val drained = runner.runOnce(scope = this) // non-null scope = in-process path
+
         assertFalse(drained, "a still-retryable entry means the outbox isn't drained")
         val entry = box.observePending().first().single { it.id == id }
         assertEquals(1, entry.attemptCount)
         val status = entry.status
-        assertTrue(status is OutboxEntryStatus.Failed)
+        assertTrue(status is OutboxEntryStatus.Failed, "in-process path leaves as Failed pending backoff")
         assertTrue(status.retryable, "attempt 1 of 5 must stay retryable")
         assertEquals("rate.offline", status.errorKey)
     }
@@ -288,6 +315,67 @@ class OutboxRunnerTest {
 
         assertEquals(1, onTerminalCalls.size, "onTerminal must fire once when budget is exhausted")
         assertTrue(onTerminalCalls.single() is PendingCommand.RateMeal)
+    }
+
+    // ─── M2: worker-path re-arm ──────────────────────────────────────────────────
+
+    /**
+     * M2 fix: when the worker path (scope = null) sees a retryable failure with budget
+     * remaining, the entry must be re-armed to [OutboxEntryStatus.Pending] immediately
+     * and [runOnce] must return `false`. WorkManager's own exponential backoff then
+     * spaces the next worker run — there is no in-process delay.
+     *
+     * Without the M2 fix, the entry stayed as `Failed(retryable = true)` and [runOnce]
+     * only drains `Pending` entries, so the entry was stuck forever.
+     */
+    @Test
+    fun m2_worker_path_retryable_leaves_entry_pending_with_incremented_attempt() = runTest {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Retryable("rate.offline")))
+        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+
+        val drained = runner.runOnce(scope = null)
+
+        assertFalse(drained, "undrained: entry is re-armed Pending → runOnce returns false → worker retries")
+        val entry = box.observePending().first().single { it.id == id }
+        assertEquals(OutboxEntryStatus.Pending, entry.status, "entry re-armed to Pending for WM backoff")
+        assertEquals(1, entry.attemptCount, "attemptCount incremented so budget is still consumed")
+    }
+
+    /**
+     * M2 fix: after [maxAttempts] failed worker-path drain passes (each re-arming to Pending),
+     * the entry must land [OutboxEntryStatus.Failed] with `retryable = false` (terminal) and
+     * [runOnce] must return `true` (no drainable work remains — a terminal entry won't resolve
+     * on its own so it's excluded from the "undrained" count).
+     *
+     * This proves the retry budget is honoured across multiple worker wakeups.
+     */
+    @Test
+    fun m2_worker_path_terminal_after_max_attempts() = runTest {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        val handler = ScriptedRateHandler(
+            outcomes = listOf(
+                OutboxExecuteResult.Retryable("rate.offline"),
+                OutboxExecuteResult.Retryable("rate.offline"),
+            ),
+        )
+        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
+
+        // Worker wakeup 1: attempt 1 → re-armed to Pending.
+        val stillWork1 = runner.runOnce(scope = null)
+        assertFalse(stillWork1, "still work after attempt 1")
+        assertEquals(OutboxEntryStatus.Pending, box.observePending().first().single { it.id == id }.status)
+
+        // Worker wakeup 2: attempt 2 → budget exhausted → terminal.
+        val stillWork2 = runner.runOnce(scope = null)
+        assertTrue(stillWork2, "terminal entry leaves no drainable work → returns true")
+        val entry = box.observePending().first().single { it.id == id }
+        assertEquals(2, entry.attemptCount, "two failed attempts")
+        val status = entry.status
+        assertTrue(status is OutboxEntryStatus.Failed)
+        assertFalse(status.retryable, "budget exhausted → terminal, non-retryable")
     }
 
     @Test

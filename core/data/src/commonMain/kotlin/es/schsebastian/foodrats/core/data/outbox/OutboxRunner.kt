@@ -47,8 +47,13 @@ import kotlinx.coroutines.sync.withLock
  *     [OutboxPort.remove] (reconcile-on-success / dedup),
  *  4. [OutboxExecuteResult.Retryable] → [OutboxPort.markFailed] with the
  *     policy-derived `retryable` (via [OutboxTransitions]); if still retryable,
- *     schedule a backed-off re-attempt ([OutboxRetryPolicy.nextDelay]) that flips
- *     the entry back to [OutboxEntryStatus.Pending],
+ *     re-arm for the next attempt using one of two strategies:
+ *     - **In-process path** (`scope != null`): [scheduleRetry] — launch a coroutine
+ *       on `scope` that delays [OutboxRetryPolicy.nextDelay] then flips the entry
+ *       back to [OutboxEntryStatus.Pending]; per-entry exponential backoff.
+ *     - **Worker path** (`scope == null`): re-arm to [OutboxEntryStatus.Pending]
+ *       immediately; WorkManager's own exponential backoff spaces the next worker
+ *       run, so no in-process delay is needed or possible.
  *  5. [OutboxExecuteResult.Terminal] (or no handler) → [OutboxPort.markFailed]
  *     with `retryable = false` — terminal, surfaced to the user.
  * A drain pass holds a [Mutex] so connectivity + enqueue triggers can't run two
@@ -62,9 +67,10 @@ class OutboxRunner(
     private val handlers: List<OutboxCommandHandler>,
     private val connectivity: ConnectivityPort,
     private val policy: OutboxRetryPolicy = OutboxRetryPolicy(),
-    // Reserved for future replay telemetry (mirrors DraftRetryRunner). Default Noop keeps
-    // direct-construction tests green and the offline path PII-free until events are added.
+    // Default Noop keeps direct-construction tests green and the offline path PII-free.
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
+    // Default Noop keeps direct-construction tests green; real binding injected per platform.
+    private val scheduler: OutboxDrainScheduler = NoopOutboxDrainScheduler(),
 ) {
     private val mutex = Mutex()
 
@@ -72,7 +78,10 @@ class OutboxRunner(
      * Wire the runner's triggers onto [scope] (the app-lifetime sync scope):
      *  - drain whenever connectivity rises to online,
      *  - drain whenever a new Pending entry appears.
-     * Backoff re-attempts are launched per-entry on the same [scope].
+     * On each new-pending-entry trigger, also call [scheduler.schedule] so a durable
+     * WorkManager job is enqueued: it survives process death and fires on reconnect
+     * even if the app is killed before the in-process drain completes.
+     * Backoff re-attempts (in-process path) are launched per-entry on the same [scope].
      */
     fun start(scope: CoroutineScope) {
         // false→true edge of connectivity (the monitor conflates to the latest
@@ -85,7 +94,14 @@ class OutboxRunner(
         outbox.observePending()
             .map { list -> list.count { it.status is OutboxEntryStatus.Pending } }
             .distinctUntilChanged()
-            .onEach { pending -> if (pending > 0) launchDrain(scope) }
+            .onEach { pending ->
+                if (pending > 0) {
+                    // In-process drain (foreground responsiveness).
+                    launchDrain(scope)
+                    // Durable drain (survives process death — no-op on iOS until BGTaskScheduler).
+                    scheduler.schedule()
+                }
+            }
             .launchIn(scope)
     }
 
@@ -96,9 +112,21 @@ class OutboxRunner(
     /**
      * Run a single drain pass over all currently-Pending entries. Returns `true`
      * iff the outbox holds no drainable (Pending/Uploading/retryable-Failed) work
-     * afterwards — the Android worker maps `true`→success, `false`→retry. [scope]
-     * launches per-entry backoff re-attempts; pass `null` to skip scheduling (e.g.
-     * the worker, which relies on WorkManager backoff instead).
+     * afterwards — the Android worker maps `true`→success, `false`→retry.
+     *
+     * **Re-arm strategies for retryable failures:**
+     *  - `scope != null` (in-process path): [scheduleRetry] launches a coroutine on
+     *    [scope] that delays [OutboxRetryPolicy.nextDelay] then flips the entry back
+     *    to [OutboxEntryStatus.Pending]. Per-entry exponential backoff. The entry is
+     *    left as `Failed(retryable = true)` while the delay is in flight, so
+     *    `runOnce` returns `false` (undrained work); a re-entry of [start]'s
+     *    pending-count observer fires the next in-process drain.
+     *  - `scope == null` (worker path): the entry is re-armed to
+     *    [OutboxEntryStatus.Pending] **immediately** (no coroutine delay), then
+     *    `runOnce` returns `false` → the worker returns `Result.retry()`. WorkManager's
+     *    own exponential backoff spaces the next worker run. This prevents the entry
+     *    from being stuck as `Failed(retryable = true)` forever when the process dies
+     *    between attempts (M2 fix).
      */
     suspend fun runOnce(scope: CoroutineScope? = null): Boolean = mutex.withLock {
         val entries = outbox.observePending().first().filter { it.status is OutboxEntryStatus.Pending }
@@ -145,10 +173,24 @@ class OutboxRunner(
                 outbox.markFailed(entry.id, failed.errorKey, failed.retryable)
                 if (failed.retryable) {
                     val delayMs = policy.nextDelay(newAttemptCount)?.inWholeMilliseconds
-                    FrLog.d("Outbox") {
-                        "${entry.command::class.simpleName} failed (attempt $newAttemptCount); retry in ${delayMs}ms"
+                    if (scope != null && delayMs != null) {
+                        // In-process path: launch a coroutine that delays then re-arms to Pending.
+                        // Per-entry exponential backoff; foreground-only (coroutine lives on scope).
+                        FrLog.d("Outbox") {
+                            "${entry.command::class.simpleName} failed (attempt $newAttemptCount); retry in ${delayMs}ms"
+                        }
+                        scheduleRetry(scope, entry.id, delayMs)
+                    } else {
+                        // Worker path (scope == null): re-arm to Pending immediately.
+                        // WorkManager's own exponential backoff spaces the next worker run, so we
+                        // must NOT delay here — the worker process may die before a coroutine delay
+                        // fires, which would leave the entry stuck as Failed(retryable=true) forever.
+                        // runOnce(null) returns false → the worker returns Result.retry().
+                        FrLog.d("Outbox") {
+                            "${entry.command::class.simpleName} failed (attempt $newAttemptCount); re-armed to Pending for WM backoff"
+                        }
+                        outbox.updateStatus(entry.id, OutboxEntryStatus.Pending)
                     }
-                    if (scope != null && delayMs != null) scheduleRetry(scope, entry.id, delayMs)
                 } else {
                     // Budget exhausted — this is now terminal. Notify the handler so it can
                     // roll back any optimistic side-effects (e.g. the phantom rating star).

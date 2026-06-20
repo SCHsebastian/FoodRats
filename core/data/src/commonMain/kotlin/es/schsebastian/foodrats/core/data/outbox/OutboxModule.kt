@@ -57,6 +57,10 @@ val outboxModule = module {
             connectivity = get(),
             policy = get(),
             analytics = get(),
+            // Platform-specific durable wakeup: WorkManagerOutboxDrainScheduler (Android)
+            // or NoopOutboxDrainScheduler (iOS). Bound by outboxAndroidModule /
+            // outboxIosModule before outboxModule is loaded.
+            scheduler = get(),
         ).also { it.start(appScope) }
     }
 }
