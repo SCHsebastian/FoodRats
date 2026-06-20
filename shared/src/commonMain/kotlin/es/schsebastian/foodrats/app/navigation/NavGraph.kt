@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -278,8 +279,12 @@ fun NavHostController.navigateTopLevel(route: Route) {
 private fun TrackScreenViews(controller: NavHostController) {
     val analytics = koinInject<AnalyticsPort>()
     LaunchedEffect(controller) {
+        var previous: ScreenName? = null
         controller.currentBackStackEntryFlow.collect { entry ->
-            analytics.track(AnalyticsEvent.ScreenViewed(entry.destination.toAnalyticsScreenName()))
+            val current = entry.destination.toAnalyticsScreenName()
+            analytics.track(AnalyticsEvent.ScreenViewed(current))
+            previous?.let { analytics.track(AnalyticsEvent.ScreenMoved(from = it, to = current)) }
+            previous = current
         }
     }
 }
@@ -294,6 +299,14 @@ private fun NavDestination.toAnalyticsScreenName(): ScreenName {
     val simple = raw.substringBefore('/').substringBefore('?').substringAfterLast('.')
     return ScreenName(simple.pascalToSnakeCase().ifEmpty { "unknown" })
 }
+
+private fun MainTab.toScreenName(): ScreenName = ScreenName(
+    when (this) {
+        MainTab.Feed -> "feed"
+        MainTab.Passport -> "passport"
+        MainTab.Stats -> "stats"
+    },
+)
 
 private fun String.pascalToSnakeCase(): String = buildString {
     this@pascalToSnakeCase.forEachIndexed { index, c ->
@@ -330,13 +343,12 @@ private fun MainScaffold(rootController: NavHostController) {
         ),
     ) { mutableStateOf(MainTab.Feed) }
     val analytics = koinInject<AnalyticsPort>()
+    var previousTab: MainTab? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedTab) {
-        val name = when (selectedTab) {
-            MainTab.Feed -> "feed"
-            MainTab.Passport -> "passport"
-            MainTab.Stats -> "stats"
-        }
-        analytics.track(AnalyticsEvent.ScreenViewed(ScreenName(name)))
+        val current = selectedTab.toScreenName()
+        analytics.track(AnalyticsEvent.ScreenViewed(current))
+        previousTab?.let { analytics.track(AnalyticsEvent.ScreenMoved(from = it.toScreenName(), to = current)) }
+        previousTab = selectedTab
     }
     val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()

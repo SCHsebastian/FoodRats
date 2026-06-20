@@ -351,6 +351,19 @@ sealed interface AnalyticsEvent {
         override val params = mapOf("screen_name" to text(screen.wire))
     }
 
+    /**
+     * A navigation transition occurred. Fired on every back-stack change alongside [ScreenViewed],
+     * capturing the previous and current screens. Omitted on the very first screen (no [from]).
+     * Both values are derived from the `Route` type — never free text or PII.
+     */
+    data class ScreenMoved(val from: ScreenName, val to: ScreenName) : AnalyticsEvent {
+        override val name = "screen_moved"
+        override val params = mapOf(
+            "from_screen" to text(from.wire),
+            "to_screen" to text(to.wire),
+        )
+    }
+
     // ───────────────────────────── account ─────────────────────────────
 
     /**
