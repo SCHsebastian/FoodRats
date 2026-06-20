@@ -39,7 +39,7 @@
     <string name="legal_eula_body_liability">En la medida en que la ley no lo prohíba, en ningún caso seremos responsables de daños personales ni de daños incidentales, especiales, indirectos o consecuentes derivados de tu uso o de la imposibilidad de usar la Aplicación, sea cual sea su causa.</string>
 
     <string name="legal_eula_heading_contact">7. Contacto</string>
-    <string name="legal_eula_body_contact">Para preguntas, reclamaciones o quejas sobre la Aplicación, o para denunciar contenido objetable o usuarios abusivos, escríbenos a support@foodrats-de4ec.web.app o visita https://foodrats-de4ec.web.app. Respondemos a las denuncias de contenido objetable en un plazo de 24 horas.</string>
+    <string name="legal_eula_body_contact">Para preguntas, reclamaciones o quejas sobre la Aplicación, o para denunciar contenido objetable o usuarios abusivos, escríbenos a hello@chsumiapps.com o visita https://foodrats-de4ec.web.app. Respondemos a las denuncias de contenido objetable en un plazo de 24 horas.</string>
 
     <!-- Normas de la comunidad. -->
     <string name="legal_community_title">Normas de la comunidad</string>
@@ -61,7 +61,7 @@
     <string name="legal_community_body_enforcement">Revisamos las denuncias y eliminamos el contenido infractor en un plazo de 24 horas. El contenido denunciado por varias personas se oculta automáticamente a la espera de revisión. Los reincidentes son expulsados de FoodRats. Actuamos sobre el contenido objetable y los usuarios abusivos a nuestra entera discreción.</string>
 
     <string name="legal_community_heading_contact">Contacto</string>
-    <string name="legal_community_body_contact">¿Preguntas o necesitas hablar con una persona? Escribe a support@foodrats-de4ec.web.app o visita https://foodrats-de4ec.web.app.</string>
+    <string name="legal_community_body_contact">¿Preguntas o necesitas hablar con una persona? Escribe a hello@chsumiapps.com o visita https://foodrats-de4ec.web.app.</string>
 
     <!-- Banner de sin conexión en toda la app (offline-first §P1-T2): se muestra en la raíz del NavHost en todas las pantallas. -->
     <string name="offline_banner">Sin conexión — los cambios se sincronizarán al volver.</string>

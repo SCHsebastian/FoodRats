@@ -65,9 +65,9 @@ import org.koin.dsl.module
 private val ModerationLanguageTag = named("mealModerationLanguageTag")
 
 val mealModule = module {
-    // Active UI language for the on-device description filter; `System` maps to "en" (the wordlist
-    // defaults to English + a cross-language neutral set for empty/unknown tags). Named distinctly
-    // from the feed module's same-purpose flow so the two don't collide in the merged graph.
+    // Advisory language hint for the on-device description filter. The default filter screens ALL
+    // supported languages regardless of this tag (see WordlistTextModeration / Wordlists.ALL). Named
+    // distinctly from the feed module's same-purpose flow so the two don't collide in the merged graph.
     single<Flow<String>>(ModerationLanguageTag) {
         get<LocalePort>().locale.map { if (it == AppLocale.System) "en" else it.tag }
     }

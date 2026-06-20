@@ -65,9 +65,10 @@ class WordlistTextModerationTest {
     }
 
     @Test
-    fun language_scoping_spanish_only_term_passes_under_english() {
-        // "mierda" is ES-only (not in the always-on NEUTRAL set), so under "en" it is not screened.
-        assertClean("esto es una mierda", tag = "en")
+    fun all_languages_are_screened_regardless_of_active_tag() {
+        // The default screen checks EVERY supported language: Spanish "mierda" is flagged even under
+        // "en", so abuse is caught when the writer's language differs from the device/UI language.
+        assertHit("esto es una mierda", tag = "en", category = ModerationCategory.PROFANITY)
     }
 
     @Test

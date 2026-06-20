@@ -17,12 +17,14 @@ package es.schsebastian.foodrats.core.domain.moderation
  * The wordlist is conservative (precision over recall): this is an advisory-grade FIRST-PASS deterrent,
  * not a guarantee. The report/block paths are the safety net.
  *
- * @param termsForLanguage resolves the active term set for a BCP-47 language tag. Defaults to the bundled
- *   [Wordlists]; injectable so tests can pin a known set. Terms are normalized at evaluation so the list
- *   may be authored with natural spelling/diacritics.
+ * @param termsForLanguage resolves the term set for a BCP-47 language tag. Defaults to [Wordlists.ALL]
+ *   — i.e. it screens EVERY supported language regardless of the active UI/device language, so abuse is
+ *   caught even when the writer's language differs from the device locale. The `languageTag` argument is
+ *   therefore advisory for the default screen; injectable so tests can pin a known (per-language) set.
+ *   Terms are normalized at evaluation so the list may be authored with natural spelling/diacritics.
  */
 class WordlistTextModeration(
-    private val termsForLanguage: (String) -> Map<String, ModerationCategory> = Wordlists::forLanguage,
+    private val termsForLanguage: (String) -> Map<String, ModerationCategory> = { Wordlists.ALL },
 ) : TextModerationPort {
 
     override fun evaluate(text: String, languageTag: String): TextModerationVerdict {

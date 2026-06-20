@@ -91,7 +91,7 @@ The wordlist (`Wordlists.kt`, `:core:domain`) is conservative (precision over re
 ## 7. Published support contact (Guideline 1.2 + 1.5)
 
 - **Support URL / domain:** `https://foodrats-de4ec.web.app` (the live Firebase Hosting domain — this is the canonical published domain; `foodrats.app` is **not** ours).
-- **Support email (placeholder):** `support@foodrats-de4ec.web.app` — or a contact form hosted at `https://foodrats-de4ec.web.app/support`.
+- **Support email (placeholder):** `hello@chsumiapps.com` — or a contact form hosted at `https://foodrats-de4ec.web.app/support`.
 - These must be set in **App Store Connect** (app's Support URL + the standard EULA reference) and stated in the in-app Community Guidelines so users always have a way to reach the developer about objectionable content. Update this section if the domain/contact changes.
 
 ---

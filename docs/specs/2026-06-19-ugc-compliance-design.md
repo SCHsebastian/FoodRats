@@ -502,7 +502,7 @@ val EulaAcceptedVersion = StoreKey(intPreferencesKey("eula_accepted_version"))
 ### 6.6 Profile entry + support contact
 
 - `ProfileScreen` gains a "Legal" `FrSettingsSection` (or rows in an "About" section): "Terms (EULA)", "Community Guidelines" → `Route.Legal(...)`. This satisfies "also reachable from Profile."
-- **Published contact info** (the implicit 5th requirement): the Community Guidelines doc + the App Store Connect support URL both point to **`https://foodrats-de4ec.web.app`** (the live Firebase Hosting domain) with a support contact placeholder `support@foodrats-de4ec.web.app` (or a contact form on that domain). The runbook records this as the canonical published contact. This is a content/store-config item, not code.
+- **Published contact info** (the implicit 5th requirement): the Community Guidelines doc + the App Store Connect support URL both point to **`https://foodrats-de4ec.web.app`** (the live Firebase Hosting domain) with a support contact placeholder `hello@chsumiapps.com` (or a contact form on that domain). The runbook records this as the canonical published contact. This is a content/store-config item, not code.
 
 ### 6.7 Routing for legal docs
 
@@ -635,7 +635,7 @@ No PII / no matched term / no reported text — only the coarse `ReportReason` /
 
 ## 11. Moderation runbook
 
-See `docs/moderation/RUNBOOK.md` — review process, ≤ 24 h SLA, the `THRESHOLD = 3` auto-hide rule, manual takedown via crew-owner/author delete RBAC, the structured `onReportCreated` audit log to grep, and the published support contact (`https://foodrats-de4ec.web.app`, `support@foodrats-de4ec.web.app`).
+See `docs/moderation/RUNBOOK.md` — review process, ≤ 24 h SLA, the `THRESHOLD = 3` auto-hide rule, manual takedown via crew-owner/author delete RBAC, the structured `onReportCreated` audit log to grep, and the published support contact (`https://foodrats-de4ec.web.app`, `hello@chsumiapps.com`).
 
 ---
 

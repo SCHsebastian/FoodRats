@@ -20,8 +20,9 @@ import org.koin.dsl.module
 private val ModerationLanguageTag = named("feedModerationLanguageTag")
 
 val feedModule = module {
-    // Active UI language for the on-device comment text filter. `System` maps to "en" — the
-    // wordlist defaults to English (+ a cross-language neutral set) for empty/unknown tags anyway.
+    // Advisory language hint for the on-device comment text filter. The default filter screens ALL
+    // supported languages regardless of this tag (see WordlistTextModeration / Wordlists.ALL), so a
+    // System/English-locale device still screens Spanish (and any other supported language) abuse.
     single<Flow<String>>(ModerationLanguageTag) {
         get<LocalePort>().locale.map { if (it == AppLocale.System) "en" else it.tag }
     }

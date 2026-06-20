@@ -73,6 +73,14 @@ internal object Wordlists {
         "maricon" to ModerationCategory.HATE,
     )
 
+    /**
+     * Every supported language's terms ∪ the always-on neutral set. This is the DEFAULT screen: the
+     * on-device filter checks ALL supported languages regardless of the active UI/device language, so
+     * objectionable content is caught even when the writer's language differs from the device locale
+     * (e.g. a Spanish comment on a System/English-locale device).
+     */
+    val ALL: Map<String, ModerationCategory> = EN + ES + NEUTRAL
+
     /** The active term set for [tag]: language-specific terms ∪ the always-on neutral set. */
     fun forLanguage(tag: String): Map<String, ModerationCategory> =
         when (tag.lowercase().take(2)) {

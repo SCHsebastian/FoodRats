@@ -39,7 +39,7 @@
     <string name="legal_eula_body_liability">To the extent not prohibited by law, in no event will we be liable for personal injury or any incidental, special, indirect, or consequential damages arising out of or related to your use of, or inability to use, the Application, however caused.</string>
 
     <string name="legal_eula_heading_contact">7. Contact</string>
-    <string name="legal_eula_body_contact">For questions, complaints, or claims regarding the Application, or to report objectionable content or abusive users, contact us at support@foodrats-de4ec.web.app or visit https://foodrats-de4ec.web.app. We respond to reports of objectionable content within 24 hours.</string>
+    <string name="legal_eula_body_contact">For questions, complaints, or claims regarding the Application, or to report objectionable content or abusive users, contact us at hello@chsumiapps.com or visit https://foodrats-de4ec.web.app. We respond to reports of objectionable content within 24 hours.</string>
 
     <!-- Community Guidelines — the user-facing statement of prohibited content, reporting/blocking,
          and the 24-hour moderation commitment Apple reviewers look for. -->
@@ -62,7 +62,7 @@
     <string name="legal_community_body_enforcement">We review reports and remove violating content within 24 hours. Content that is reported by several people is hidden automatically pending review. Repeat offenders are removed from FoodRats. We act on objectionable content and abusive users at our sole discretion.</string>
 
     <string name="legal_community_heading_contact">Contact</string>
-    <string name="legal_community_body_contact">Questions, or need to reach a human? Email support@foodrats-de4ec.web.app or visit https://foodrats-de4ec.web.app.</string>
+    <string name="legal_community_body_contact">Questions, or need to reach a human? Email hello@chsumiapps.com or visit https://foodrats-de4ec.web.app.</string>
 
     <!-- App-wide offline banner (offline-first §P1-T2): shown at the NavHost root on every screen. -->
     <string name="offline_banner">You\'re offline — changes sync when you\'re back.</string>
