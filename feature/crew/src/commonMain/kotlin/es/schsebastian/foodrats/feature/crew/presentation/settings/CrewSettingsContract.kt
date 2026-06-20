@@ -38,6 +38,15 @@ data class CrewSettingsState(
     /** True once [editingTagline] has been seeded from the first crew snapshot — prevents clobber. */
     val taglineSeeded: Boolean = false,
     val isSavingTagline: Boolean = false,
+    /**
+     * The welcome message the owner is currently editing. Seeded once from [Crew.welcomeMessage]
+     * when the crew snapshot first arrives ([welcomeMessageSeeded]). Same one-time-seed pattern as
+     * [editingTagline].
+     */
+    val editingWelcomeMessage: String = "",
+    /** True once [editingWelcomeMessage] has been seeded from the first crew snapshot. */
+    val welcomeMessageSeeded: Boolean = false,
+    val isSavingWelcomeMessage: Boolean = false,
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {
@@ -63,6 +72,11 @@ sealed interface CrewSettingsIntent : MviIntent {
     data class TaglineChanged(val value: String) : CrewSettingsIntent
     /** Owner tapped "Save" on the tagline field. */
     data object SaveTagline : CrewSettingsIntent
+
+    /** Owner is editing the welcome message text field. */
+    data class WelcomeMessageChanged(val value: String) : CrewSettingsIntent
+    /** Owner tapped "Save" on the welcome message field. */
+    data object SaveWelcomeMessage : CrewSettingsIntent
 }
 
 sealed interface CrewSettingsEffect : MviEffect {

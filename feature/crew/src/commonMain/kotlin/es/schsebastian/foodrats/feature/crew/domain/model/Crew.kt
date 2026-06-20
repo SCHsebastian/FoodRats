@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import kotlin.time.Instant
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
+import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
 
 /**
  * The Crew aggregate root. The invariant this context exists to protect is the
@@ -37,6 +38,13 @@ data class Crew(
      * Capped at [CrewTagline.MAX_LEN] = 120 chars.
      */
     val tagline: CrewTagline? = null,
+    /**
+     * Optional owner-set onboarding message shown as a dismissible banner to new joiners the first
+     * time they open the crew feed. `null` means no message is set.
+     * Managed by [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase].
+     * Capped at [WelcomeMessage.MAX_LEN] = 200 chars.
+     */
+    val welcomeMessage: WelcomeMessage? = null,
 ) {
     val size: Int get() = members.size
 
@@ -68,6 +76,7 @@ data class Crew(
             members: List<Member>,
             blindVoting: Boolean = false,
             tagline: CrewTagline? = null,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline)
+            welcomeMessage: WelcomeMessage? = null,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage)
     }
 }

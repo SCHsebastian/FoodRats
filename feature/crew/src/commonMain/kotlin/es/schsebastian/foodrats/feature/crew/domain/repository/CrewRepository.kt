@@ -50,6 +50,14 @@ interface CrewRepository {
     suspend fun setTagline(crewId: CrewId, requestedBy: AccountId, tagline: String?): Result<Unit, CrewError>
 
     /**
+     * Sets or clears the crew's pinned welcome message. Only the owner may change it.
+     * Pass `null` to clear the message. The raw string must be pre-validated via
+     * [es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage.of] before calling
+     * this method.
+     */
+    suspend fun setWelcomeMessage(crewId: CrewId, requestedBy: AccountId, message: String?): Result<Unit, CrewError>
+
+    /**
      * Removes [target] from the crew. Only the owner ([requestedBy]) may remove a member, and the
      * owner cannot remove themselves (leaving is a separate flow). Authorization, self-removal, and
      * membership invariants are enforced atomically server-side by the implementation (mirrored

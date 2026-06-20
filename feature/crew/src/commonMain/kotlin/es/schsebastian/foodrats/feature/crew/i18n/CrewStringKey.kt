@@ -42,6 +42,10 @@ import foodrats.feature.crew.generated.resources.crew_settings_tagline_section
 import foodrats.feature.crew.generated.resources.crew_settings_tagline_label
 import foodrats.feature.crew.generated.resources.crew_settings_tagline_placeholder
 import foodrats.feature.crew.generated.resources.crew_error_validation_tagline_too_long
+import foodrats.feature.crew.generated.resources.crew_settings_welcome_message_section
+import foodrats.feature.crew.generated.resources.crew_settings_welcome_message_label
+import foodrats.feature.crew.generated.resources.crew_settings_welcome_message_placeholder
+import foodrats.feature.crew.generated.resources.crew_error_validation_welcome_message_too_long
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
@@ -155,4 +159,8 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsRemoveMemberConfirmBody(Res.string.crew_settings_remove_member_confirm_body),
     SettingsMemberRemoved(Res.string.crew_settings_member_removed),
     MemberDeleted(Res.string.crew_member_deleted),
+    SettingsWelcomeMessageSection(Res.string.crew_settings_welcome_message_section),
+    SettingsWelcomeMessageLabel(Res.string.crew_settings_welcome_message_label),
+    SettingsWelcomeMessagePlaceholder(Res.string.crew_settings_welcome_message_placeholder),
+    ErrorValidationWelcomeMessageTooLong(Res.string.crew_error_validation_welcome_message_too_long),
 }

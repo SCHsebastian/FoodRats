@@ -77,4 +77,10 @@ interface CrewDataSource {
      * the `['tagline']` Firestore rule arm enforces this server-side.
      */
     suspend fun setTagline(crewId: CrewId, tagline: String?): Result<Unit, CrewError>
+
+    /**
+     * Sets the crew's welcome message. Pass `null` to clear it. Updates only the `welcomeMessage`
+     * field — the `['welcomeMessage']` Firestore rule arm enforces this server-side.
+     */
+    suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError>
 }

@@ -75,4 +75,8 @@
     <string name="crew_invite_join_cta">Join crew</string>
     <string name="crew_invite_decline_cta">Not now</string>
     <string name="crew_invite_back_cta">Back</string>
+    <string name="crew_settings_welcome_message_section">WELCOME MESSAGE</string>
+    <string name="crew_settings_welcome_message_label">Welcome message</string>
+    <string name="crew_settings_welcome_message_placeholder">e.g. "We cook dinner together — post before 22:00." (max 200 chars)</string>
+    <string name="crew_error_validation_welcome_message_too_long">Welcome message is too long (max 200 characters).</string>
 </resources>

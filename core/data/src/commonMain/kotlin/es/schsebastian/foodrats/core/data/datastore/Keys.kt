@@ -97,4 +97,12 @@ object Keys {
      * [es.schsebastian.foodrats.core.data.preferences.DefaultAudienceRepository].
      */
     val DefaultAudienceCrewIds = StoreKey(stringPreferencesKey("default_audience_crew_ids"))
+
+    /**
+     * Pipe-delimited set of Crew IDs whose welcome message banner has been dismissed by the user,
+     * e.g. `"crewId1|crewId2"`. Absent = no dismissals yet → the welcome banner is shown for every
+     * crew that has a non-null `welcomeMessage`. Owned by
+     * [es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository].
+     */
+    val DismissedWelcomes = StoreKey(stringPreferencesKey("dismissed_welcomes"))
 }

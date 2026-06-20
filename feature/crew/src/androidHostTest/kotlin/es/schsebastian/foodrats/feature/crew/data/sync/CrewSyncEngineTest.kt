@@ -209,6 +209,7 @@ private class FakeCrewListSource : CrewDataSource {
     override suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setBlindVoting(crewId: CrewId, enabled: Boolean): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setTagline(crewId: CrewId, tagline: String?): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError> = Result.success(Unit)
 }
 
 /** Minimal [SessionProvider] backed by a [MutableStateFlow] the test flips. */

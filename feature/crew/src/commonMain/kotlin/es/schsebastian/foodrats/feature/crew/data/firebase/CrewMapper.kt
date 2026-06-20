@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
+import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
 import kotlin.time.Instant
 
 fun CrewDto.toDomain(): Result<Crew, CrewError> {
@@ -45,6 +46,13 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             is Result.Err -> null   // silently ignore malformed tagline on read
         }
     }
+    // welcomeMessage is optional: absent/blank → null; too-long silently ignored on read.
+    val welcomeMessage = welcomeMessage?.let { raw ->
+        when (val m = WelcomeMessage.of(raw)) {
+            is Result.Ok  -> m.value
+            is Result.Err -> null   // silently ignore malformed message on read
+        }
+    }
     return Result.success(
         Crew.of(
             id = crewId,
@@ -55,6 +63,7 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             members = members,
             blindVoting = blindVoting,
             tagline = tagline,
+            welcomeMessage = welcomeMessage,
         ),
     )
 }

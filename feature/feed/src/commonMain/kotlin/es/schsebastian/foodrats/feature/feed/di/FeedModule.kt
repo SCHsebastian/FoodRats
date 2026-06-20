@@ -54,6 +54,8 @@ val feedModule = module {
             reportPort = get(),
             blockedAccounts = get(),
             analytics = get(),
+            // C6 — welcome banner; passed EXPLICITLY so the noop default never short-circuits.
+            welcomePort = get(),
         )
     }
     viewModel { (mealId: String, dayIso: String) ->

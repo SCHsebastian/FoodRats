@@ -18,6 +18,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -33,6 +34,7 @@ class CrewSettingsViewModel(
     private val deleteCrew: DeleteCrewUseCase,
     private val setBlindVoting: SetBlindVotingUseCase,
     private val setCrewTagline: SetCrewTaglineUseCase,
+    private val setCrewWelcomeMessage: SetCrewWelcomeMessageUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val removeMember: RemoveMemberUseCase,
     private val session: SessionProvider,
@@ -59,6 +61,9 @@ class CrewSettingsViewModel(
                                 editingTagline = if (!it.taglineSeeded) crew.tagline?.value.orEmpty()
                                 else it.editingTagline,
                                 taglineSeeded = true,
+                                editingWelcomeMessage = if (!it.welcomeMessageSeeded) crew.welcomeMessage?.value.orEmpty()
+                                else it.editingWelcomeMessage,
+                                welcomeMessageSeeded = true,
                                 error = null,
                             )
                         }
@@ -90,6 +95,8 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.DismissError -> update { it.copy(error = null) }
         is CrewSettingsIntent.TaglineChanged -> update { it.copy(editingTagline = intent.value) }
         CrewSettingsIntent.SaveTagline -> doSaveTagline()
+        is CrewSettingsIntent.WelcomeMessageChanged -> update { it.copy(editingWelcomeMessage = intent.value) }
+        CrewSettingsIntent.SaveWelcomeMessage -> doSaveWelcomeMessage()
     }
 
     private suspend fun doSaveCrewName() {
@@ -153,6 +160,23 @@ class CrewSettingsViewModel(
             is Result.Err -> update {
                 // Roll back the text field to what was saved before the failed write.
                 it.copy(isSavingTagline = false, editingTagline = previousTagline, error = r.error)
+            }
+        }
+    }
+
+    private suspend fun doSaveWelcomeMessage() {
+        val message = currentState.editingWelcomeMessage
+        val previousMessage = currentState.crew?.welcomeMessage?.value.orEmpty()
+        update { it.copy(isSavingWelcomeMessage = true, error = null) }
+        when (val r = setCrewWelcomeMessage(crewId, message)) {
+            is Result.Ok  -> update { it.copy(isSavingWelcomeMessage = false) }
+            is Result.Err -> update {
+                // Roll back the text field to what was saved before the failed write.
+                it.copy(
+                    isSavingWelcomeMessage = false,
+                    editingWelcomeMessage = previousMessage,
+                    error = r.error,
+                )
             }
         }
     }

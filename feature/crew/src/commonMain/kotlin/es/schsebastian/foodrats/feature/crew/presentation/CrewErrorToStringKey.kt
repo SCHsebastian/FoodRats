@@ -10,6 +10,7 @@ fun CrewError.toStringKey(): CrewStringKey = when (this) {
     CrewError.Validation.DisplayNameBlank   -> CrewStringKey.ErrorValidationDisplayNameBlank
     CrewError.Validation.DisplayNameTooLong -> CrewStringKey.ErrorValidationDisplayNameTooLong
     CrewError.Validation.TaglineTooLong     -> CrewStringKey.ErrorValidationTaglineTooLong
+    CrewError.Validation.WelcomeMessageTooLong -> CrewStringKey.ErrorValidationWelcomeMessageTooLong
     CrewError.Authorization.NotOwner        -> CrewStringKey.ErrorAuthorizationNotOwner
     CrewError.Membership.NotFound           -> CrewStringKey.ErrorNotFound
     CrewError.Membership.Full               -> CrewStringKey.ErrorFull

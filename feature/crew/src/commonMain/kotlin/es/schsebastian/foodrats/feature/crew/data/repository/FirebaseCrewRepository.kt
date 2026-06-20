@@ -165,6 +165,16 @@ internal class FirebaseCrewRepository(
         return dataSource.setTagline(crewId, tagline)
     }
 
+    override suspend fun setWelcomeMessage(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        message: String?,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setWelcomeMessage(crewId, message)
+    }
+
     override suspend fun removeMember(
         crewId: CrewId,
         requestedBy: AccountId,

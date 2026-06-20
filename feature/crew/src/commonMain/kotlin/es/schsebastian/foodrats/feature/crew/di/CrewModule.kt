@@ -4,6 +4,8 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
+import es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -31,6 +33,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.presentation.invite.AcceptInviteViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerViewModel
@@ -111,6 +114,30 @@ val crewModule = module {
         }
     }
 
+    // Live welcome message + dismissal state for a crew (C6 §6). Consumed by :feature:feed to
+    // show a dismissible banner to new joiners without a :feature:crew dependency. Reads the
+    // welcome message from CrewRepository (live listener) and dismissal state from
+    // WelcomeDismissalRepository (DataStore). Bound here — not in coreDataModule — because it
+    // combines two sources: the crew repo (in this module) and the dismissal store (in :core:data).
+    single<CrewWelcomePort> {
+        val repo = get<CrewRepository>()
+        val dismissal = get<WelcomeDismissalRepository>()
+        object : CrewWelcomePort {
+            override fun observeWelcomeMessage(crewId: CrewId): Flow<String?> =
+                repo.observeCrew(crewId).map { r ->
+                    when (r) {
+                        is Result.Ok  -> r.value.welcomeMessage?.value
+                        is Result.Err -> null
+                    }
+                }
+
+            override fun isWelcomeDismissed(crewId: CrewId): Flow<Boolean> =
+                dismissal.observeDismissed().map { dismissed -> crewId.value in dismissed }
+
+            override suspend fun dismissWelcome(crewId: CrewId) = dismissal.dismiss(crewId)
+        }
+    }
+
     // Offline-first write outbox (P2 §1 T6): replays the crew-admin commands
     // (rename / set-blind-voting / remove-member / leave) against CrewRepository.
     // Contributed to the cross-feature OutboxRunner (in :core:data) via Koin
@@ -132,6 +159,7 @@ val crewModule = module {
     factoryOf(::DeleteCrewUseCase)
     factoryOf(::SetBlindVotingUseCase)
     factoryOf(::SetCrewTaglineUseCase)
+    factoryOf(::SetCrewWelcomeMessageUseCase)
     factoryOf(::RemoveMemberUseCase)
 
     viewModel {
@@ -158,6 +186,7 @@ val crewModule = module {
             deleteCrew = get(),
             setBlindVoting = get(),
             setCrewTagline = get(),
+            setCrewWelcomeMessage = get(),
             leaveCrew = get(),
             removeMember = get(),
             session = get(),

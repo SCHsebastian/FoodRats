@@ -15,6 +15,7 @@ import es.schsebastian.foodrats.core.data.preferences.MealReminderScheduleReposi
 import es.schsebastian.foodrats.core.data.preferences.AiPreferenceRepository
 import es.schsebastian.foodrats.core.data.preferences.DefaultAudienceRepository
 import es.schsebastian.foodrats.core.data.preferences.NotificationsPreferenceRepository
+import es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository
 import es.schsebastian.foodrats.core.data.preferences.ThemeModeRepository
 import es.schsebastian.foodrats.core.domain.coroutines.DefaultDispatcherProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
@@ -65,6 +66,9 @@ val coreDataModule = module {
     single<MealReminderSchedulePort> {
         MealReminderScheduleRepository(prefs = get(), dispatchers = get())
     }
+    // Per-crew welcome-banner dismissal store (C6). Not interface-bound here — CrewWelcomePort
+    // (in crewModule) combines this with the crew repo for the full port implementation.
+    single { WelcomeDismissalRepository(prefs = get(), dispatchers = get()) }
     single { Firebase.auth }
     single { Firebase.firestore }
     single { Firebase.storage }

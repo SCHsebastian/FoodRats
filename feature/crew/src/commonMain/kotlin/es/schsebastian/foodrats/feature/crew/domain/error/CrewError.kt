@@ -9,6 +9,7 @@ sealed interface CrewError {
         data object DisplayNameBlank : Validation
         data object DisplayNameTooLong : Validation // > 40 chars
         data object TaglineTooLong : Validation    // > 120 chars
+        data object WelcomeMessageTooLong : Validation // > 200 chars
     }
 
     sealed interface Authorization : CrewError {

@@ -45,6 +45,7 @@ class FakeCrewDataSource : CrewDataSource {
     var deleteResult: Result<Unit, CrewError> = Result.success(Unit)
     var setBlindVotingResult: Result<Unit, CrewError> = Result.success(Unit)
     var setTaglineResult: Result<Unit, CrewError> = Result.success(Unit)
+    var setWelcomeMessageResult: Result<Unit, CrewError> = Result.success(Unit)
 
     // ---- call captures ----
     var lastCreate: CreateCall? = null
@@ -56,6 +57,7 @@ class FakeCrewDataSource : CrewDataSource {
     var lastDelete: Pair<CrewId, CrewCode>? = null
     var lastSetBlindVoting: Pair<CrewId, Boolean>? = null
     var lastSetTagline: Pair<CrewId, String?>? = null
+    var lastSetWelcomeMessage: Pair<CrewId, String?>? = null
 
     data class CreateCall(val name: String, val founder: AccountId, val nowMs: Long)
     data class JoinCall(val code: CrewCode, val joiner: AccountId, val nowMs: Long)
@@ -123,5 +125,10 @@ class FakeCrewDataSource : CrewDataSource {
     override suspend fun setTagline(crewId: CrewId, tagline: String?): Result<Unit, CrewError> {
         lastSetTagline = crewId to tagline
         return setTaglineResult
+    }
+
+    override suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError> {
+        lastSetWelcomeMessage = crewId to message
+        return setWelcomeMessageResult
     }
 }

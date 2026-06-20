@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
@@ -81,6 +82,8 @@ class FeedViewModel(
     private val reportPort: ReportPort = NoopFeedReportPort,
     private val blockedAccounts: BlockedAccountsPort = NoopFeedBlockedAccountsPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
+    // C6 — pinned welcome banner. Default is a no-op so existing tests keep compiling.
+    private val welcomePort: CrewWelcomePort = NoopCrewWelcomePort,
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
     FeedState(
         day = FeedDay.today(clock.now().toLocalDateTime(zone).date, zone),
@@ -210,6 +213,7 @@ class FeedViewModel(
             .launchIn(viewModelScope)
 
         observeReactions()
+        observeWelcomeBanner()
     }
 
     /**
@@ -266,6 +270,27 @@ class FeedViewModel(
     /** The reaction read-model values folded into a [es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi]. */
     private data class ReactionUi(val count: Int, val viewerReacted: Boolean)
 
+    /**
+     * Observes the active crew's welcome message combined with the viewer's per-crew dismissal state
+     * (C6). The `welcomeMessage` in state is non-null only when the message is set AND not dismissed.
+     * Re-subscribes on crew switch via [flatMapLatest]; a null crew hides the banner.
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeWelcomeBanner() {
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(null)
+                else combine(
+                    welcomePort.observeWelcomeMessage(crewId),
+                    welcomePort.isWelcomeDismissed(crewId),
+                ) { msg, dismissed -> if (dismissed || msg.isNullOrBlank()) null else msg }
+            }
+            .distinctUntilChanged()
+            .onEach { msg -> update { it.copy(welcomeMessage = msg) } }
+            .launchIn(viewModelScope)
+    }
+
     override suspend fun handle(intent: FeedIntent) = when (intent) {
         FeedIntent.PrevDay      -> { navigatePrev(); Unit }
         FeedIntent.NextDay      -> { navigateNext(); Unit }
@@ -285,6 +310,7 @@ class FeedViewModel(
         FeedIntent.DismissFeedReportSuccess  -> update { it.copy(feedReportSuccess = false) }
         FeedIntent.DismissFeedBlockSuccess   -> update { it.copy(feedBlockSuccess = false) }
         FeedIntent.DismissFeedBlockError     -> update { it.copy(feedBlockError = null) }
+        FeedIntent.DismissWelcomeBanner      -> dismissWelcomeBanner()
     }
 
     /**
@@ -339,6 +365,18 @@ class FeedViewModel(
                 }
                 outbox.remove(entry.id)
             }
+    }
+
+    // ── Welcome banner (C6) ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Persists the per-crew dismissal to DataStore. The [observeWelcomeBanner] flow will re-emit
+     * `null` as soon as [CrewWelcomePort.isWelcomeDismissed] flips to `true`, hiding the banner
+     * without an explicit `update { it.copy(welcomeMessage = null) }`.
+     */
+    private suspend fun dismissWelcomeBanner() {
+        val crewId = activeCrew.current.first() ?: return
+        welcomePort.dismissWelcome(crewId)
     }
 
     // ── Feed overflow UGC actions ────────────────────────────────────────────────────────────────
@@ -527,4 +565,11 @@ private object NoopFeedBlockedAccountsPort : BlockedAccountsPort {
         owner: AccountId,
         target: AccountId,
     ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
+}
+
+/** No-op [CrewWelcomePort] default for [FeedViewModel] — see [NoopFeedReportPort] for rationale. */
+private object NoopCrewWelcomePort : CrewWelcomePort {
+    override fun observeWelcomeMessage(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String?> = flowOf(null)
+    override fun isWelcomeDismissed(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<Boolean> = flowOf(false)
+    override suspend fun dismissWelcome(crewId: es.schsebastian.foodrats.core.domain.model.CrewId) = Unit
 }

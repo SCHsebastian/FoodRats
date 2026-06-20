@@ -107,6 +107,7 @@ import foodrats.feature.feed.generated.resources.feed_voter_score_compact
 import foodrats.feature.feed.generated.resources.feed_crew_score_label
 import foodrats.feature.feed.generated.resources.feed_location_label
 import foodrats.feature.feed.generated.resources.feed_location_map_cta
+import foodrats.feature.feed.generated.resources.feed_welcome_dismiss
 import foodrats.feature.feed.generated.resources.feed_your_vote
 import org.jetbrains.compose.resources.StringResource
 
@@ -222,4 +223,6 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     ReportSubmitMeal(Res.string.feed_report_submit_meal),
     ReportSubmitUser(Res.string.feed_report_submit_user),
     ReportSubmitComment(Res.string.feed_report_submit_comment),
+    // C6 — pinned crew welcome banner dismiss button.
+    WelcomeDismiss(Res.string.feed_welcome_dismiss),
 }

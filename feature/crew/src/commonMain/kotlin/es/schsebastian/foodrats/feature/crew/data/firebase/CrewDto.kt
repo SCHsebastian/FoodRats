@@ -20,4 +20,8 @@ data class CrewDto(
     // Null-pinned so GitLive encodeDefaults=true doesn't emit `null` and fail an affectedKeys
     // check it was not part of.
     val tagline: String? = null,
+    // Owner-settable onboarding welcome message shown as a dismissible feed banner to new joiners
+    // (≤ 200 chars). `null` means no message is set; old docs without the field deserialize to null
+    // (no migration needed). Null-pinned for the same GitLive encodeDefaults reason as `tagline`.
+    val welcomeMessage: String? = null,
 )

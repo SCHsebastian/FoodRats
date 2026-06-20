@@ -205,3 +205,49 @@ describe("crews — tagline (owner-only, branch 7)", () => {
     );
   });
 });
+
+describe("crews — welcomeMessage (owner-only, branch 8)", () => {
+  beforeEach(async () => {
+    await seedCrew(env, "c1", {
+      ownerId: "alice",
+      name: "C1",
+      memberIds: ["alice", "bob"],
+      members: { alice: {}, bob: {} },
+    });
+  });
+
+  it("the owner can set the welcome message", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/c1"), { welcomeMessage: "Cook before 22:00!" }),
+    );
+  });
+
+  it("the owner can clear the welcome message (null)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/c1"), { welcomeMessage: null }));
+  });
+
+  it("a non-owner member CANNOT set the welcome message", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { welcomeMessage: "hijacked" }));
+  });
+
+  it("a stranger CANNOT set the welcome message", async () => {
+    const db = env.authenticatedContext("mallory").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { welcomeMessage: "hijacked" }));
+  });
+
+  it("a non-string, non-null welcome message is rejected", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { welcomeMessage: 42 }));
+  });
+
+  it("the welcomeMessage branch CANNOT also smuggle an ownerId change", async () => {
+    // Branch (8) is gated by hasOnly(['welcomeMessage']); touching ownerId fails every update branch.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), { welcomeMessage: "ok", ownerId: "bob" }),
+    );
+  });
+});

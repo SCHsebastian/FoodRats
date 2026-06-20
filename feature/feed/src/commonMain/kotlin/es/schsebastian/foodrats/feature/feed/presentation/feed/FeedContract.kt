@@ -78,6 +78,13 @@ data class FeedState(
      * Cleared by [FeedIntent.DismissFeedBlockError] or by the next [FeedIntent.BlockFeedAuthor].
      */
     val feedBlockError: BlockError? = null,
+    /**
+     * Active crew's pinned welcome message (C6). Non-null → show the banner above the feed.
+     * Null when the crew has no message or the user has dismissed it (per-crew, DataStore-persisted).
+     * Derived from [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeWelcomeMessage]
+     * combined with [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.isWelcomeDismissed].
+     */
+    val welcomeMessage: String? = null,
 ) : MviState
 
 /**
@@ -143,6 +150,9 @@ sealed interface FeedIntent : MviIntent {
 
     /** Clear the transient block-error toast (UGC compliance §5). */
     data object DismissFeedBlockError : FeedIntent
+
+    /** Dismiss the crew welcome banner; persists per-crew to DataStore (C6). */
+    data object DismissWelcomeBanner : FeedIntent
 }
 
 sealed interface FeedEffect : MviEffect

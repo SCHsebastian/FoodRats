@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.crew.di
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository
 import es.schsebastian.foodrats.core.database.FoodRatsDatabase
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
@@ -57,6 +58,8 @@ class CrewModuleVerifyTest {
                 CoroutineScope::class,
                 ConnectivityPort::class,
                 OutboxPort::class,
+                // C6 — WelcomeDismissalRepository is bound in coreDataModule; CrewWelcomePort consumes it.
+                WelcomeDismissalRepository::class,
             ),
         )
     }

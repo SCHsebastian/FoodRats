@@ -120,4 +120,6 @@
     <string name="feed_report_submit_meal">Enviar reporte de plato</string>
     <string name="feed_report_submit_user">Enviar reporte de usuario</string>
     <string name="feed_report_submit_comment">Enviar reporte de comentario</string>
+    <!-- C6 — botón de cerrar el mensaje de bienvenida del grupo. -->
+    <string name="feed_welcome_dismiss">Entendido</string>
 </resources>

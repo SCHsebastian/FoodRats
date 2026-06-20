@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
+import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,6 +30,8 @@ class FakeCrewRepository(
     var nextSetBlindVoting: Result<Unit, CrewError>? = null
     /** When set, overrides the default setTagline behavior (ownership check + mutation). */
     var nextSetTagline: Result<Unit, CrewError>? = null
+    /** When set, overrides the default setWelcomeMessage behavior (ownership check + mutation). */
+    var nextSetWelcomeMessage: Result<Unit, CrewError>? = null
     /** When set, overrides the default removeMember behavior (ownership/self/membership checks + mutation). */
     var nextRemoveMember: Result<Unit, CrewError>? = null
 
@@ -37,6 +40,7 @@ class FakeCrewRepository(
     var lastDelete: CrewId? = null
     var lastSetBlindVoting: Pair<CrewId, Boolean>? = null
     var lastSetTagline: Pair<CrewId, String?>? = null
+    var lastSetWelcomeMessage: Pair<CrewId, String?>? = null
     var lastRemoveMember: Triple<CrewId, AccountId, AccountId>? = null
 
     override suspend fun create(
@@ -137,6 +141,28 @@ class FakeCrewRepository(
         }
         crews.value = crews.value.map {
             if (it.id == crewId) it.copy(tagline = parsedTagline) else it
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun setWelcomeMessage(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        message: String?,
+    ): Result<Unit, CrewError> {
+        nextSetWelcomeMessage?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        lastSetWelcomeMessage = Pair(crewId, message)
+        val parsedMessage = message?.let {
+            when (val r = WelcomeMessage.of(it)) {
+                is Result.Ok  -> r.value
+                is Result.Err -> return Result.failure(r.error)
+            }
+        }
+        crews.value = crews.value.map {
+            if (it.id == crewId) it.copy(welcomeMessage = parsedMessage) else it
         }
         return Result.success(Unit)
     }

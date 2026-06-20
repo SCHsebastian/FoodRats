@@ -94,6 +94,12 @@ service cloud.firestore {
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tagline'])
                        && (request.resource.data.tagline == null || request.resource.data.tagline is string))
                       ||
+                      // (8) owner sets or clears the welcomeMessage (null = cleared; string = up to 200 chars).
+                      (request.auth.uid in resource.data.memberIds
+                       && resource.data.ownerId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['welcomeMessage'])
+                       && (request.resource.data.welcomeMessage == null || request.resource.data.welcomeMessage is string))
+                      ||
                       (request.auth.uid in resource.data.memberIds
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
                       ||

@@ -204,6 +204,17 @@ fun FeedScreen(
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                             ) {
+                                // C6 — pinned crew welcome banner: shown only when the owner has set a
+                                // message and the viewer has not dismissed it for this crew yet.
+                                state.welcomeMessage?.let { msg ->
+                                    item(key = "welcome-banner") {
+                                        FeedWelcomeBanner(
+                                            message = msg,
+                                            onDismiss = { vm.onIntent(FeedIntent.DismissWelcomeBanner) },
+                                            modifier = Modifier.frRiseIn(delayMillis = 0),
+                                        )
+                                    }
+                                }
                                 item(key = "plates-count") {
                                     PlatesCountHeader(
                                         count = meals.size,
@@ -401,6 +412,36 @@ private fun feedReportReasonLabels(): Map<FrReportReasonOption, String> = mapOf(
     FrReportReasonOption.VIOLENCE   to resolve(FeedStringKey.ReportReasonViolence),
     FrReportReasonOption.OTHER      to resolve(FeedStringKey.ReportReasonOther),
 )
+
+/**
+ * Pinned crew welcome banner (C6): the owner's `welcomeMessage` shown above the meal list.
+ * The "Got it" dismiss button persists the dismissal per-crew to DataStore via [FeedIntent.DismissWelcomeBanner].
+ * Uses [FrCard] (Iron & Ember surface) + [FrText] for the message and [FrButton] for the dismiss CTA.
+ */
+@Composable
+private fun FeedWelcomeBanner(
+    message: String,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FrCard(modifier = modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            FrText(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            FrButton(
+                label = resolve(FeedStringKey.WelcomeDismiss),
+                onClick = onDismiss,
+                variant = FrButtonVariant.Ghost,
+            )
+        }
+    }
+}
 
 /**
  * Auto-dismissing overlay toast for report/block success from the feed overflow (UGC compliance §4/§5).

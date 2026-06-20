@@ -218,6 +218,17 @@ fun CrewSettingsScreen(
                             modifier = Modifier.frRiseIn(delayMillis = 100),
                         )
                     }
+
+                    item {
+                        WelcomeMessageCard(
+                            message = state.editingWelcomeMessage,
+                            savedMessage = crew.welcomeMessage?.value.orEmpty(),
+                            saving = state.isSavingWelcomeMessage,
+                            onMessageChange = { vm.onIntent(CrewSettingsIntent.WelcomeMessageChanged(it)) },
+                            onSave = { vm.onIntent(CrewSettingsIntent.SaveWelcomeMessage) },
+                            modifier = Modifier.frRiseIn(delayMillis = 120),
+                        )
+                    }
                 }
 
                 item {
@@ -228,7 +239,7 @@ fun CrewSettingsScreen(
                         identities = state.identities,
                         removingMemberIds = state.removingMemberIds,
                         onRemove = { memberPendingRemoval = it },
-                        modifier = Modifier.frRiseIn(delayMillis = 120),
+                        modifier = Modifier.frRiseIn(delayMillis = 140),
                     )
                 }
 
@@ -237,7 +248,7 @@ fun CrewSettingsScreen(
                         label = resolve(CrewStringKey.SettingsSwitchCrew),
                         onClick = { vm.onIntent(CrewSettingsIntent.SwitchCrew) },
                         variant = FrButtonVariant.Secondary,
-                        modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 160),
+                        modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 180),
                     )
                 }
 
@@ -248,7 +259,7 @@ fun CrewSettingsScreen(
                         deleteEnabled = !state.isDeleting,
                         onLeave = { vm.onIntent(CrewSettingsIntent.Leave) },
                         onDelete = { vm.onIntent(CrewSettingsIntent.RequestDelete) },
-                        modifier = Modifier.frRiseIn(delayMillis = 200),
+                        modifier = Modifier.frRiseIn(delayMillis = 220),
                     )
                 }
 
@@ -648,6 +659,44 @@ private fun DangerActionRow(
             color = semantic.danger,
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+/**
+ * Owner-only welcome message field. Shows the current welcome message editable by the owner.
+ * New joiners will see this as a dismissible banner in the crew feed. A blank message clears
+ * any existing message.
+ */
+@Composable
+private fun WelcomeMessageCard(
+    message: String,
+    savedMessage: String,
+    saving: Boolean,
+    onMessageChange: (String) -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(
+            text = resolve(CrewStringKey.SettingsWelcomeMessageSection),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        FrCard(modifier = Modifier.fillMaxWidth()) {
+            FrTextField(
+                value = message,
+                onValueChange = onMessageChange,
+                label = resolve(CrewStringKey.SettingsWelcomeMessageLabel),
+                placeholder = resolve(CrewStringKey.SettingsWelcomeMessagePlaceholder),
+                enabled = !saving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FrButton(
+                label = resolve(CrewStringKey.SettingsSave),
+                onClick = onSave,
+                enabled = !saving && message.trim() != savedMessage,
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+            )
+        }
     }
 }
 

@@ -28,6 +28,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -396,6 +397,7 @@ class CrewSettingsViewModelTest {
             deleteCrew = DeleteCrewUseCase(repo, session),
             setBlindVoting = SetBlindVotingUseCase(repo, session, connectivity, outbox),
             setCrewTagline = SetCrewTaglineUseCase(repo, session),
+            setCrewWelcomeMessage = SetCrewWelcomeMessageUseCase(repo, session),
             leaveCrew = LeaveCrewUseCase(repo, connectivity, outbox),
             removeMember = RemoveMemberUseCase(repo, session, connectivity, outbox),
             session = session,

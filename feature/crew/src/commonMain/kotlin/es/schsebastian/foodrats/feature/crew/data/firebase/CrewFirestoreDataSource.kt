@@ -236,6 +236,14 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
+    override suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("welcomeMessage" to message)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
     companion object { const val MAX_CODE_ATTEMPTS = 5 }
 }
 
