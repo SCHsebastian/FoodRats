@@ -155,6 +155,16 @@ internal class FirebaseCrewRepository(
         return dataSource.setBlindVoting(crewId, enabled)
     }
 
+    override suspend fun setTagline(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        tagline: String?,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setTagline(crewId, tagline)
+    }
+
     override suspend fun removeMember(
         crewId: CrewId,
         requestedBy: AccountId,

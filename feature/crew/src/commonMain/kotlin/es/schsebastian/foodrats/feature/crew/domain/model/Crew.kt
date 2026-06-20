@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import kotlin.time.Instant
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 
 /**
  * The Crew aggregate root. The invariant this context exists to protect is the
@@ -29,6 +30,13 @@ data class Crew(
      * flag through [es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort].
      */
     val blindVoting: Boolean = false,
+    /**
+     * Optional owner-set tagline — a short blurb displayed on the crew card and join screen
+     * ("only home-cooked", "no Scores after midnight"). `null` means no tagline is set.
+     * Managed by [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase].
+     * Capped at [CrewTagline.MAX_LEN] = 120 chars.
+     */
+    val tagline: CrewTagline? = null,
 ) {
     val size: Int get() = members.size
 
@@ -59,6 +67,7 @@ data class Crew(
             createdAt: Instant,
             members: List<Member>,
             blindVoting: Boolean = false,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting)
+            tagline: CrewTagline? = null,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline)
     }
 }

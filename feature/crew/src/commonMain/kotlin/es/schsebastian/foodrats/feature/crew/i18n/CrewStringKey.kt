@@ -38,6 +38,10 @@ import foodrats.feature.crew.generated.resources.crew_settings_back_cta
 import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_description
 import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_label
 import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_section
+import foodrats.feature.crew.generated.resources.crew_settings_tagline_section
+import foodrats.feature.crew.generated.resources.crew_settings_tagline_label
+import foodrats.feature.crew.generated.resources.crew_settings_tagline_placeholder
+import foodrats.feature.crew.generated.resources.crew_error_validation_tagline_too_long
 import foodrats.feature.crew.generated.resources.crew_settings_cancel
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
 import foodrats.feature.crew.generated.resources.crew_settings_crew_section
@@ -105,6 +109,10 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsBlindVotingSection(Res.string.crew_settings_blind_voting_section),
     SettingsBlindVotingLabel(Res.string.crew_settings_blind_voting_label),
     SettingsBlindVotingDescription(Res.string.crew_settings_blind_voting_description),
+    SettingsTaglineSection(Res.string.crew_settings_tagline_section),
+    SettingsTaglineLabel(Res.string.crew_settings_tagline_label),
+    SettingsTaglinePlaceholder(Res.string.crew_settings_tagline_placeholder),
+    ErrorValidationTaglineTooLong(Res.string.crew_error_validation_tagline_too_long),
     SettingsSwitchCrew(Res.string.crew_settings_switch_crew),
     SettingsInviteCode(Res.string.crew_settings_invite_code),
     SettingsShare(Res.string.crew_settings_share),

@@ -71,4 +71,10 @@ interface CrewDataSource {
     suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError>
 
     suspend fun setBlindVoting(crewId: CrewId, enabled: Boolean): Result<Unit, CrewError>
+
+    /**
+     * Sets the crew's tagline. Pass `null` to clear it. Updates only the `tagline` field —
+     * the `['tagline']` Firestore rule arm enforces this server-side.
+     */
+    suspend fun setTagline(crewId: CrewId, tagline: String?): Result<Unit, CrewError>
 }

@@ -14,6 +14,7 @@ import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
@@ -26,6 +27,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -220,6 +222,69 @@ class CrewSettingsViewModelTest {
     }
 
     @Test
+    fun owner_saves_tagline_and_writes_trimmed_value_to_repo() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(ownerId, repo)
+
+        vm.onIntent(CrewSettingsIntent.TaglineChanged("  only home-cooked  "))
+        vm.onIntent(CrewSettingsIntent.SaveTagline)
+
+        assertEquals(crewId to "only home-cooked", repo.lastSetTagline)
+        assertEquals(false, vm.state.value.isSavingTagline)
+        assertNull(vm.state.value.error)
+    }
+
+    @Test
+    fun owner_clearing_tagline_is_not_clobbered_by_a_later_crew_emission() = runTest {
+        // Regression: editingTagline must seed exactly once. An empty edit (owner cleared the
+        // field) must survive subsequent observeCrew re-emissions — isEmpty() is NOT the
+        // "not seeded" sentinel because empty is a legitimate edited value.
+        val crewWithTagline = sampleCrew.copy(tagline = (CrewTagline.of("old rules") as Result.Ok).value)
+        val repo = FakeCrewRepository(listOf(crewWithTagline))
+        val vm = buildVm(ownerId, repo)
+        // Seeded from the crew on first load.
+        assertEquals("old rules", vm.state.value.editingTagline)
+
+        // Owner clears the field but does NOT save yet.
+        vm.onIntent(CrewSettingsIntent.TaglineChanged(""))
+        assertEquals("", vm.state.value.editingTagline)
+
+        // A later crew-doc change re-emits (e.g. blind-voting toggled by another path). The
+        // tagline edit must NOT snap back to "old rules".
+        repo.crews.value = listOf(crewWithTagline.copy(blindVoting = true))
+        assertEquals("", vm.state.value.editingTagline)
+    }
+
+    @Test
+    fun owner_tagline_too_long_surfaces_error_and_rolls_back_to_saved_value() = runTest {
+        val crewWithTagline = sampleCrew.copy(tagline = (CrewTagline.of("keep me") as Result.Ok).value)
+        val repo = FakeCrewRepository(listOf(crewWithTagline))
+        val vm = buildVm(ownerId, repo)
+
+        vm.onIntent(CrewSettingsIntent.TaglineChanged("x".repeat(CrewTagline.MAX_LEN + 1)))
+        vm.onIntent(CrewSettingsIntent.SaveTagline)
+
+        assertEquals(CrewError.Validation.TaglineTooLong, vm.state.value.error)
+        assertEquals(false, vm.state.value.isSavingTagline)
+        // Rolled back to the value saved on the crew before the failed write.
+        assertEquals("keep me", vm.state.value.editingTagline)
+        assertNull(repo.lastSetTagline)
+    }
+
+    @Test
+    fun non_owner_save_tagline_surfaces_authorization_error() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(memberId, repo)
+
+        vm.onIntent(CrewSettingsIntent.TaglineChanged("sneaky"))
+        vm.onIntent(CrewSettingsIntent.SaveTagline)
+
+        assertEquals(CrewError.Authorization.NotOwner, vm.state.value.error)
+        assertEquals(false, vm.state.value.isSavingTagline)
+        assertNull(repo.lastSetTagline)
+    }
+
+    @Test
     fun share_link_tapped_tracks_crew_invite_shared() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val analytics = RecordingAnalyticsTracker()
@@ -330,6 +395,7 @@ class CrewSettingsViewModelTest {
             renameCrew = RenameCrewUseCase(repo, session, connectivity, outbox),
             deleteCrew = DeleteCrewUseCase(repo, session),
             setBlindVoting = SetBlindVotingUseCase(repo, session, connectivity, outbox),
+            setCrewTagline = SetCrewTaglineUseCase(repo, session),
             leaveCrew = LeaveCrewUseCase(repo, connectivity, outbox),
             removeMember = RemoveMemberUseCase(repo, session, connectivity, outbox),
             session = session,

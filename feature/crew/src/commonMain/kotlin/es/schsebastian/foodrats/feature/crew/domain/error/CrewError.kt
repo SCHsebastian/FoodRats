@@ -8,6 +8,7 @@ sealed interface CrewError {
         data object CodeMalformed : Validation     // doesn't match [A-HJ-NP-Z2-9]{6}
         data object DisplayNameBlank : Validation
         data object DisplayNameTooLong : Validation // > 40 chars
+        data object TaglineTooLong : Validation    // > 120 chars
     }
 
     sealed interface Authorization : CrewError {

@@ -30,6 +30,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.presentation.invite.AcceptInviteViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerViewModel
@@ -130,6 +131,7 @@ val crewModule = module {
     factoryOf(::RenameCrewUseCase)
     factoryOf(::DeleteCrewUseCase)
     factoryOf(::SetBlindVotingUseCase)
+    factoryOf(::SetCrewTaglineUseCase)
     factoryOf(::RemoveMemberUseCase)
 
     viewModel {
@@ -155,6 +157,7 @@ val crewModule = module {
             renameCrew = get(),
             deleteCrew = get(),
             setBlindVoting = get(),
+            setCrewTagline = get(),
             leaveCrew = get(),
             removeMember = get(),
             session = get(),

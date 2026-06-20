@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import kotlin.time.Instant
 import kotlin.test.Test
@@ -75,5 +76,32 @@ class CrewMapperTest {
         val r = dto.toDomain()
         assertIs<Result.Ok<Crew>>(r)
         assertEquals(1, r.value.members.size)
+    }
+
+    @Test fun toDomain_defaults_tagline_to_null_when_absent() {
+        val r = validDto.toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(null, r.value.tagline)
+    }
+
+    @Test fun toDomain_maps_tagline_when_set() {
+        val r = validDto.copy(tagline = "only home-cooked").toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals("only home-cooked", r.value.tagline?.value)
+    }
+
+    @Test fun toDomain_maps_tagline_at_max_length() {
+        val maxTagline = "x".repeat(CrewTagline.MAX_LEN)
+        val r = validDto.copy(tagline = maxTagline).toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(maxTagline, r.value.tagline?.value)
+    }
+
+    @Test fun toDomain_silently_drops_malformed_tagline() {
+        // A tagline that's too long (shouldn't happen for well-formed data, but tolerant read).
+        val overlong = "x".repeat(CrewTagline.MAX_LEN + 1)
+        val r = validDto.copy(tagline = overlong).toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(null, r.value.tagline)   // silently ignored
     }
 }

@@ -17,6 +17,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
@@ -31,6 +32,7 @@ class CrewSettingsViewModel(
     private val renameCrew: RenameCrewUseCase,
     private val deleteCrew: DeleteCrewUseCase,
     private val setBlindVoting: SetBlindVotingUseCase,
+    private val setCrewTagline: SetCrewTaglineUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val removeMember: RemoveMemberUseCase,
     private val session: SessionProvider,
@@ -51,6 +53,12 @@ class CrewSettingsViewModel(
                                 isOwner = crew.ownerId == myAccountId,
                                 myAccountId = myAccountId,
                                 editingCrewName = if (it.editingCrewName.isEmpty()) crew.name else it.editingCrewName,
+                                // Seed editingTagline from the live crew exactly once. An empty
+                                // string is a legitimate edited value (owner cleared the tagline),
+                                // so isEmpty() can't be the "not seeded yet" sentinel — use a flag.
+                                editingTagline = if (!it.taglineSeeded) crew.tagline?.value.orEmpty()
+                                else it.editingTagline,
+                                taglineSeeded = true,
                                 error = null,
                             )
                         }
@@ -80,6 +88,8 @@ class CrewSettingsViewModel(
         CrewSettingsIntent.ConfirmDelete -> doDelete()
         is CrewSettingsIntent.RemoveMemberConfirmed -> doRemoveMember(intent)
         CrewSettingsIntent.DismissError -> update { it.copy(error = null) }
+        is CrewSettingsIntent.TaglineChanged -> update { it.copy(editingTagline = intent.value) }
+        CrewSettingsIntent.SaveTagline -> doSaveTagline()
     }
 
     private suspend fun doSaveCrewName() {
@@ -129,6 +139,21 @@ class CrewSettingsViewModel(
                 emit(CrewSettingsEffect.Deleted)
             }
             is Result.Err -> update { it.copy(isDeleting = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doSaveTagline() {
+        val tagline = currentState.editingTagline
+        val previousTagline = currentState.crew?.tagline?.value.orEmpty()
+        // Optimistic: show in-flight flag; no immediate state change on the crew object
+        // (the live crew listener re-emits with the new tagline once the write lands).
+        update { it.copy(isSavingTagline = true, error = null) }
+        when (val r = setCrewTagline(crewId, tagline)) {
+            is Result.Ok  -> update { it.copy(isSavingTagline = false) }
+            is Result.Err -> update {
+                // Roll back the text field to what was saved before the failed write.
+                it.copy(isSavingTagline = false, editingTagline = previousTagline, error = r.error)
+            }
         }
     }
 

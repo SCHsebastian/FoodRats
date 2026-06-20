@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,6 +27,8 @@ class FakeCrewRepository(
     var nextDelete: Result<Unit, CrewError>? = null
     /** When set, overrides the default setBlindVoting behavior (ownership check + mutation). */
     var nextSetBlindVoting: Result<Unit, CrewError>? = null
+    /** When set, overrides the default setTagline behavior (ownership check + mutation). */
+    var nextSetTagline: Result<Unit, CrewError>? = null
     /** When set, overrides the default removeMember behavior (ownership/self/membership checks + mutation). */
     var nextRemoveMember: Result<Unit, CrewError>? = null
 
@@ -33,6 +36,7 @@ class FakeCrewRepository(
     var lastMemberRename: Triple<CrewId, AccountId, String>? = null
     var lastDelete: CrewId? = null
     var lastSetBlindVoting: Pair<CrewId, Boolean>? = null
+    var lastSetTagline: Pair<CrewId, String?>? = null
     var lastRemoveMember: Triple<CrewId, AccountId, AccountId>? = null
 
     override suspend fun create(
@@ -112,6 +116,28 @@ class FakeCrewRepository(
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
         lastSetBlindVoting = Pair(crewId, enabled)
         crews.value = crews.value.map { if (it.id == crewId) it.copy(blindVoting = enabled) else it }
+        return Result.success(Unit)
+    }
+
+    override suspend fun setTagline(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        tagline: String?,
+    ): Result<Unit, CrewError> {
+        nextSetTagline?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        lastSetTagline = Pair(crewId, tagline)
+        val parsedTagline = tagline?.let {
+            when (val r = CrewTagline.of(it)) {
+                is Result.Ok  -> r.value
+                is Result.Err -> return Result.failure(r.error)
+            }
+        }
+        crews.value = crews.value.map {
+            if (it.id == crewId) it.copy(tagline = parsedTagline) else it
+        }
         return Result.success(Unit)
     }
 

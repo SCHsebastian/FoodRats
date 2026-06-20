@@ -29,6 +29,10 @@
     <string name="crew_settings_blind_voting_section">BLIND VOTING</string>
     <string name="crew_settings_blind_voting_label">Hide who cooked until you vote</string>
     <string name="crew_settings_blind_voting_description">When on, a meal\'s author stays hidden until you\'ve scored it — so nobody is swayed by who cooked.</string>
+    <string name="crew_settings_tagline_section">HOUSE RULES</string>
+    <string name="crew_settings_tagline_label">Tagline / house rules</string>
+    <string name="crew_settings_tagline_placeholder">e.g. "only home-cooked, no delivery" (max 120 chars)</string>
+    <string name="crew_error_validation_tagline_too_long">Tagline is too long (max 120 characters).</string>
     <string name="crew_settings_switch_crew">Switch crew</string>
     <string name="crew_settings_invite_code">Invite code</string>
     <string name="crew_settings_share">Share</string>

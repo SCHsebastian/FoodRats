@@ -42,6 +42,14 @@ interface CrewRepository {
     suspend fun setBlindVoting(crewId: CrewId, requestedBy: AccountId, enabled: Boolean): Result<Unit, CrewError>
 
     /**
+     * Sets or clears the crew tagline. Only the owner may change it.
+     * Pass `null` to clear the tagline. The raw string must be pre-validated via
+     * [es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline.of] before calling
+     * this method.
+     */
+    suspend fun setTagline(crewId: CrewId, requestedBy: AccountId, tagline: String?): Result<Unit, CrewError>
+
+    /**
      * Removes [target] from the crew. Only the owner ([requestedBy]) may remove a member, and the
      * owner cannot remove themselves (leaving is a separate flow). Authorization, self-removal, and
      * membership invariants are enforced atomically server-side by the implementation (mirrored

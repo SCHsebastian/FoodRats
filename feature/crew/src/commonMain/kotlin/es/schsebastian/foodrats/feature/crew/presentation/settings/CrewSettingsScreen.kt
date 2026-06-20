@@ -207,6 +207,17 @@ fun CrewSettingsScreen(
                             modifier = Modifier.frRiseIn(delayMillis = 80),
                         )
                     }
+
+                    item {
+                        TaglineCard(
+                            tagline = state.editingTagline,
+                            savedTagline = crew.tagline?.value.orEmpty(),
+                            saving = state.isSavingTagline,
+                            onTaglineChange = { vm.onIntent(CrewSettingsIntent.TaglineChanged(it)) },
+                            onSave = { vm.onIntent(CrewSettingsIntent.SaveTagline) },
+                            modifier = Modifier.frRiseIn(delayMillis = 100),
+                        )
+                    }
                 }
 
                 item {
@@ -417,6 +428,45 @@ private fun InviteQrDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        }
+    }
+}
+
+/**
+ * Owner-only tagline field. Shows the current tagline text editable by the owner, with a "Save"
+ * button that becomes enabled once the value differs from what was last saved on the crew.
+ */
+@Composable
+private fun TaglineCard(
+    tagline: String,
+    savedTagline: String,
+    saving: Boolean,
+    onTaglineChange: (String) -> Unit,
+    onSave: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        SectionEyebrow(
+            text = resolve(CrewStringKey.SettingsTaglineSection),
+            color = MaterialTheme.colorScheme.primary,
+        )
+        FrCard(modifier = Modifier.fillMaxWidth()) {
+            FrTextField(
+                value = tagline,
+                onValueChange = onTaglineChange,
+                label = resolve(CrewStringKey.SettingsTaglineLabel),
+                placeholder = resolve(CrewStringKey.SettingsTaglinePlaceholder),
+                enabled = !saving,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            FrButton(
+                label = resolve(CrewStringKey.SettingsSave),
+                onClick = onSave,
+                // Dirty check: trimmed edit must differ from what's saved on the crew (mirrors the
+                // crew-name Save gate). Avoids a redundant Firestore write when nothing changed.
+                enabled = !saving && tagline.trim() != savedTagline,
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+            )
         }
     }
 }

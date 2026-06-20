@@ -228,6 +228,14 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
+    override suspend fun setTagline(crewId: CrewId, tagline: String?): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("tagline" to tagline)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
     companion object { const val MAX_CODE_ATTEMPTS = 5 }
 }
 

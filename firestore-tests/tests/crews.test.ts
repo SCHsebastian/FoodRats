@@ -161,3 +161,47 @@ describe("crews — owner removes a member", () => {
     );
   });
 });
+
+describe("crews — tagline (owner-only, branch 7)", () => {
+  beforeEach(async () => {
+    await seedCrew(env, "c1", {
+      ownerId: "alice",
+      name: "C1",
+      memberIds: ["alice", "bob"],
+      members: { alice: {}, bob: {} },
+    });
+  });
+
+  it("the owner can set the tagline", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/c1"), { tagline: "only home-cooked" }));
+  });
+
+  it("the owner can clear the tagline (null)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/c1"), { tagline: null }));
+  });
+
+  it("a non-owner member CANNOT set the tagline", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { tagline: "hijacked" }));
+  });
+
+  it("a stranger CANNOT set the tagline", async () => {
+    const db = env.authenticatedContext("mallory").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { tagline: "hijacked" }));
+  });
+
+  it("a non-string, non-null tagline is rejected", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(updateDoc(doc(db, "crews/c1"), { tagline: 42 }));
+  });
+
+  it("the tagline branch CANNOT also smuggle an ownerId change", async () => {
+    // Branch (7) is gated by hasOnly(['tagline']); touching ownerId fails every update branch.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), { tagline: "ok", ownerId: "bob" }),
+    );
+  });
+});

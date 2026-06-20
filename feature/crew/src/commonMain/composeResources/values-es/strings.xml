@@ -29,6 +29,10 @@
     <string name="crew_settings_blind_voting_section">VOTACIÓN A CIEGAS</string>
     <string name="crew_settings_blind_voting_label">Ocultar quién cocinó hasta votar</string>
     <string name="crew_settings_blind_voting_description">Cuando está activado, el autor de un plato permanece oculto hasta que lo hayas puntuado, para que nadie se deje influir por quién cocinó.</string>
+    <string name="crew_settings_tagline_section">REGLAS DE GRUPO</string>
+    <string name="crew_settings_tagline_label">Lema / reglas de grupo</string>
+    <string name="crew_settings_tagline_placeholder">ej. "solo casero, nada de delivery" (máx. 120 caracteres)</string>
+    <string name="crew_error_validation_tagline_too_long">El lema es demasiado largo (máx. 120 caracteres).</string>
     <string name="crew_settings_switch_crew">Cambiar de grupo</string>
     <string name="crew_settings_invite_code">Código de invitación</string>
     <string name="crew_settings_share">Compartir</string>

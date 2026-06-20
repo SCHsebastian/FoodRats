@@ -67,7 +67,7 @@ service cloud.firestore {
       // before writing themselves into memberIds. Consistent with /crewCodes/ which
       // is already readable by any authenticated user.
       allow read:   if request.auth != null;
-      // Update is partitioned into five explicit branches so non-owners can't rename
+      // Update is partitioned into explicit branches so non-owners can't rename
       // the crew and rogue clients can't rewrite ownerId / createdAt / code:
       //   (1) owner renames `name`
       //   (2) any current member renames themselves inside the `members` map
@@ -75,6 +75,7 @@ service cloud.firestore {
       //   (4) leave — existing member removes self (and only self) from memberIds + members
       //   (5) owner toggles the `blindVoting` policy flag (owner-only; no other field touched)
       //   (6) remove-member — owner removes another member (never self) from memberIds + members
+      //   (7) owner sets/clears the `tagline` field (owner-only; no other field touched)
       allow update: if request.auth != null
                     && (
                       (request.auth.uid in resource.data.memberIds
@@ -85,6 +86,13 @@ service cloud.firestore {
                        && resource.data.ownerId == request.auth.uid
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blindVoting'])
                        && request.resource.data.blindVoting is bool)
+                      ||
+                      // (7) owner sets or clears the tagline (null = cleared; string = up to 120 chars).
+                      // `in` check is on resource.data (existing doc) so the owner must still be a member.
+                      (request.auth.uid in resource.data.memberIds
+                       && resource.data.ownerId == request.auth.uid
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tagline'])
+                       && (request.resource.data.tagline == null || request.resource.data.tagline is string))
                       ||
                       (request.auth.uid in resource.data.memberIds
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))

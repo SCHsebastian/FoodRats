@@ -29,6 +29,15 @@ data class CrewSettingsState(
      * crew's member ids; a `null` value means the account doc is missing or deleted.
      */
     val identities: Map<AccountId, Account?> = emptyMap(),
+    /**
+     * The tagline text the owner is currently editing. Seeded once from [Crew.tagline] when the
+     * crew snapshot first arrives ([taglineSeeded]); an empty string is a legitimate edited value
+     * (the owner cleared it), so it must NOT be re-seeded from the crew on later listener emissions.
+     */
+    val editingTagline: String = "",
+    /** True once [editingTagline] has been seeded from the first crew snapshot — prevents clobber. */
+    val taglineSeeded: Boolean = false,
+    val isSavingTagline: Boolean = false,
 ) : MviState
 
 sealed interface CrewSettingsIntent : MviIntent {
@@ -49,6 +58,11 @@ sealed interface CrewSettingsIntent : MviIntent {
     data object CancelDelete : CrewSettingsIntent
     data class RemoveMemberConfirmed(val accountId: AccountId) : CrewSettingsIntent
     data object DismissError : CrewSettingsIntent
+
+    /** Owner is editing the tagline text field. */
+    data class TaglineChanged(val value: String) : CrewSettingsIntent
+    /** Owner tapped "Save" on the tagline field. */
+    data object SaveTagline : CrewSettingsIntent
 }
 
 sealed interface CrewSettingsEffect : MviEffect {

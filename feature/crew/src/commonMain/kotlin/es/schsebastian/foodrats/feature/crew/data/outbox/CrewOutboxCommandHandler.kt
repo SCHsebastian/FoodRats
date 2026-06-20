@@ -78,6 +78,7 @@ class CrewOutboxCommandHandler(
             CrewError.Validation.CodeMalformed -> OutboxExecuteResult.Terminal("crew.error.codeMalformed")
             CrewError.Validation.DisplayNameBlank -> OutboxExecuteResult.Terminal("crew.error.displayNameBlank")
             CrewError.Validation.DisplayNameTooLong -> OutboxExecuteResult.Terminal("crew.error.displayNameTooLong")
+            CrewError.Validation.TaglineTooLong -> OutboxExecuteResult.Terminal("crew.error.taglineTooLong")
             CrewError.Membership.NotFound -> OutboxExecuteResult.Terminal("crew.error.crewNotFound")
             CrewError.Membership.Full -> OutboxExecuteResult.Terminal("crew.error.crewFull")
             CrewError.Membership.NotInvited -> OutboxExecuteResult.Terminal("crew.error.notInvited")

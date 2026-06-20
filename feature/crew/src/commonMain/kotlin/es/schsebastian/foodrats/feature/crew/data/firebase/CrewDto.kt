@@ -15,4 +15,9 @@ data class CrewDto(
     // crewmate until they've cast their own score. Defaults false; old docs without the
     // field deserialize to false (pre-launch — no migration).
     val blindVoting: Boolean = false,
+    // Owner-settable short tagline/house rules (≤ 120 chars). `null` means no tagline is set;
+    // old crew docs without the field deserialize to null (no migration needed).
+    // Null-pinned so GitLive encodeDefaults=true doesn't emit `null` and fail an affectedKeys
+    // check it was not part of.
+    val tagline: String? = null,
 )

@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import kotlin.time.Instant
 
@@ -36,6 +37,14 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             joinedAt = Instant.fromEpochMilliseconds(joined),
         )
     }
+    // tagline is optional: absent/blank → null; too-long silently truncated on read (shouldn't
+    // happen for well-formed data, but tolerant deserialization is the pre-launch policy).
+    val tagline = tagline?.let { raw ->
+        when (val t = CrewTagline.of(raw)) {
+            is Result.Ok  -> t.value
+            is Result.Err -> null   // silently ignore malformed tagline on read
+        }
+    }
     return Result.success(
         Crew.of(
             id = crewId,
@@ -45,6 +54,7 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             createdAt = Instant.fromEpochMilliseconds(createdAtMs),
             members = members,
             blindVoting = blindVoting,
+            tagline = tagline,
         ),
     )
 }
