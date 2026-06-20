@@ -42,6 +42,7 @@ import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseMealReposit
 import es.schsebastian.foodrats.feature.meal.data.repository.FirebaseReactionRepository
 import es.schsebastian.foodrats.feature.meal.data.sync.CachePruner
 import es.schsebastian.foodrats.feature.meal.data.sync.MealSyncEngine
+import es.schsebastian.foodrats.feature.meal.data.sync.MealSyncTimestampStore
 import es.schsebastian.foodrats.feature.meal.data.upload.BackgroundMealUploadCoordinator
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftRetryPolicy
@@ -97,6 +98,7 @@ val mealModule = module {
             clock = get(),
             zone = get(),
             appScope = get(named("appScope")),
+            timestampStore = MealSyncTimestampStore(prefs = get(), dispatchers = get()),
         ).also { it.start() }
     }
     // Feed freshness + manual refresh seam (P4-T2): the engine IS the FeedSyncStatusPort impl

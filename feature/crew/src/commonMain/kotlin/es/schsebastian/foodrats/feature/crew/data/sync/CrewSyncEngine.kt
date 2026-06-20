@@ -7,13 +7,17 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * The write side of the offline-first crew-list inversion (P3b §P3b-T7): the ONLY consumer of the
@@ -43,29 +47,61 @@ internal class CrewSyncEngine(
     private val appScope: CoroutineScope,
 ) {
     // One running collector per account, so re-driving the same account (the session flow re-emits
-    // the same id) never spawns a duplicate listener. Touched only from the appScope's single
-    // dispatcher (the session driver + syncAccount both run there), so no lock is needed.
+    // the same id) never spawns a duplicate listener.
+    // Guarded by [mutex] — appScope is multi-threaded (Dispatchers.Default) so all reads/writes of
+    // [jobs] must be lock-protected.
     private val jobs = mutableMapOf<AccountId, Job>()
+
+    /**
+     * Serialises all reads and writes of [jobs]. [appScope] uses [SupervisorJob] +
+     * [kotlinx.coroutines.Dispatchers.Default] which is multi-threaded, so plain map access is not
+     * thread-safe. [syncAccount] acquires this lock before touching the map.
+     */
+    private val mutex = Mutex()
 
     /**
      * Starts mirroring [accountId]'s crew list into the local store on [appScope]. Idempotent: an
      * account already being synced is a no-op (the live listener is the source of truth, so there is
      * nothing to re-trigger).
+     *
+     * **Thread safety:** the entire idempotency check + job launch is guarded by [mutex] so
+     * concurrent calls from [appScope]'s multi-threaded [kotlinx.coroutines.Dispatchers.Default]
+     * cannot corrupt the [jobs] map.
      */
     fun syncAccount(accountId: AccountId) {
-        if (jobs[accountId]?.isActive == true) return
-        jobs[accountId] = appScope.launch {
-            dataSource.observeMyCrews(accountId)
-                .onEach { dtos -> local.replaceAll(dtos) }
-                // PERMISSION_DENIED-on-signout (or any upstream throw) STOPS this account's sync
-                // WITHOUT wiping its rows — the cached crew list must survive sign-out. The job
-                // completes here; a fresh syncAccount on the next session emission re-listens.
-                .catch { t ->
-                    FrLog.w("CrewSync", t) { "account ${accountId.value} crew sync stopped: ${t.message}" }
+        appScope.launch {
+            mutex.withLock {
+                if (jobs[accountId]?.isActive == true) return@withLock
+                jobs[accountId] = appScope.launch {
+                    dataSource.observeMyCrews(accountId)
+                        .onEach { dtos -> local.replaceAll(dtos) }
+                        // H4: auto-retry transient errors with capped exponential backoff (1s→…→64s) so a
+                        // momentary network/Firestore glitch doesn't kill live crew-list sync until the
+                        // next session emission. PERMISSION_DENIED (sign-out) stays terminal — see below.
+                        .retryWhen { cause, attempt ->
+                            if (isPermissionDenied(cause)) {
+                                false  // let it fall through to .catch
+                            } else {
+                                val backoffMs = minOf(1_000L * (1L shl attempt.toInt().coerceAtMost(6)), 64_000L)
+                                FrLog.w("CrewSync") { "account ${accountId.value} transient error (attempt $attempt), retry in ${backoffMs}ms: ${cause.message}" }
+                                delay(backoffMs)
+                                true
+                            }
+                        }
+                        // PERMISSION_DENIED-on-signout STOPS this account's sync WITHOUT wiping its rows
+                        // — the cached crew list must survive sign-out. The job completes here; a fresh
+                        // syncAccount on the next session emission re-listens.
+                        .catch { t ->
+                            FrLog.w("CrewSync", t) { "account ${accountId.value} crew sync stopped: ${t.message}" }
+                        }
+                        .collect()
                 }
-                .collect()
+            }
         }
     }
+
+    private fun isPermissionDenied(t: Throwable): Boolean =
+        t.message?.contains("PERMISSION_DENIED", ignoreCase = true) == true
 
     /**
      * Drives [syncAccount] off [SessionProvider.current] for the lifetime of [appScope]: each new

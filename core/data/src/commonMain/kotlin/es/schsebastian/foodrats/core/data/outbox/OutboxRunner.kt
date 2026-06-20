@@ -14,7 +14,9 @@ import es.schsebastian.foodrats.core.domain.outbox.OutboxTransitions
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -95,11 +97,18 @@ class OutboxRunner(
      * WorkManager job is enqueued: it survives process death and fires on reconnect
      * even if the app is killed before the in-process drain completes.
      * Backoff re-attempts are launched per-entry on the same [scope].
+     *
+     * The connectivity signal is debounced by [CONNECTIVITY_DEBOUNCE_MS] (H6): rapid network
+     * transitions (WiFi→cell handover, captive-portal redirect) emit a burst of false/true toggles
+     * that would otherwise fire multiple concurrent drain passes. The debounce coalesces the burst
+     * into a single trigger once the link has been stable for 1 s.
      */
+    @OptIn(FlowPreview::class)
     fun start(scope: CoroutineScope) {
-        // false→true edge of connectivity (the monitor conflates to the latest
-        // value; we drain on every `true`).
+        // false→true edge of connectivity (the monitor conflates to the latest value; we drain on
+        // every `true`). Debounced to coalesce rapid-toggle bursts (H6).
         connectivity.isOnline()
+            .debounce(CONNECTIVITY_DEBOUNCE_MS)
             .onEach { online -> if (online) launchDrain(scope) }
             .launchIn(scope)
 
@@ -263,5 +272,10 @@ class OutboxRunner(
             delay(delayMs)
             outbox.updateStatus(id, OutboxEntryStatus.Pending)
         }
+    }
+
+    private companion object {
+        /** Debounce window for the connectivity signal in [start] (H6). */
+        const val CONNECTIVITY_DEBOUNCE_MS = 1_000L
     }
 }

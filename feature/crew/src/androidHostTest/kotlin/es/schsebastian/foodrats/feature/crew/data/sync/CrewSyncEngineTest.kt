@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -148,6 +149,22 @@ class CrewSyncEngineTest {
         engine.syncAccount(account)
 
         // The second call is a no-op: only ONE listener is subscribed.
+        assertEquals(1, source.subscriptions)
+    }
+
+    // --- H3: Mutex guards jobs map -----------------------------------------------
+
+    @Test fun syncAccount_while_job_is_active_does_not_corrupt_jobs_map() = runTest {
+        val source = FakeCrewListSource()
+        val engine = engine(source)
+        engine.syncAccount(account)
+        advanceUntilIdle()
+        assertEquals(1, source.subscriptions)
+
+        // A concurrent syncAccount call for the same account is idempotent under the mutex:
+        // the idempotency check holds and there is still exactly 1 subscription.
+        engine.syncAccount(account)
+        advanceUntilIdle()
         assertEquals(1, source.subscriptions)
     }
 }

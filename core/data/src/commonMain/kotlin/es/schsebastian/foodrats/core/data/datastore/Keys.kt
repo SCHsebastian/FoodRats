@@ -74,4 +74,12 @@ object Keys {
     val AnalyticsConsentVersion   = StoreKey(intPreferencesKey("analytics_consent_version"))
     /** Epoch millis of the decision. */
     val AnalyticsConsentDecidedAt = StoreKey(longPreferencesKey("analytics_consent_decided_at"))
+
+    /**
+     * Per-crew last-synced epoch-millis, serialised as a pipe-delimited string:
+     * `"crewId1=epochMs1|crewId2=epochMs2"`. Empty string = nothing synced yet.
+     * Persisted so "synced X ago" survives process death when the local feed cache is present.
+     * Owned by [es.schsebastian.foodrats.feature.meal.data.sync.MealSyncEngine].
+     */
+    val MealSyncTimestamps = StoreKey(stringPreferencesKey("meal_sync_timestamps"))
 }

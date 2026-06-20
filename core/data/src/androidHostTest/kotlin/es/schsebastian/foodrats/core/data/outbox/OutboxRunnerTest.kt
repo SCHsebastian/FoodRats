@@ -22,8 +22,13 @@ import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -43,6 +48,12 @@ class OutboxRunnerTest {
 
     private class FakeConnectivity(private val online: Boolean = true) : ConnectivityPort {
         override fun isOnline(): Flow<Boolean> = flowOf(online)
+    }
+
+    /** Connectivity backed by a [MutableStateFlow] so tests can emit rapid toggles. */
+    private class FlowConnectivity : ConnectivityPort {
+        val state = MutableStateFlow(false)
+        override fun isOnline(): Flow<Boolean> = state.asStateFlow()
     }
 
     /** Handler that handles only [PendingCommand.RateMeal], scripting its [execute] outcomes per call. */
@@ -471,6 +482,50 @@ class OutboxRunnerTest {
     }
 
     // ── M1: identity-preserving coalesce ──────────────────────────────────────
+
+    // ── H6: connectivity burst debounce ───────────────────────────────────────────
+
+    /**
+     * H6: a rapid burst of online=true signals must result in only ONE drain launch via the
+     * connectivity path, not one per emission — the connectivity signal is debounced by 1 s.
+     *
+     * We use [StandardTestDispatcher] so `delay()` inside `debounce` respects virtual time;
+     * with [UnconfinedTestDispatcher] delays fire immediately and debounce has no effect.
+     *
+     * Measurement strategy: count how many times the outbox handler's `execute()` is called.
+     * An empty outbox means no entries, so `execute` is never called. We enqueue 1 entry and
+     * count handler.executeCount — with debounce(1s) + 5 true signals in 500ms, exactly 1 drain
+     * fires → handler executes exactly once. Without debounce, 5 drains → execute 5 times.
+     */
+    @Test
+    fun h6_rapid_connectivity_burst_coalesces_into_single_drain() = runTest(StandardTestDispatcher()) {
+        val box = outbox()
+        box.enqueue(rateCommand())
+
+        // The handler succeeds on every call — measure how many times it executes.
+        val handler = ScriptedRateHandler(List(10) { OutboxExecuteResult.Success })
+        val conn = FlowConnectivity()
+        val runner = OutboxRunner(box, listOf(handler), conn, OutboxRetryPolicy())
+
+        // Use backgroundScope so the long-lived launchIn coroutines don't prevent runTest from
+        // completing. backgroundScope is auto-cancelled when the test body finishes.
+        runner.start(backgroundScope)
+
+        // Emit a burst of rapid true/false toggles within 500 ms (< 1 s debounce window).
+        for (i in 1..5) {
+            conn.state.value = (i % 2 == 1) // alternates: true, false, true, false, true
+            advanceTimeBy(100)
+        }
+        conn.state.value = true // ensure final value is true
+
+        // Advance past the 1 s debounce so the single debounced true fires exactly once.
+        advanceTimeBy(1_500)
+        advanceUntilIdle()
+
+        // With debounce(1s), the 5-emission burst collapses to 1 drain → handler executes once.
+        // Without debounce, 5 rapid true signals → 5 drains → executeCount = 5.
+        assertEquals(1, handler.executeCount, "debounce must coalesce 5 true signals into 1 drain")
+    }
 
     @Test
     fun m1_reissue_preserves_id_created_at_and_attempt_count() = runTest {

@@ -16,17 +16,22 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 /**
@@ -217,6 +222,140 @@ class MealSyncEngineTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    // --- H3: Mutex guards jobs map -----------------------------------------------
+
+    @Test fun refresh_while_sync_is_active_ends_with_exactly_one_job() = runTest {
+        val firestore = FakeSyncFirestore()
+        val engine = engine(firestore)
+        engine.syncCrew(crew)
+        advanceUntilIdle()
+        assertEquals(1, firestore.subscriptions)
+
+        // refresh() while the job is active must cancel the old job and start exactly one new one.
+        engine.refresh(crew)
+        advanceUntilIdle()
+
+        // After refresh: exactly 2 total subscriptions (old cancelled, new started).
+        assertEquals(2, firestore.subscriptions)
+
+        // Send a snapshot on the new subscription — it must land (proves new job is active).
+        firestore.emit(listOf(dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)))
+        store.observeRange("c1", "2026-05-21", "2026-06-19").test {
+            assertEquals(listOf("m1"), awaitItem().map { it.mealId })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // --- H4: auto-retry on transient errors --------------------------------------
+
+    @Test fun transient_error_auto_retries_and_data_flows_after_recovery() = runTest {
+        // H4: a non-permission-denied error triggers retryWhen, not .catch (terminal). The engine
+        // retries and, once the source recovers (emits a good snapshot), the new data lands.
+        //
+        // Root cause of the scheduling issue: the shared `appScope` uses a detached
+        // UnconfinedTestDispatcher whose virtual clock is NOT the TestScope's scheduler.
+        // advanceUntilIdle() only drains the TestScope's scheduler, so the 1s backoff delay in
+        // retryWhen would be stuck forever. Fix: give this test an appScope that shares the
+        // TestScope's scheduler (via UnconfinedTestDispatcher(testScheduler)) so advanceUntilIdle()
+        // also advances the backoff delay.
+        val sharedDispatcher = UnconfinedTestDispatcher(testScheduler)
+        val sharedDispatchers = object : DispatcherProvider {
+            override val main: CoroutineDispatcher = sharedDispatcher
+            override val io: CoroutineDispatcher = sharedDispatcher
+            override val default: CoroutineDispatcher = sharedDispatcher
+        }
+        val h4AppScope = CoroutineScope(SupervisorJob() + sharedDispatcher)
+        val h4Store = MealLocalStore(FoodRatsDatabase(driver), sharedDispatchers)
+
+        val expected = listOf(
+            dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L),
+            dto("m2", dayKey = "2026-06-18", publishedAtEpochMs = 2L),
+        )
+        val fakeOneFailFirestore = FakeOneFailFirestore(
+            firstError = RuntimeException("network timeout"),
+            recovery = expected,
+        )
+        val engine = MealSyncEngine(
+            firestore = fakeOneFailFirestore,
+            local = h4Store,
+            activeCrew = FakeActiveCrewProvider(crew),
+            clock = clock,
+            zone = zone,
+            appScope = h4AppScope,
+        )
+        engine.syncCrew(crew)
+        advanceUntilIdle()
+
+        // The engine must have retried after the transient error and written the recovery data.
+        h4Store.observeRange("c1", "2026-05-21", "2026-06-19").test {
+            val ids = awaitItem().map { it.mealId }.toSet()
+            assertEquals(setOf("m1", "m2"), ids)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun permission_denied_stops_sync_without_retrying_and_rows_survive() = runTest {
+        // Regression guard for H4: the terminal permission-denied path must still not wipe rows
+        // and must NOT trigger a retry (subscriptions stays at 1).
+        val firestore = FakeSyncFirestore()
+        engine(firestore).syncCrew(crew)
+        advanceUntilIdle()
+
+        firestore.emit(listOf(dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)))
+        firestore.fail(RuntimeException("PERMISSION_DENIED: Missing or insufficient permissions."))
+        advanceUntilIdle()
+
+        // PERMISSION_DENIED must NOT trigger a retry → subscriptions stays at 1.
+        assertEquals(1, firestore.subscriptions)
+
+        store.observeRange("c1", "2026-05-21", "2026-06-19").test {
+            assertEquals(listOf("m1"), awaitItem().map { it.mealId })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // --- L3: persist lastSyncedAt across process death ---------------------------
+
+    @Test fun lastSyncedAt_stamp_round_trips_across_engine_restart() = runTest {
+        val firestore = FakeSyncFirestore()
+        val tsPort = InMemoryTimestampPort()
+        val engine1 = MealSyncEngine(
+            firestore = firestore,
+            local = store,
+            activeCrew = FakeActiveCrewProvider(crew),
+            clock = clock,
+            zone = zone,
+            appScope = appScope,
+            timestampStore = tsPort,
+        )
+        engine1.syncCrew(crew)
+        firestore.emit(listOf(dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)))
+        advanceUntilIdle()
+
+        // Confirm stamp was persisted to the port.
+        assertEquals(clock.now(), tsPort.store[crew.value])
+
+        // Simulate process restart: new engine hydrates from the persisted port.
+        val freshFirestore = FakeSyncFirestore()
+        val engine2 = MealSyncEngine(
+            firestore = freshFirestore,
+            local = store,
+            activeCrew = FakeActiveCrewProvider(crew),
+            clock = clock,
+            zone = zone,
+            appScope = CoroutineScope(SupervisorJob() + dispatchers.default),
+            timestampStore = tsPort,
+        )
+        engine2.start()
+        advanceUntilIdle()
+
+        // The freshly started engine should expose the persisted stamp immediately via lastSyncedAt.
+        engine2.lastSyncedAt(crew).test {
+            assertEquals(clock.now(), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }
 
 /**
@@ -283,4 +422,59 @@ private class FakeActiveCrewProvider(initial: CrewId?) : ActiveCrewProvider {
     override val current: Flow<CrewId?> = state
     override suspend fun set(crewId: CrewId) { state.value = crewId }
     override suspend fun clear() { state.value = null }
+}
+
+/** In-memory [SyncTimestampPort] for testing L3 persistence logic without a real DataStore. */
+private class InMemoryTimestampPort : SyncTimestampPort {
+    var store: Map<String, Instant> = emptyMap()
+    override suspend fun load(): Map<String, Instant> = store
+    override suspend fun save(stamps: Map<String, Instant>) { store = stamps }
+}
+
+/**
+ * A [MealFirestore] fake that throws [firstError] on the FIRST collect of [observeForRange], then
+ * emits [recovery] on every subsequent collect. This allows testing H4's retryWhen behavior without
+ * the infinite-retry-with-replay-Throw problem of [FakeSyncFirestore].
+ */
+private class FakeOneFailFirestore(
+    private val firstError: Throwable,
+    private val recovery: List<MealDto>,
+) : es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore {
+    private var hasThrown = false
+
+    override fun observeForRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<List<MealDto>> =
+        flow {
+            if (!hasThrown) {
+                hasThrown = true
+                throw firstError
+            }
+            // Emit recovery and complete (no awaitCancellation) so the test can observe the data.
+            emit(recovery)
+        }
+
+    override suspend fun mealExists(
+        crewId: CrewId,
+        authorId: es.schsebastian.foodrats.core.domain.model.AccountId,
+        dayKey: String,
+        slot: es.schsebastian.foodrats.core.domain.meal.MealSlot,
+    ): Boolean = false
+
+    override suspend fun takenSlots(
+        crewId: CrewId,
+        authorId: es.schsebastian.foodrats.core.domain.model.AccountId,
+        dayKey: String,
+    ): Set<es.schsebastian.foodrats.core.domain.meal.MealSlot> = emptySet()
+
+    override suspend fun deleteMeal(crewId: CrewId, mealId: String) = Unit
+
+    override suspend fun write(dto: MealDto, docId: String) = Unit
+
+    override suspend fun rateMeal(
+        crewId: CrewId,
+        mealId: String,
+        raterUid: String,
+        score: Int,
+        nowEpochMs: Long,
+    ): es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore.RateOutcome =
+        es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore.RateOutcome.Ok
 }

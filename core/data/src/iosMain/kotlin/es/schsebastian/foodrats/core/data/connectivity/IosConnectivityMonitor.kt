@@ -25,6 +25,13 @@ import platform.darwin.dispatch_get_global_queue
  * the app is foreground/alive — iOS grants no general background execution without
  * `BGTaskScheduler` + entitlements, so an offline-composed plate publishes on the
  * next foreground reconnect, which is the documented best-effort iOS model.
+ *
+ * **Online semantics (IMPORTANT — differs from Android):** `NWPathMonitor` reports `satisfied`
+ * when a network path is available, including behind a captive portal with no real internet. This
+ * is a WEAKER signal than Android's `NET_CAPABILITY_VALIDATED`. Connectivity is therefore a HINT
+ * to attempt a drain — the command's own success/failure (bounded by the retry policy) is the
+ * source of truth, not the link state. A true reachability probe (e.g. a HEAD request to a known
+ * endpoint) is deferred; the current iOS model is best-effort reconnect on path-satisfied.
  */
 @OptIn(ExperimentalForeignApi::class)
 class IosConnectivityMonitor : ConnectivityPort {

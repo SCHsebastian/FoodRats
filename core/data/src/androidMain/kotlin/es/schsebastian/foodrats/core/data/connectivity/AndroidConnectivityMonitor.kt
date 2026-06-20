@@ -18,6 +18,11 @@ import kotlinx.coroutines.flow.callbackFlow
  * Emits the current online state on subscribe, then on every gain/loss of a
  * VALIDATED network. Consumers use the false→true edge; WorkManager's
  * `NetworkType.CONNECTED` constraint covers the after-process-death case.
+ *
+ * **Online semantics:** Android's `NET_CAPABILITY_VALIDATED` means the network has confirmed real
+ * internet access (captive-portal check passed). This is a STRONG signal — online usually means the
+ * network is genuinely reachable. Connectivity is still a HINT: use it to trigger a drain attempt,
+ * but let the command's own success/failure (and retry policy) be the source of truth, not link state.
  */
 class AndroidConnectivityMonitor(context: Context) : ConnectivityPort {
 
