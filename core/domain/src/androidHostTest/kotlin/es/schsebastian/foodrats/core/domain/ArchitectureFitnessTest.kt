@@ -176,9 +176,15 @@ class ArchitectureFitnessTest {
      * use (it holds stale copies of `Fr*` composables that were later deleted from real source,
      * e.g. `FrShutterButton` removed in `b60aa12`), and any generated `build/` output. Those are
      * not project source and must not be scanned by the fitness rules. Scope to real source only.
+     *
+     * NOTE: match the *skill snapshot* path (`/.claude/skills/`), not any `/.claude/`. The project
+     * can legitimately be checked out inside a git worktree under `/.claude/worktrees/<branch>/`,
+     * in which case EVERY real source file's path also contains `/.claude/` — a blanket
+     * `/.claude/` filter would then exclude the whole tree and the catalog-coverage scan would
+     * find nothing (tripping its empty-scope sanity guard).
      */
     private fun isNonSourceSnapshot(file: KoFileDeclaration): Boolean =
-        file.path.contains("/.claude/") || file.path.contains("/build/")
+        file.path.contains("/.claude/skills/") || file.path.contains("/build/")
 
     /** Returns the feature segment (e.g. "meal", "mealai") of a dotted name, or null. */
     private fun featureSegmentOf(dottedName: String): String? {
