@@ -14,6 +14,8 @@ import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionStatus
@@ -34,6 +36,7 @@ import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
@@ -102,6 +105,23 @@ class ProfileViewModelTest {
         override val prompted: Flow<Boolean> = flowOf(true)
         override suspend fun set(enabled: Boolean): Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
         override suspend fun markPrompted(): Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
+    }
+
+    /** In-memory [AiPreferencePort]: `set` updates the observed flow (single source of truth). */
+    private class FakeAiPreferencePort(initial: Boolean = true) : AiPreferencePort {
+        private val state = MutableStateFlow(initial)
+        override val enabled: Flow<Boolean> = state.asStateFlow()
+        override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> {
+            state.value = enabled
+            return Result.success(Unit)
+        }
+    }
+
+    /** [AiPreferencePort] whose `set` always fails — for asserting the error branch. */
+    private class FailingAiPreferencePort : AiPreferencePort {
+        override val enabled: Flow<Boolean> = flowOf(true)
+        override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> =
+            Result.failure(AiPreferenceError.Persist.Unavailable)
     }
 
     /** In-memory [MealReminderSchedulePort]: `set` updates the observed flow (single source of truth). */
@@ -218,6 +238,7 @@ class ProfileViewModelTest {
         reminders: MealReminderSchedulePort = FakeMealReminderSchedulePort(),
         themePort: ThemeModePort = NoopThemeModePort,
         localePort: LocalePort = NoopLocalePort,
+        aiPreferencePort: AiPreferencePort = FakeAiPreferencePort(),
     ): ProfileViewModel {
         val session = FixedSessionProvider(Session(accountId = accountId, activeCrewId = null))
         val writePort = FakeAccountWritePort()
@@ -227,6 +248,7 @@ class ProfileViewModelTest {
             themePort = themePort,
             localePort = localePort,
             notificationsPort = NoopNotificationsPreferencePort,
+            aiPreferencePort = aiPreferencePort,
             mealRemindersPort = reminders,
             updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
             updateAvatar = UpdateMyAvatarUseCase(writePort, session),
@@ -236,6 +258,7 @@ class ProfileViewModelTest {
             setMealReminders = SetMealRemindersUseCase(reminders),
             setNotificationsEnabled = SetNotificationsEnabledUseCase(NoopNotificationsPreferencePort),
             enableNotifications = EnableNotificationsUseCase(NoopNotificationPermissionPort, NoopNotificationsPreferencePort),
+            setAiEnabled = SetAiEnabledUseCase(aiPreferencePort),
             notificationPermission = NoopNotificationPermissionPort,
             deleteMyAccount = DeleteMyAccountUseCase(session, FakeAccountDeletionPort(deletionResult)),
             exportMyData = ExportMyDataUseCase(exportPort),
@@ -648,5 +671,48 @@ class ProfileViewModelTest {
         }
 
         assertTrue(analytics.events.isEmpty())
+    }
+
+    // ─────────────────────── AI opt-out toggle ───────────────────────
+
+    @Test fun ai_toggled_off_persists_and_reflects_in_state() = runTest {
+        val aiPort = FakeAiPreferencePort(initial = true)
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            aiPreferencePort = aiPort,
+        )
+
+        vm.state.test {
+            // Starts enabled (default).
+            assertTrue(expectMostRecentItem().aiEnabled)
+
+            vm.onIntent(ProfileIntent.AiToggled(false))
+
+            // State reflects the disabled toggle (persisted + collector fires).
+            val final = expectMostRecentItem()
+            assertFalse(final.aiEnabled)
+            assertNull(final.aiError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun ai_toggled_err_rolls_back_and_shows_error() = runTest {
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            aiPreferencePort = FailingAiPreferencePort(),
+        )
+
+        vm.state.test {
+            // Starts enabled.
+            assertTrue(expectMostRecentItem().aiEnabled)
+
+            vm.onIntent(ProfileIntent.AiToggled(false))
+
+            val final = expectMostRecentItem()
+            // Rolled back to previous value.
+            assertTrue(final.aiEnabled)
+            assertEquals(AuthStringKey.ProfileAiPersistFailed, final.aiError)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

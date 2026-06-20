@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.domain.error
 import es.schsebastian.foodrats.core.domain.account.AccountDeletionError
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.core.domain.account.DataExportError
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.LocalePreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferenceError
@@ -62,6 +63,10 @@ sealed interface ProfileError {
         /** The data export couldn't be assembled/signed/uploaded; nothing destroyed, retryable. */
         data object Unavailable : Export
     }
+
+    sealed interface Ai : ProfileError {
+        data object PersistFailed : Ai
+    }
 }
 
 internal fun AccountWriteError.toProfileError(): ProfileError = when (this) {
@@ -95,4 +100,8 @@ internal fun AccountDeletionError.toProfileError(): ProfileError = when (this) {
 
 internal fun DataExportError.toProfileError(): ProfileError = when (this) {
     DataExportError.Backend.Unavailable -> ProfileError.Export.Unavailable
+}
+
+internal fun AiPreferenceError.toProfileError(): ProfileError = when (this) {
+    AiPreferenceError.Persist.Unavailable -> ProfileError.Ai.PersistFailed
 }

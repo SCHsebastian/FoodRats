@@ -24,6 +24,7 @@ import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
@@ -85,6 +86,7 @@ val authModule = module {
     factoryOf(::SetMealRemindersUseCase)
     factoryOf(::SetNotificationsEnabledUseCase)
     factoryOf(::EnableNotificationsUseCase)
+    factoryOf(::SetAiEnabledUseCase)
     factoryOf(::DeleteMyAccountUseCase)
     factoryOf(::ExportMyDataUseCase)
     viewModel { SignInViewModel(auth = get(), tokenRegistration = get(), analytics = get(), eula = get()) }
@@ -98,6 +100,7 @@ val authModule = module {
             themePort = get(),
             localePort = get(),
             notificationsPort = get(),
+            aiPreferencePort = get(),
             mealRemindersPort = get(),
             updateDisplayName = get(),
             updateAvatar = get(),
@@ -107,6 +110,7 @@ val authModule = module {
             setMealReminders = get(),
             setNotificationsEnabled = get(),
             enableNotifications = get(),
+            setAiEnabled = get(),
             notificationPermission = get(),
             deleteMyAccount = get(),
             exportMyData = get(),

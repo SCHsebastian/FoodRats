@@ -448,6 +448,31 @@ private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel, modifi
 
         FrSettingsDivider()
 
+        // AI suggestions — on-device plate-photo analysis for ingredient suggestions. The switch
+        // mirrors AiPreferencePort.enabled; disabling it prevents any plate photos from being
+        // sent to the classifier (all processing stays on-device when enabled).
+        FrSettingsRow(
+            title = resolve(AuthStringKey.ProfileAiRow),
+            subtitle = if (state.aiEnabled)
+                resolve(AuthStringKey.ProfileAiSubtitleOn)
+            else
+                resolve(AuthStringKey.ProfileAiSubtitleOff),
+            icon = FrIcons.Stats,
+            trailing = {
+                FrSwitch(
+                    checked = state.aiEnabled,
+                    onCheckedChange = { vm.onIntent(ProfileIntent.AiToggled(it)) },
+                    contentDescription = resolve(AuthStringKey.ProfileAiRow),
+                )
+            },
+        )
+        state.aiError?.let {
+            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
+            Spacer(Modifier.height(Spacing.xs))
+        }
+
+        FrSettingsDivider()
+
         // Analytics consent — withdraw or re-grant at any time (GDPR Art. 7(3)). The switch
         // mirrors ConsentPort.decision; flipping it writes grant()/revoke().
         FrSettingsRow(

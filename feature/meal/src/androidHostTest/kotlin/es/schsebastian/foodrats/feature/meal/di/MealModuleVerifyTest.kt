@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.database.FoodRatsDatabase
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
@@ -81,6 +82,7 @@ class MealModuleVerifyTest {
                 MealUploadScheduler::class,
                 ConnectivityPort::class,
                 AnalyticsPort::class,
+                AiPreferencePort::class,
                 // App-lifetime named("appScope") scope (bound by ingredientModule, shared in the
                 // merged graph) the new MealSyncEngine runs its per-crew sync jobs on.
                 CoroutineScope::class,

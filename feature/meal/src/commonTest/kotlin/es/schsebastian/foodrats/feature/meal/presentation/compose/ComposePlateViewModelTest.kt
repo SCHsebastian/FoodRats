@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.location.Coordinates
@@ -31,6 +33,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -85,6 +88,10 @@ class ComposePlateViewModelTest {
             FakeClassifier(classifyResult),
             FakeIngredients(dishMap),
             FakeFeatureFlags(mealAiEnabled),
+            object : AiPreferencePort {
+                override val enabled: Flow<Boolean> = flowOf(true)
+                override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> = Result.success(Unit)
+            },
         ),
         clock = clock,
         zone = zone,

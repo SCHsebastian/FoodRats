@@ -50,4 +50,7 @@ class ProfileErrorToStringKeyTest {
 
     @Test fun export_unavailable_maps_to_export_backend_key() =
         assertEquals(AuthStringKey.ExportDataErrorBackend, ProfileError.Export.Unavailable.toStringKey())
+
+    @Test fun ai_persist_failed_maps_to_ai_persist_failed_key() =
+        assertEquals(AuthStringKey.ProfileAiPersistFailed, ProfileError.Ai.PersistFailed.toStringKey())
 }

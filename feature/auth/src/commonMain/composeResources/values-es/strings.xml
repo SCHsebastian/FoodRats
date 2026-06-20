@@ -93,6 +93,11 @@
     <string name="auth_profile_reminders_remove_cta">Quitar recordatorio</string>
     <string name="auth_profile_reminders_persist_failed">No se pudieron guardar tus recordatorios. Inténtalo de nuevo.</string>
 
+    <string name="auth_profile_ai_row">Sugerencias de IA</string>
+    <string name="auth_profile_ai_subtitle_on">Las fotos de tu plato se analizan en tu dispositivo para sugerir ingredientes.</string>
+    <string name="auth_profile_ai_subtitle_off">La IA está desactivada — añade los ingredientes tú mismo.</string>
+    <string name="auth_profile_ai_persist_failed">No se pudo guardar tu preferencia de IA. Inténtalo de nuevo.</string>
+
     <string name="auth_profile_analytics_row">Compartir datos de uso anónimos</string>
     <string name="auth_profile_analytics_subtitle_on">Activado: ayudas a mejorar FoodRats. Nunca se recopila contenido personal y puedes desactivarlo cuando quieras.</string>
     <string name="auth_profile_analytics_subtitle_off">Desactivado: no se recopilan datos de uso. Actívalo para ayudar a mejorar FoodRats; nunca se recopila contenido personal.</string>

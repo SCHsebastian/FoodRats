@@ -7,10 +7,13 @@ import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -25,10 +28,12 @@ class ClassifyDraftPlateUseCaseTest {
             { Result.success(listOf(DishLabel("pizza", 0.9f))) },
         dishMap: Map<String, List<String>> = mapOf("pizza" to listOf("tomato", "cheese")),
         mealAiEnabled: Boolean = true,
+        aiEnabled: Boolean = true,
     ) = ClassifyDraftPlateUseCase(
         classifier = FakeClassifier(classifyResult),
         ingredients = FakeIngredients(dishMap),
         featureFlags = FakeFeatureFlags(mealAiEnabled),
+        aiPreference = FakeAiPreferencePort(aiEnabled),
     )
 
     @Test fun killswitch_off_returns_disabled_with_no_detections() = runTest {
@@ -37,6 +42,7 @@ class ClassifyDraftPlateUseCaseTest {
             classifier = FakeClassifier { classifierCalled = true; Result.success(listOf(DishLabel("pizza", 0.9f))) },
             ingredients = FakeIngredients(mapOf("pizza" to listOf("tomato"))),
             featureFlags = FakeFeatureFlags(mealAiEnabled = false),
+            aiPreference = FakeAiPreferencePort(enabled = true),
         )
 
         val result = classify(bytes("plate"))
@@ -111,5 +117,25 @@ class ClassifyDraftPlateUseCaseTest {
 
     private class FakeFeatureFlags(private val mealAiEnabled: Boolean) : FeatureFlagPort {
         override fun isMealAiEnabled(): Boolean = mealAiEnabled
+    }
+
+    private class FakeAiPreferencePort(enabled: Boolean) : AiPreferencePort {
+        override val enabled: Flow<Boolean> = flowOf(enabled)
+        override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> = Result.success(Unit)
+    }
+
+    @Test fun user_opted_out_returns_disabled_and_classifier_never_invoked() = runTest {
+        var classifierCallCount = 0
+        val classify = ClassifyDraftPlateUseCase(
+            classifier = FakeClassifier { classifierCallCount++; Result.success(listOf(DishLabel("pizza", 0.9f))) },
+            ingredients = FakeIngredients(mapOf("pizza" to listOf("tomato"))),
+            featureFlags = FakeFeatureFlags(mealAiEnabled = true),
+            aiPreference = FakeAiPreferencePort(enabled = false),
+        )
+
+        val result = classify(bytes("plate"))
+
+        assertEquals(Result.Ok(ClassifyDraftPlateUseCase.DISABLED), result)
+        assertEquals(0, classifierCallCount, "user opted out — classifier must never be invoked")
     }
 }

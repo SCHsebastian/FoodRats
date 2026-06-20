@@ -82,4 +82,11 @@ object Keys {
      * Owned by [es.schsebastian.foodrats.feature.meal.data.sync.MealSyncEngine].
      */
     val MealSyncTimestamps = StoreKey(stringPreferencesKey("meal_sync_timestamps"))
+
+    /**
+     * Whether on-device AI features (plate-photo analysis → ingredient suggestions) are enabled.
+     * Absent = enabled (opt-out default: user must actively disable; AI is on by default).
+     * Owned by [es.schsebastian.foodrats.core.data.preferences.AiPreferenceRepository].
+     */
+    val AiUsageEnabled = StoreKey(booleanPreferencesKey("ai_usage_enabled"))
 }

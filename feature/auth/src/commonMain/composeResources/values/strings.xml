@@ -93,6 +93,11 @@
     <string name="auth_profile_reminders_remove_cta">Remove reminder</string>
     <string name="auth_profile_reminders_persist_failed">Couldn't save your reminders. Try again.</string>
 
+    <string name="auth_profile_ai_row">AI suggestions</string>
+    <string name="auth_profile_ai_subtitle_on">Your plate photos are analyzed on your device to suggest ingredients.</string>
+    <string name="auth_profile_ai_subtitle_off">AI is off — add ingredients yourself.</string>
+    <string name="auth_profile_ai_persist_failed">Couldn\'t save your AI preference. Try again.</string>
+
     <string name="auth_profile_analytics_row">Share anonymous usage data</string>
     <string name="auth_profile_analytics_subtitle_on">On — helping improve FoodRats. No personal content is ever collected, and you can turn this off at any time.</string>
     <string name="auth_profile_analytics_subtitle_off">Off — no usage analytics are collected. Turn this on to help improve FoodRats; no personal content is ever collected.</string>

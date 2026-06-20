@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.analytics.isAnalyticsGranted
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
@@ -28,6 +29,7 @@ import es.schsebastian.foodrats.core.domain.notifications.NotificationPermission
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
@@ -62,6 +64,10 @@ data class ProfileState(
     val localeError: StringKey? = null,
     val notificationsEnabled: Boolean = true,
     val notificationsError: StringKey? = null,
+
+    // AI opt-out — reflects AiPreferencePort.enabled (single source of truth).
+    val aiEnabled: Boolean = true,
+    val aiError: StringKey? = null,
 
     // Meal reminders — the user-configurable daily nudge times (max 3). The hour picker
     // edits/adds a slot; [reminderEditingIndex] is null when adding, else the slot being edited.
@@ -105,6 +111,8 @@ sealed interface ProfileIntent : MviIntent {
     data class NotificationsToggled(val enabled: Boolean) : ProfileIntent
     data object OpenNotificationSystemSettings : ProfileIntent
 
+    data class AiToggled(val enabled: Boolean) : ProfileIntent
+
     /** Open the hour picker to edit the reminder at [index]. */
     data class ReminderEditOpen(val index: Int) : ProfileIntent
     /** Open the hour picker to add a new reminder. */
@@ -143,6 +151,7 @@ class ProfileViewModel(
     themePort: ThemeModePort,
     localePort: LocalePort,
     notificationsPort: NotificationsPreferencePort,
+    aiPreferencePort: AiPreferencePort,
     mealRemindersPort: MealReminderSchedulePort,
     private val updateDisplayName: UpdateMyDisplayNameUseCase,
     private val updateAvatar: UpdateMyAvatarUseCase,
@@ -152,6 +161,7 @@ class ProfileViewModel(
     private val setMealReminders: SetMealRemindersUseCase,
     private val setNotificationsEnabled: SetNotificationsEnabledUseCase,
     private val enableNotifications: EnableNotificationsUseCase,
+    private val setAiEnabled: SetAiEnabledUseCase,
     private val notificationPermission: NotificationPermissionPort,
     private val deleteMyAccount: DeleteMyAccountUseCase,
     private val exportMyData: ExportMyDataUseCase,
@@ -186,6 +196,12 @@ class ProfileViewModel(
         viewModelScope.launch {
             notificationsPort.enabled.onEach { on ->
                 update { it.copy(notificationsEnabled = on) }
+            }.collect {}
+        }
+        viewModelScope.launch {
+            // Single source of truth: the AI opt-out state is driven by the persisted port value.
+            aiPreferencePort.enabled.onEach { on ->
+                update { it.copy(aiEnabled = on) }
             }.collect {}
         }
         viewModelScope.launch {
@@ -229,6 +245,8 @@ class ProfileViewModel(
 
             is ProfileIntent.NotificationsToggled -> doSetNotifications(intent.enabled)
             ProfileIntent.OpenNotificationSystemSettings -> notificationPermission.openSystemSettings()
+
+            is ProfileIntent.AiToggled -> doSetAi(intent.enabled)
 
             is ProfileIntent.ReminderEditOpen ->
                 update { it.copy(reminderPickerOpen = true, reminderEditingIndex = intent.index, reminderError = null) }
@@ -352,6 +370,18 @@ class ProfileViewModel(
                     notificationsError = r.error.toStringKey(),
                 )
             }
+        }
+    }
+
+    private suspend fun doSetAi(enabled: Boolean) {
+        // Optimistic: update state immediately, revert on error (mirrors doSetTheme).
+        // The persisted-port collector is the single source of truth on success; on error we roll
+        // back manually because the collector won't fire (the write failed).
+        val prev = currentState.aiEnabled
+        update { it.copy(aiEnabled = enabled, aiError = null) }
+        when (val r = setAiEnabled(enabled)) {
+            is Result.Ok -> Unit
+            is Result.Err -> update { it.copy(aiEnabled = prev, aiError = r.error.toStringKey()) }
         }
     }
 

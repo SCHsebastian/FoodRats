@@ -47,6 +47,10 @@ import foodrats.feature.auth.generated.resources.auth_profile_account_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_row
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_subtitle
+import foodrats.feature.auth.generated.resources.auth_profile_ai_row
+import foodrats.feature.auth.generated.resources.auth_profile_ai_subtitle_on
+import foodrats.feature.auth.generated.resources.auth_profile_ai_subtitle_off
+import foodrats.feature.auth.generated.resources.auth_profile_ai_persist_failed
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_row
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_off
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_on
@@ -213,6 +217,11 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileRemindersPickerTitle(Res.string.auth_profile_reminders_picker_title),
     ProfileRemindersRemoveCta(Res.string.auth_profile_reminders_remove_cta),
     ProfileRemindersPersistFailed(Res.string.auth_profile_reminders_persist_failed),
+
+    ProfileAiRow(Res.string.auth_profile_ai_row),
+    ProfileAiSubtitleOn(Res.string.auth_profile_ai_subtitle_on),
+    ProfileAiSubtitleOff(Res.string.auth_profile_ai_subtitle_off),
+    ProfileAiPersistFailed(Res.string.auth_profile_ai_persist_failed),
 
     ProfileAnalyticsRow(Res.string.auth_profile_analytics_row),
     ProfileAnalyticsSubtitleOn(Res.string.auth_profile_analytics_subtitle_on),
