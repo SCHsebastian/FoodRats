@@ -1,5 +1,6 @@
-package es.schsebastian.foodrats.feature.meal.data.queue
+package es.schsebastian.foodrats.core.data.connectivity
 
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -17,17 +18,16 @@ import platform.Network.nw_path_t
 import platform.darwin.dispatch_get_global_queue
 
 /**
- * iOS [ConnectivityMonitor] over `NWPathMonitor` (Network framework).
+ * iOS [ConnectivityPort] over `NWPathMonitor` (Network framework).
  *
- * Emits `true` while the current path status is `satisfied`. The retry runner
- * uses the false→true edge to drain the queue on reconnect. NOTE: this only
- * fires while the app is foreground/alive — iOS grants no general background
- * execution without `BGTaskScheduler` + entitlements (see
- * `InProcessMealUploadScheduler`), so an offline-composed plate publishes on the
+ * Emits `true` while the current path status is `satisfied`. Consumers use the
+ * false→true edge to drain pending work on reconnect. NOTE: this only fires while
+ * the app is foreground/alive — iOS grants no general background execution without
+ * `BGTaskScheduler` + entitlements, so an offline-composed plate publishes on the
  * next foreground reconnect, which is the documented best-effort iOS model.
  */
 @OptIn(ExperimentalForeignApi::class)
-class IosConnectivityMonitor : ConnectivityMonitor {
+class IosConnectivityMonitor : ConnectivityPort {
 
     override fun isOnline(): Flow<Boolean> = callbackFlow {
         val monitor = nw_path_monitor_create()

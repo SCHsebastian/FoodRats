@@ -12,6 +12,9 @@
     <string name="consent_allow">Permitir estadísticas</string>
     <string name="consent_deny">No, gracias</string>
 
+    <!-- Banner de sin conexión en toda la app (offline-first §P1-T2): se muestra en la raíz del NavHost en todas las pantallas. -->
+    <string name="offline_banner">Sin conexión — los cambios se sincronizarán al volver.</string>
+
     <!-- Resumen semanal en historias (roadmap §2.4) -->
     <string name="recap_entry_cta">Ver tu semana</string>
     <string name="recap_close">Cerrar resumen</string>

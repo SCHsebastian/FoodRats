@@ -27,6 +27,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.domain)
             implementation(projects.core.data)
+            implementation(projects.core.database)
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
@@ -35,6 +36,11 @@ kotlin {
             implementation(libs.bundles.kotlinx.common)
             implementation(libs.okio)
             implementation(libs.imagepickerkmp)
+            // SQLDelight runtime types (FoodRatsDatabase/MealQueries) + the asFlow/mapToList
+            // reactive extensions the MealLocalStore reads return. :core:database exposes these
+            // `implementation` (not api), so feature/meal declares them directly.
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutines.ext)
         }
         commonTest.dependencies {
             implementation(libs.bundles.feature.test)
@@ -45,6 +51,13 @@ kotlin {
         val androidHostTest by getting {
             dependencies {
                 implementation(libs.bundles.feature.hosttest)
+                // In-memory JVM SQLDelight driver for MealLocalStore + repository read-path host tests.
+                implementation(libs.sqldelight.jvm.driver)
+                // In-memory DataStore harness for FirebaseMealRepository's MealDraftLocalStore dep
+                // (the repo read-path tests build a real repository, which needs a DataStore-backed
+                // draft store). The repository test lives here (not commonTest) because it seeds a
+                // SQLDelight-backed MealLocalStore via the JVM-only JdbcSqliteDriver.
+                implementation(libs.androidx.datastore.preferences)
             }
         }
         // StorageData.android.kt / StorageData.ios.kt expect/actual for Firebase Storage Data type

@@ -1,0 +1,131 @@
+-- Local read source-of-truth for the meal feed (offline-first P3a §2).
+-- Stores Storage object PATHS (platePath/thumbnailPath), never signed URLs — signed URLs are
+-- minted at read time via ImageUrlPort. Display names are NEVER persisted; identity resolves live
+-- via AccountReadPort. `pending`/`idempotencyKey` back the optimistic-write path (P3b).
+-- Ratings are denormalized into `mealRating` (one row per rater), FK→meal with CASCADE delete.
+
+CREATE TABLE meal (
+    mealId             TEXT    NOT NULL PRIMARY KEY,
+    crewId             TEXT    NOT NULL,
+    authorId           TEXT    NOT NULL,
+    -- Best-effort author display name captured at sync time; the repository ENRICHMENT overrides it
+    -- with live identity (AccountReadPort.observeMany). Kept only so an unresolved row isn't blank.
+    authorName         TEXT,
+    dayKey             TEXT    NOT NULL,
+    slot               TEXT    NOT NULL,
+    platePath          TEXT,
+    thumbnailPath      TEXT,
+    thumbHash          TEXT,
+    dishName           TEXT,
+    description        TEXT    NOT NULL DEFAULT '',
+    latitude           REAL,
+    longitude          REAL,
+    publishedAtEpochMs INTEGER NOT NULL,
+    ratingSum          INTEGER NOT NULL DEFAULT 0,
+    voterCount         INTEGER NOT NULL DEFAULT 0,
+    -- Confirmed ingredient slugs joined with ',' (no slug contains a comma). Empty string = none.
+    ingredientsCsv     TEXT    NOT NULL DEFAULT '',
+    classifierVersion  TEXT,
+    cuisine            TEXT,
+    kind               TEXT    NOT NULL DEFAULT 'solo',
+    -- Optimistic-write bookkeeping (P3b): 1 while the write is in flight / unconfirmed by the server.
+    pending            INTEGER NOT NULL DEFAULT 0,
+    idempotencyKey     TEXT
+);
+
+CREATE INDEX meal_crew_day ON meal(crewId, dayKey);
+
+CREATE TABLE mealRating (
+    mealId  TEXT    NOT NULL,
+    raterId TEXT    NOT NULL,
+    score   INTEGER NOT NULL,
+    atMs    INTEGER NOT NULL,
+    pending INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (mealId, raterId),
+    FOREIGN KEY (mealId) REFERENCES meal(mealId) ON DELETE CASCADE
+);
+
+-- One crew's meals for a single day, newest first (feed window).
+selectFeedByCrewDay:
+SELECT * FROM meal
+WHERE crewId = :crewId AND dayKey = :dayKey
+ORDER BY publishedAtEpochMs DESC;
+
+-- Single meal row by id (optimistic-write path P3b: read to recompute denormalized totals).
+selectMealById:
+SELECT * FROM meal WHERE mealId = :mealId;
+
+-- The meal id currently carrying an optimistic-write idempotency key (P3b rollback lookup).
+mealIdForIdempotencyKey:
+SELECT mealId FROM meal WHERE idempotencyKey = :idempotencyKey;
+
+-- One crew's meals across an inclusive day-key range, newest first (rolling window + stats history).
+selectRangeByCrew:
+SELECT * FROM meal
+WHERE crewId = :crewId AND dayKey >= :fromDayKey AND dayKey <= :toDayKey
+ORDER BY publishedAtEpochMs DESC;
+
+-- All denormalized ratings for a set of meals (joined in memory to build MealWithRatings).
+selectRatingsForMeals:
+SELECT * FROM mealRating
+WHERE mealId IN :mealIds;
+
+upsertMeal:
+INSERT OR REPLACE INTO meal(
+    mealId, crewId, authorId, authorName, dayKey, slot, platePath, thumbnailPath, thumbHash,
+    dishName, description, latitude, longitude, publishedAtEpochMs, ratingSum, voterCount,
+    ingredientsCsv, classifierVersion, cuisine, kind, pending, idempotencyKey
+) VALUES (
+    :mealId, :crewId, :authorId, :authorName, :dayKey, :slot, :platePath, :thumbnailPath, :thumbHash,
+    :dishName, :description, :latitude, :longitude, :publishedAtEpochMs, :ratingSum, :voterCount,
+    :ingredientsCsv, :classifierVersion, :cuisine, :kind, :pending, :idempotencyKey
+);
+
+-- Meal ids currently held for a crew within a day-key range — used by the sync engine to compute
+-- delete-by-absence WITHIN the synced window only (older rows are retained for stats).
+mealIdsForCrewInRange:
+SELECT mealId FROM meal
+WHERE crewId = :crewId AND dayKey >= :fromDayKey AND dayKey <= :toDayKey;
+
+deleteMealsByIds:
+DELETE FROM meal WHERE mealId IN :mealIds;
+
+-- Bound local DB growth (offline-first P4-T1): drop every meal older than a retention cutoff.
+-- The sync engine's delete-by-absence is window-scoped (30 days), so rows that age out of the
+-- window accumulate forever; a CachePruner runs this at app start with a 90-day cutoff. Ratings
+-- cascade away via the mealRating FK ON DELETE CASCADE (foreign_keys is PRAGMA-enabled at runtime).
+deleteMealsBeforeDay:
+DELETE FROM meal WHERE dayKey < :dayKey;
+
+-- Defensive companion to deleteMealsBeforeDay: drops any rating row whose meal is no longer held
+-- (i.e. orphaned because foreign_keys was off when the meal was deleted). A correctly-configured
+-- driver makes this a no-op, but it guarantees ratings of pruned meals never linger.
+deleteRatingsForAbsentMeals:
+DELETE FROM mealRating WHERE mealId NOT IN (SELECT mealId FROM meal);
+
+setMealPending:
+UPDATE meal SET pending = :pending WHERE mealId = :mealId;
+
+-- Optimistic RATE (P3b): set the recomputed denormalized totals, mark the meal in-flight, and stamp
+-- the command's idempotency key so the rollback / sync-reconcile can find the row.
+setMealOptimisticRate:
+UPDATE meal
+SET ratingSum = :ratingSum, voterCount = :voterCount, pending = 1, idempotencyKey = :idempotencyKey
+WHERE mealId = :mealId;
+
+-- Roll back the optimistic bookkeeping on a meal (clear pending + idempotency key). Totals are left
+-- as-is; the next server snapshot upsert overwrites them with truth.
+clearMealPending:
+UPDATE meal SET pending = 0, idempotencyKey = NULL WHERE mealId = :mealId;
+
+-- Drop only the still-unconfirmed (pending=1) rating rows on a meal (optimistic-write rollback).
+-- Server-confirmed (pending=0) rows are untouched.
+deletePendingRatings:
+DELETE FROM mealRating WHERE mealId = :mealId AND pending = 1;
+
+upsertRating:
+INSERT OR REPLACE INTO mealRating(mealId, raterId, score, atMs, pending)
+VALUES (:mealId, :raterId, :score, :atMs, :pending);
+
+deleteRating:
+DELETE FROM mealRating WHERE mealId = :mealId AND raterId = :raterId;

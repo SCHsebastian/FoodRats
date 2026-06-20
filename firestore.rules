@@ -216,7 +216,16 @@ service cloud.firestore {
                         && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
                         && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000;
 
-          // No update — comments are immutable once posted.
+          // Comments are immutable once posted, EXCEPT an idempotent self-replay: when the
+          // offline outbox replays a queued comment whose doc was already written (same
+          // client-minted id), the `.set()` lands as an update. Allow it ONLY when nothing
+          // meaningful changes — same author, same text — so a replay converges instead of
+          // being denied, but a comment can never be edited.
+          allow update: if request.auth != null
+                        && request.auth.uid == resource.data.authorId
+                        && request.resource.data.authorId == resource.data.authorId
+                        && request.resource.data.text == resource.data.text;
+
           // Delete: the comment's author OR the crew owner may delete it (self-service
           // + moderation), mirroring the meal delete rule above.
           allow delete: if request.auth != null

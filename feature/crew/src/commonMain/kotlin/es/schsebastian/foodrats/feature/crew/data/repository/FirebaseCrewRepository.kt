@@ -14,6 +14,7 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotFoundException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotMemberException
 import es.schsebastian.foodrats.feature.crew.data.firebase.toDomain
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
@@ -29,6 +30,9 @@ internal class FirebaseCrewRepository(
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
     private val clock: Clock,
+    // Offline-first read source-of-truth (P3b §P3b-T7): the crew picker observes this local
+    // SQLDelight store; the CrewSyncEngine keeps it fresh off the Firestore listener.
+    private val local: CrewLocalStore,
 ) : CrewRepository {
 
     override suspend fun create(
@@ -106,8 +110,14 @@ internal class FirebaseCrewRepository(
             )
         }
 
+    // Offline-first read source-of-truth (P3b §P3b-T7): the crew picker reads the local SQLDelight
+    // store (CrewLocalStore.observeMyCrews) — NOT Firestore. The CrewSyncEngine is the only consumer
+    // of the Firestore crew-list listener and mirrors each snapshot in; this stream reads it back.
+    // Rebuilt DTOs go through the SAME CrewMapper.toDomain so the offline list is identical to the
+    // online one. The `.catch` is defensive — the local read shouldn't throw, but a benign-empty
+    // failure keeps the picker rendering.
     override fun observeMyCrews(accountId: AccountId): Flow<Result<List<Crew>, CrewError>> =
-        dataSource.observeMyCrews(accountId)
+        local.observeMyCrews()
             .map<List<es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto>, Result<List<Crew>, CrewError>> { dtos ->
                 Result.success(dtos.mapNotNull { (it.toDomain() as? Result.Ok)?.value })
             }

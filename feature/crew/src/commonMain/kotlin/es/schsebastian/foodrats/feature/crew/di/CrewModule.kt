@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlinx.coroutines.flow.map
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
@@ -14,6 +15,9 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
+import es.schsebastian.foodrats.feature.crew.data.outbox.CrewOutboxCommandHandler
+import es.schsebastian.foodrats.feature.crew.data.sync.CrewSyncEngine
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
@@ -33,6 +37,8 @@ import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsV
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.qualifier.named
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import org.koin.dsl.module
 import kotlin.random.Random
@@ -42,6 +48,25 @@ val crewModule = module {
     singleOf(::CrewErrorMapper)
     single<CrewDataSource> { CrewFirestoreDataSource(get(), get(), get(), get()) }
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
+    // Offline-first local read source-of-truth for the crew list (P3b §P3b-T7). Holds the
+    // FoodRatsDatabase queries (FoodRatsDatabase is bound by :core:database's databaseModule); the
+    // repository's observeMyCrews reads through this store and the CrewSyncEngine writes into it.
+    // Explicit `single` (not singleOf): the ctor params are nullable to admit the override-only
+    // commonTest fake, so singleOf's nullable-param `getOrNull` would silently bind null.
+    single { CrewLocalStore(database = get(), dispatchers = get()) }
+    // Offline-first crew-list sync engine (P3b §P3b-T7): the ONLY consumer of the Firestore
+    // crew-list listener. Mirrors the signed-in member's crew list into CrewLocalStore (full
+    // replace). `createdAtStart = true` + `start()` so it subscribes to SessionProvider at app
+    // boot — the cached picker must stay fresh without any screen having resolved it first. Runs on
+    // the app-lifetime named("appScope") scope (bound by ingredientModule), like the MealSyncEngine.
+    single(createdAtStart = true) {
+        CrewSyncEngine(
+            session = get(),
+            dataSource = get<CrewDataSource>(),
+            local = get(),
+            appScope = get(named("appScope")),
+        ).also { it.start() }
+    }
     single<CrewOwnerPort> {
         object : CrewOwnerPort {
             private val ds = get<CrewDataSource>()
@@ -52,8 +77,8 @@ val crewModule = module {
         }
     }
     single<CrewRepository> {
-        // (firestore, dispatchers, errorMapper, clock)
-        FirebaseCrewRepository(get(), get(), get(), get())
+        // (dataSource, dispatchers, errorMapper, clock, local)
+        FirebaseCrewRepository(get(), get(), get(), get(), get())
     }
     // Live "is blind voting on?" for a crew, consumed by :feature:feed to mask author
     // identity without a :feature:crew dep. Mirrors CrewOwnerPort: reads the crew read
@@ -83,6 +108,16 @@ val crewModule = module {
                     }
                 }
         }
+    }
+
+    // Offline-first write outbox (P2 §1 T6): replays the crew-admin commands
+    // (rename / set-blind-voting / remove-member / leave) against CrewRepository.
+    // Contributed to the cross-feature OutboxRunner (in :core:data) via Koin
+    // getAll(); the runner never imports :feature:crew.
+    // Named qualifier so this and MealOutboxCommandHandler register at distinct Koin indices — see
+    // the matching note in MealModule. getAll<OutboxCommandHandler>() collects across qualifiers.
+    single<OutboxCommandHandler>(named("crewOutboxHandler")) {
+        CrewOutboxCommandHandler(crews = get<CrewRepository>())
     }
 
     factoryOf(::CreateCrewUseCase)

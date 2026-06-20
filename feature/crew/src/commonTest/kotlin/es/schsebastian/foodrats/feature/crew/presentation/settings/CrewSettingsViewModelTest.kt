@@ -15,7 +15,9 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
+import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
+import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
@@ -249,16 +251,19 @@ class CrewSettingsViewModelTest {
     }
 
     @Test
-    fun leave_crew_error_surfaces_on_state_and_does_not_track() = runTest {
+    fun leave_crew_terminal_error_surfaces_on_state_and_does_not_track() = runTest {
+        // A non-connectivity (terminal) failure still surfaces to state. Connectivity-class
+        // failures (Backend.Network/Unavailable) now fall back to the outbox instead — covered
+        // in LeaveCrewUseCaseTest.
         val repo = FakeCrewRepository(listOf(sampleCrew)).apply {
-            nextLeave = Result.failure(CrewError.Backend.Network)
+            nextLeave = Result.failure(CrewError.Backend.PermissionDenied)
         }
         val analytics = RecordingAnalyticsTracker()
         val vm = buildVm(memberId, repo, analytics)
 
         vm.onIntent(CrewSettingsIntent.Leave)
 
-        assertEquals(CrewError.Backend.Network, vm.state.value.error)
+        assertEquals(CrewError.Backend.PermissionDenied, vm.state.value.error)
         assertEquals(false, vm.state.value.isLeaving)
         assertTrue(analytics.events.isEmpty())
     }
@@ -317,14 +322,16 @@ class CrewSettingsViewModelTest {
         analytics: RecordingAnalyticsTracker = RecordingAnalyticsTracker(),
     ): CrewSettingsViewModel {
         val session = FixedSessionProvider(Session(accountId = actingAs, activeCrewId = crewId))
+        val connectivity = FakeConnectivityPort(online = true)
+        val outbox = RecordingOutboxPort()
         return CrewSettingsViewModel(
             crewId = crewId,
             observeCrew = ObserveCrewUseCase(repo),
-            renameCrew = RenameCrewUseCase(repo, session),
+            renameCrew = RenameCrewUseCase(repo, session, connectivity, outbox),
             deleteCrew = DeleteCrewUseCase(repo, session),
-            setBlindVoting = SetBlindVotingUseCase(repo, session),
-            leaveCrew = LeaveCrewUseCase(repo),
-            removeMember = RemoveMemberUseCase(repo, session),
+            setBlindVoting = SetBlindVotingUseCase(repo, session, connectivity, outbox),
+            leaveCrew = LeaveCrewUseCase(repo, connectivity, outbox),
+            removeMember = RemoveMemberUseCase(repo, session, connectivity, outbox),
             session = session,
             accountRead = EmptyAccountReadPort,
             analytics = analytics,

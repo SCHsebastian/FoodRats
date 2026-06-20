@@ -16,12 +16,15 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
 import es.schsebastian.foodrats.feature.crew.data.firebase.MemberDto
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotFoundException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotMemberException
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -45,7 +48,13 @@ class FirebaseCrewRepositoryTest {
     private val clock = FixedClock(Instant.fromEpochMilliseconds(nowMs))
     private val ds = FakeCrewDataSource()
 
-    private fun repo() = FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock)
+    // Offline-first read source-of-truth (P3b §P3b-T7): the repository's observeMyCrews now reads
+    // this local store, NOT the datasource. The fake overrides only the read; the picker tests seed
+    // it with rebuilt DTOs (mapped through the SAME CrewDto.toDomain as the live path).
+    private val localStore = FakeCrewLocalStore()
+
+    private fun repo() =
+        FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock, localStore)
 
     private fun aid(raw: String): AccountId = (AccountId.of(raw) as Result.Ok).value
     private fun cid(raw: String): CrewId = (CrewId.of(raw) as Result.Ok).value
@@ -378,11 +387,12 @@ class FirebaseCrewRepositoryTest {
         }
     }
 
-    // ---------------- observeMyCrews ----------------
+    // ---------------- observeMyCrews (reads the local SQLDelight store, P3b-T7) ----------------
 
     @Test
     fun observeMyCrews_maps_dtos_and_drops_unmappable_entries() = runTest {
-        ds.observeMyCrewsFlow = flowOf(listOf(validDto, validDto.copy(id = null)))
+        // The local store is the read source-of-truth now; seed it with one valid + one malformed DTO.
+        localStore.emit(listOf(validDto, validDto.copy(id = null)))
         repo().observeMyCrews(aid("owner")).test {
             val r = awaitItem()
             assertIs<Result.Ok<List<Crew>>>(r)
@@ -395,7 +405,7 @@ class FirebaseCrewRepositoryTest {
 
     @Test
     fun observeMyCrews_emits_empty_list_when_none() = runTest {
-        ds.observeMyCrewsFlow = flowOf(emptyList())
+        localStore.emit(emptyList())
         repo().observeMyCrews(aid("owner")).test {
             val r = awaitItem()
             assertIs<Result.Ok<List<Crew>>>(r)
@@ -403,4 +413,33 @@ class FirebaseCrewRepositoryTest {
             awaitComplete()
         }
     }
+
+    @Test
+    fun observeMyCrews_reads_local_store_not_the_datasource() = runTest {
+        // Offline: the live datasource never emits (the CrewSyncEngine, not the repository, owns
+        // the listener). The picker still renders from the local store, mapped through the SAME
+        // toDomain so the offline list is identical to the online one.
+        ds.observeMyCrewsFlow = emptyFlow()
+        localStore.emit(listOf(validDto))
+        repo().observeMyCrews(aid("owner")).test {
+            val r = awaitItem()
+            assertIs<Result.Ok<List<Crew>>>(r)
+            assertEquals(1, r.value.size)
+            assertEquals(cid("c-1"), r.value.first().id)
+            awaitComplete()
+        }
+    }
+}
+
+/**
+ * Override-only [CrewLocalStore] test double: feature:crew commonTest has no cross-platform
+ * SQLDelight driver, so the JVM-backed store is exercised in androidHostTest. Here the repository's
+ * read-path mapping is unit-tested against canned [CrewDto]s.
+ */
+private class FakeCrewLocalStore : CrewLocalStore() {
+    private var current: List<CrewDto> = emptyList()
+    fun emit(dtos: List<CrewDto>) { current = dtos }
+    // A completing single-emission flow (like the SQLDelight read's first snapshot), so the
+    // repository tests can `awaitItem()` then `awaitComplete()` without racing virtual time.
+    override fun observeMyCrews(): Flow<List<CrewDto>> = flowOf(current)
 }

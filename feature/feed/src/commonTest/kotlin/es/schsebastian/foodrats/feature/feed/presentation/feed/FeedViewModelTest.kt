@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
+import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealReaction
@@ -32,9 +33,14 @@ import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
+import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
+import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -127,6 +133,18 @@ class FakeQueuedUploadActionsPort : QueuedUploadActionsPort {
     override suspend fun dismissFailed() { dismissCount++ }
 }
 
+/**
+ * Controllable [FeedSyncStatusPort] (P4-T2): the test drives the per-crew last-synced stamp via
+ * [emit] and records [refresh] calls so the Refresh intent can be asserted.
+ */
+class FakeFeedSyncStatusPort(initial: Instant? = null) : FeedSyncStatusPort {
+    private val flow = MutableStateFlow(initial)
+    val refreshedCrews = mutableListOf<String>()
+    fun emit(stamp: Instant?) { flow.value = stamp }
+    override fun lastSyncedAt(crewId: CrewId): Flow<Instant?> = flow
+    override suspend fun refresh(crewId: CrewId) { refreshedCrews += crewId.value }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedViewModelTest {
 
@@ -172,9 +190,12 @@ class FeedViewModelTest {
         sessionProvider: SessionProvider = session,
         uploadProgress: MealUploadProgressPort = idleUploadProgress,
         queuedActions: QueuedUploadActionsPort = FakeQueuedUploadActionsPort(),
+        connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
+        outbox: RecordingOutboxPort = RecordingOutboxPort(),
+        syncStatus: FakeFeedSyncStatusPort = FakeFeedSyncStatusPort(),
     ) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(active, port),
-        rateMeal = RateMealUseCase(ratingPort),
+        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox, RecordingOptimisticMealWritePort()),
         activeCrew = active,
         session = sessionProvider,
         clock = clock,
@@ -183,6 +204,9 @@ class FeedViewModelTest {
         blindVoting = blindVoting,
         reactions = reactionPort,
         queuedUploadActions = queuedActions,
+        connectivity = connectivity,
+        outbox = outbox,
+        syncStatus = syncStatus,
         analytics = analytics,
     )
 
@@ -382,18 +406,63 @@ class FeedViewModelTest {
         assertTrue(analytics.events.none { it is AnalyticsEvent.MealReacted })
     }
 
-    @Test fun react_failure_populates_reactError() = runTest {
+    @Test fun react_failure_with_offline_falls_back_to_outbox() = runTest {
+        // A connectivity-class failure of the direct toggle parks the command instead of erroring.
         val reactionPort = FakeMealReactionPort().apply {
             nextToggle = Result.failure(ReactionError.Toggle.Offline)
         }
-        val vm = buildVm(reactionPort = reactionPort)
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(reactionPort = reactionPort, outbox = outbox)
+        runCurrent()
+        vm.onIntent(FeedIntent.ReactMeal("m-1"))
+        runCurrent()
+        assertEquals(null, vm.state.value.reactError, "connectivity failure is parked, not surfaced")
+        assertEquals(1, outbox.enqueued.size)
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.ToggleReaction)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals(true, cmd.desiredPresent) // viewer had not reacted -> target present
+    }
+
+    // --- offline-first write fallback (P2 §0.5 T7) ------------------------------
+
+    @Test fun react_offline_enqueues_toggle_with_target_and_skips_direct_port() = runTest {
+        val reactionPort = FakeMealReactionPort()
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(
+            reactionPort = reactionPort,
+            outbox = outbox,
+            connectivity = FakeConnectivityPort(online = false),
+        )
         vm.state.test {
             skipItems(1)
             vm.onIntent(FeedIntent.ReactMeal("m-1"))
-            val s = expectMostRecentItem()
-            assertEquals(ReactionError.Toggle.Offline, s.reactError)
+            runCurrent()
             cancelAndIgnoreRemainingEvents()
         }
+        assertTrue(reactionPort.toggleCalls.isEmpty(), "offline must not hit the direct port")
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.ToggleReaction)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals("daily_glyph", cmd.reactionKindKey)
+        assertEquals(true, cmd.desiredPresent)
+    }
+
+    @Test fun rate_offline_enqueues_and_skips_direct_port() = runTest {
+        val ratingPort = FakeMealRatingPort()
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(
+            ratingPort = ratingPort,
+            outbox = outbox,
+            connectivity = FakeConnectivityPort(online = false),
+        )
+        vm.onIntent(FeedIntent.RateMeal("m-1", 4))
+        runCurrent()
+        assertTrue(ratingPort.calls.isEmpty(), "offline must not hit the direct rating port")
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.RateMeal)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals(4, cmd.score.value)
     }
 
     // --- Offline-first publish queue indicator (roadmap §5.2) ------------------
@@ -508,6 +577,51 @@ class FeedViewModelTest {
             ),
             analytics.events.toList(),
         )
+    }
+
+    // --- feed freshness + pull-to-refresh (offline-first P4-T2) -----------------
+
+    @Test fun last_synced_stamp_maps_to_relative_in_state() = runTest {
+        // The clock is fixed at 12:00:00Z; a stamp 5 minutes earlier resolves to "5 min ago".
+        val syncStatus = FakeFeedSyncStatusPort(
+            initial = Instant.parse("2026-05-16T11:55:00Z"),
+        )
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(FeedStringKey.CommentsRelativeMinutes, s.syncedRelative?.key)
+            assertEquals(5, s.syncedRelative?.amount)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun no_sync_yet_keeps_synced_relative_null() = runTest {
+        val vm = buildVm(syncStatus = FakeFeedSyncStatusPort(initial = null))
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(null, s.syncedRelative)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun fresh_stamp_clears_the_refreshing_spinner() = runTest {
+        val syncStatus = FakeFeedSyncStatusPort(initial = null)
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.onIntent(FeedIntent.Refresh)
+        runCurrent()
+        assertTrue(vm.state.value.isRefreshing, "refresh kicks the spinner on")
+        // A fresh stamp arriving (the re-pull's snapshot) drops the spinner.
+        syncStatus.emit(Instant.parse("2026-05-16T12:00:00Z"))
+        runCurrent()
+        assertEquals(false, vm.state.value.isRefreshing)
+    }
+
+    @Test fun refresh_intent_calls_the_port_with_active_crew() = runTest {
+        val syncStatus = FakeFeedSyncStatusPort()
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.onIntent(FeedIntent.Refresh)
+        runCurrent()
+        assertEquals(listOf("c-1"), syncStatus.refreshedCrews)
     }
 
     @Test fun published_queued_draft_is_not_double_rendered() = runTest {

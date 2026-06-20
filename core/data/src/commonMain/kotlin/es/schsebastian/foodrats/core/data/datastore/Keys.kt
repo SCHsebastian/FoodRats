@@ -48,6 +48,16 @@ object Keys {
     val DraftQueueJson       = StoreKey(stringPreferencesKey("draft_queue_json"))
     val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
 
+    /**
+     * The durable write outbox (offline-first P2): a JSON array of queued
+     * rate / comment / reaction / crew-admin mutations (each with its
+     * lifecycle status + attempt count), so a process death or airplane-mode
+     * session never loses a user mutation. Coexists with — and is distinct from
+     * — [DraftQueueJson] (the meal-publish queue, which is untouched). Owned by
+     * `:core:data`'s `OutboxLocalStore`.
+     */
+    val OutboxJson           = StoreKey(stringPreferencesKey("outbox_json"))
+
     // ── Analytics consent (GDPR/CCPA opt-in). Absence of [AnalyticsConsentState] = "Unknown"
     //    (no decision yet → analytics is a hard no-op). See ConsentRepository / ConsentGatedAnalytics.
     /** `"granted"` | `"denied"`; absent = no decision recorded yet. */

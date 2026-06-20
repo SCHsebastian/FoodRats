@@ -26,8 +26,8 @@ internal class CommentFirestoreDataSource(
     override suspend fun create(crewId: CrewId, mealId: MealId, dto: CommentDto) {
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId.value)
-            .collection("comments")
-            .add(dto)
+            .collection("comments").document(dto.id!!)
+            .set(dto)
     }
 
     override suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String) {

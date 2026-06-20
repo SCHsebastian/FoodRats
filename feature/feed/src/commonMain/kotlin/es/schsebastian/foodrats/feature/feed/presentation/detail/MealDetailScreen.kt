@@ -96,6 +96,7 @@ import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrCommentRow
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrLocationMap
+import es.schsebastian.foodrats.feature.feed.presentation.components.stablePlateRequest
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
 import kotlinx.coroutines.launch
 import org.koin.compose.viewmodel.koinViewModel
@@ -445,8 +446,11 @@ private fun PhotoHero(
                 // Detail always loads the FULL plate; the ThumbHash blur is the placeholder while
                 // it streams in (the feed thumbnail is already cached, so the hand-off is smooth).
                 val placeholder = rememberThumbHashPainter(meal.thumbHash)
+                // Key the cache on the stable plate path, not the rotating signed URL, so the full
+                // plate bytes survive URL re-mints and render offline (offline P1-T3).
+                val request = stablePlateRequest(meal.photoUrl, meal.plateCacheKey)
                 AsyncImage(
-                    model = meal.photoUrl,
+                    model = request,
                     contentDescription = meal.dishName,
                     contentScale = ContentScale.Crop,
                     placeholder = placeholder,

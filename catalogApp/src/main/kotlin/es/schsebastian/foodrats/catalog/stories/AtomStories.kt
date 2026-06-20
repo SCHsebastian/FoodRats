@@ -43,6 +43,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
+import es.schsebastian.foodrats.core.designsystem.atoms.FrOfflineBanner
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
@@ -74,6 +75,7 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.flameicon",     CatalogGroup.ATOMS, "FrFlameIcon",     "Flame with urgency-driven pulse (0 → 1)") { FlameIconStory() },
     CatalogEntry("atom.shimmerbox",    CatalogGroup.ATOMS, "FrShimmerBox",    "Skeleton with horizontal shimmer sweep") { ShimmerBoxStory() },
     CatalogEntry("atom.uploadprogress", CatalogGroup.ATOMS, "FrUploadProgressBar", "Top-of-screen indeterminate bar that slides in while uploads run") { UploadProgressBarStory() },
+    CatalogEntry("atom.offlinebanner", CatalogGroup.ATOMS, "FrOfflineBanner", "App-wide 'you're offline' notice (warning role) that slides in when connectivity drops") { OfflineBannerStory() },
     CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — plate + ears at three sizes") { LogoStory() },
     CatalogEntry("atom.card",          CatalogGroup.ATOMS, "FrCard",          "Rounded surface container — static or clickable with press lift") { CardStory() },
     CatalogEntry("atom.card.fur",      CatalogGroup.ATOMS, "FrCard (Minotaur)", "Hidden Minotaur mode — furry edge via LocalMinotaurMode") { MinotaurCardStory() },
@@ -535,6 +537,31 @@ private fun UploadProgressBarStory() {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                 FrUploadProgressBar(visible = on)
                 FrButton(label = if (on) "Hide" else "Show", onClick = { on = !on })
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfflineBannerStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Visible — offline (warning role)", padding = PaddingValues(0.dp)) {
+            FrOfflineBanner(
+                visible = true,
+                message = "You're offline — changes sync when you're back.",
+            )
+        }
+        CatalogScene(label = "Hidden (no banner drawn)") {
+            FrOfflineBanner(visible = false, message = "You're offline — changes sync when you're back.")
+        }
+        CatalogScene(label = "Toggle live") {
+            var offline by remember { mutableStateOf(true) }
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                FrOfflineBanner(
+                    visible = offline,
+                    message = "You're offline — changes sync when you're back.",
+                )
+                FrButton(label = if (offline) "Go online" else "Go offline", onClick = { offline = !offline })
             }
         }
     }
