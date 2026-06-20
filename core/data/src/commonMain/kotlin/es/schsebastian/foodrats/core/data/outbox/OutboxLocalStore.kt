@@ -62,36 +62,65 @@ class OutboxLocalStore(
     fun read(): List<OutboxEntry> = queries.selectAll().executeAsList().mapNotNull { it.toDomain() }
 
     /**
-     * Append [entry] to the outbox, coalescing on the command's idempotency key via the table's
-     * UNIQUE index (`INSERT OR REPLACE`): any existing row whose command shares the same
-     * [PendingCommand.idempotencyKey] is replaced (last-write-wins), and a same-[OutboxEntryId]
-     * duplicate is also replaced. So an offline user rating the same meal twice ends with one row.
+     * Append [entry] to the outbox with M1 identity-preserving coalesce:
+     *  - If a row with the same [PendingCommand.idempotencyKey] already exists, only the payload
+     *    columns are updated and the lifecycle is reset to Pending — the original `id`, `createdAt`,
+     *    and `attemptCount` are preserved (a re-issued command does not reset its retry budget).
+     *  - If no such row exists, a fresh row is inserted with `attemptCount = 0`.
+     *
+     * This replaces the old `INSERT OR REPLACE` (`upsertByIdem`) at the [add] level; `upsertByIdem`
+     * is still used for the fresh-insert path.
      */
     fun add(entry: OutboxEntry) {
         val payload = entry.command.toPayload()
-        val status = entry.status.toColumns()
-        queries.upsertByIdem(
-            id = entry.id.value,
-            type = payload.type,
-            idempotencyKey = entry.command.idempotencyKey,
-            statusKind = status.kind,
-            errorKey = status.errorKey,
-            retryable = status.retryable,
-            attemptCount = entry.attemptCount.toLong(),
-            createdAtEpochMs = entry.createdAt.toEpochMilliseconds(),
-            lastAttemptAtEpochMs = entry.lastAttemptAt?.toEpochMilliseconds(),
-            crewId = payload.crewId,
-            mealId = payload.mealId,
-            accountId = payload.accountId,
-            commentId = payload.commentId,
-            text = payload.text,
-            score = payload.score,
-            reactionKindKey = payload.reactionKindKey,
-            desiredPresent = payload.desiredPresent,
-            enabled = payload.enabled,
-            targetAccountId = payload.targetAccountId,
-            newName = payload.newName,
-        )
+        val idem = entry.command.idempotencyKey
+        queries.transaction {
+            val existing = queries.selectByIdempotencyKey(idem).executeAsOneOrNull()
+            if (existing != null) {
+                // M1: preserve id, createdAt, attemptCount — only refresh payload + reset lifecycle.
+                // attemptCount is intentionally preserved so a re-issued command does not reset its
+                // retry budget (M1 spec).
+                queries.updatePayloadByIdempotencyKey(
+                    type = payload.type,
+                    crewId = payload.crewId,
+                    mealId = payload.mealId,
+                    accountId = payload.accountId,
+                    commentId = payload.commentId,
+                    text = payload.text,
+                    score = payload.score,
+                    reactionKindKey = payload.reactionKindKey,
+                    desiredPresent = payload.desiredPresent,
+                    enabled = payload.enabled,
+                    targetAccountId = payload.targetAccountId,
+                    newName = payload.newName,
+                    idempotencyKey = idem,
+                )
+            } else {
+                val status = entry.status.toColumns()
+                queries.upsertByIdem(
+                    id = entry.id.value,
+                    type = payload.type,
+                    idempotencyKey = idem,
+                    statusKind = status.kind,
+                    errorKey = status.errorKey,
+                    retryable = status.retryable,
+                    attemptCount = entry.attemptCount.toLong(),
+                    createdAtEpochMs = entry.createdAt.toEpochMilliseconds(),
+                    lastAttemptAtEpochMs = entry.lastAttemptAt?.toEpochMilliseconds(),
+                    crewId = payload.crewId,
+                    mealId = payload.mealId,
+                    accountId = payload.accountId,
+                    commentId = payload.commentId,
+                    text = payload.text,
+                    score = payload.score,
+                    reactionKindKey = payload.reactionKindKey,
+                    desiredPresent = payload.desiredPresent,
+                    enabled = payload.enabled,
+                    targetAccountId = payload.targetAccountId,
+                    newName = payload.newName,
+                )
+            }
+        }
     }
 
     /**
@@ -125,12 +154,27 @@ class OutboxLocalStore(
     fun remove(id: OutboxEntryId) = queries.deleteById(id.value)
 
     /**
-     * User-initiated retry: transition entry [id] back to `pending` with a fresh
-     * attempt budget (`attemptCount = 0`, `lastAttemptAt = null`). Only used via
-     * [OutboxRepository.requeue]; the automatic backoff re-arm path uses [update]
-     * and does NOT reset the count.
+     * User-initiated retry: flip [id] back to Pending and reset `attemptCount` to 0, granting
+     * a fresh retry budget. This is the ONLY path that resets `attemptCount` — the automatic
+     * backoff re-arm ([update] → status change) must NOT reset it.
      */
     fun requeue(id: OutboxEntryId) = queries.requeueById(id.value)
+
+    /**
+     * H1: Conditional claim — atomically transitions the entry from Pending to Uploading.
+     * Returns `true` if a row was actually claimed (was Pending and is now Uploading);
+     * `false` if the row was already Uploading, Failed, or absent (another drain owns it
+     * or it has been removed). Runs as a single transaction with [countChanges] to
+     * detect the CAS hit vs. miss without a separate read.
+     */
+    fun claimForUpload(id: OutboxEntryId, nowMs: Long): Boolean {
+        var claimed = false
+        queries.transaction {
+            queries.claimForUpload(now = nowMs, id = id.value)
+            claimed = queries.countChanges().executeAsOne() > 0
+        }
+        return claimed
+    }
 
     // ── command type discriminators (mirror the P2 CommandJson tags) ───────────
 

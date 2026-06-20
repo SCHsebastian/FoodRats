@@ -30,7 +30,7 @@ private class FailingOutboxPort : OutboxPort {
         return Result.failure(OutboxError.PersistenceUnavailable)
     }
     override fun observePending(): Flow<List<OutboxEntry>> = MutableStateFlow(emptyList())
-    override suspend fun markUploading(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun markUploading(id: OutboxEntryId): Result<Boolean, OutboxError> = Result.success(true)
     override suspend fun markFailed(id: OutboxEntryId, errorKey: String, retryable: Boolean): Result<Unit, OutboxError> = Result.success(Unit)
     override suspend fun updateStatus(id: OutboxEntryId, status: OutboxEntryStatus): Result<Unit, OutboxError> = Result.success(Unit)
     override suspend fun remove(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)

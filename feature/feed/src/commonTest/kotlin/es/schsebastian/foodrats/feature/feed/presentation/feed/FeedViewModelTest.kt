@@ -141,7 +141,7 @@ class TerminalEntryOutboxPort(private val entries: List<OutboxEntry>) : OutboxPo
     override fun observePending() = MutableStateFlow(entries)
     override suspend fun enqueue(cmd: PendingCommand): Result<OutboxEntry, OutboxError> =
         Result.failure(OutboxError.PersistenceUnavailable)
-    override suspend fun markUploading(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun markUploading(id: OutboxEntryId): Result<Boolean, OutboxError> = Result.success(true)
     override suspend fun markFailed(id: OutboxEntryId, errorKey: String, retryable: Boolean): Result<Unit, OutboxError> = Result.success(Unit)
     override suspend fun updateStatus(id: OutboxEntryId, status: OutboxEntryStatus): Result<Unit, OutboxError> = Result.success(Unit)
     override suspend fun remove(id: OutboxEntryId): Result<Unit, OutboxError> { removed += id; return Result.success(Unit) }

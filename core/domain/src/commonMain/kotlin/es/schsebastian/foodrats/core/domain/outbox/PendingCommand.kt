@@ -40,6 +40,18 @@ sealed interface PendingCommand {
      */
     val idempotencyKey: String
 
+    /**
+     * Per-aggregate ordering key (H2). Commands sharing the same [aggregateKey]
+     * must be drained FIFO — the runner halts a group on the first retryable failure
+     * so a later command in the same group never executes before an earlier one
+     * succeeds. Commands in different groups are independent.
+     *
+     * Shape: `"<kind>:<id>"` where `<kind>` is the aggregate type and `<id>` is the
+     * narrowest stable discriminator that prevents two logically-independent
+     * mutations from sharing a key (e.g. `commentId`, not just `mealId`).
+     */
+    val aggregateKey: String
+
     /** Set the rater's [score] on a meal. Idempotent (overwrites `ratings[uid]`). */
     data class RateMeal(
         val crewId: CrewId,
@@ -49,6 +61,8 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String =
             "rate:${crewId.value}:${mealId.value}:${raterId.value}"
+        override val aggregateKey: String =
+            "rate:${mealId.value}:${raterId.value}"
     }
 
     /**
@@ -64,6 +78,8 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String =
             "comment:${crewId.value}:${mealId.value}:${commentId.value}"
+        override val aggregateKey: String =
+            "comment:${commentId.value}"
     }
 
     /** Delete a comment by id. Idempotent (deleting an absent doc is a success). */
@@ -74,6 +90,8 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String =
             "comment.del:${crewId.value}:${mealId.value}:${commentId.value}"
+        override val aggregateKey: String =
+            "comment:${commentId.value}"
     }
 
     /**
@@ -91,6 +109,8 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String =
             "react:${crewId.value}:${mealId.value}:${reactorId.value}"
+        override val aggregateKey: String =
+            "reaction:${mealId.value}:${reactorId.value}:${reactionKindKey}"
     }
 
     /** Rename a crew. Idempotent (sets the name). */
@@ -100,6 +120,7 @@ sealed interface PendingCommand {
         val newName: String,
     ) : PendingCommand {
         override val idempotencyKey: String = "crew.rename:${crewId.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
     }
 
     /** Toggle a crew's blind-voting flag. Idempotent (sets the flag). */
@@ -109,6 +130,7 @@ sealed interface PendingCommand {
         val enabled: Boolean,
     ) : PendingCommand {
         override val idempotencyKey: String = "crew.blind:${crewId.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
     }
 
     /** Remove a member from a crew. Idempotent (removing an absent member is a success). */
@@ -119,6 +141,7 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String =
             "crew.remove:${crewId.value}:${target.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
     }
 
     /** Leave a crew. Idempotent (leaving a crew you're no longer in is a success). */
@@ -128,5 +151,6 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String =
             "crew.leave:${crewId.value}:${leaver.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
     }
 }

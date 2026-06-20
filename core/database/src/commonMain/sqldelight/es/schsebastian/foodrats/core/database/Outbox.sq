@@ -82,10 +82,29 @@ WHERE id = :id;
 deleteById:
 DELETE FROM outbox WHERE id = :id;
 
--- Manual user retry: resets the entry to Pending with a fresh attempt budget
--- (attemptCount=0, lastAttemptAt=NULL). Only used for user-initiated retries;
--- the automatic backoff re-arm path (OutboxRunner.scheduleRetry) uses updateStatus
--- so it does NOT reset the count.
+-- H1: Conditional claim — only transitions the entry to 'uploading' when it is currently
+-- 'pending'. Run countChanges immediately after (in the same transaction) to detect whether
+-- a row was actually claimed (changes() > 0) vs. already-owned/absent (changes() == 0).
+claimForUpload:
+UPDATE outbox
+SET statusKind           = 'uploading',
+    lastAttemptAtEpochMs = :now
+WHERE id        = :id
+  AND statusKind = 'pending';
+
+-- Returns the number of rows affected by the immediately-preceding DML statement.
+-- Used after claimForUpload to detect a CAS hit (claimed) vs. a miss (already owned/absent).
+countChanges:
+SELECT changes();
+
+-- M1: Fetch a row by its idempotency key (used for the identity-preserving coalesce in add()).
+selectByIdempotencyKey:
+SELECT * FROM outbox
+WHERE idempotencyKey = :idempotencyKey;
+
+-- User-initiated retry: reset the entry back to Pending AND clear the attempt counter to 0,
+-- granting a fresh retry budget. This is the ONLY path that resets attemptCount — the automatic
+-- backoff re-arm (OutboxRunner.scheduleRetry → updateStatus) must NOT reset it.
 requeueById:
 UPDATE outbox
 SET statusKind = 'pending',
@@ -94,3 +113,26 @@ SET statusKind = 'pending',
     attemptCount = 0,
     lastAttemptAtEpochMs = NULL
 WHERE id = :id;
+
+-- M1: Update payload + reset lifecycle columns on an existing row, preserving
+-- id / createdAt / attemptCount (intentionally — a re-issued command must not
+-- reset its retry budget).
+updatePayloadByIdempotencyKey:
+UPDATE outbox
+SET type                 = :type,
+    statusKind           = 'pending',
+    errorKey             = NULL,
+    retryable            = 0,
+    lastAttemptAtEpochMs = NULL,
+    crewId               = :crewId,
+    mealId               = :mealId,
+    accountId            = :accountId,
+    commentId            = :commentId,
+    text                 = :text,
+    score                = :score,
+    reactionKindKey      = :reactionKindKey,
+    desiredPresent       = :desiredPresent,
+    enabled              = :enabled,
+    targetAccountId      = :targetAccountId,
+    newName              = :newName
+WHERE idempotencyKey = :idempotencyKey;

@@ -27,10 +27,12 @@ import kotlinx.coroutines.withContext
  * caller can `when`-exhaust them.
  *
  * The `attemptCount` / `lastAttemptAt` bookkeeping lives here (the port contract
- * says the implementation owns it): [markUploading] stamps `lastAttemptAt` and
- * leaves the count intact; [markFailed] increments `attemptCount` (it counts
- * attempts that have FAILED, 1-based, matching [es.schsebastian.foodrats.core.domain.outbox.OutboxRetryPolicy]).
- * Enqueue coalescing on [PendingCommand.idempotencyKey] is handled by the store.
+ * says the implementation owns it): [markUploading] performs a CAS from Pending→Uploading
+ * (H1) returning whether the claim succeeded; [markFailed] increments `attemptCount`
+ * (it counts attempts that have FAILED, 1-based, matching
+ * [es.schsebastian.foodrats.core.domain.outbox.OutboxRetryPolicy]).
+ * Enqueue coalescing on [PendingCommand.idempotencyKey] is handled by the store (M1: id +
+ * createdAt + attemptCount are preserved on re-issue).
  */
 @OptIn(ExperimentalUuidApi::class)
 class OutboxRepository(
@@ -60,12 +62,11 @@ class OutboxRepository(
 
     override fun observePending(): Flow<List<OutboxEntry>> = store.observe()
 
-    override suspend fun markUploading(id: OutboxEntryId): Result<Unit, OutboxError> =
+    override suspend fun markUploading(id: OutboxEntryId): Result<Boolean, OutboxError> =
         withContext(dispatchers.io) {
-            val now = clock.now()
-            runCatching {
-                store.update(id) { it.copy(status = OutboxEntryStatus.Uploading, lastAttemptAt = now) }
-            }.fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("markUploading", it) })
+            val nowMs = clock.now().toEpochMilliseconds()
+            runCatching { store.claimForUpload(id, nowMs) }
+                .fold(onSuccess = { Result.Ok(it) }, onFailure = { fail("markUploading", it) })
         }
 
     override suspend fun markFailed(

@@ -2,13 +2,19 @@ package es.schsebastian.foodrats.core.data.outbox
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
+import es.schsebastian.foodrats.core.domain.meal.CommentText
+import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntry
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryStatus
+import es.schsebastian.foodrats.core.domain.outbox.OutboxError
 import es.schsebastian.foodrats.core.domain.outbox.OutboxExecuteResult
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.outbox.OutboxRetryPolicy
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -324,9 +330,6 @@ class OutboxRunnerTest {
      * remaining, the entry must be re-armed to [OutboxEntryStatus.Pending] immediately
      * and [runOnce] must return `false`. WorkManager's own exponential backoff then
      * spaces the next worker run — there is no in-process delay.
-     *
-     * Without the M2 fix, the entry stayed as `Failed(retryable = true)` and [runOnce]
-     * only drains `Pending` entries, so the entry was stuck forever.
      */
     @Test
     fun m2_worker_path_retryable_leaves_entry_pending_with_incremented_attempt() = runTest {
@@ -343,14 +346,6 @@ class OutboxRunnerTest {
         assertEquals(1, entry.attemptCount, "attemptCount incremented so budget is still consumed")
     }
 
-    /**
-     * M2 fix: after [maxAttempts] failed worker-path drain passes (each re-arming to Pending),
-     * the entry must land [OutboxEntryStatus.Failed] with `retryable = false` (terminal) and
-     * [runOnce] must return `true` (no drainable work remains — a terminal entry won't resolve
-     * on its own so it's excluded from the "undrained" count).
-     *
-     * This proves the retry budget is honoured across multiple worker wakeups.
-     */
     @Test
     fun m2_worker_path_terminal_after_max_attempts() = runTest {
         val box = outbox()
@@ -397,5 +392,108 @@ class OutboxRunnerTest {
 
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // ── H1: CAS skip ──────────────────────────────────────────────────────────
+
+    @Test
+    fun h1_skips_execute_when_mark_uploading_returns_false() = runTest {
+        val box = outbox()
+        box.enqueue(rateCommand())
+        val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
+
+        // A port wrapper that delegates everything to `box` except markUploading always returns false,
+        // simulating a concurrent drain that already owns the entry.
+        val portThatDeniesClaim = object : OutboxPort by box {
+            override suspend fun markUploading(id: OutboxEntryId): Result<Boolean, OutboxError> =
+                Result.Ok(false)
+        }
+
+        val runner = OutboxRunner(portThatDeniesClaim, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
+        runner.runOnce(scope = null)
+
+        assertEquals(0, handler.executeCount, "execute must not be called when CAS claim returns false")
+    }
+
+    // ── H2: per-aggregate ordering ────────────────────────────────────────────
+
+    @Test
+    fun h2_halts_same_group_on_retryable_but_not_other_groups() = runTest {
+        val box = outbox()
+        val commentId = MealCommentId("c-1")
+        val meal2 = (MealId.of("meal-2") as Result.Ok).value
+
+        // PostComment and DeleteComment share aggregateKey "comment:c-1" (same commentId).
+        val postCmd = PendingCommand.PostComment(
+            crewId = crew,
+            mealId = meal,
+            commentId = commentId,
+            text = CommentText.of("hello").getOrNull()!!,
+            authorId = rater,
+        )
+        val deleteCmd = PendingCommand.DeleteComment(
+            crewId = crew,
+            mealId = meal,
+            commentId = commentId,
+        )
+        // Independent command on a different meal — aggregateKey "rate:meal-2:acc-1" ≠ "comment:c-1".
+        val independentCmd = PendingCommand.RateMeal(
+            crewId = crew,
+            mealId = meal2,
+            raterId = rater,
+            score = Score.of(4).getOrNull()!!,
+        )
+
+        box.enqueue(postCmd)
+        box.enqueue(deleteCmd)
+        box.enqueue(independentCmd)
+
+        var postExecuted = 0
+        var deleteExecuted = 0
+        var independentExecuted = 0
+
+        val handler = object : OutboxCommandHandler {
+            override fun handles(cmd: PendingCommand): Boolean = true
+            override suspend fun execute(cmd: PendingCommand): OutboxExecuteResult = when (cmd) {
+                is PendingCommand.PostComment -> { postExecuted++; OutboxExecuteResult.Retryable("post.offline") }
+                is PendingCommand.DeleteComment -> { deleteExecuted++; OutboxExecuteResult.Success }
+                is PendingCommand.RateMeal -> { independentExecuted++; OutboxExecuteResult.Success }
+                else -> OutboxExecuteResult.Success
+            }
+        }
+
+        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+        runner.runOnce(scope = null)
+
+        assertEquals(1, postExecuted, "PostComment must execute once")
+        assertEquals(0, deleteExecuted, "DeleteComment must NOT execute — halted by PostComment's retryable failure")
+        assertEquals(1, independentExecuted, "independent RateMeal must execute despite PostComment's failure")
+    }
+
+    // ── M1: identity-preserving coalesce ──────────────────────────────────────
+
+    @Test
+    fun m1_reissue_preserves_id_created_at_and_attempt_count() = runTest {
+        val clock = FixedClock(Instant.parse("2026-06-19T10:00:00Z"))
+        val box = OutboxRepository(db.store(), clock, db.dispatchers)
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        val createdAt = box.observePending().first().single().createdAt
+
+        // Simulate one failed attempt.
+        box.markUploading(id)
+        box.markFailed(id, "rate.offline", retryable = true)
+        val afterFail = box.observePending().first().single()
+        assertEquals(1, afterFail.attemptCount, "sanity: one failed attempt recorded")
+
+        // Re-issue the same command (same idempotency key) with a new score at a later time.
+        clock.set(Instant.parse("2026-06-19T11:00:00Z"))
+        box.enqueue(rateCommand(score = 5))
+
+        val row = box.observePending().first().single()
+        assertEquals(id, row.id, "M1: id must be preserved on re-issue")
+        assertEquals(createdAt, row.createdAt, "M1: createdAt must be preserved on re-issue")
+        assertEquals(1, row.attemptCount, "M1: attemptCount must be preserved — re-issue does not reset the retry budget")
+        assertEquals(OutboxEntryStatus.Pending, row.status, "M1: status reset to Pending on re-issue")
+        assertEquals(5, (row.command as PendingCommand.RateMeal).score.value, "M1: payload updated to new score")
     }
 }

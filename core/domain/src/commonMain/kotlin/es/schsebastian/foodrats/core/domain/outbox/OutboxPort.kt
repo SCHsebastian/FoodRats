@@ -34,8 +34,14 @@ interface OutboxPort {
      */
     fun observePending(): Flow<List<OutboxEntry>>
 
-    /** Transition the entry [id] to [OutboxEntryStatus.Uploading] before an attempt. */
-    suspend fun markUploading(id: OutboxEntryId): Result<Unit, OutboxError>
+    /**
+     * Conditional claim: atomically transitions entry [id] from [OutboxEntryStatus.Pending]
+     * to [OutboxEntryStatus.Uploading]. Returns [Result.Ok] with `true` if the claim
+     * succeeded (the entry was Pending and is now Uploading); [Result.Ok] with `false`
+     * if the entry was already Uploading, Failed, or absent — another drain owns it or
+     * it has been removed. The caller must NOT call [execute] when `false` is returned.
+     */
+    suspend fun markUploading(id: OutboxEntryId): Result<Boolean, OutboxError>
 
     /**
      * Record a failed attempt: set [OutboxEntryStatus.Failed] with [errorKey] and

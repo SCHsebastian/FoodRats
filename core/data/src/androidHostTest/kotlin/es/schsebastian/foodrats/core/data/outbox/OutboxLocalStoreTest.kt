@@ -72,14 +72,16 @@ class OutboxLocalStoreTest {
     }
 
     @Test
-    fun add_coalesces_on_idempotency_key_last_write_wins() = runTest {
+    fun add_coalesces_on_idempotency_key_preserves_original_id() = runTest {
         // Same crew/meal/rater → same idempotency key for both commands.
+        // M1: the second add updates the payload but preserves the original id/createdAt/attemptCount
+        // (identity-preserving coalesce) rather than replacing the row (old INSERT OR REPLACE behavior).
         store.add(entry(1, rateCommand("rater-X")))
         store.add(entry(2, rateCommand("rater-X")))
 
         val all = store.read()
         assertEquals(1, all.size)
-        assertEquals("entry-2", all.single().id.value) // the later add replaced the earlier
+        assertEquals("entry-1", all.single().id.value) // M1: original id preserved
     }
 
     @Test
