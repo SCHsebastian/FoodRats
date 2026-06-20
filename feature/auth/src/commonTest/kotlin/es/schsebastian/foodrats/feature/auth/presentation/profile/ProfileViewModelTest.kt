@@ -33,9 +33,11 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
+import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.RemoveMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
@@ -240,9 +242,9 @@ class ProfileViewModelTest {
         themePort: ThemeModePort = NoopThemeModePort,
         localePort: LocalePort = NoopLocalePort,
         aiPreferencePort: AiPreferencePort = FakeAiPreferencePort(),
+        writePort: FakeAccountWritePort = FakeAccountWritePort(),
     ): ProfileViewModel {
         val session = FixedSessionProvider(Session(accountId = accountId, activeCrewId = null))
-        val writePort = FakeAccountWritePort()
         return ProfileViewModel(
             accountRead = FakeAccountReadPort(account),
             session = session,
@@ -254,6 +256,7 @@ class ProfileViewModelTest {
             updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
             updateBio = UpdateMyBioUseCase(writePort, session),
             updateAvatar = UpdateMyAvatarUseCase(writePort, session),
+            removeAvatar = RemoveMyAvatarUseCase(writePort, session),
             signOut = signOut,
             setThemeMode = SetThemeModeUseCase(themePort),
             setLocale = SetLocaleUseCase(localePort),
@@ -753,6 +756,77 @@ class ProfileViewModelTest {
             // Rolled back to previous value.
             assertTrue(final.aiEnabled)
             assertEquals(AuthStringKey.ProfileAiPersistFailed, final.aiError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── remove avatar ────────────────────────────────────────────────────────
+
+    @Test fun remove_avatar_confirm_flow_removes_and_clears_state() = runTest {
+        val writePort = FakeAccountWritePort()
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+
+        vm.state.test {
+            // Confirm dialog opens on request.
+            vm.onIntent(ProfileIntent.RemoveAvatarRequested)
+            assertTrue(expectMostRecentItem().removeAvatarConfirmOpen)
+
+            // Confirm closes the dialog, sets in-flight, then clears on success.
+            vm.onIntent(ProfileIntent.RemoveAvatarConfirmed)
+            val final = expectMostRecentItem()
+            assertFalse(final.isRemovingAvatar)
+            assertFalse(final.removeAvatarConfirmOpen)
+            assertNull(final.removeAvatarError)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // The port was called exactly once with the correct accountId.
+        assertEquals(1, writePort.avatarRemovals.size)
+        assertEquals(accountId, writePort.avatarRemovals[0])
+    }
+
+    @Test fun remove_avatar_dismiss_closes_dialog_without_calling_port() = runTest {
+        val writePort = FakeAccountWritePort()
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.RemoveAvatarRequested)
+            assertTrue(expectMostRecentItem().removeAvatarConfirmOpen)
+
+            vm.onIntent(ProfileIntent.RemoveAvatarDismissed)
+            assertFalse(expectMostRecentItem().removeAvatarConfirmOpen)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // Port never called.
+        assertTrue(writePort.avatarRemovals.isEmpty())
+    }
+
+    @Test fun remove_avatar_failure_surfaces_error_key() = runTest {
+        val writePort = FakeAccountWritePort().also {
+            it.nextRemoveAvatarError = AccountWriteError.Backend.Unavailable
+        }
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.RemoveAvatarRequested)
+            vm.onIntent(ProfileIntent.RemoveAvatarConfirmed)
+            val final = expectMostRecentItem()
+            assertFalse(final.isRemovingAvatar)
+            assertEquals(AuthStringKey.ProfileRemoveAvatarError, final.removeAvatarError)
             cancelAndIgnoreRemainingEvents()
         }
     }

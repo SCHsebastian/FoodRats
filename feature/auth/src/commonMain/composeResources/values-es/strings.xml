@@ -44,6 +44,13 @@
     <string name="auth_profile_save">Guardar</string>
     <string name="auth_profile_change_avatar_cta">Toca para cambiar avatar</string>
     <string name="auth_profile_avatar_uploading">Subiendo…</string>
+    <string name="auth_profile_remove_avatar_cta">Eliminar avatar</string>
+    <string name="auth_profile_remove_avatar_removing">Eliminando…</string>
+    <string name="auth_profile_remove_avatar_confirm_title">¿Eliminar avatar?</string>
+    <string name="auth_profile_remove_avatar_confirm_body">Tu avatar se borrará y se reemplazará con tus iniciales.</string>
+    <string name="auth_profile_remove_avatar_confirm_cta">Eliminar</string>
+    <string name="auth_profile_remove_avatar_cancel">Cancelar</string>
+    <string name="auth_profile_remove_avatar_error">No se pudo eliminar tu avatar. Inténtalo de nuevo.</string>
     <string name="auth_profile_account_section">Cuenta</string>
     <string name="auth_profile_achievements_section">Insignias</string>
     <string name="auth_profile_achievements_row">Insignias</string>

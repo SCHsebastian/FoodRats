@@ -62,6 +62,13 @@ import foodrats.feature.auth.generated.resources.auth_profile_avatar_empty_bytes
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_uploading
 import foodrats.feature.auth.generated.resources.auth_profile_backend_unavailable
 import foodrats.feature.auth.generated.resources.auth_profile_change_avatar_cta
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_cta
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_removing
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_confirm_title
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_confirm_body
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_confirm_cta
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_cancel
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_error
 import foodrats.feature.auth.generated.resources.auth_profile_danger_zone_section
 import foodrats.feature.auth.generated.resources.auth_profile_danger_zone_subtitle
 import foodrats.feature.auth.generated.resources.auth_profile_delete_account_row
@@ -172,6 +179,13 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileSave(Res.string.auth_profile_save),
     ProfileChangeAvatarCta(Res.string.auth_profile_change_avatar_cta),
     ProfileAvatarUploading(Res.string.auth_profile_avatar_uploading),
+    ProfileRemoveAvatarCta(Res.string.auth_profile_remove_avatar_cta),
+    ProfileAvatarRemoving(Res.string.auth_profile_remove_avatar_removing),
+    ProfileRemoveAvatarConfirmTitle(Res.string.auth_profile_remove_avatar_confirm_title),
+    ProfileRemoveAvatarConfirmBody(Res.string.auth_profile_remove_avatar_confirm_body),
+    ProfileRemoveAvatarConfirmCta(Res.string.auth_profile_remove_avatar_confirm_cta),
+    ProfileRemoveAvatarCancel(Res.string.auth_profile_remove_avatar_cancel),
+    ProfileRemoveAvatarError(Res.string.auth_profile_remove_avatar_error),
 
     ProfileBioLabel(Res.string.auth_profile_bio_label),
     ProfileBioPlaceholder(Res.string.auth_profile_bio_placeholder),

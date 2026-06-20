@@ -68,6 +68,10 @@ sealed interface ProfileError {
     sealed interface Ai : ProfileError {
         data object PersistFailed : Ai
     }
+
+    sealed interface Avatar : ProfileError {
+        data object RemoveFailed : Avatar
+    }
 }
 
 internal fun AccountWriteError.toProfileError(): ProfileError = when (this) {
@@ -106,4 +110,12 @@ internal fun DataExportError.toProfileError(): ProfileError = when (this) {
 
 internal fun AiPreferenceError.toProfileError(): ProfileError = when (this) {
     AiPreferenceError.Persist.Unavailable -> ProfileError.Ai.PersistFailed
+}
+
+internal fun AccountWriteError.toRemoveAvatarProfileError(): ProfileError = when (this) {
+    AccountWriteError.Validation.DisplayNameBlank -> ProfileError.Avatar.RemoveFailed
+    AccountWriteError.Validation.DisplayNameTooLong -> ProfileError.Avatar.RemoveFailed
+    AccountWriteError.Validation.BioTooLong -> ProfileError.Avatar.RemoveFailed
+    AccountWriteError.Validation.EmptyBytes -> ProfileError.Avatar.RemoveFailed
+    AccountWriteError.Backend.Unavailable -> ProfileError.Avatar.RemoveFailed
 }

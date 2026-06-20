@@ -44,6 +44,13 @@
     <string name="auth_profile_save">Save</string>
     <string name="auth_profile_change_avatar_cta">Tap to change avatar</string>
     <string name="auth_profile_avatar_uploading">Uploading…</string>
+    <string name="auth_profile_remove_avatar_cta">Remove avatar</string>
+    <string name="auth_profile_remove_avatar_removing">Removing…</string>
+    <string name="auth_profile_remove_avatar_confirm_title">Remove avatar?</string>
+    <string name="auth_profile_remove_avatar_confirm_body">Your avatar will be deleted and replaced with your initials.</string>
+    <string name="auth_profile_remove_avatar_confirm_cta">Remove</string>
+    <string name="auth_profile_remove_avatar_cancel">Cancel</string>
+    <string name="auth_profile_remove_avatar_error">Couldn\'t remove your avatar. Try again.</string>
     <string name="auth_profile_account_section">Account</string>
     <string name="auth_profile_achievements_section">Badges</string>
     <string name="auth_profile_achievements_row">Badges</string>

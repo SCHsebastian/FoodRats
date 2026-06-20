@@ -31,6 +31,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarPicker
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsDivider
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsPicker
@@ -169,6 +170,18 @@ fun ProfileScreen(
         }
     }
 
+    if (state.removeAvatarConfirmOpen) {
+        FrConfirmDialog(
+            title = resolve(AuthStringKey.ProfileRemoveAvatarConfirmTitle),
+            message = resolve(AuthStringKey.ProfileRemoveAvatarConfirmBody),
+            confirmLabel = resolve(AuthStringKey.ProfileRemoveAvatarConfirmCta),
+            dismissLabel = resolve(AuthStringKey.ProfileRemoveAvatarCancel),
+            onConfirm = { vm.onIntent(ProfileIntent.RemoveAvatarConfirmed) },
+            onDismiss = { vm.onIntent(ProfileIntent.RemoveAvatarDismissed) },
+            destructive = true,
+        )
+    }
+
     if (state.themePickerOpen) {
         FrSettingsPicker(
             title = resolve(AuthStringKey.ProfileThemePickerTitle),
@@ -263,12 +276,21 @@ private fun GeneralSection(
                 initials = initials,
                 avatarUrl = account?.avatarUrl,
                 onPickClick = onPickAvatar,
-                busy = state.isUploadingAvatar,
+                busy = state.isUploadingAvatar || state.isRemovingAvatar,
                 changeLabel = resolve(AuthStringKey.ProfileChangeAvatarCta),
-                uploadingLabel = resolve(AuthStringKey.ProfileAvatarUploading),
+                uploadingLabel = if (state.isRemovingAvatar)
+                    resolve(AuthStringKey.ProfileAvatarRemoving)
+                else
+                    resolve(AuthStringKey.ProfileAvatarUploading),
+                onRemoveClick = { vm.onIntent(ProfileIntent.RemoveAvatarRequested) },
+                removeLabel = resolve(AuthStringKey.ProfileRemoveAvatarCta),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
             )
             state.uploadAvatarError?.let {
+                FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
+                Spacer(Modifier.height(Spacing.sm))
+            }
+            state.removeAvatarError?.let {
                 FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
                 Spacer(Modifier.height(Spacing.sm))
             }

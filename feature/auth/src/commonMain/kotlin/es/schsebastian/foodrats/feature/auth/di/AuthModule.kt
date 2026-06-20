@@ -29,6 +29,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUse
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.RemoveMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
@@ -83,6 +84,7 @@ val authModule = module {
     factoryOf(::UpdateMyDisplayNameUseCase)
     factoryOf(::UpdateMyBioUseCase)
     factoryOf(::UpdateMyAvatarUseCase)
+    factoryOf(::RemoveMyAvatarUseCase)
     factoryOf(::SetThemeModeUseCase)
     factoryOf(::SetLocaleUseCase)
     factoryOf(::SetMealRemindersUseCase)
@@ -107,6 +109,7 @@ val authModule = module {
             updateDisplayName = get(),
             updateBio = get(),
             updateAvatar = get(),
+            removeAvatar = get(),
             signOut = get(),
             setThemeMode = get(),
             setLocale = get(),

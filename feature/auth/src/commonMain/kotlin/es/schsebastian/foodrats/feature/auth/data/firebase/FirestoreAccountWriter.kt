@@ -65,4 +65,17 @@ class FirestoreAccountWriter(
             Result.success(path)
         }.getOrElse { Result.failure(AccountWriteError.Backend.Unavailable) }
     }
+
+    override suspend fun removeAvatar(
+        accountId: AccountId,
+    ): Result<Unit, AccountWriteError> = withContext(dispatchers.io) {
+        runCatching {
+            // Delete Storage object first (best-effort — not-found is treated as success).
+            avatarStorage.delete(accountId)
+            // Null out the Firestore path so AccountReadPort re-emits and the UI shows initials.
+            firestore.collection("accounts").document(accountId.value)
+                .update("avatarPath" to null)
+            Result.success(Unit)
+        }.getOrElse { Result.failure(AccountWriteError.Backend.Unavailable) }
+    }
 }

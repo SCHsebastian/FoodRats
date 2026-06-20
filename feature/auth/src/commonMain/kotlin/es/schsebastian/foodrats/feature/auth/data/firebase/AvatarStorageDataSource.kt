@@ -26,4 +26,26 @@ class AvatarStorageDataSource(private val storage: FirebaseStorage) {
         )
         return path
     }
+
+    /**
+     * Deletes the avatar object at `avatars/{uid}.jpg`. No-ops if the object does not
+     * exist (the Firebase SDK raises `StorageException` with code NOT_FOUND; we swallow
+     * it so the Firestore nullification still proceeds). Throwing any other exception
+     * propagates to the caller for mapping.
+     */
+    suspend fun delete(accountId: AccountId) {
+        try {
+            storage.reference("avatars/${accountId.value}.jpg").delete()
+        } catch (e: Exception) {
+            // Swallow NOT_FOUND: the object is already absent, which is the goal.
+            // Any other exception (network, auth) should propagate.
+            if (!isNotFound(e)) throw e
+        }
+    }
+
+    /** Returns true when [e] is a Firebase Storage NOT_FOUND exception. */
+    private fun isNotFound(e: Exception): Boolean =
+        e.message?.contains("does not exist") == true ||
+            e.message?.contains("object-not-found") == true ||
+            e.message?.contains("404") == true
 }

@@ -10,9 +10,11 @@ class FakeAccountWritePort : AccountWritePort {
     val displayNameCalls: MutableList<Pair<AccountId, String>> = mutableListOf()
     val bioCalls: MutableList<Pair<AccountId, Bio?>> = mutableListOf()
     val avatarUploads: MutableList<Pair<AccountId, ByteArray>> = mutableListOf()
+    val avatarRemovals: MutableList<AccountId> = mutableListOf()
     var nextDisplayNameError: AccountWriteError? = null
     var nextBioError: AccountWriteError? = null
     var nextAvatarError: AccountWriteError? = null
+    var nextRemoveAvatarError: AccountWriteError? = null
     var nextAvatarUrl: String = "https://example.test/avatar.jpg"
 
     override suspend fun updateDisplayName(
@@ -37,5 +39,12 @@ class FakeAccountWritePort : AccountWritePort {
     ): Result<String, AccountWriteError> {
         avatarUploads += accountId to bytes
         return nextAvatarError?.let { Result.failure(it) } ?: Result.success(nextAvatarUrl)
+    }
+
+    override suspend fun removeAvatar(
+        accountId: AccountId,
+    ): Result<Unit, AccountWriteError> {
+        avatarRemovals += accountId
+        return nextRemoveAvatarError?.let { Result.failure(it) } ?: Result.success(Unit)
     }
 }

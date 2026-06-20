@@ -34,6 +34,7 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUse
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.RemoveMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
@@ -53,6 +54,9 @@ data class ProfileState(
     val saveDisplayNameError: StringKey? = null,
     val isUploadingAvatar: Boolean = false,
     val uploadAvatarError: StringKey? = null,
+    val isRemovingAvatar: Boolean = false,
+    val removeAvatarConfirmOpen: Boolean = false,
+    val removeAvatarError: StringKey? = null,
 
     // Bio — single-field editor in GeneralSection. editingBio is seeded from account.bio on
     // first emission (mirrors editingDisplayName) and never overwritten by subsequent live
@@ -109,6 +113,12 @@ sealed interface ProfileIntent : MviIntent {
     data class BioChanged(val value: String) : ProfileIntent
     data object SaveBio : ProfileIntent
     data class AvatarPicked(val bytes: ByteArray) : ProfileIntent
+    /** User tapped "Remove avatar" — open the confirmation dialog. */
+    data object RemoveAvatarRequested : ProfileIntent
+    /** User confirmed the removal in the dialog. */
+    data object RemoveAvatarConfirmed : ProfileIntent
+    /** User dismissed the removal confirmation dialog without confirming. */
+    data object RemoveAvatarDismissed : ProfileIntent
     data object SignOut : ProfileIntent
 
     data object ThemePickerOpen : ProfileIntent
@@ -167,6 +177,7 @@ class ProfileViewModel(
     private val updateDisplayName: UpdateMyDisplayNameUseCase,
     private val updateBio: UpdateMyBioUseCase,
     private val updateAvatar: UpdateMyAvatarUseCase,
+    private val removeAvatar: RemoveMyAvatarUseCase,
     private val signOut: SignOutPort,
     private val setThemeMode: SetThemeModeUseCase,
     private val setLocale: SetLocaleUseCase,
@@ -249,6 +260,11 @@ class ProfileViewModel(
             ProfileIntent.SaveBio -> doSaveBio()
 
             is ProfileIntent.AvatarPicked -> doUploadAvatar(intent.bytes)
+            ProfileIntent.RemoveAvatarRequested ->
+                update { it.copy(removeAvatarConfirmOpen = true, removeAvatarError = null) }
+            ProfileIntent.RemoveAvatarConfirmed -> doRemoveAvatar()
+            ProfileIntent.RemoveAvatarDismissed ->
+                update { it.copy(removeAvatarConfirmOpen = false) }
             ProfileIntent.SignOut -> doSignOut()
 
             ProfileIntent.ThemePickerOpen ->
@@ -348,6 +364,18 @@ class ProfileViewModel(
             when (r) {
                 is Result.Ok -> it.copy(isUploadingAvatar = false, uploadAvatarError = null)
                 is Result.Err -> it.copy(isUploadingAvatar = false, uploadAvatarError = r.error.toStringKey())
+            }
+        }
+    }
+
+    private suspend fun doRemoveAvatar() {
+        // Close the confirm dialog immediately; show progress in the avatar area.
+        update { it.copy(removeAvatarConfirmOpen = false, isRemovingAvatar = true, removeAvatarError = null) }
+        val r = removeAvatar()
+        update {
+            when (r) {
+                is Result.Ok -> it.copy(isRemovingAvatar = false, removeAvatarError = null)
+                is Result.Err -> it.copy(isRemovingAvatar = false, removeAvatarError = r.error.toStringKey())
             }
         }
     }

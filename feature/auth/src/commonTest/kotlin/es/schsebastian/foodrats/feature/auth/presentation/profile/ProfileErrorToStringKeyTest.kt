@@ -56,4 +56,7 @@ class ProfileErrorToStringKeyTest {
 
     @Test fun bio_too_long_maps_to_dedicated_key() =
         assertEquals(AuthStringKey.ProfileBioTooLong, ProfileError.Validation.BioTooLong.toStringKey())
+
+    @Test fun avatar_remove_failed_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileRemoveAvatarError, ProfileError.Avatar.RemoveFailed.toStringKey())
 }

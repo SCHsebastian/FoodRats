@@ -35,6 +35,15 @@ interface AccountWritePort {
         accountId: AccountId,
         bytes: ByteArray,
     ): Result<String, AccountWriteError>
+
+    /**
+     * Deletes the avatar object from Storage and clears `accounts/{accountId}.avatarPath`
+     * (sets it to null). The account doc re-emits via [AccountReadPort], so the UI
+     * falls back to initials with no additional writes.
+     *
+     * No-ops silently if the user has no avatar; that case is not an error.
+     */
+    suspend fun removeAvatar(accountId: AccountId): Result<Unit, AccountWriteError>
 }
 
 sealed interface AccountWriteError {
