@@ -97,7 +97,7 @@ class RootNavViewModelTest {
             assertEquals(RootNavEffect.NavigateTopLevel(Route.SignIn), awaitItem())
 
             // Arrives before auth — must be stashed, never dropped, never navigated yet.
-            bus.publish("https://foodrats.app/meal/m1/2026-05-26")
+            bus.publish("https://foodrats-de4ec.web.app/meal/m1/2026-05-26")
             makeReady()
 
             // Drain the intermediate stage transitions; the resume is a NavigateDeepLink.
@@ -155,7 +155,7 @@ class RootNavViewModelTest {
         vm.effects.test {
             assertEquals(RootNavEffect.NavigateTopLevel(Route.Main), awaitItem())
 
-            bus.publish("https://foodrats.app/unknown/thing")
+            bus.publish("https://foodrats-de4ec.web.app/unknown/thing")
             expectNoEvents()
             cancelAndIgnoreRemainingEvents()
         }

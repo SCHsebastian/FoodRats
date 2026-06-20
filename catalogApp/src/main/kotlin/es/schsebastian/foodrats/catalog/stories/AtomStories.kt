@@ -654,10 +654,10 @@ private fun SparklineStory() {
 private fun QrCodeStory() {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         CatalogScene(label = "Invite link") {
-            FrQrCode(content = "https://foodrats.app/invite/AB2K9P", size = 200.dp)
+            FrQrCode(content = "https://foodrats-de4ec.web.app/invite/AB2K9P", size = 200.dp)
         }
         CatalogScene(label = "Smaller (140dp)") {
-            FrQrCode(content = "https://foodrats.app/invite/AB2K9P", size = 140.dp)
+            FrQrCode(content = "https://foodrats-de4ec.web.app/invite/AB2K9P", size = 140.dp)
         }
     }
 }

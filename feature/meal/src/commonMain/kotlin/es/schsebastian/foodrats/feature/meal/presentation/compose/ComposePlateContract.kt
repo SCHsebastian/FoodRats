@@ -15,6 +15,11 @@ data class ComposePlateState(
     val dish: String = "",
     val descriptionInput: String = "",
     val descriptionTooLong: Boolean = false,
+    /**
+     * Advisory (UGC compliance §3): the on-device text filter flagged the description. NEVER gates
+     * `canContinue`/publish — it only surfaces a non-blocking warning banner, like the AI classifier.
+     */
+    val descriptionWarning: Boolean = false,
     val error: MealError? = null,
     val selectedSlot: MealSlot = MealSlot.Lunch,
     val takenSlots: Set<MealSlot> = emptySet(),
@@ -43,6 +48,7 @@ data class ComposePlateState(
         return dish == other.dish &&
             descriptionInput == other.descriptionInput &&
             descriptionTooLong == other.descriptionTooLong &&
+            descriptionWarning == other.descriptionWarning &&
             error == other.error &&
             selectedSlot == other.selectedSlot &&
             takenSlots == other.takenSlots &&
@@ -63,6 +69,7 @@ data class ComposePlateState(
         var result = dish.hashCode()
         result = 31 * result + descriptionInput.hashCode()
         result = 31 * result + descriptionTooLong.hashCode()
+        result = 31 * result + descriptionWarning.hashCode()
         result = 31 * result + (error?.hashCode() ?: 0)
         result = 31 * result + selectedSlot.hashCode()
         result = 31 * result + takenSlots.hashCode()

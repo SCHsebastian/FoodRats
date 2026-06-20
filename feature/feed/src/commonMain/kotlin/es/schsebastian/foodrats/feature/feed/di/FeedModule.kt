@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.di
 
+import es.schsebastian.foodrats.core.domain.preferences.AppLocale
+import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
@@ -7,11 +9,22 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailViewModel
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModel
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
+/** Qualifier for the BCP-47 active-language flow the on-device comment filter reads (UGC §3). */
+private val ModerationLanguageTag = named("feedModerationLanguageTag")
+
 val feedModule = module {
+    // Active UI language for the on-device comment text filter. `System` maps to "en" — the
+    // wordlist defaults to English (+ a cross-language neutral set) for empty/unknown tags anyway.
+    single<Flow<String>>(ModerationLanguageTag) {
+        get<LocalePort>().locale.map { if (it == AppLocale.System) "en" else it.tag }
+    }
     factoryOf(::ObserveFeedUseCase)
     factoryOf(::RateMealUseCase)
     factoryOf(::DeleteMealUseCase)
@@ -58,6 +71,11 @@ val feedModule = module {
             deleteComment = get(),
             crewOwner = get(),
             storyShareController = get(),
+            // UGC compliance §3/§4/§5 — passed EXPLICITLY (the VM ctor defaults are test-only no-ops).
+            textModeration = get(),
+            languageTag = get<Flow<String>>(ModerationLanguageTag),
+            reportPort = get(),
+            blockedAccounts = get(),
             analytics = get(),
         )
     }

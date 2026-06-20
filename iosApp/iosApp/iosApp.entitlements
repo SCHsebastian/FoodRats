@@ -2,12 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- iOS Universal Links. Only the LIVE Firebase Hosting domain is declared: it actually
-	     serves /.well-known/apple-app-site-association (deployed from website/), so Apple's CDN
-	     can verify it. The vanity domain foodrats.app is intentionally NOT listed — it hosts
-	     nothing yet, so declaring it would just be an unverifiable applinks entry. Re-add
-	     `applinks:foodrats.app` once it's mapped as a Firebase Hosting custom domain serving the
-	     same .well-known files (see docs/store-release/PUBLICATION.md). -->
+	<!-- iOS Universal Links. The LIVE Firebase Hosting domain (foodrats-de4ec.web.app) is the only
+	     domain declared: it actually serves /.well-known/apple-app-site-association (deployed from
+	     website/), so Apple's CDN can verify it. This must stay in sync with DeepLinks.WEB_HOST
+	     (shared/.../app/navigation/DeepLink.kt). -->
 	<key>com.apple.developer.associated-domains</key>
 	<array>
 		<string>applinks:foodrats-de4ec.web.app</string>

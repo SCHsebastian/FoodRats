@@ -87,7 +87,7 @@ val authModule = module {
     factoryOf(::EnableNotificationsUseCase)
     factoryOf(::DeleteMyAccountUseCase)
     factoryOf(::ExportMyDataUseCase)
-    viewModel { SignInViewModel(auth = get(), tokenRegistration = get(), analytics = get()) }
+    viewModel { SignInViewModel(auth = get(), tokenRegistration = get(), analytics = get(), eula = get()) }
     // Explicit (not viewModelOf): the `analytics` ctor param defaults to NoopAnalyticsTracker,
     // and viewModelOf would let that default short-circuit graph resolution instead of injecting
     // the real tracker. See the analytics-base convention in CLAUDE.md.

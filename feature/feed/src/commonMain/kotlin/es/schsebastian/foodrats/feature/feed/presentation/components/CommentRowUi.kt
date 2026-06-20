@@ -11,4 +11,8 @@ data class CommentRowUi(
     val loading: Boolean,
     val isDeleted: Boolean,
     val canDelete: Boolean = false,
+    /** Raw author id, used to report/block this comment's author (UGC compliance §4/§5). */
+    val authorId: String = "",
+    /** True when the viewer may report/block this commenter (not their own comment). */
+    val canModerate: Boolean = false,
 )

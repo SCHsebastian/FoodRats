@@ -77,6 +77,8 @@ import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportSheet
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
@@ -163,7 +165,60 @@ fun MealDetailScreen(
             destructive = true,
         )
     }
+
+    // Report sheet (UGC compliance §4). Open against the meal / author / a comment; on submit the
+    // VM dispatches through the :core:domain ReportPort and the sheet closes.
+    state.reportTarget?.let { target ->
+        val title = resolve(
+            when (target) {
+                ReportTargetUi.Author       -> FeedStringKey.ReportUserCta
+                is ReportTargetUi.Comment   -> FeedStringKey.ReportCommentCta
+                ReportTargetUi.Meal         -> FeedStringKey.ReportMealCta
+            },
+        )
+        FrReportSheet(
+            title = title,
+            reasonLabels = reportReasonLabels(),
+            submitLabel = resolve(FeedStringKey.ReportMealCta),
+            cancelLabel = resolve(FeedStringKey.DeleteCancelCta),
+            submitting = state.reportSubmitting,
+            onSubmit = { reason -> vm.onIntent(MealDetailIntent.SubmitReport(reason)) },
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissReport) },
+        )
+    }
+
+    // Report-accepted confirmation toast.
+    if (state.reportSuccess) {
+        ShareOutcomeToast(
+            message = resolve(FeedStringKey.ReportSuccess),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissReportSuccess) },
+        )
+    }
+    // Report / block failure toast.
+    state.reportError?.let { err ->
+        ShareOutcomeToast(
+            message = resolve(err.toStringKey()),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissReport) },
+        )
+    }
+    state.blockError?.let { err ->
+        ShareOutcomeToast(
+            message = resolve(err.toStringKey()),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissError) },
+        )
+    }
 }
+
+/** Resolves the six report-reason labels for [FrReportSheet] (UGC compliance §4). */
+@Composable
+private fun reportReasonLabels(): Map<FrReportReasonOption, String> = mapOf(
+    FrReportReasonOption.SPAM       to resolve(FeedStringKey.ReportReasonSpam),
+    FrReportReasonOption.HARASSMENT to resolve(FeedStringKey.ReportReasonHarassment),
+    FrReportReasonOption.HATE       to resolve(FeedStringKey.ReportReasonHate),
+    FrReportReasonOption.SEXUAL     to resolve(FeedStringKey.ReportReasonSexual),
+    FrReportReasonOption.VIOLENCE   to resolve(FeedStringKey.ReportReasonViolence),
+    FrReportReasonOption.OTHER      to resolve(FeedStringKey.ReportReasonOther),
+)
 
 /** Transient states (error / not-found) still need a back affordance. */
 @Composable
@@ -316,9 +371,12 @@ private fun MealDetailBody(
                 canDelete = state.canDeleteMeal,
                 deleteEnabled = !state.isDeletingMeal,
                 isPreparingShare = state.isPreparingShare,
+                canModerate = state.canModerateMeal,
                 onBack = onBack,
                 onDelete = onRequestDeleteMeal,
                 onShare = { onIntent(MealDetailIntent.ShareTapped) },
+                onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Meal)) },
+                onBlock = { onIntent(MealDetailIntent.BlockAuthor) },
                 modifier = Modifier.frRevealScale(),
             )
 
@@ -355,6 +413,7 @@ private fun MealDetailBody(
                 CommentsSection(
                     state = state,
                     onRequestDeleteComment = { pendingDeleteCommentId = it },
+                    onIntent = onIntent,
                 )
 
                 // Spacer so the last content clears the sticky composer.
@@ -398,9 +457,12 @@ private fun PhotoHero(
     canDelete: Boolean,
     deleteEnabled: Boolean,
     isPreparingShare: Boolean,
+    canModerate: Boolean,
     onBack: () -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    onReport: () -> Unit,
+    onBlock: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val semantic = LocalFrSemanticColors.current
@@ -494,6 +556,20 @@ private fun PhotoHero(
                     icon = FrIcons.Share,
                     onClick = onShare,
                     contentDescription = resolve(FeedStringKey.ShareMeal),
+                )
+            }
+            // Report/block the author (UGC compliance §4/§5). Hidden on your own meal and while
+            // blind voting masks the author (you can't report/block someone you can't yet see).
+            if (canModerate && !meal.authorMasked) {
+                FrGlassPill(
+                    icon = FrIcons.Flag,
+                    onClick = onReport,
+                    contentDescription = resolve(FeedStringKey.ReportMealCta),
+                )
+                FrGlassPill(
+                    icon = FrIcons.Block,
+                    onClick = onBlock,
+                    contentDescription = resolve(FeedStringKey.BlockAuthorCta),
                 )
             }
             if (canDelete && deleteEnabled) {
@@ -717,6 +793,7 @@ private fun VotersCard(meal: FeedMealUi) {
 private fun CommentsSection(
     state: MealDetailState,
     onRequestDeleteComment: (MealCommentId) -> Unit,
+    onIntent: (MealDetailIntent) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         SectionEyebrow(resolve(FeedStringKey.CommentsTitle))
@@ -736,6 +813,9 @@ private fun CommentsSection(
                     isDeleted = c.isDeleted,
                     canDelete = c.canDelete,
                     onDelete = { onRequestDeleteComment(c.id) },
+                    canModerate = c.canModerate,
+                    onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Comment(c.id))) },
+                    onBlock = { onIntent(MealDetailIntent.BlockCommentAuthor(c.authorId)) },
                 )
             }
         }

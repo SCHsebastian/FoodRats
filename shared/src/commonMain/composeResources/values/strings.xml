@@ -12,6 +12,58 @@
     <string name="consent_allow">Allow analytics</string>
     <string name="consent_deny">No thanks</string>
 
+    <!-- Embedded legal docs (UGC compliance §6). Plain prose; sections render as heading + body. -->
+    <string name="legal_back_cta">Back</string>
+
+    <!-- End User License Agreement — adapted from Apple\'s standard Licensed Application EULA,
+         including the acceptable-use clause Apple requires for apps with user-generated content. -->
+    <string name="legal_eula_title">End User License Agreement</string>
+    <string name="legal_eula_body_intro">This End User License Agreement (the "Agreement") is a binding contract between you and FoodRats ("we", "us") governing your use of the FoodRats application (the "Application"). By creating an account or using the Application, you agree to be bound by this Agreement. The Application is licensed, not sold, to you for use only under the terms of this Agreement.</string>
+
+    <string name="legal_eula_heading_scope">1. Scope of License</string>
+    <string name="legal_eula_body_scope">We grant you a non-transferable, revocable license to use the Application on any Apple- or Android-branded device that you own or control, as permitted by the usage rules of the App Store and Google Play. You may not distribute or make the Application available over a network where it could be used by multiple devices at the same time. You may not copy, reverse-engineer, decompile, or create derivative works of the Application except as permitted by law.</string>
+
+    <string name="legal_eula_heading_consent_data">2. Consent to Use of Data</string>
+    <string name="legal_eula_body_consent_data">You agree that we may collect and use limited technical and account data to operate, maintain, and improve the Application, as described in our privacy disclosures. We do not sell your personal data, and we do not use it for advertising or for cross-app tracking. You can manage analytics consent at any time in Settings.</string>
+
+    <string name="legal_eula_heading_acceptable_use">3. Acceptable Use — Zero Tolerance for Objectionable Content</string>
+    <string name="legal_eula_body_acceptable_use">FoodRats lets you post photos, descriptions, comments, and other user-generated content. There is zero tolerance for objectionable content or abusive behaviour. By using the Application you agree that you will NOT post, upload, or transmit content that is unlawful, harassing, threatening, hateful, defamatory, obscene, sexually explicit, or that depicts or glorifies violence, or that infringes the rights of others. You also agree not to abuse, harass, stalk, intimidate, or impersonate any other user. We may remove objectionable content and suspend or terminate the accounts of users who violate this clause, at our sole discretion and without notice. The Application provides tools to filter, report, and block objectionable content and abusive users; misuse of these tools is itself a violation of this Agreement.</string>
+
+    <string name="legal_eula_heading_termination">4. Termination</string>
+    <string name="legal_eula_body_termination">This Agreement is effective until terminated by you or by us. Your rights under this Agreement will terminate automatically, without notice, if you fail to comply with any of its terms — in particular the acceptable-use clause above. Upon termination you must stop all use of the Application and delete all copies.</string>
+
+    <string name="legal_eula_heading_warranty">5. No Warranty</string>
+    <string name="legal_eula_body_warranty">The Application is provided "AS IS" and "AS AVAILABLE", without warranty of any kind. To the maximum extent permitted by applicable law, we disclaim all warranties, whether express, implied, or statutory, including any implied warranties of merchantability, fitness for a particular purpose, and non-infringement.</string>
+
+    <string name="legal_eula_heading_liability">6. Limitation of Liability</string>
+    <string name="legal_eula_body_liability">To the extent not prohibited by law, in no event will we be liable for personal injury or any incidental, special, indirect, or consequential damages arising out of or related to your use of, or inability to use, the Application, however caused.</string>
+
+    <string name="legal_eula_heading_contact">7. Contact</string>
+    <string name="legal_eula_body_contact">For questions, complaints, or claims regarding the Application, or to report objectionable content or abusive users, contact us at support@foodrats-de4ec.web.app or visit https://foodrats-de4ec.web.app. We respond to reports of objectionable content within 24 hours.</string>
+
+    <!-- Community Guidelines — the user-facing statement of prohibited content, reporting/blocking,
+         and the 24-hour moderation commitment Apple reviewers look for. -->
+    <string name="legal_community_title">Community Guidelines</string>
+    <string name="legal_community_body_intro">FoodRats is a closed space for small crews to share their meals. These guidelines keep it a place everyone wants to be. They apply to everything you post — photos, dish names, descriptions, comments, and reactions. Breaking them can get your content removed and your account suspended.</string>
+
+    <string name="legal_community_heading_respect">Be respectful</string>
+    <string name="legal_community_body_respect">Treat your crew the way you\'d want to be treated. Share food, celebrate each other, and keep it friendly. Disagreement is fine; cruelty is not.</string>
+
+    <string name="legal_community_heading_prohibited">No objectionable content</string>
+    <string name="legal_community_body_prohibited">Do not post content that is, or that promotes:\n\n• Harassment, bullying, or threats against any person\n• Hate speech or attacks based on race, ethnicity, religion, gender, sexual orientation, disability, or any protected characteristic\n• Sexual or sexually explicit material\n• Violence, gore, or content that glorifies harm\n• Anything illegal, or that infringes someone else\'s rights\n\nFoodRats screens free text for objectionable language as you type, but the rules above apply to everything you share, including photos.</string>
+
+    <string name="legal_community_heading_reporting">Reporting</string>
+    <string name="legal_community_body_reporting">If you see content or behaviour that breaks these guidelines, report it. Every meal, comment, and profile has a report option. Reports are confidential — the person you report is not told who reported them.</string>
+
+    <string name="legal_community_heading_blocking">Blocking</string>
+    <string name="legal_community_body_blocking">You can block any user. Once blocked, their meals, comments, and reactions disappear from your feed, and they can no longer interact with you. You can manage blocked users from your Profile.</string>
+
+    <string name="legal_community_heading_enforcement">Enforcement</string>
+    <string name="legal_community_body_enforcement">We review reports and remove violating content within 24 hours. Content that is reported by several people is hidden automatically pending review. Repeat offenders are removed from FoodRats. We act on objectionable content and abusive users at our sole discretion.</string>
+
+    <string name="legal_community_heading_contact">Contact</string>
+    <string name="legal_community_body_contact">Questions, or need to reach a human? Email support@foodrats-de4ec.web.app or visit https://foodrats-de4ec.web.app.</string>
+
     <!-- App-wide offline banner (offline-first §P1-T2): shown at the NavHost root on every screen. -->
     <string name="offline_banner">You\'re offline — changes sync when you\'re back.</string>
 

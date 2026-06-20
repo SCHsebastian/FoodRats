@@ -177,8 +177,10 @@ class FeedViewModelTest {
         queuedActions: QueuedUploadActionsPort = FakeQueuedUploadActionsPort(),
         connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
         outbox: RecordingOutboxPort = RecordingOutboxPort(),
+        blockedAccounts: es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort =
+            es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort(),
     ) = FeedViewModel(
-        observeFeed = ObserveFeedUseCase(active, port),
+        observeFeed = ObserveFeedUseCase(active, port, sessionProvider, blockedAccounts),
         rateMeal = RateMealUseCase(ratingPort, connectivity, outbox),
         activeCrew = active,
         session = sessionProvider,

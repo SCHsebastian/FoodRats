@@ -91,6 +91,9 @@ class MealOutboxCommandHandler(
                 CommentError.Write.Unauthorized -> OutboxExecuteResult.Terminal("meal.error.commentUnauthorized")
                 CommentError.Write.Blank -> OutboxExecuteResult.Terminal("meal.error.commentBlank")
                 CommentError.Write.TooLong -> OutboxExecuteResult.Terminal("meal.error.commentTooLong")
+                // Hard-blocked before enqueue by the on-device text filter (UGC §3), so this never
+                // reaches the outbox; permanent (re-screening can't change the verdict) if it ever did.
+                CommentError.Write.Objectionable -> OutboxExecuteResult.Terminal("meal.error.commentObjectionable")
             }
         }
 

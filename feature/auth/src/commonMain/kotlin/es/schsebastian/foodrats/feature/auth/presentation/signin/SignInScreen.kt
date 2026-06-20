@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -60,7 +62,14 @@ import es.schsebastian.foodrats.feature.auth.presentation.toStringKey
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) {
+fun SignInScreen(
+    onSignedIn: () -> Unit,
+    // The two embedded legal docs (Route.Eula / Route.CommunityGuidelines) live in `shared`, so the
+    // navigation is threaded in as callbacks — :feature:auth never depends on :shared's Route.
+    onOpenEula: () -> Unit = {},
+    onOpenGuidelines: () -> Unit = {},
+    vm: SignInViewModel = koinViewModel(),
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         vm.effects.collect { if (it is SignInEffect.SignedIn) onSignedIn() }
@@ -141,6 +150,9 @@ fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) 
 
                 Spacer(Modifier.height(Spacing.sm))
                 ToggleModeLink(state.mode, onClick = { vm.onIntent(SignInIntent.ToggleMode) })
+
+                Spacer(Modifier.height(Spacing.sm))
+                AgreementLine(onOpenEula = onOpenEula, onOpenGuidelines = onOpenGuidelines)
 
                 state.error?.let { err ->
                     Spacer(Modifier.height(Spacing.sm))
@@ -335,4 +347,37 @@ private fun ToggleModeLink(mode: SignInMode, onClick: () -> Unit) {
             .padding(Spacing.sm)
             .clickable(onClick = onClick),
     )
+}
+
+/**
+ * UGC-compliance agreement line (UGC compliance §6): "By continuing, you accept the Terms (EULA) and
+ * the Community Guidelines." Acceptance is implicit on a successful sign-in (the ViewModel records it);
+ * this line discloses that and links the two embedded docs. A [FlowRow] of segments keeps each link
+ * individually tappable while wrapping naturally — and every fragment, including the connector, is
+ * i18n-resolved so word order is locale-correct.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AgreementLine(onOpenEula: () -> Unit, onOpenGuidelines: () -> Unit) {
+    val mutedStyle = MaterialTheme.typography.labelSmall
+    val mutedColor = MaterialTheme.colorScheme.onSurfaceVariant
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        FrText(text = resolve(AuthStringKey.SignInAgreementPrefix), style = mutedStyle, color = mutedColor)
+        FrText(
+            text = resolve(AuthStringKey.SignInAgreementEulaLink),
+            style = mutedStyle,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable(onClick = onOpenEula),
+        )
+        FrText(text = resolve(AuthStringKey.SignInAgreementConnector), style = mutedStyle, color = mutedColor)
+        FrText(
+            text = resolve(AuthStringKey.SignInAgreementGuidelinesLink),
+            style = mutedStyle,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.clickable(onClick = onOpenGuidelines),
+        )
+    }
 }

@@ -7,8 +7,11 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,6 +29,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
@@ -35,6 +40,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
 import es.schsebastian.foodrats.core.designsystem.templates.FrFormLayout
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
@@ -179,6 +185,16 @@ fun ComposePlateScreen(
                             ),
                             modifier = Modifier.padding(top = Spacing.xs),
                         )
+                        // Advisory moderation banner (UGC §3) — warning tone, never blocks publish.
+                        AnimatedVisibility(
+                            visible = state.descriptionWarning,
+                            enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+                            exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+                        ) {
+                            DescriptionModerationBanner(
+                                modifier = Modifier.padding(top = Spacing.sm),
+                            )
+                        }
                     }
                 }
 
@@ -265,5 +281,29 @@ private fun AnimatedFormItem(
         exit = fadeOut(),
     ) {
         Box(modifier = Modifier.fillMaxWidth()) { content() }
+    }
+}
+
+/**
+ * Advisory description-moderation banner (UGC compliance §3). Uses the `warning` semantic tone — NOT
+ * `danger` — because it never blocks publishing; it nudges the author to reconsider their prose.
+ */
+@Composable
+private fun DescriptionModerationBanner(modifier: Modifier = Modifier) {
+    val semantic = LocalFrSemanticColors.current
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.sm))
+            .background(semantic.warning)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        FrIcon(image = FrIcons.Warning, tint = semantic.onWarning)
+        FrText(
+            text = resolve(MealStringKey.DescriptionModerationWarning),
+            color = semantic.onWarning,
+        )
     }
 }

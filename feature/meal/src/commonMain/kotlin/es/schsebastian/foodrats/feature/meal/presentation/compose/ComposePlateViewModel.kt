@@ -13,6 +13,8 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
+import es.schsebastian.foodrats.core.domain.moderation.TextModerationVerdict
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -22,7 +24,9 @@ import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftCommand
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
@@ -38,6 +42,10 @@ class ComposePlateViewModel(
     private val classifyPlate: ClassifyDraftPlateUseCase,
     private val clock: Clock,
     private val zone: TimeZone,
+    // UGC compliance §3 — advisory description filter. Noop default keeps existing tests green; the
+    // Koin binding passes the real on-device port + active-language tag explicitly.
+    private val textModeration: TextModerationPort = TextModerationPort { _, _ -> TextModerationVerdict.Clean },
+    private val languageTag: Flow<String> = flowOf("en"),
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<ComposePlateState, ComposePlateIntent, ComposePlateEffect>(ComposePlateState()) {
 
@@ -192,10 +200,15 @@ class ComposePlateViewModel(
             }
             is ComposePlateIntent.DescriptionChanged -> {
                 val tooLong = intent.value.trim().length > Description.MAX_LEN
+                // Advisory only (UGC §3): screen the description and raise a non-blocking warning. It
+                // NEVER feeds computeCanContinue / publish — a flagged description still publishes.
+                val warning = textModeration.evaluate(intent.value, languageTag.first()) is
+                    TextModerationVerdict.Objectionable
                 update {
                     it.copy(
                         descriptionInput = intent.value,
                         descriptionTooLong = tooLong,
+                        descriptionWarning = warning,
                         error = if (tooLong) MealError.Validation.DescriptionTooLong else null,
                         canContinue = computeCanContinue(it.dish, tooLong, it.photoBytes, it.selectedSlot, it.takenSlots, it.selectedCrewIds),
                     )

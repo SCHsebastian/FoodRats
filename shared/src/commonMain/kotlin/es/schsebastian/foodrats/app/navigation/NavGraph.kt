@@ -39,6 +39,8 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.ScreenName
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.app.legal.LegalDoc
+import es.schsebastian.foodrats.app.legal.LegalDocScreen
 import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
@@ -48,6 +50,7 @@ import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScree
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsScreen
 import es.schsebastian.foodrats.feature.feed.presentation.detail.MealDetailScreen
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FeedScreen
+import es.schsebastian.foodrats.feature.moderation.presentation.blocked.BlockedUsersScreen
 import es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealScreen
 import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIngredientsScreen
 import es.schsebastian.foodrats.feature.meal.presentation.compose.ComposePlateScreen
@@ -86,7 +89,24 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             // After signin, RootNavViewModel resolves the next stage (NotificationPermission
             // → CrewPicker → Main) and drives navigation — keep the local callback as a
             // no-op so the two paths don't race to different destinations.
-            SignInScreen(onSignedIn = {})
+            SignInScreen(
+                onSignedIn = {},
+                // The embedded legal docs are Public, so they're reachable from the pre-auth
+                // SignIn footer links. launchSingleTop so a double-tap doesn't stack duplicates.
+                onOpenEula = { controller.navigate(Route.Eula) { launchSingleTop = true } },
+                onOpenGuidelines = {
+                    controller.navigate(Route.CommunityGuidelines) { launchSingleTop = true }
+                },
+            )
+        }
+
+        // Embedded EULA + Community Guidelines (UGC compliance §6). Public routes (readable
+        // pre-auth from SignIn) and also reachable from Profile.
+        composable<Route.Eula> {
+            LegalDocScreen(doc = LegalDoc.EULA, onBack = { controller.popBackStack() })
+        }
+        composable<Route.CommunityGuidelines> {
+            LegalDocScreen(doc = LegalDoc.COMMUNITY_GUIDELINES, onBack = { controller.popBackStack() })
         }
 
         composable<Route.NotificationPermission> {
@@ -136,11 +156,23 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             ProfileScreen(
                 onBack = { controller.popBackStack() },
                 onOpenAchievements = { controller.navigate(Route.Achievements) { launchSingleTop = true } },
+                onOpenEula = { controller.navigate(Route.Eula) { launchSingleTop = true } },
+                onOpenGuidelines = {
+                    controller.navigate(Route.CommunityGuidelines) { launchSingleTop = true }
+                },
+                onOpenBlockedUsers = {
+                    controller.navigate(Route.BlockedUsers) { launchSingleTop = true }
+                },
             )
         }
 
         composable<Route.Achievements> {
             AchievementsScreen(onBack = { controller.popBackStack() })
+        }
+
+        // Blocked-users list (UGC compliance §5), reached from Profile.
+        composable<Route.BlockedUsers> {
+            BlockedUsersScreen(onBack = { controller.popBackStack() })
         }
 
         composable<Route.Main> {

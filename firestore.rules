@@ -49,6 +49,14 @@ service cloud.firestore {
       match /nudges/{dayKey} {
         allow read, write: if false;
       }
+
+      // Block list (UGC compliance §5). Owner-private on read AND write — mirrors
+      // /devices and /achievements above. The doc id IS the blocked account id;
+      // only the owner can see or modify whom they've blocked. Used purely as a
+      // client-side read filter (no server fan-out).
+      match /blocks/{blockedUid} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // Crew root
@@ -314,6 +322,91 @@ service cloud.firestore {
                     );
       allow delete: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/crews/$(resource.data.crewId)).data.memberIds;
+    }
+
+    // Reports queue (UGC compliance §4). Create-only by the reporter; NEVER
+    // client-readable (it's a moderation queue read only by the onReportCreated
+    // function + manual review via the Admin SDK, which bypasses rules — mirrors
+    // the server-only nudges deny pattern above). The doc id is
+    // `${reporterUid}|${targetKey}` so a reporter can report a given target at
+    // most once (idempotent create powers the distinct-reporter count and
+    // AlreadyReported). The delimiter is `|` (not `_` / `-`): meal ids embed
+    // underscores (`crewId_uid_dayKey_slot`) and ids/day-keys may contain `-`, so
+    // those joins were AMBIGUOUS — two distinct (reporter, target) pairs could
+    // collide on one doc id, or a crafted targetKey could satisfy the id equality
+    // for a different target, undermining the one-report-per-reporter-per-target
+    // invariant the distinct count relies on. No component (uid / crewId auto-id /
+    // dayKey / slot) can contain `|`, so the id is strictly one-to-one with
+    // (reporter, target). Reports are immutable from the client; the server flips
+    // status via the Admin SDK.
+    //
+    // Hardening (UGC review F3/F4/F5/F6):
+    //  - `keys().hasOnly([...])` whitelist so a client can't smuggle extra fields
+    //    (e.g. a forged status, or a bogus crewId/mealId aimed at a DIFFERENT victim).
+    //  - The separate `crewId`/`mealId`/`commentId`/`accountId` fields the trigger
+    //    deletes by are PINNED to the validated `targetKey` (rules have no split(),
+    //    so we reconstruct the key from the fields and require equality). The trigger
+    //    can therefore trust those fields — they provably match the key.
+    //  - Crew-membership gate AND target-existence gate for meal/comment targets:
+    //    only someone who can READ the content may report it (mirrors the meal read
+    //    rule), and the named meal/comment must actually exist — so 3 cheap throwaway
+    //    accounts outside the crew can't dogpile-nuke content they were never able to
+    //    see, and a forged crewId/mealId pointing at nothing is rejected at create.
+    //  - Account target: `accountId != reporter` (no self-report) and the account must
+    //    exist. Account reports are human-reviewed only — never auto-actioned.
+    match /reports/{reportId} {
+      allow read:   if false;            // server-only (Admin SDK)
+      allow update,
+            delete: if false;            // immutable; server actions use Admin SDK
+      allow create: if request.auth != null
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'reporterId', 'targetType', 'crewId', 'mealId', 'commentId',
+                      'accountId', 'targetKey', 'reason', 'status', 'createdAtEpochMs'
+                    ])
+                    && request.resource.data.status == "open"
+                    && request.resource.data.reason in
+                         ["spam", "harassment", "hate", "sexual", "violence", "other"]
+                    && request.resource.data.createdAtEpochMs is int
+                    && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
+                    && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000
+                    && reportId == request.auth.uid + "|" + request.resource.data.targetKey
+                    && (
+                      // Meal target: crewId + mealId fields must reconstruct targetKey
+                      // exactly (so the trigger's delete-by-fields can't be aimed at an
+                      // unrelated meal); the reporter must be a member of that crew and
+                      // the meal must exist.
+                      (request.resource.data.targetType == "meal"
+                       && request.resource.data.crewId is string
+                       && request.resource.data.mealId is string
+                       && request.resource.data.targetKey ==
+                            "meal|" + request.resource.data.crewId + "|" + request.resource.data.mealId
+                       && request.auth.uid in
+                            get(/databases/$(database)/documents/crews/$(request.resource.data.crewId)).data.memberIds
+                       && exists(/databases/$(database)/documents/crews/$(request.resource.data.crewId)/meals/$(request.resource.data.mealId)))
+                      ||
+                      // Comment target: crewId + mealId + commentId reconstruct targetKey;
+                      // the reporter must be a member of that crew and the comment must exist.
+                      (request.resource.data.targetType == "comment"
+                       && request.resource.data.crewId is string
+                       && request.resource.data.mealId is string
+                       && request.resource.data.commentId is string
+                       && request.resource.data.targetKey ==
+                            "comment|" + request.resource.data.crewId + "|" +
+                            request.resource.data.mealId + "|" + request.resource.data.commentId
+                       && request.auth.uid in
+                            get(/databases/$(database)/documents/crews/$(request.resource.data.crewId)).data.memberIds
+                       && exists(/databases/$(database)/documents/crews/$(request.resource.data.crewId)/meals/$(request.resource.data.mealId)/comments/$(request.resource.data.commentId)))
+                      ||
+                      // Account target: no crew scope (human-reviewed, never auto-actioned);
+                      // accountId reconstructs targetKey, may not be the reporter (no
+                      // self-report), and the account must exist.
+                      (request.resource.data.targetType == "account"
+                       && request.resource.data.accountId is string
+                       && request.resource.data.accountId != request.auth.uid
+                       && request.resource.data.targetKey == "account|" + request.resource.data.accountId
+                       && exists(/databases/$(database)/documents/accounts/$(request.resource.data.accountId)))
+                    );
     }
   }
 }

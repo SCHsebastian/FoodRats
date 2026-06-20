@@ -34,7 +34,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         return true
     }
 
-    // Universal Links: iOS delivers https://foodrats.app/... taps as a browsing-web user activity.
+    // Universal Links: iOS delivers https://foodrats-de4ec.web.app/... taps as a browsing-web user activity.
     // Forward the URL to the shared DeepLinkBus, which RootNavViewModel parses + routes.
     func application(
         _ application: UIApplication,

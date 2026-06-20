@@ -1,8 +1,10 @@
 package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import androidx.lifecycle.viewModelScope
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.data.share.StoryShareOutcome
 import es.schsebastian.foodrats.core.designsystem.templates.ShareCardFormat
@@ -27,6 +29,11 @@ import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.moderation.ReportPort
+import es.schsebastian.foodrats.core.domain.moderation.ReportReason
+import es.schsebastian.foodrats.core.domain.moderation.ReportTarget
+import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
+import es.schsebastian.foodrats.core.domain.moderation.TextModerationVerdict
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -46,6 +53,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.PlateShareC
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.toRelative
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -81,6 +89,12 @@ class MealDetailViewModel(
     private val deleteComment: DeleteCommentUseCase,
     private val crewOwner: CrewOwnerPort,
     private val storyShareController: StoryShareController,
+    // UGC compliance §3/§4/§5 — comment text filter, report, and block. Defaults keep the large
+    // existing test surface compiling; the Koin binding passes the real ports explicitly.
+    private val textModeration: TextModerationPort = TextModerationPort { _, _ -> TextModerationVerdict.Clean },
+    private val languageTag: Flow<String> = flowOf("en"),
+    private val reportPort: ReportPort = NoopReportPort,
+    private val blockedAccounts: BlockedAccountsPort = NoopBlockedAccountsPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<MealDetailState, MealDetailIntent, MealDetailEffect>(MealDetailState()) {
 
@@ -141,6 +155,9 @@ class MealDetailViewModel(
                                         )
                             val canDeleteMeal = match != null && viewerId != null &&
                                 (match.authorId == viewerId.value || ownerId == viewerId)
+                            // Report/block the author only on someone else's meal (UGC §4/§5).
+                            val canModerateMeal = match != null && viewerId != null &&
+                                match.authorId != viewerId.value
                             update {
                                 it.copy(
                                     isLoading = false,
@@ -148,6 +165,7 @@ class MealDetailViewModel(
                                     notFound = match == null,
                                     error = null,
                                     canDeleteMeal = canDeleteMeal,
+                                    canModerateMeal = canModerateMeal,
                                 )
                             }
                         }
@@ -178,7 +196,15 @@ class MealDetailViewModel(
                 if (crewId == null) flowOf(null) else crewOwner.observeOwner(crewId)
             }
             .distinctUntilChanged()
-        val rbacFlow = combine(viewerIdFlow, ownerIdFlow) { viewerId, ownerId -> viewerId to ownerId }
+        // UGC compliance §5 — the viewer's live block list, so blocked commenters vanish reactively.
+        val blockedFlow = viewerIdFlow
+            .flatMapLatest { viewerId ->
+                if (viewerId == null) flowOf(emptySet()) else blockedAccounts.observeBlocked(viewerId)
+            }
+            .distinctUntilChanged()
+        val rbacFlow = combine(viewerIdFlow, ownerIdFlow, blockedFlow) { viewerId, ownerId, blocked ->
+            CommentRbac(viewerId, ownerId, blocked)
+        }
 
         val commentsFlow = activeCrew.current
             .flatMapLatest { crewId ->
@@ -194,11 +220,13 @@ class MealDetailViewModel(
         // batch, freezing the comment stream — new comments never arrived.
         combine(commentsFlow, rbacFlow) { r, rbac -> r to rbac }
             .flatMapLatest { (r, rbac) ->
-                val (viewerId, ownerId) = rbac
+                val (viewerId, ownerId, blocked) = rbac
                 when (r) {
                     is Result.Err -> flowOf(CommentRowsResult.Err(r.error))
                     is Result.Ok -> {
-                        val uniqueIds = r.value.map { it.authorId }.toSet()
+                        // UGC compliance §5 — drop comments authored by a blocked user.
+                        val visible = r.value.filterNot { it.authorId in blocked }
+                        val uniqueIds = visible.map { it.authorId }.toSet()
                         val perAuthorFlows = uniqueIds.map { id ->
                             authorFlows.getOrPut(id) {
                                 accountReadPort.observe(id)
@@ -206,11 +234,11 @@ class MealDetailViewModel(
                             }
                         }
                         if (perAuthorFlows.isEmpty()) {
-                            flowOf(CommentRowsResult.Ok(joinRows(r.value, emptyMap(), viewerId, ownerId)))
+                            flowOf(CommentRowsResult.Ok(joinRows(visible, emptyMap(), viewerId, ownerId)))
                         } else {
                             combine(perAuthorFlows) { snapshots ->
                                 val map = uniqueIds.zip(snapshots.toList()).toMap()
-                                CommentRowsResult.Ok(joinRows(r.value, map, viewerId, ownerId))
+                                CommentRowsResult.Ok(joinRows(visible, map, viewerId, ownerId))
                             }
                         }
                     }
@@ -233,6 +261,13 @@ class MealDetailViewModel(
         data class Ok(val rows: List<CommentRowUi>) : CommentRowsResult
         data class Err(val error: CommentError.Read) : CommentRowsResult
     }
+
+    /** Reactive RBAC + block context the comment join reads (viewer, crew owner, blocked set). */
+    private data class CommentRbac(
+        val viewerId: AccountId?,
+        val ownerId: AccountId?,
+        val blocked: Set<AccountId>,
+    )
 
     private fun joinRows(
         comments: List<MealComment>,
@@ -257,6 +292,9 @@ class MealDetailViewModel(
             loading = !resolved,
             isDeleted = isDeleted,
             canDelete = canDelete,
+            authorId = c.authorId.value,
+            // Report/block is offered on everyone else's comments (UGC §4/§5) — never your own.
+            canModerate = viewerId != null && c.authorId != viewerId,
         )
     }
 
@@ -279,6 +317,64 @@ class MealDetailViewModel(
         is MealDetailIntent.DeleteComment          -> deleteCommentAction(intent.id)
         MealDetailIntent.ShareTapped               -> shareMeal()
         MealDetailIntent.DismissShareOutcome       -> update { it.copy(shareOutcome = null) }
+        is MealDetailIntent.OpenReport             -> update {
+            it.copy(reportTarget = intent.target, reportError = null)
+        }
+        is MealDetailIntent.SubmitReport           -> submitReport(intent.reason)
+        MealDetailIntent.DismissReport             -> update { it.copy(reportTarget = null, reportError = null) }
+        MealDetailIntent.DismissReportSuccess      -> update { it.copy(reportSuccess = false) }
+        MealDetailIntent.BlockAuthor               -> blockAuthor()
+        is MealDetailIntent.BlockCommentAuthor     -> blockAccount(intent.commentAuthorId)
+    }
+
+    /** Maps the presentation reason option to the domain [ReportReason]. */
+    private fun FrReportReasonOption.toReason(): ReportReason = when (this) {
+        FrReportReasonOption.SPAM       -> ReportReason.Spam
+        FrReportReasonOption.HARASSMENT -> ReportReason.Harassment
+        FrReportReasonOption.HATE       -> ReportReason.Hate
+        FrReportReasonOption.SEXUAL     -> ReportReason.Sexual
+        FrReportReasonOption.VIOLENCE   -> ReportReason.Violence
+        FrReportReasonOption.OTHER      -> ReportReason.Other
+    }
+
+    /** Submits a report for the currently-open [MealDetailState.reportTarget] (UGC compliance §4). */
+    private suspend fun submitReport(reasonOption: FrReportReasonOption) {
+        val target = currentState.reportTarget ?: return
+        val crewId = activeCrew.current.first() ?: return
+        val reporter = session.current.first()?.accountId ?: return
+        val parsedMealId = MealId.of(mealId).getOrNull() ?: return
+        // The account self-report guard lives in the rule (`accountId != reporter`) and the repository
+        // pre-flight; meal/comment authorization is by crew membership + target existence, so the report
+        // target no longer carries the reported-content author.
+        val domainTarget: ReportTarget = when (target) {
+            ReportTargetUi.Meal   -> ReportTarget.Meal(parsedMealId, crewId)
+            ReportTargetUi.Author -> ReportTarget.Account(matchedMeal?.author?.accountId ?: return)
+            is ReportTargetUi.Comment ->
+                ReportTarget.Comment(parsedMealId, crewId, target.commentId)
+        }
+        update { it.copy(reportSubmitting = true, reportError = null) }
+        when (val r = reportPort.report(reporter, domainTarget, reasonOption.toReason())) {
+            is Result.Ok  -> update {
+                it.copy(reportSubmitting = false, reportTarget = null, reportSuccess = true)
+            }
+            is Result.Err -> update { it.copy(reportSubmitting = false, reportError = r.error) }
+        }
+    }
+
+    /** Blocks the displayed meal's author; their content disappears reactively (UGC compliance §5). */
+    private suspend fun blockAuthor() {
+        val authorId = matchedMeal?.author?.accountId ?: return
+        blockAccount(authorId.value)
+    }
+
+    /** Blocks [rawAccountId]; the feed/detail/comment streams re-emit without their content. */
+    private suspend fun blockAccount(rawAccountId: String) {
+        val owner = session.current.first()?.accountId ?: return
+        val target = AccountId.of(rawAccountId).getOrNull() ?: return
+        when (val r = blockedAccounts.block(owner, target)) {
+            is Result.Ok  -> Unit // content vanishes via observeBlocked re-emission.
+            is Result.Err -> update { it.copy(blockError = r.error) }
+        }
     }
 
     /**
@@ -381,6 +477,12 @@ class MealDetailViewModel(
         }
         val authorId = session.current.first()?.accountId
             ?: return update { it.copy(commentWriteError = CommentError.Write.Unauthorized) }
+        // UGC compliance §3 — HARD block: screen the comment on-device BEFORE the online/outbox branch
+        // so an objectionable comment never reaches Firestore OR the durable outbox.
+        val verdict = textModeration.evaluate(text.value, languageTag.first())
+        if (verdict is TextModerationVerdict.Objectionable) {
+            return update { it.copy(isPostingComment = false, commentWriteError = CommentError.Write.Objectionable) }
+        }
         update { it.copy(isPostingComment = true, commentWriteError = null) }
         // Client-minted id so an offline replay (T7) sets the SAME doc — `.set()` is idempotent.
         val commentId = MealCommentId(Uuid.random().toString())
@@ -412,4 +514,30 @@ class MealDetailViewModel(
         outbox.enqueue(PendingCommand.PostComment(crewId, mealId, commentId, text, authorId))
         update { it.copy(isPostingComment = false, commentInput = "") }
     }
+}
+
+/**
+ * No-op [ReportPort] used as the constructor default so the existing test surface keeps compiling.
+ * The Koin binding always passes the real Firestore-backed port; production never sees this.
+ */
+private object NoopReportPort : ReportPort {
+    override suspend fun report(
+        reporter: AccountId,
+        target: ReportTarget,
+        reason: ReportReason,
+    ): Result<Unit, es.schsebastian.foodrats.core.domain.moderation.ReportError> = Result.success(Unit)
+}
+
+/** No-op [BlockedAccountsPort] default (see [NoopReportPort]). Reports nothing blocked. */
+private object NoopBlockedAccountsPort : BlockedAccountsPort {
+    override fun observeBlocked(owner: AccountId): kotlinx.coroutines.flow.Flow<Set<AccountId>> =
+        flowOf(emptySet())
+    override suspend fun block(
+        owner: AccountId,
+        target: AccountId,
+    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
+    override suspend fun unblock(
+        owner: AccountId,
+        target: AccountId,
+    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
 }

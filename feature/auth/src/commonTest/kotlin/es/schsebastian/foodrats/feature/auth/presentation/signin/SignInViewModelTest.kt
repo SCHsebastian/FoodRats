@@ -108,14 +108,14 @@ class SignInViewModelTest {
             emailSignInResult = Result.success(sampleSession),
         )
         val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
-        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats.app"))
+        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats-de4ec.web.app"))
         vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
         vm.effects.test {
             vm.onIntent(SignInIntent.SubmitEmail)
             assertEquals(SignInEffect.SignedIn, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
-        assertEquals("rat@foodrats.app", repo.lastEmail)
+        assertEquals("rat@foodrats-de4ec.web.app", repo.lastEmail)
         assertEquals("signIn", repo.lastMode)
     }
 
@@ -220,7 +220,7 @@ class SignInViewModelTest {
             emailSignInResult = Result.failure(AuthError.EmailPassword.WrongCredentials),
         )
         val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
-        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats.app"))
+        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats-de4ec.web.app"))
         vm.onIntent(SignInIntent.UpdatePassword("wrongpass"))
         vm.onIntent(SignInIntent.SubmitEmail)
         assertEquals(AuthError.EmailPassword.WrongCredentials, vm.state.value.passwordError)

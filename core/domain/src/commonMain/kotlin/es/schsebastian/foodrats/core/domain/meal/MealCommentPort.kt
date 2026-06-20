@@ -13,6 +13,9 @@ sealed interface CommentError {
         data object Unauthorized : Write
         data object Blank        : Write
         data object TooLong      : Write
+
+        /** Blocked by the on-device text filter before reaching Firestore or the outbox (UGC §3). */
+        data object Objectionable : Write
         data object Unavailable  : Write
     }
     sealed interface Delete : CommentError {

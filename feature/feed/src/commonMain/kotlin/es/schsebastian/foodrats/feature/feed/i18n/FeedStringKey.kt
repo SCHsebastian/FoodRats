@@ -3,9 +3,28 @@ package es.schsebastian.foodrats.feature.feed.i18n
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.feed.generated.resources.Res
 import foodrats.feature.feed.generated.resources.feed_comments_error_blank
+import foodrats.feature.feed.generated.resources.feed_comments_error_objectionable
 import foodrats.feature.feed.generated.resources.feed_comments_error_too_long
 import foodrats.feature.feed.generated.resources.feed_comments_error_unauthorized
 import foodrats.feature.feed.generated.resources.feed_comments_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_report_meal_cta
+import foodrats.feature.feed.generated.resources.feed_report_user_cta
+import foodrats.feature.feed.generated.resources.feed_report_comment_cta
+import foodrats.feature.feed.generated.resources.feed_block_author_cta
+import foodrats.feature.feed.generated.resources.feed_block_user_cta
+import foodrats.feature.feed.generated.resources.feed_block_confirm_title
+import foodrats.feature.feed.generated.resources.feed_block_confirm_body
+import foodrats.feature.feed.generated.resources.feed_block_confirm_cta
+import foodrats.feature.feed.generated.resources.feed_report_success
+import foodrats.feature.feed.generated.resources.feed_report_error_already_reported
+import foodrats.feature.feed.generated.resources.feed_report_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_block_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_report_reason_spam
+import foodrats.feature.feed.generated.resources.feed_report_reason_harassment
+import foodrats.feature.feed.generated.resources.feed_report_reason_hate
+import foodrats.feature.feed.generated.resources.feed_report_reason_sexual
+import foodrats.feature.feed.generated.resources.feed_report_reason_violence
+import foodrats.feature.feed.generated.resources.feed_report_reason_other
 import foodrats.feature.feed.generated.resources.feed_comments_empty
 import foodrats.feature.feed.generated.resources.feed_comments_input_placeholder
 import foodrats.feature.feed.generated.resources.feed_comments_relative_days
@@ -148,6 +167,29 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     CommentsErrorTooLong(Res.string.feed_comments_error_too_long),
     CommentsErrorUnavailable(Res.string.feed_comments_error_unavailable),
     CommentsErrorUnauthorized(Res.string.feed_comments_error_unauthorized),
+    // UGC compliance §3 — comment blocked by the on-device objectionable-text filter.
+    CommentsErrorObjectionable(Res.string.feed_comments_error_objectionable),
+    // UGC compliance §4/§5 — report + block actions on meal detail and comment rows.
+    ReportMealCta(Res.string.feed_report_meal_cta),
+    ReportUserCta(Res.string.feed_report_user_cta),
+    ReportCommentCta(Res.string.feed_report_comment_cta),
+    BlockAuthorCta(Res.string.feed_block_author_cta),
+    BlockUserCta(Res.string.feed_block_user_cta),
+    BlockConfirmTitle(Res.string.feed_block_confirm_title),
+    BlockConfirmBody(Res.string.feed_block_confirm_body),
+    BlockConfirmCta(Res.string.feed_block_confirm_cta),
+    ReportSuccess(Res.string.feed_report_success),
+    // ReportError / BlockError → user message (feed owns the report+block UI surface here).
+    ReportErrorAlreadyReported(Res.string.feed_report_error_already_reported),
+    ReportErrorUnavailable(Res.string.feed_report_error_unavailable),
+    BlockErrorUnavailable(Res.string.feed_block_error_unavailable),
+    // Report-reason labels for the FrReportSheet.
+    ReportReasonSpam(Res.string.feed_report_reason_spam),
+    ReportReasonHarassment(Res.string.feed_report_reason_harassment),
+    ReportReasonHate(Res.string.feed_report_reason_hate),
+    ReportReasonSexual(Res.string.feed_report_reason_sexual),
+    ReportReasonViolence(Res.string.feed_report_reason_violence),
+    ReportReasonOther(Res.string.feed_report_reason_other),
     DeletedAuthor(Res.string.feed_deleted_author),
     DeleteMealCta(Res.string.feed_delete_meal_cta),
     DeleteMealConfirmTitle(Res.string.feed_delete_meal_confirm_title),

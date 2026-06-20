@@ -31,6 +31,10 @@ fun FrCommentRow(
     isDeleted: Boolean = false,
     canDelete: Boolean = false,
     onDelete: () -> Unit = {},
+    // UGC compliance §4/§5 — report/block this commenter (hidden on your own comments).
+    canModerate: Boolean = false,
+    onReport: () -> Unit = {},
+    onBlock: () -> Unit = {},
 ) {
     val nameLabel = when {
         isDeleted -> resolve(FeedStringKey.DeletedAuthor)
@@ -62,6 +66,18 @@ fun FrCommentRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    if (canModerate) {
+                        FrIconButton(
+                            icon = FrIcons.Flag,
+                            onClick = onReport,
+                            contentDescription = resolve(FeedStringKey.ReportCommentCta),
+                        )
+                        FrIconButton(
+                            icon = FrIcons.Block,
+                            onClick = onBlock,
+                            contentDescription = resolve(FeedStringKey.BlockUserCta),
+                        )
+                    }
                     if (canDelete) {
                         FrIconButton(
                             icon = FrIcons.Delete,

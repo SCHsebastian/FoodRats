@@ -38,11 +38,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
 
-            <!-- Verified App Links against the LIVE Firebase Hosting domain, which actually serves
-                 /.well-known/assetlinks.json (deployed from website/). The vanity domain foodrats.app
-                 is intentionally NOT listed — it hosts nothing yet, so autoVerify would perpetually
-                 fail for it. Re-add a `<data host="foodrats.app"/>` line once it's mapped as a custom
-                 domain serving the same .well-known files (docs/store-release/PUBLICATION.md). -->
+            <!-- Verified App Links against the LIVE Firebase Hosting domain (foodrats-de4ec.web.app),
+                 which actually serves /.well-known/assetlinks.json (deployed from website/). This is
+                 the only host the app links against; it must stay in sync with DeepLinks.WEB_HOST
+                 (shared/.../app/navigation/DeepLink.kt) and docs/store-release/PUBLICATION.md. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
