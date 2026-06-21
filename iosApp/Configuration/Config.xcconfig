@@ -3,8 +3,8 @@ TEAM_ID=
 PRODUCT_NAME=FoodRats
 PRODUCT_BUNDLE_IDENTIFIER=es.schsebastian.foodrats$(TEAM_ID)
 
-CURRENT_PROJECT_VERSION=2
-MARKETING_VERSION=1.001
+CURRENT_PROJECT_VERSION=3
+MARKETING_VERSION=1.002
 
 // Apply the app's entitlements at code-signing time. Without this the .entitlements file is an
 // orphan (Associated Domains / Universal Links never take effect and aps-environment is absent
