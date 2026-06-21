@@ -3,6 +3,8 @@ package es.schsebastian.foodrats.feature.crew.presentation.picker
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -167,6 +169,9 @@ fun CrewPickerScreen(
                             value = state.joinInput,
                             onValueChange = { vm.onIntent(CrewPickerIntent.JoinInputChanged(it)) },
                             label = resolve(CrewStringKey.JoinCodeLabel),
+                            // Invite codes are 6 uppercase chars (CrewCode normalizes via uppercase()) —
+                            // capitalize all input so what's typed matches the real code.
+                            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
                             modifier = Modifier.fillMaxWidth(),
                         )
                         FrButton(

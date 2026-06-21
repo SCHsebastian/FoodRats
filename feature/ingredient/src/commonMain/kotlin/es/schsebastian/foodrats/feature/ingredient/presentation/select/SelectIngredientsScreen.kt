@@ -3,6 +3,8 @@ package es.schsebastian.foodrats.feature.ingredient.presentation.select
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -115,6 +117,8 @@ fun SelectIngredientsScreen(
                 value = state.query,
                 onValueChange = { vm.onIntent(SelectIngredientsIntent.QueryChanged(it)) },
                 placeholder = resolve(IngredientStringKey.SelectIngredientsSearchHint),
+                // Search query — no auto-capitalization (matches against lowercase ingredient names).
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),

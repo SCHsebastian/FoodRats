@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.auth.presentation.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -138,6 +140,9 @@ internal fun DeleteAccountScreen(
                 value = state.deleteConfirmation,
                 onValueChange = onConfirmationChanged,
                 label = expectedPhrase,
+                // Exact-match gate ("DELETE <name>") — no auto-capitalization, or the keyboard would
+                // fight the precise phrase the user must reproduce.
+                keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
                 enabled = !state.isDeletingAccount,
                 modifier = Modifier.fillMaxWidth(),
             )
