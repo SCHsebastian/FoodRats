@@ -1,0 +1,99 @@
+package es.schsebastian.foodrats.core.designsystem.structural
+
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Surface
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
+import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Motion
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
+
+/**
+ * Dark frosted floating chrome — the round back / share / close affordance that hovers over
+ * full-bleed media in the Structural variant. Zero-chrome and border-less: read purely by a
+ * translucent dark fill ([StructuralColors.glassButton]) over the blurred [FrMediaFloor], with
+ * white-on-media content. The dark translucent counterpart to the light `atoms/FrGlassPill`.
+ *
+ * Translucency is faked the KMP-safe way (a tinted fill over the already-blurred floor); there is
+ * no per-tile backdrop blur. Set [danger] for destructive actions (the glyph turns crimson).
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FrGlassCircleButton(
+    icon: ImageVector,
+    onClick: () -> Unit,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+    size: Dp = 44.dp,
+    danger: Boolean = false,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.92f else 1f,
+        animationSpec = tween(Motion.quick, easing = Motion.Standard),
+        label = "glassCircleButtonPress",
+    )
+
+    val contentColor =
+        if (danger) LocalFrSemanticColors.current.danger else StructuralColors.foreground
+
+    Surface(
+        onClick = onClick,
+        // minimumInteractiveComponentSize() guarantees a >=48dp touch target (WCAG §2.5.5) without
+        // growing the visible `size`-dp silhouette — the extra hit area is transparent and extends
+        // beyond the painted circle (mirrors FrGlassPill).
+        modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .minimumInteractiveComponentSize()
+            .size(size),
+        interactionSource = interaction,
+        shape = CircleShape,
+        color = StructuralColors.glassButton,
+        contentColor = contentColor,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            FrIcon(
+                image = icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(Sizes.iconMd),
+            )
+        }
+    }
+}
+
+@FrPreview
+@Composable
+private fun FrGlassCircleButtonPreview() {
+    FoodRatsTheme(darkTheme = true) {
+        Box(Modifier.background(StructuralColors.stageFloor).padding(24.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                FrGlassCircleButton(icon = FrIcons.Back, onClick = {}, contentDescription = "Back")
+                FrGlassCircleButton(icon = FrIcons.Close, onClick = {}, contentDescription = "Close")
+            }
+        }
+    }
+}
