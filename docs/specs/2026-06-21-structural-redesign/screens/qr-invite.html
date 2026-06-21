@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Scan to join</title>
+<link rel="stylesheet" href="../structural.css">
+<style>
+  /* QR card — white rounded plate holding a stylized (non-scannable) code */
+  .qr-card {
+    width: 180px; height: 180px; border-radius: 22px; flex: none;
+    background: #fff; padding: 16px;
+    box-shadow: 0 18px 44px -14px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+  .qr-card svg { display: block; width: 100%; height: 100%; }
+  .qr-card svg rect.m { fill: #16170f; }       /* dark module */
+  .qr-card svg .finder-out { fill: #16170f; }
+  .qr-card svg .finder-in  { fill: #fff; }
+  .qr-card svg .finder-dot { fill: #16170f; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <!-- Z0 — media floor matches crew-settings -->
+    <div class="media dish-mackerel blur-2"></div>
+    <div class="media fill" style="background-image:url(https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=900&h=1600&fit=crop);filter:blur(50px) saturate(120%) brightness(.42);transform:scale(1.2)"></div>
+    <div class="scrim even"></div>
+
+    <!-- status row -->
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <!-- top bar (crew settings) -->
+    <div class="rowx between center" style="position:absolute;z-index:5;top:52px;left:0;right:0;padding:8px 16px 0">
+      <button class="glass-btn"><span class="material-symbols-rounded ico-24">arrow_back</span></button>
+      <div class="col center"><span class="micro olive">crew</span><span class="title-md white">Saturday Brunch</span></div>
+      <button class="glass-btn"><span class="material-symbols-rounded ico-24">more_horiz</span></button>
+    </div>
+
+    <!-- Z2 — simplified crew-settings behind the scrim (dimmed for context) -->
+    <div class="screen">
+      <div class="plane" style="padding-top:104px;gap:18px">
+
+        <!-- crew identity hero -->
+        <div class="tile near col center gap14" style="text-align:center;padding:24px 20px">
+          <img src="../assets/logo-crew.svg" width="78" height="68" alt="" style="filter:brightness(0) invert(1);opacity:.92">
+          <div class="col center gap4">
+            <span class="title-xl white" style="font-size:28px">Saturday Brunch</span>
+            <span class="micro-row bright" style="justify-content:center"><span>4 of 8 members</span><span class="sep"></span><span>since may 2024</span></span>
+          </div>
+          <div class="rowx gap10 full" style="margin-top:2px">
+            <button class="rowx center gap8 grow" style="height:46px;border-radius:14px;border:0;background:var(--fr-olive-container);color:var(--fr-on-olive-container);font-family:var(--fr-font-mono);font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer">RAT-4FK <span class="material-symbols-rounded ico-20">content_copy</span></button>
+            <button class="btn primary" style="height:46px"><span class="material-symbols-rounded ico-20">ios_share</span> Share</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Z8 — dimming layer -->
+    <div class="sheet-scrim"></div>
+
+    <!-- Z9 — Scan to join bottom sheet -->
+    <div class="sheet">
+      <div class="grab"></div>
+
+      <span class="title-lg white">Scan to join Saturday Brunch</span>
+
+      <!-- QR plate (stylized, not a real scannable code) -->
+      <div class="col center gap14" style="margin-top:4px">
+        <div class="qr-card">
+          <svg viewBox="0 0 29 29" shape-rendering="crispEdges" aria-hidden="true">
+            <!-- three finder patterns (corner squares) -->
+            <!-- top-left -->
+            <rect class="finder-out" x="0" y="0" width="7" height="7"/>
+            <rect class="finder-in"  x="1" y="1" width="5" height="5"/>
+            <rect class="finder-dot" x="2" y="2" width="3" height="3"/>
+            <!-- top-right -->
+            <rect class="finder-out" x="22" y="0" width="7" height="7"/>
+            <rect class="finder-in"  x="23" y="1" width="5" height="5"/>
+            <rect class="finder-dot" x="24" y="2" width="3" height="3"/>
+            <!-- bottom-left -->
+            <rect class="finder-out" x="0" y="22" width="7" height="7"/>
+            <rect class="finder-in"  x="1" y="23" width="5" height="5"/>
+            <rect class="finder-dot" x="2" y="24" width="3" height="3"/>
+
+            <!-- timing + data modules (decorative, believable density) -->
+            <g>
+              <!-- timing rows -->
+              <rect class="m" x="8"  y="6" width="1" height="1"/><rect class="m" x="10" y="6" width="1" height="1"/><rect class="m" x="12" y="6" width="1" height="1"/><rect class="m" x="14" y="6" width="1" height="1"/><rect class="m" x="16" y="6" width="1" height="1"/><rect class="m" x="18" y="6" width="1" height="1"/><rect class="m" x="20" y="6" width="1" height="1"/>
+              <rect class="m" x="6" y="8" width="1" height="1"/><rect class="m" x="6" y="10" width="1" height="1"/><rect class="m" x="6" y="12" width="1" height="1"/><rect class="m" x="6" y="14" width="1" height="1"/><rect class="m" x="6" y="16" width="1" height="1"/><rect class="m" x="6" y="18" width="1" height="1"/><rect class="m" x="6" y="20" width="1" height="1"/>
+
+              <!-- alignment block (bottom-right zone) -->
+              <rect class="finder-out" x="20" y="20" width="5" height="5"/>
+              <rect class="finder-in"  x="21" y="21" width="3" height="3"/>
+              <rect class="finder-dot" x="22" y="22" width="1" height="1"/>
+
+              <!-- scattered data field -->
+              <rect class="m" x="9"  y="0" width="1" height="2"/><rect class="m" x="11" y="0" width="2" height="1"/><rect class="m" x="14" y="0" width="1" height="3"/><rect class="m" x="16" y="0" width="2" height="1"/><rect class="m" x="19" y="0" width="1" height="2"/>
+              <rect class="m" x="9"  y="3" width="2" height="1"/><rect class="m" x="13" y="3" width="1" height="2"/><rect class="m" x="16" y="3" width="1" height="1"/><rect class="m" x="18" y="3" width="2" height="1"/>
+              <rect class="m" x="8"  y="8" width="2" height="2"/><rect class="m" x="11" y="8" width="1" height="1"/><rect class="m" x="13" y="8" width="2" height="1"/><rect class="m" x="16" y="8" width="1" height="2"/><rect class="m" x="18" y="8" width="1" height="1"/><rect class="m" x="20" y="8" width="2" height="1"/>
+              <rect class="m" x="9"  y="10" width="1" height="2"/><rect class="m" x="12" y="10" width="2" height="1"/><rect class="m" x="15" y="10" width="1" height="1"/><rect class="m" x="17" y="10" width="2" height="2"/><rect class="m" x="20" y="10" width="1" height="1"/>
+              <rect class="m" x="8"  y="12" width="1" height="1"/><rect class="m" x="10" y="12" width="2" height="1"/><rect class="m" x="13" y="12" width="1" height="2"/><rect class="m" x="16" y="12" width="2" height="1"/><rect class="m" x="19" y="12" width="1" height="2"/><rect class="m" x="21" y="12" width="2" height="1"/>
+              <rect class="m" x="9"  y="14" width="2" height="1"/><rect class="m" x="12" y="14" width="1" height="1"/><rect class="m" x="14" y="14" width="2" height="2"/><rect class="m" x="17" y="14" width="1" height="1"/><rect class="m" x="20" y="14" width="2" height="1"/><rect class="m" x="23" y="14" width="1" height="2"/>
+              <rect class="m" x="8"  y="16" width="2" height="1"/><rect class="m" x="11" y="16" width="1" height="2"/><rect class="m" x="13" y="16" width="1" height="1"/><rect class="m" x="16" y="16" width="2" height="1"/><rect class="m" x="19" y="16" width="1" height="1"/><rect class="m" x="22" y="16" width="2" height="2"/>
+              <rect class="m" x="9"  y="18" width="1" height="1"/><rect class="m" x="11" y="18" width="2" height="1"/><rect class="m" x="14" y="18" width="1" height="2"/><rect class="m" x="16" y="18" width="1" height="1"/><rect class="m" x="18" y="18" width="2" height="1"/><rect class="m" x="25" y="18" width="2" height="1"/>
+              <rect class="m" x="8"  y="20" width="1" height="2"/><rect class="m" x="10" y="20" width="1" height="1"/><rect class="m" x="12" y="20" width="2" height="1"/><rect class="m" x="15" y="20" width="1" height="2"/><rect class="m" x="17" y="20" width="2" height="1"/>
+              <rect class="m" x="9"  y="22" width="2" height="1"/><rect class="m" x="12" y="22" width="1" height="2"/><rect class="m" x="14" y="22" width="1" height="1"/><rect class="m" x="16" y="22" width="2" height="2"/><rect class="m" x="27" y="22" width="1" height="2"/>
+              <rect class="m" x="8"  y="24" width="1" height="1"/><rect class="m" x="10" y="24" width="2" height="1"/><rect class="m" x="13" y="24" width="1" height="2"/><rect class="m" x="15" y="24" width="2" height="1"/><rect class="m" x="18" y="24" width="1" height="1"/>
+              <rect class="m" x="9"  y="26" width="1" height="2"/><rect class="m" x="11" y="26" width="2" height="1"/><rect class="m" x="14" y="26" width="1" height="1"/><rect class="m" x="16" y="26" width="1" height="2"/><rect class="m" x="18" y="26" width="2" height="1"/><rect class="m" x="26" y="26" width="2" height="1"/>
+              <rect class="m" x="20" y="18" width="1" height="1"/><rect class="m" x="8" y="2" width="1" height="2"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- invite code pill (mono) -->
+        <span class="mono" style="display:inline-flex;align-items:center;height:34px;padding:0 18px;border-radius:999px;background:color-mix(in srgb,#1b1c17 55%,transparent);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);color:#fff;font-size:16px;font-weight:700;letter-spacing:3px">RAT-4FK</span>
+      </div>
+
+      <button class="btn primary block" style="margin-top:4px">Done</button>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

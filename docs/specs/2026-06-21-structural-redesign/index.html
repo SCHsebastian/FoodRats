@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats — Structural Redesign</title>
+<link rel="stylesheet" href="tokens.css">
+<style>
+  body { background:
+    radial-gradient(120% 80% at 12% -5%, #25261f 0%, transparent 55%),
+    radial-gradient(120% 80% at 95% 0%, #2a1c12 0%, transparent 50%),
+    #0c0d0a; color: #E3E3DC; margin: 0; font-family: var(--fr-font-sans); }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 64px 28px 96px; }
+  .kicker { font-size: 11px; font-weight: 800; letter-spacing: 0.32em; text-transform: uppercase; color: var(--fr-streak-hot); }
+  h1 { font-size: clamp(40px, 7vw, 76px); font-weight: 800; letter-spacing: -0.035em; line-height: 0.96; margin: 14px 0 0;
+       background: linear-gradient(120deg, #fff 0%, #A8BC85 60%, #E6A47B 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lede { font-size: 17px; line-height: 1.55; color: #b6b7ab; max-width: 680px; margin: 20px 0 0; }
+  .lede code { font-family: var(--fr-font-mono); color: #c5d9a3; }
+  .principles { display: flex; flex-wrap: wrap; gap: 10px; margin: 26px 0 0; }
+  .pri { display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 999px;
+         background: color-mix(in srgb, #1b1c17 70%, transparent); -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+         font-size: 12.5px; font-weight: 600; color: #d8d8cf; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08); }
+  .pri b { color: var(--fr-olive); font-weight: 800; }
+  .meta { margin: 30px 0 0; font-size: 13px; color: #8e9387; line-height: 1.7; }
+  .meta code { font-family: var(--fr-font-mono); color: #c5d9a3; background: rgba(168,188,133,0.08); padding: 1px 6px; border-radius: 6px; }
+  section { margin: 60px 0 0; }
+  .sec-h { display: flex; align-items: baseline; gap: 12px; margin: 0 0 24px; }
+  .sec-h h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin: 0; }
+  .sec-h span { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #6f7466; }
+  .sec-h hr { flex: 1; border: 0; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.12), transparent); }
+  .grid { display: flex; flex-wrap: wrap; gap: 30px 22px; }
+  .card { display: flex; flex-direction: column; gap: 12px; width: 232px; }
+  .card a.shot { display: block; width: 232px; height: 468px; border-radius: 30px; overflow: hidden; position: relative;
+                 box-shadow: 0 30px 60px -24px rgba(0,0,0,0.8); transition: transform 240ms cubic-bezier(0.2,0,0,1.2), box-shadow 240ms;
+                 background: #15160f; }
+  .card a.shot:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 40px 80px -22px rgba(0,0,0,0.9); }
+  .card a.shot iframe { width: 446px; height: 900px; border: 0; transform: scale(0.5202); transform-origin: top left; pointer-events: none; }
+  .card a.shot::after { content: 'open live ↗'; position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%) translateY(8px);
+    font-size: 11px; font-weight: 800; letter-spacing: 0.4px; color: #fff; padding: 7px 14px; border-radius: 999px; z-index: 2;
+    background: rgba(20,21,16,0.7); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); opacity: 0; transition: all 220ms; pointer-events: none; }
+  .card a.shot:hover::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .cap { display: flex; flex-direction: column; gap: 3px; padding: 0 4px; }
+  .cap b { font-size: 14px; font-weight: 700; color: #E3E3DC; }
+  .cap small { font-size: 11.5px; color: #8e9387; }
+  .flag { display:inline-block; font-size:9px; font-weight:800; letter-spacing:0.5px; text-transform:uppercase; color: var(--fr-streak-hot); margin-left:6px; vertical-align:middle; }
+  .foot { margin: 80px 0 0; padding-top: 28px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 13px; color: #6f7466; line-height: 1.7; }
+  .foot a { color: var(--fr-olive); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="kicker">FoodRats · concept exploration · 2026-06-21</div>
+  <h1>The Structural<br>Redesign</h1>
+  <p class="lede">
+    Every FoodRats screen rebuilt on one idea: a continuous edge-to-edge media floor, with
+    information floating above it on a distinct Z-axis. No bounding boxes, no solid dividers —
+    zones are read through depth, alignment, and an extreme jump in type scale. Same Iron &amp; Ember
+    brand, same <code>Fr*</code> vocabulary, same voice — a radically different structure.
+  </p>
+
+  <div class="principles">
+    <span class="pri"><b>01</b> Edge-to-edge media floor</span>
+    <span class="pri"><b>02</b> Floating Z-axis · variable transparency</span>
+    <span class="pri"><b>03</b> Asymmetric bento · priority-scaled</span>
+    <span class="pri"><b>04</b> Extreme type contrast</span>
+    <span class="pri"><b>05</b> Zero-chrome</span>
+  </div>
+
+  <p class="meta">
+    Dark-first (charcoal-olive <code>#1B1C19</code>). Content is the demo crew <b>Saturday Brunch</b>
+    (Sebastián · Anika · Reggie · June). Static HTML on the real tokens (<code>tokens.css</code>) + the
+    new language (<code>structural.css</code>). Each tile below is the screen rendered live — click to
+    open and scroll it. Spec: <code>README.md</code> · usage: <code>USE-THIS-DESIGN.md</code>.
+  </p>
+
+  <section><div class="sec-h"><h2>Core flow</h2><span>sign-in → crew → feed → plate</span><hr></div><div class="grid" id="g-core"></div></section>
+  <section><div class="sec-h"><h2>Stats &amp; recap</h2><span>the data surfaces</span><hr></div><div class="grid" id="g-stats"></div></section>
+  <section><div class="sec-h"><h2>Crew &amp; moderation</h2><span>owner controls · safety</span><hr></div><div class="grid" id="g-crew"></div></section>
+  <section><div class="sec-h"><h2>Profile &amp; settings</h2><span>you · passport · preferences</span><hr></div><div class="grid" id="g-settings"></div></section>
+
+  <p class="foot">
+    FoodRats — closed-group meal-sharing for crews of 3–8. A structural concept exploration, not shipped
+    product. Brand DNA (Iron &amp; Ember, Plus Jakarta Sans, ubiquitous language Meal · Plate · Score · Crew · Member)
+    preserved; the layout system is new — one deliberate departure: frosted translucent strata replace
+    matte concrete cards, which is the point of the brief. A Compose component layer productionizing this
+    lives separately in <code>core/designsystem/.../structural/</code>. See <a href="README.md">README.md</a>.
+  </p>
+</div>
+
+<script>
+  const S = {
+    'g-core': [
+      ['sign-in','Sign in','email · Google · Apple'],['crew-picker','Crew picker','no active crew'],
+      ['crew-create','Create a crew',''],['crew-join','Join with code',''],
+      ['feed','Feed — today','flagship'],['feed-empty','Feed — empty','nothing posted yet'],
+      ['meal-detail','Meal detail','plate as floor'],['composer','Compose a plate','AI ingredients'],
+    ],
+    'g-stats': [ ['stats','Stats','streak hero + bento'],['weekly-recap','Your week in food','story recap'] ],
+    'g-crew': [ ['crew-settings','Crew settings','owner view'],['score-style-picker','Score style','picker sheet'],
+      ['qr-invite','Invite · QR','scan to join'],['moderation','Report / block','safety sheet'] ],
+    'g-settings': [ ['app-settings','Settings','preferences'],['badges','Passport · badges','earned + locked'],
+      ['theme-picker','Theme','picker sheet'],['blocked-users','Blocked users','empty state'],
+      ['delete-account','Delete account','danger zone'] ],
+  };
+  for (const [gid, items] of Object.entries(S)) {
+    const g = document.getElementById(gid);
+    for (const [file, title, note] of items) {
+      const flag = note === 'flagship' ? '<span class="flag">flagship</span>' : '';
+      g.insertAdjacentHTML('beforeend', `
+        <div class="card">
+          <a class="shot" href="screens/${file}.html" target="_blank" rel="noopener">
+            <iframe src="screens/${file}.html" loading="lazy" tabindex="-1" title="${title}"></iframe>
+          </a>
+          <div class="cap"><b>${title}${flag}</b><small>${note}</small></div>
+        </div>`);
+    }
+  }
+</script>
+</body>
+</html>

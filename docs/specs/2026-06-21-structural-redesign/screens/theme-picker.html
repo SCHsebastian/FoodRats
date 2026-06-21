@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Choose theme</title>
+<link rel="stylesheet" href="../structural.css">
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <!-- Z0 — warm atmospheric media floor (settings has no photo) -->
+    <div class="media field"></div>
+    <div class="scrim even"></div>
+
+    <!-- status row -->
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <!-- top bar (settings) -->
+    <div class="rowx between center" style="position:absolute;z-index:5;top:52px;left:0;right:0;padding:8px 16px 0">
+      <button class="glass-btn"><span class="material-symbols-rounded ico-24">arrow_back</span></button>
+      <div class="col center"><span class="micro olive">you</span><span class="title-md white">Settings</span></div>
+      <span style="width:44px"></span>
+    </div>
+
+    <!-- Z2 — simplified settings list behind the scrim (dimmed for context) -->
+    <div class="screen">
+      <div class="plane" style="padding-top:104px;gap:18px">
+
+        <!-- appearance group -->
+        <div class="col gap8">
+          <span class="micro olive">appearance</span>
+          <div class="tile">
+            <!-- the row that opens this sheet -->
+            <div class="row">
+              <span class="material-symbols-rounded ico-24 dim">dark_mode</span>
+              <div class="grow col"><span class="title-md white">Theme</span><span class="micro" style="text-transform:none;letter-spacing:0">Dark</span></div>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </div>
+            <div class="row">
+              <span class="material-symbols-rounded ico-24 dim">translate</span>
+              <div class="grow col"><span class="title-md white">Language</span><span class="micro" style="text-transform:none;letter-spacing:0">English</span></div>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- notifications group -->
+        <div class="col gap8">
+          <span class="micro olive">notifications</span>
+          <div class="tile">
+            <div class="row">
+              <span class="material-symbols-rounded ico-24 dim">notifications</span>
+              <span class="title-md white grow">Streak nudges</span>
+              <span class="toggle on"></span>
+            </div>
+            <div class="row">
+              <span class="material-symbols-rounded ico-24 dim">restaurant</span>
+              <span class="title-md white grow">New meals in your crew</span>
+              <span class="toggle on"></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Z8 — dimming layer -->
+    <div class="sheet-scrim"></div>
+
+    <!-- Z9 — Choose theme bottom sheet -->
+    <div class="sheet">
+      <div class="grab"></div>
+
+      <span class="title-lg white">Choose theme</span>
+
+      <div class="col" style="margin-top:2px">
+        <div class="row">
+          <span class="radio"></span>
+          <span class="title-md white grow">System default</span>
+        </div>
+        <div class="row">
+          <span class="radio"></span>
+          <span class="title-md white grow">Light</span>
+        </div>
+        <div class="row">
+          <span class="radio on"></span>
+          <span class="title-md white grow">Dark</span>
+        </div>
+      </div>
+
+      <button class="btn primary block" style="margin-top:6px">Done</button>
+
+      <span class="micro tac bright" style="margin-top:2px;text-transform:none;letter-spacing:.01em;font-weight:600;opacity:.7">Language picker uses this same sheet (System default · English · Español).</span>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -110,9 +110,15 @@ Authoritative design: `docs/specs/2026-05-20-cicd-store-release-pipeline-design.
 - **CI needs no secrets and is fork-safe.** `host-tests` runs only the 8 host-test tasks — none of those modules apply the `googleServices`/`firebaseCrashlytics` plugin, so no `google-services.json` is required. `release-smoke` builds the minified release AAB after synthesizing a placeholder `google-services.json` inline and disabling Crashlytics upload. **Do not reintroduce a "materialize Firebase secret or `exit 1`" step into the test job** — that was the original bug that made every CI run fail when the secret wasn't set, for modules that never needed it.
 - **Fastlane lives in `fastlane/`** (`Appfile`, `Matchfile`, `Fastfile`) pinned by the root `Gemfile`; lanes `android beta/release`, `ios beta/release`. Android lanes only upload (Gradle builds the AAB first); iOS lanes build via `gym` (which triggers the KMP framework Gradle task — the self-hosted Mac needs a JDK).
 
-## Recent decisions (2026-05-19 → 2026-06-14)
+## Recent decisions (2026-05-19 → 2026-06-21)
 
 These are the recent shifts in conventions or implementation that you should carry forward when touching the area. Each entry: **what** changed, **why** it changed, **how** to apply it.
+
+### "Structural" redesign — opt-in mockup CONCEPT, NOT the production DS (2026-06-21)
+
+- **What.** A full alternate-aesthetic redesign *concept* of every app screen as viewable HTML mockups (19 screens), committed at **`docs/specs/2026-06-21-structural-redesign/`** (open `index.html`; spec = `README.md`). Aesthetic: continuous edge-to-edge media floor · floating frosted Z-axis strata (no borders/dividers) · asymmetric bento scaled by data priority · extreme type contrast (huge `.metric` vs 10px `.micro`) · zero-chrome. The language is `structural.css` layered on the real Iron & Ember `tokens.css`; also mirrored into the (gitignored) design skill at `.claude/skills/designsystem/structural/`.
+- **Why.** A requested exploration of a bolder structure ("The Structural Master Prompt"), built on the real tokens + `Fr*` vocabulary + brand voice so it stays on-brand.
+- **How.** **Concept/spec only — the production design system is UNCHANGED.** Production stays matte-concrete Iron & Ember; this deliberately overrides the DS's "no glass / no gradient containers" rule and is used **only when the user explicitly asks for "the structural look."** Do NOT default to frosted glass when building production screens. More structural mockups → reuse `structural.css` + match `screens/feed.html`. A Compose layer that productionizes this **already exists** (additive) in `core/designsystem/src/commonMain/.../structural/` (`FrGlassTile`/`FrMediaFloor`/`FrBentoGrid`/`FrMetric`, catalogued under `CatalogGroup.STRUCTURAL`); the matte token layer is untouched. See the spec's `README.md` for the principle→mechanism mapping.
 
 ### Product analytics base — type-safe, consent-gated, per-platform (2026-06-14)
 

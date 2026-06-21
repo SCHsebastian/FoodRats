@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Settings</title>
+<link rel="stylesheet" href="../structural.css">
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <!-- Z0 — atmospheric warm media floor (no photo) -->
+    <div class="media field"></div>
+    <!-- Z1 — legibility scrim -->
+    <div class="scrim even"></div>
+
+    <!-- status row -->
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <!-- pushed-screen header: floating back + centered title -->
+    <div class="rowx between center" style="position:absolute;z-index:5;top:52px;left:0;right:0;padding:8px 16px 0">
+      <button class="glass-btn"><span class="material-symbols-rounded ico-24">arrow_back</span></button>
+      <div class="col center"><span class="micro olive">you</span><span class="title-md white">Settings</span></div>
+      <span style="width:44px;height:44px;flex:none"></span>
+    </div>
+
+    <!-- Z2 — scrolling content plane -->
+    <div class="screen">
+      <div class="plane" style="padding-top:104px;gap:22px">
+
+        <!-- ============ GENERAL ============ -->
+        <div class="col gap8">
+          <span class="micro olive">general</span>
+
+          <!-- profile -->
+          <div class="tile near col gap16">
+            <div class="rowx center gap14">
+              <span class="avatar s56 moss-ring" style="background:#4F6E2B">SC</span>
+              <div class="col grow gap6" style="min-width:0">
+                <span class="title-lg white ellip">Sebastián</span>
+                <span class="chip tiny" style="align-self:flex-start;text-transform:none;letter-spacing:.2px">🍴 First Plate</span>
+              </div>
+              <button class="glass-btn" style="width:40px;height:40px;background:color-mix(in srgb,#20211a 62%,transparent);box-shadow:inset 0 0 0 1px rgba(255,255,255,.10)"><span class="material-symbols-rounded ico-20">add_a_photo</span></button>
+            </div>
+            <button class="btn glass sm" style="align-self:flex-start;margin-top:-8px">Tap to change avatar</button>
+            <div class="field"><span class="lab">display name</span><input class="inp" value="Sebastián" readonly></div>
+            <div class="field"><span class="lab">personal bio · 100 chars max</span><input class="inp" value="Home cook from Barcelona" readonly style="font-size:16px"></div>
+          </div>
+        </div>
+
+        <!-- ============ PREFERENCES ============ -->
+        <div class="col gap8">
+          <span class="micro olive">preferences</span>
+          <div class="tile">
+
+            <!-- theme -->
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">dark_mode</span>
+              <span class="title-md white grow">Theme</span>
+              <span class="micro mono bright" style="letter-spacing:.06em">Dark</span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+
+            <!-- language -->
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">language</span>
+              <span class="title-md white grow">Language</span>
+              <span class="micro mono bright" style="letter-spacing:.06em">English</span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+
+            <!-- notifications -->
+            <div class="row">
+              <span class="material-symbols-rounded ico-24 dim">notifications</span>
+              <div class="col grow gap4">
+                <span class="title-md white">Notifications</span>
+                <span class="body" style="font-size:13px">Streak nudges, comments and rating updates.</span>
+              </div>
+              <span class="toggle on"></span>
+            </div>
+
+            <!-- meal reminders -->
+            <div class="row" style="align-items:flex-start">
+              <span class="material-symbols-rounded ico-24 dim" style="margin-top:2px">schedule</span>
+              <div class="col grow gap10">
+                <div class="col gap4">
+                  <span class="title-md white">Meal reminders</span>
+                  <span class="body" style="font-size:13px">Get a daily nudge to post your meal. Add up to 3 times.</span>
+                </div>
+                <div class="rowx center gap12" style="padding:6px 0">
+                  <span class="metric sm white" style="font-size:26px;line-height:1">14:00</span>
+                  <span class="grow"></span>
+                  <button class="glass-btn" style="width:34px;height:34px;background:color-mix(in srgb,#15160f 50%,transparent)"><span class="material-symbols-rounded ico-20 danger">delete</span></button>
+                </div>
+                <button class="btn glass sm" style="align-self:flex-start"><span class="material-symbols-rounded ico-20">add</span> Add reminder</button>
+              </div>
+            </div>
+
+            <!-- AI suggestions -->
+            <div class="row">
+              <span class="material-symbols-rounded ico-24 dim">auto_awesome</span>
+              <div class="col grow gap4">
+                <span class="title-md white">AI suggestions</span>
+                <span class="body" style="font-size:13px">Your plate photos are analyzed on your device to suggest ingredients.</span>
+              </div>
+              <span class="toggle on"></span>
+            </div>
+
+            <!-- usage data -->
+            <div class="row">
+              <span class="material-symbols-rounded ico-24 dim">bar_chart</span>
+              <div class="col grow gap4">
+                <span class="title-md white">Share anonymous usage data</span>
+                <span class="body" style="font-size:13px">On — helping improve FoodRats. No personal content is ever collected.</span>
+              </div>
+              <span class="toggle on"></span>
+            </div>
+
+            <!-- accent -->
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">palette</span>
+              <span class="title-md white grow">Accent colour</span>
+              <span class="rowx center gap8">
+                <span style="width:18px;height:18px;border-radius:50%;background:var(--fr-ember);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.2);flex:none"></span>
+                <span class="micro bright" style="text-transform:none;letter-spacing:0">Ember (default)</span>
+              </span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+
+          </div>
+        </div>
+
+        <!-- ============ BADGES ============ -->
+        <div class="col gap8">
+          <span class="micro olive">badges</span>
+          <div class="tile">
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">workspace_premium</span>
+              <div class="col grow gap4">
+                <span class="title-md white">Badges</span>
+                <span class="body" style="font-size:13px">See your earned and locked achievements</span>
+              </div>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ============ SAFETY ============ -->
+        <div class="col gap8">
+          <span class="micro olive">safety</span>
+          <div class="tile">
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">block</span>
+              <div class="col grow gap4">
+                <span class="title-md white">Blocked users</span>
+                <span class="body" style="font-size:13px">Manage the people you've blocked</span>
+              </div>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ============ LEGAL ============ -->
+        <div class="col gap8">
+          <span class="micro olive">legal</span>
+          <div class="tile">
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">gavel</span>
+              <span class="title-md white grow">Terms (EULA)</span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">gavel</span>
+              <span class="title-md white grow">Community Guidelines</span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ============ ACCOUNT ============ -->
+        <div class="col gap8">
+          <span class="micro olive">account</span>
+          <div class="tile">
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 dim">download</span>
+              <div class="col grow gap4">
+                <span class="title-md white">Export my data</span>
+                <span class="body" style="font-size:13px">Download a copy of your account, meals, ratings and crews (GDPR).</span>
+              </div>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ============ DANGER ZONE ============ -->
+        <div class="col gap8">
+          <div class="col gap4">
+            <span class="micro danger">danger zone</span>
+            <span class="micro bright" style="text-transform:none;letter-spacing:0;font-weight:600">Irreversible actions. Read carefully.</span>
+          </div>
+          <div class="tile deep">
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 danger">logout</span>
+              <span class="title-md danger grow">Sign out</span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 danger">delete</span>
+              <div class="col grow gap4">
+                <span class="title-md danger">Delete my account</span>
+                <span class="body" style="font-size:13px">Permanently removes your meals, ratings and memberships.</span>
+              </div>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,267 @@
+/* ============================================================
+   FoodRats Design System — Colors & Type
+   Source of truth mirrors core/designsystem/theme/* in the
+   SCHsebastian/FoodRats Kotlin Multiplatform repo.
+   Palette name: "Iron & Ember" (design system v3, 2026-05-20).
+   ============================================================ */
+
+/* --- Webfonts ---------------------------------------------------
+   The Kotlin Multiplatform repo references "Plus Jakarta Sans" as
+   the intended display family (see Typography.kt comment) but
+   ships system sans as the fallback. We load Plus Jakarta Sans
+   from Google Fonts here so HTML artifacts read as intended.
+   FLAG: not a bundled file — see README "Fonts" section.
+   --------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  /* ============ Brand palette — Iron & Ember (LIGHT) =========== */
+
+  /* Primary — Deep olive. Anchors a rugged, masculine identity. */
+  --fr-olive:                #4F6E2B;
+  --fr-on-olive:             #FFFFFF;
+  --fr-olive-container:      #9CB47A;
+  --fr-on-olive-container:   #1A2509;
+
+  /* Secondary — Ember copper. Streaks, rare highlights. */
+  --fr-ember:                #B0561E;
+  --fr-on-ember:             #FFFFFF;
+  --fr-ember-container:      #E6B894;
+  --fr-on-ember-container:   #2C1300;
+
+  /* Tertiary — Rust. Scarce celebration moments. */
+  --fr-rust:                 #7A3826;
+  --fr-on-rust:              #FFFFFF;
+  --fr-rust-container:       #D9A99A;
+  --fr-on-rust-container:    #3D0E00;
+
+  /* Error / danger — Deep crimson. */
+  --fr-error:                #8E2A2A;
+  --fr-on-error:             #FFFFFF;
+  --fr-error-container:      #E5B6B6;
+  --fr-on-error-container:   #410002;
+
+  /* ============ Surfaces — Concrete neutrals (LIGHT) ============ */
+  --fr-bg:                   #E8E6DE;  /* concrete */
+  --fr-fg:                   #1A1C18;
+  --fr-surface:              #E8E6DE;
+  --fr-on-surface:           #1A1C18;
+  --fr-surface-variant:      #D4D2C8;  /* concrete elevated */
+  --fr-on-surface-variant:   #44483D;
+  --fr-outline:              #5E6155;
+  --fr-outline-variant:      #B8BCB0;
+  --fr-inverse-surface:      #2A2C26;
+  --fr-inverse-on-surface:   #EEEDE6;
+  --fr-scrim:                rgba(0, 0, 0, 0.45);
+
+  /* Plain whites used inside cards on dark backgrounds (rare) */
+  --fr-pure-white:           #FFFFFF;
+
+  /* ============ Semantic / meaning colors (LIGHT) =============== */
+  /* Use these for meaning — never alias brand roles for it. */
+  --fr-success:              #5C7A33;  /* moss (matches Iron primary family) */
+  --fr-on-success:           #FFFFFF;
+  --fr-warning:              #C97E1A;  /* amber-copper */
+  --fr-on-warning:           #2C1A00;
+  --fr-danger:               #8E2A2A;  /* deep crimson */
+  --fr-on-danger:            #FFFFFF;
+  --fr-info:                 #3A6BAC;  /* steel blue */
+  --fr-on-info:              #FFFFFF;
+  --fr-celebration:          #B0561E;  /* ember copper */
+  --fr-on-celebration:       #FFFFFF;
+  --fr-streak-hot:           #D45A14;  /* forge orange — streak hero card */
+  --fr-on-streak-hot:        #FFFFFF;
+
+  /* ============ Typography — family stacks ====================== */
+  --fr-font-sans:    "Plus Jakarta Sans", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --fr-font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --fr-font-display: var(--fr-font-sans);
+  --fr-font-body:    var(--fr-font-sans);
+
+  /* Numeric features used by stat numbers / score badges */
+  --fr-num-feat:     "tnum" 1;
+
+  /* ============ Type ramp (Material 3, mirrors Typography.kt) === */
+  /* sizes / line-heights / weights / letter-spacing in px */
+  --fr-display-lg-size:        57px;  --fr-display-lg-lh:        64px;  --fr-display-lg-weight: 700; --fr-display-lg-tracking: -0.25px;
+  --fr-display-md-size:        45px;  --fr-display-md-lh:        52px;  --fr-display-md-weight: 700;
+  --fr-display-sm-size:        36px;  --fr-display-sm-lh:        44px;  --fr-display-sm-weight: 700;
+  --fr-headline-lg-size:       32px;  --fr-headline-lg-lh:       40px;  --fr-headline-lg-weight: 700;
+  --fr-headline-md-size:       28px;  --fr-headline-md-lh:       36px;  --fr-headline-md-weight: 700;
+  --fr-headline-sm-size:       24px;  --fr-headline-sm-lh:       32px;  --fr-headline-sm-weight: 600;
+  --fr-title-lg-size:          22px;  --fr-title-lg-lh:          28px;  --fr-title-lg-weight: 600;
+  --fr-title-md-size:          16px;  --fr-title-md-lh:          24px;  --fr-title-md-weight: 600; --fr-title-md-tracking: 0.15px;
+  --fr-title-sm-size:          14px;  --fr-title-sm-lh:          20px;  --fr-title-sm-weight: 600; --fr-title-sm-tracking: 0.10px;
+  --fr-body-lg-size:           16px;  --fr-body-lg-lh:           24px;  --fr-body-lg-weight: 400; --fr-body-lg-tracking: 0.50px;
+  --fr-body-md-size:           14px;  --fr-body-md-lh:           20px;  --fr-body-md-weight: 400; --fr-body-md-tracking: 0.25px;
+  --fr-body-sm-size:           12px;  --fr-body-sm-lh:           16px;  --fr-body-sm-weight: 400; --fr-body-sm-tracking: 0.40px;
+  --fr-label-lg-size:          14px;  --fr-label-lg-lh:          20px;  --fr-label-lg-weight: 600; --fr-label-lg-tracking: 0.10px;
+  --fr-label-md-size:          12px;  --fr-label-md-lh:          16px;  --fr-label-md-weight: 600; --fr-label-md-tracking: 0.50px;
+  --fr-label-sm-size:          11px;  --fr-label-sm-lh:          16px;  --fr-label-sm-weight: 600; --fr-label-sm-tracking: 0.50px;
+
+  /* Stat number — tabular, 24px bold (FrTextStyles.statNumber) */
+  --fr-stat-number-size:       24px;  --fr-stat-number-lh:       28px;  --fr-stat-number-weight: 700;
+  --fr-stat-number-sm-size:    14px;  --fr-stat-number-sm-lh:    20px;  --fr-stat-number-sm-weight: 600;
+
+  /* ============ Spacing scale (tokens/Spacing.kt) =============== */
+  --fr-space-xxs: 2px;
+  --fr-space-xs:  4px;
+  --fr-space-sm:  8px;
+  --fr-space-md:  16px;
+  --fr-space-lg:  24px;
+  --fr-space-xl:  32px;
+  --fr-space-xxl: 64px;
+
+  /* ============ Radius scale (tokens/Radius.kt) ================= */
+  --fr-radius-xs:   8px;
+  --fr-radius-sm:   12px;
+  --fr-radius-md:   16px;
+  --fr-radius-lg:   24px;
+  --fr-radius-xl:   32px;
+  --fr-radius-pill: 999px;
+
+  /* ============ Elevation / shadows (tokens/Elevation.kt) ====== */
+  /* Source uses Material dp tonal+shadow; we approximate with
+     low-saturation, large-blur shadows on the concrete surface. */
+  --fr-elevation-0:  none;
+  --fr-elevation-1:  0 1px 2px rgba(26, 28, 24, 0.06),
+                     0 1px 3px rgba(26, 28, 24, 0.04);
+  --fr-elevation-2:  0 2px 4px rgba(26, 28, 24, 0.06),
+                     0 3px 8px rgba(26, 28, 24, 0.06);
+  --fr-elevation-3:  0 4px 8px rgba(26, 28, 24, 0.08),
+                     0 6px 16px rgba(26, 28, 24, 0.08);
+  --fr-elevation-4:  0 6px 12px rgba(26, 28, 24, 0.10),
+                     0 10px 24px rgba(26, 28, 24, 0.10);
+  --fr-elevation-5:  0 8px 16px rgba(26, 28, 24, 0.12),
+                     0 16px 32px rgba(26, 28, 24, 0.12);
+
+  /* ============ Sizes (tokens/Sizes.kt) ========================= */
+  --fr-size-avatar-sm:    24px;
+  --fr-size-avatar-md:    40px;
+  --fr-size-avatar-lg:    64px;
+  --fr-size-icon-sm:      16px;
+  --fr-size-icon-md:      24px;
+  --fr-size-icon-lg:      32px;
+  --fr-size-shutter:      72px;
+  --fr-size-streak-badge: 56px;
+  --fr-size-meal-image:   220px;
+  --fr-size-bottom-bar:   80px;
+  --fr-size-touch-target: 48px;   /* min hit area */
+  --fr-size-score-badge:  32px;
+  --fr-size-score-cell:   40px;
+  --fr-size-star-icon:    32px;
+
+  /* ============ Motion (tokens/Motion.kt) ======================= */
+  --fr-motion-quick:   120ms;
+  --fr-motion-short:   220ms;
+  --fr-motion-medium:  320ms;
+  --fr-motion-long:    480ms;
+
+  --fr-ease-standard:    cubic-bezier(0.4, 0.0, 0.2, 1);   /* FastOutSlowIn */
+  --fr-ease-decelerated: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --fr-ease-accelerated: cubic-bezier(0.3, 0.0, 0.8, 0.15);
+  --fr-ease-emphasized:  cubic-bezier(0.2, 0.0, 0.0, 1.2);
+}
+
+/* ===================== Dark theme override =========================
+   Mirrors FoodRatsDarkColors in Colors.kt — true smoky charcoal,
+   not green-tinted "forest night". Apply with [data-theme="dark"]
+   on a wrapping element, or use the prefers-color-scheme block.
+   =================================================================== */
+[data-theme="dark"] {
+  /* Brand */
+  --fr-olive:                #A8BC85;   /* light moss */
+  --fr-on-olive:             #1F3209;
+  --fr-olive-container:      #3A5021;
+  --fr-on-olive-container:   #C5D9A3;
+
+  --fr-ember:                #E6A47B;   /* warm ember */
+  --fr-on-ember:             #3B1D00;
+  --fr-ember-container:      #5A2A0D;
+  --fr-on-ember-container:   #F2C8A8;
+
+  --fr-rust:                 #C58D80;   /* clay */
+  --fr-on-rust:              #3D0E00;
+  --fr-rust-container:       #5C1F0F;
+  --fr-on-rust-container:    #F2C8B5;
+
+  --fr-error:                #FFB4AB;
+  --fr-on-error:             #690005;
+  --fr-error-container:      #7A1313;
+  --fr-on-error-container:   #FFDAD6;
+
+  /* Surfaces — charcoal-olive */
+  --fr-bg:                   #1B1C19;
+  --fr-fg:                   #E3E3DC;
+  --fr-surface:              #1B1C19;
+  --fr-on-surface:           #E3E3DC;
+  --fr-surface-variant:      #3A3D36;
+  --fr-on-surface-variant:   #C4C8BB;
+  --fr-outline:              #8E9387;
+  --fr-outline-variant:      #44483D;
+  --fr-inverse-surface:      #E3E3DC;
+  --fr-inverse-on-surface:   #2A2C26;
+  --fr-scrim:                rgba(0, 0, 0, 0.65);
+
+  /* Semantic — dark */
+  --fr-success:              #A8BC85;
+  --fr-on-success:           #1F3209;
+  --fr-warning:              #E6B873;
+  --fr-on-warning:           #432B00;
+  --fr-danger:               #FFB4AB;
+  --fr-on-danger:            #690005;
+  --fr-info:                 #A8C6F0;
+  --fr-on-info:              #0B2E66;
+  --fr-celebration:          #E6A47B;
+  --fr-on-celebration:       #3B1D00;
+  --fr-streak-hot:           #FB923C;
+  --fr-on-streak-hot:        #3A1A00;
+
+  /* Elevation overlays slightly lighter against charcoal */
+  --fr-elevation-1:  0 1px 2px rgba(0, 0, 0, 0.32),
+                     0 1px 3px rgba(0, 0, 0, 0.22);
+  --fr-elevation-2:  0 2px 4px rgba(0, 0, 0, 0.32),
+                     0 3px 8px rgba(0, 0, 0, 0.24);
+  --fr-elevation-3:  0 4px 8px rgba(0, 0, 0, 0.36),
+                     0 6px 16px rgba(0, 0, 0, 0.28);
+  --fr-elevation-4:  0 6px 12px rgba(0, 0, 0, 0.40),
+                     0 10px 24px rgba(0, 0, 0, 0.32);
+  --fr-elevation-5:  0 8px 16px rgba(0, 0, 0, 0.44),
+                     0 16px 32px rgba(0, 0, 0, 0.36);
+}
+
+/* ===================== Semantic type roles ==========================
+   Drop-in classes for HTML mockups. Use sparingly — most consumers
+   should use the variables directly. These match the Material ramp
+   in Typography.kt name-for-name.
+   ==================================================================== */
+
+html, body {
+  font-family: var(--fr-font-body);
+  color: var(--fr-fg);
+  background: var(--fr-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.fr-display-lg  { font-size: var(--fr-display-lg-size);  line-height: var(--fr-display-lg-lh);  font-weight: var(--fr-display-lg-weight); letter-spacing: var(--fr-display-lg-tracking); }
+.fr-display-md  { font-size: var(--fr-display-md-size);  line-height: var(--fr-display-md-lh);  font-weight: var(--fr-display-md-weight); }
+.fr-display-sm  { font-size: var(--fr-display-sm-size);  line-height: var(--fr-display-sm-lh);  font-weight: var(--fr-display-sm-weight); }
+.fr-headline-lg { font-size: var(--fr-headline-lg-size); line-height: var(--fr-headline-lg-lh); font-weight: var(--fr-headline-lg-weight); }
+.fr-headline-md { font-size: var(--fr-headline-md-size); line-height: var(--fr-headline-md-lh); font-weight: var(--fr-headline-md-weight); }
+.fr-headline-sm { font-size: var(--fr-headline-sm-size); line-height: var(--fr-headline-sm-lh); font-weight: var(--fr-headline-sm-weight); }
+.fr-title-lg    { font-size: var(--fr-title-lg-size);    line-height: var(--fr-title-lg-lh);    font-weight: var(--fr-title-lg-weight); }
+.fr-title-md    { font-size: var(--fr-title-md-size);    line-height: var(--fr-title-md-lh);    font-weight: var(--fr-title-md-weight); letter-spacing: var(--fr-title-md-tracking); }
+.fr-title-sm    { font-size: var(--fr-title-sm-size);    line-height: var(--fr-title-sm-lh);    font-weight: var(--fr-title-sm-weight); letter-spacing: var(--fr-title-sm-tracking); }
+.fr-body-lg     { font-size: var(--fr-body-lg-size);     line-height: var(--fr-body-lg-lh);     font-weight: var(--fr-body-lg-weight);  letter-spacing: var(--fr-body-lg-tracking); }
+.fr-body-md     { font-size: var(--fr-body-md-size);     line-height: var(--fr-body-md-lh);     font-weight: var(--fr-body-md-weight);  letter-spacing: var(--fr-body-md-tracking); }
+.fr-body-sm     { font-size: var(--fr-body-sm-size);     line-height: var(--fr-body-sm-lh);     font-weight: var(--fr-body-sm-weight);  letter-spacing: var(--fr-body-sm-tracking); }
+.fr-label-lg    { font-size: var(--fr-label-lg-size);    line-height: var(--fr-label-lg-lh);    font-weight: var(--fr-label-lg-weight); letter-spacing: var(--fr-label-lg-tracking); }
+.fr-label-md    { font-size: var(--fr-label-md-size);    line-height: var(--fr-label-md-lh);    font-weight: var(--fr-label-md-weight); letter-spacing: var(--fr-label-md-tracking); }
+.fr-label-sm    { font-size: var(--fr-label-sm-size);    line-height: var(--fr-label-sm-lh);    font-weight: var(--fr-label-sm-weight); letter-spacing: var(--fr-label-sm-tracking); }
+
+.fr-stat-number    { font-size: var(--fr-stat-number-size);    line-height: var(--fr-stat-number-lh);    font-weight: var(--fr-stat-number-weight);    font-feature-settings: var(--fr-num-feat); font-variant-numeric: tabular-nums; }
+.fr-stat-number-sm { font-size: var(--fr-stat-number-sm-size); line-height: var(--fr-stat-number-sm-lh); font-weight: var(--fr-stat-number-sm-weight); font-feature-settings: var(--fr-num-feat); font-variant-numeric: tabular-nums; }
+
+.fr-mono { font-family: var(--fr-font-mono); }

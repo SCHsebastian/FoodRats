@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Sign in</title>
+<link rel="stylesheet" href="../structural.css">
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <!-- warm media floor: a plate, pushed back -->
+    <div class="media field"></div>
+    <div class="media fill" style="background-image:url(https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=900&h=1600&fit=crop);filter:blur(40px) saturate(135%) brightness(.4);transform:scale(1.2)"></div>
+    <div class="scrim" style="background:linear-gradient(180deg,rgba(8,9,6,.5),transparent 30%,rgba(8,9,6,.7) 80%,#0c0d08)"></div>
+
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <div class="screen">
+      <div class="plane" style="padding:78px 26px 40px;gap:0;min-height:100%">
+
+        <!-- brand -->
+        <img src="../assets/logo.svg" width="64" height="92" alt="" style="filter:drop-shadow(0 10px 24px rgba(0,0,0,.5))">
+        <h1 class="metric on-media" style="font-size:62px;margin:18px 0 0;letter-spacing:-.04em">FoodRats</h1>
+        <p class="body bright" style="font-size:17px;margin:10px 0 0;max-width:280px">Real food with your crew. No filters.</p>
+
+        <!-- highlight array -->
+        <div class="col gap14" style="margin-top:26px">
+          <div class="rowx center gap12">
+            <span class="rowx center" style="width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--fr-olive) 28%,transparent);flex:none"><span class="material-symbols-rounded ico-20 olive">photo_camera</span></span>
+            <span class="title-md white">Capture today's plate</span>
+          </div>
+          <div class="rowx center gap12">
+            <span class="rowx center" style="width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--fr-celebration) 28%,transparent);flex:none"><span class="material-symbols-rounded ico-20 ember">star</span></span>
+            <span class="title-md white">Score your crew's cooking</span>
+          </div>
+          <div class="rowx center gap12">
+            <span class="rowx center" style="width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--fr-streak-hot) 28%,transparent);flex:none"><span class="material-symbols-rounded ico-20 streak">local_fire_department</span></span>
+            <span class="title-md white">Keep the streak alive</span>
+          </div>
+        </div>
+
+        <div style="flex:1;min-height:18px"></div>
+
+        <!-- auth -->
+        <div class="tile near col gap16" style="padding:20px">
+          <div class="field focus"><span class="lab">email</span><input class="inp" value="owner@a.com" readonly></div>
+          <div class="field"><span class="lab">password</span><input class="inp" type="password" value="123456" readonly></div>
+          <button class="btn primary block" style="margin-top:2px">Sign in</button>
+          <div class="rowx center gap10"><hr class="divider-soft grow"><span class="micro">or</span><hr class="divider-soft grow"></div>
+          <button class="btn glass block"><span class="material-symbols-rounded ico-20">account_circle</span> Continue with Google</button>
+          <button class="btn glass block"><span class="material-symbols-rounded ico-20"></span> Continue with Apple</button>
+          <span class="micro tac" style="text-transform:none;letter-spacing:0;font-weight:600;margin-top:2px">No account? <span class="olive">Sign up</span></span>
+        </div>
+
+        <p class="micro tac bright" style="margin:18px 0 0;text-transform:none;letter-spacing:.01em;line-height:1.5;font-weight:600">
+          By continuing, you accept the <span class="olive">Terms (EULA)</span> and the <span class="olive">Community Guidelines</span>.<br>
+          No diet tracking, ever. No public feed — just your crew.
+        </p>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

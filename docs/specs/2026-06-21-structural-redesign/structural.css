@@ -1,0 +1,522 @@
+/* ============================================================================
+   FoodRats — "STRUCTURAL" design language  (2026-06-21)
+   ----------------------------------------------------------------------------
+   A zero-chrome, media-forward layout system layered on top of the real
+   Iron & Ember tokens (tokens.css). Implements the Structural Master Prompt:
+
+     1. CONTINUOUS EDGE-TO-EDGE MEDIA LAYER as the absolute structural floor.
+     2. FLOATING components on a distinct Z-axis — variable transparency +
+        structural depth instead of rigid containment borders.
+     3. ASYMMETRIC BENTO GRID; tile size scales with data priority.
+     4. EXTREME TYPOGRAPHIC CONTRAST — oversized metric display vs microscopic
+        high-density metadata arrays.
+     5. ZERO-CHROME — no bounding boxes, no solid dividers; zones are delineated
+        by spatial layering, alignment, and depth alone.
+
+   Default theme is DARK (charcoal-olive). The whole system is tuned for white
+   type + frosted strata floating over a warm media floor.
+   ========================================================================== */
+
+@import url('tokens.css');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
+
+/* ---------------------------------------------------------------- reset --- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--fr-font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+button { font-family: inherit; color: inherit; }
+
+/* ============================================================================
+   DEVICE SHELL
+   A single fixed 390×844 logical viewport. Every screen renders identically
+   so headless screenshots are deterministic and the gallery tiles align.
+   ========================================================================== */
+.device {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  border-radius: 52px;
+  overflow: hidden;
+  background: var(--fr-bg);
+  color: var(--fr-fg);
+  isolation: isolate;            /* own stacking context for the Z-layers */
+  container-type: inline-size;   /* enables cqw if needed */
+  user-select: none;
+}
+/* When embedded standalone (each screen file) center it on a neutral stage. */
+.stage {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 90% at 50% 0%, #23241f 0%, #131410 60%, #0c0d0a 100%);
+  padding: 28px;
+}
+
+/* ----------------------------------------------------------- Z-LAYER 0 ---- *
+ * MEDIA FOUNDATION — fixed to the device, behind everything, edge to edge.   */
+.media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-size: cover;
+  background-position: center;
+  /* slight push-back so floating strata feel forward of the floor */
+  transform: scale(1.06);
+}
+.media.blur   { filter: blur(34px) saturate(135%) brightness(0.62); }
+.media.blur-2 { filter: blur(56px) saturate(130%) brightness(0.5); }
+.media.dim    { filter: brightness(0.66) saturate(118%); }
+
+/* Atmospheric still-life floor for screens with no natural photo
+   (sign-in, settings, onboarding). Warm Iron & Ember field, no texture. */
+.media.field {
+  transform: none;
+  background:
+    radial-gradient(80% 55% at 18% 8%,  rgba(176,86,30,0.40), transparent 60%),
+    radial-gradient(85% 60% at 88% 18%, rgba(212,90,20,0.28), transparent 55%),
+    radial-gradient(120% 80% at 60% 108%, rgba(79,110,43,0.42), transparent 60%),
+    linear-gradient(180deg, #20231b 0%, #15160f 55%, #0e0f0a 100%);
+}
+.media.field.olive {
+  background:
+    radial-gradient(90% 60% at 20% 0%,  rgba(79,110,43,0.50), transparent 60%),
+    radial-gradient(80% 60% at 95% 30%, rgba(168,188,133,0.20), transparent 55%),
+    linear-gradient(180deg, #1c1f16 0%, #121309 60%, #0d0e08 100%);
+}
+
+/* Dish "moods" — used as the media floor when a real photo URL is absent, and
+   as a layered fallback under hotlinked photos so nothing renders empty. */
+.dish-ramen    { background-image:
+  radial-gradient(60% 60% at 42% 36%, #E3962F, transparent 62%),
+  radial-gradient(70% 70% at 64% 70%, #8E2A2A, transparent 65%),
+  linear-gradient(150deg, #C97E1A 0%, #7A3826 60%, #3a160b 100%); }
+.dish-mackerel { background-image:
+  radial-gradient(55% 55% at 38% 32%, #B7C28A, transparent 60%),
+  radial-gradient(70% 70% at 70% 74%, #3A6BAC55, transparent 66%),
+  linear-gradient(150deg, #5C7A33 0%, #34461f 58%, #15160f 100%); }
+.dish-salad    { background-image:
+  radial-gradient(60% 60% at 40% 34%, #A8BC85, transparent 60%),
+  radial-gradient(60% 60% at 72% 72%, #5C7A33, transparent 64%),
+  linear-gradient(150deg, #6f8a3e 0%, #3a4d22 60%, #14160e 100%); }
+.dish-tacos    { background-image:
+  radial-gradient(58% 58% at 40% 34%, #E6A47B, transparent 60%),
+  radial-gradient(64% 64% at 70% 72%, #B0561E, transparent 64%),
+  linear-gradient(150deg, #C9772f 0%, #7A3826 60%, #2c1206 100%); }
+
+/* ----------------------------------------------------------- Z-LAYER 1 ---- *
+ * SCRIM — pure-legibility washes, no color. Top for the status row, bottom
+ * for the dock, plus a soft floor tint so glass strata keep contrast.        */
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(8,9,7,0.55) 0%, transparent 16%),
+    linear-gradient(0deg,  rgba(8,9,7,0.78) 0%, transparent 26%);
+}
+.scrim.even { background: linear-gradient(180deg, rgba(10,11,8,0.34), rgba(10,11,8,0.50)); }
+
+/* ----------------------------------------------------------- Z-LAYER 2 ---- *
+ * SCREEN — the scrolling content plane. Transparent: the media floor shows
+ * through every gap between floating strata.                                 */
+.screen {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+}
+.screen::-webkit-scrollbar { display: none; }
+
+/* Vertical rhythm container inside the screen. */
+.plane {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fr-space-md);
+  padding: 64px 20px 132px;   /* clear status row + floating dock */
+  min-height: 100%;
+}
+.plane.tight { gap: var(--fr-space-sm); }
+.plane.flush { padding-left: 0; padding-right: 0; }  /* full-bleed media heroes */
+
+/* status row (carrier / clock) — minimal, floats over the media */
+.statusrow {
+  position: absolute;
+  z-index: 4;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 26px 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #fff;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.statusrow .sig { display: inline-flex; gap: 5px; align-items: center; opacity: 0.92; }
+.statusrow .material-symbols-rounded { font-size: 17px; }
+
+/* ============================================================================
+   FLOATING STRATA  (the "tiles")
+   Frosted panes. Zones are read by transparency + depth, never by a hard
+   border. A 1px inner top-light models a glass edge-catch, not a box.
+   ========================================================================== */
+.tile {
+  position: relative;
+  border-radius: var(--fr-radius-lg);
+  padding: var(--fr-space-md);
+  background: color-mix(in srgb, #1b1c17 64%, transparent);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  backdrop-filter: blur(26px) saturate(150%);
+  box-shadow: 0 22px 48px -18px rgba(0,0,0,0.62);
+  color: var(--fr-fg);
+  overflow: hidden;
+}
+.tile::before {                 /* glass edge-catch — top light only */
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+  pointer-events: none;
+}
+/* depth variants — recede vs advance on the Z-axis */
+.tile.deep { background: color-mix(in srgb, #15160f 46%, transparent);
+  -webkit-backdrop-filter: blur(40px) saturate(140%); backdrop-filter: blur(40px) saturate(140%);
+  box-shadow: 0 14px 34px -16px rgba(0,0,0,0.5); }
+.tile.near { background: color-mix(in srgb, #1d1e18 80%, transparent);
+  box-shadow: 0 30px 64px -20px rgba(0,0,0,0.7); }
+.tile.solid { background: #1c1d17; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.tile.flush { padding: 0; }
+.tile.bare  { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; }
+.tile.bare::before { display: none; }
+
+/* clickable strata get a press physics cue */
+.tap { cursor: pointer; transition: transform var(--fr-motion-quick) var(--fr-ease-standard); }
+.tap:active { transform: scale(0.98); }
+
+/* warm/loud strata — used only for streak + celebration (brand rule) */
+.tile.ember  { background: linear-gradient(150deg, var(--fr-streak-hot) 0%, var(--fr-ember) 70%, var(--fr-rust) 100%);
+  color: #fff; box-shadow: 0 24px 54px -16px rgba(212,90,20,0.5); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.tile.olive  { background: linear-gradient(150deg, var(--fr-olive) 0%, var(--fr-success) 100%); color: #fff;
+  -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: 0 24px 54px -18px rgba(79,110,43,0.5); }
+
+/* ============================================================================
+   BENTO  — asymmetric 6-col grid; priority maps to span.
+   ========================================================================== */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: var(--fr-space-sm);
+  align-items: stretch;
+}
+.c1{grid-column:span 1} .c2{grid-column:span 2} .c3{grid-column:span 3}
+.c4{grid-column:span 4} .c5{grid-column:span 5} .c6{grid-column:span 6}
+.r2{grid-row:span 2} .r3{grid-row:span 3} .r4{grid-row:span 4}
+.bento .tile { padding: var(--fr-space-md); }
+
+/* ============================================================================
+   TYPOGRAPHY — the extreme-contrast pairing
+   ========================================================================== */
+.metric {
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.84;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  color: var(--fr-fg);
+}
+.metric.xl  { font-size: 104px; }
+.metric.lg  { font-size: 68px; }
+.metric.md  { font-size: 44px; }
+.metric.sm  { font-size: 30px; }
+.metric .u  { font-size: 0.30em; font-weight: 700; letter-spacing: 0; opacity: 0.7; }  /* unit suffix */
+.on-media   { color: #fff; text-shadow: 0 2px 24px rgba(0,0,0,0.5); }
+
+.title-xl { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.02; }
+.title-lg { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.1; }
+.title-md { font-size: 17px; font-weight: 700; line-height: 1.2; }
+.body     { font-size: 14px; font-weight: 400; line-height: 1.5; color: var(--fr-on-surface-variant); }
+.body.bright { color: #d8d8cf; }
+
+/* microscopic high-density metadata array */
+.micro {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--fr-on-surface-variant);
+  line-height: 1.3;
+}
+.micro.bright { color: #b6b7ab; }
+.micro.mono   { font-family: var(--fr-font-mono); letter-spacing: 0.06em; }
+.micro-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+.micro-row .sep {
+  width: 3px; height: 3px; border-radius: 50%;
+  background: currentColor; opacity: 0.4; flex: none;
+}
+.eyebrow {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--fr-olive);
+}
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+.mono { font-family: var(--fr-font-mono); }
+
+/* ============================================================================
+   ATOMS  (Fr* vocabulary, restyled for the structural skin)
+   ========================================================================== */
+/* icons */
+.material-symbols-rounded {
+  font-variation-settings: 'FILL' 1, 'wght' 450, 'GRAD' 0, 'opsz' 24;
+  line-height: 1;
+  vertical-align: middle;
+  user-select: none;
+}
+.ico-20 { font-size: 20px; } .ico-24 { font-size: 24px; } .ico-32 { font-size: 32px; }
+
+/* avatar */
+.avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; flex: none;
+  background: var(--fr-olive-container); color: var(--fr-on-olive-container);
+  font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  background-size: cover; background-position: center;
+}
+.avatar.s24 { width: 24px; height: 24px; font-size: 9px; }
+.avatar.s32 { width: 32px; height: 32px; font-size: 11px; }
+.avatar.s40 { width: 40px; height: 40px; font-size: 14px; }
+.avatar.s56 { width: 56px; height: 56px; font-size: 19px; }
+.avatar.ring { box-shadow: 0 0 0 2px var(--fr-bg), 0 0 0 4px var(--fr-olive); }
+.avatar.ember-ring  { box-shadow: 0 0 0 2px #1b1c17, 0 0 0 4px var(--fr-ember); }
+.avatar.rust-ring   { box-shadow: 0 0 0 2px #1b1c17, 0 0 0 4px var(--fr-rust); }
+.avatar.moss-ring   { box-shadow: 0 0 0 2px #1b1c17, 0 0 0 4px var(--fr-success); }
+
+/* score badge — width-locked, tabular */
+.score {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 50%; flex: none;
+  background: var(--fr-olive); color: var(--fr-on-olive);
+  font-weight: 800; font-variant-numeric: tabular-nums;
+}
+.score.s28 { width: 28px; height: 28px; font-size: 13px; }
+.score.s36 { width: 36px; height: 36px; font-size: 16px; }
+.score.hot { background: var(--fr-streak-hot); color: var(--fr-on-streak-hot); }
+.score.muted { background: color-mix(in srgb, var(--fr-on-surface-variant) 40%, transparent); color: #fff; }
+
+/* pills, chips */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 30px; padding: 0 12px; border-radius: var(--fr-radius-pill);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.2px;
+  background: color-mix(in srgb, #1b1c17 55%, transparent);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  color: #e7e7df; white-space: nowrap;
+}
+.chip .material-symbols-rounded { font-size: 14px; }
+.chip.sel    { background: var(--fr-olive); color: var(--fr-on-olive); }
+.chip.ember  { background: color-mix(in srgb, var(--fr-streak-hot) 92%, transparent); color: #fff; }
+.chip.glass  { background: rgba(20,21,16,0.5); }
+.chip.tiny   { height: 24px; font-size: 10px; letter-spacing: 0.4px; padding: 0 9px; text-transform: uppercase; }
+
+/* flame streak badge */
+.flame {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 24px; padding: 0 9px 0 7px; border-radius: var(--fr-radius-pill);
+  background: var(--fr-streak-hot); color: var(--fr-on-streak-hot);
+  font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums;
+}
+
+/* floating chrome buttons over media (back, share, close…) */
+.glass-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border-radius: 50%; border: 0;
+  background: color-mix(in srgb, #15160f 50%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(160%); backdrop-filter: blur(18px) saturate(160%);
+  color: #fff; cursor: pointer; flex: none;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.4);
+  transition: transform var(--fr-motion-quick) var(--fr-ease-standard);
+}
+.glass-btn:active { transform: scale(0.92); }
+.glass-btn.danger { color: var(--fr-danger); }
+
+/* primary / secondary actions */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 50px; padding: 0 24px; border: 0; border-radius: var(--fr-radius-pill);
+  font-size: 15px; font-weight: 700; letter-spacing: 0.1px; cursor: pointer;
+  transition: transform var(--fr-motion-quick) var(--fr-ease-standard);
+}
+.btn:active { transform: scale(0.97); }
+.btn.block { width: 100%; }
+.btn.primary   { background: var(--fr-olive); color: var(--fr-on-olive); }
+.btn.ember     { background: linear-gradient(135deg, var(--fr-ember), var(--fr-streak-hot)); color: #fff; }
+.btn.glass     { background: color-mix(in srgb, #20211a 62%, transparent);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px); color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10); }
+.btn.ghost     { background: transparent; color: var(--fr-olive); box-shadow: inset 0 0 0 1px var(--fr-outline); }
+.btn.danger    { background: var(--fr-danger); color: var(--fr-on-danger); }
+.btn.sm        { height: 38px; font-size: 13px; padding: 0 16px; }
+
+/* text field, structural skin (underline only — zero box) */
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field .lab { font-size: 10px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fr-on-surface-variant); }
+.field .inp {
+  width: 100%; background: transparent; border: 0;
+  border-bottom: 1.5px solid color-mix(in srgb, var(--fr-on-surface-variant) 55%, transparent);
+  padding: 8px 2px; color: #fff; font-size: 18px; font-weight: 600; font-family: inherit;
+  outline: none;
+}
+.field .inp::placeholder { color: color-mix(in srgb, var(--fr-on-surface-variant) 70%, transparent); font-weight: 500; }
+.field.focus .inp { border-bottom-color: var(--fr-olive); }
+
+/* toggle */
+.toggle { width: 46px; height: 28px; border-radius: 999px; background: color-mix(in srgb, var(--fr-on-surface-variant) 40%, transparent); position: relative; flex: none; }
+.toggle.on { background: var(--fr-olive); }
+.toggle::after { content:''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left var(--fr-motion-short) var(--fr-ease-standard); }
+.toggle.on::after { left: 21px; }
+
+/* radio (for pickers) */
+.radio { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--fr-on-surface-variant); flex: none; position: relative; }
+.radio.on { box-shadow: inset 0 0 0 2px var(--fr-olive); }
+.radio.on::after { content:''; position: absolute; inset: 5px; border-radius: 50%; background: var(--fr-olive); }
+
+/* ============================================================================
+   ROWS — list items with NO dividers. Separation by rhythm + faint band only.
+   ========================================================================== */
+.row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.row + .row { box-shadow: inset 0 1px 0 rgba(255,255,255,0.05); }   /* hairline light, not a rule */
+.row .grow { flex: 1; min-width: 0; }
+.row .ellip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ============================================================================
+   FLOATING DOCK  (zero-chrome nav)
+   ========================================================================== */
+.dock {
+  position: absolute; z-index: 6;
+  left: 16px; right: 16px; bottom: 18px; height: 64px;
+  display: flex; align-items: center; justify-content: space-around;
+  padding: 0 14px;
+  border-radius: 32px;
+  background: color-mix(in srgb, #15160f 72%, transparent);
+  -webkit-backdrop-filter: blur(30px) saturate(180%); backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07);
+}
+.dock .nav {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: transparent; border: 0; cursor: pointer;
+  color: var(--fr-on-surface-variant); padding: 6px 10px;
+}
+.dock .nav .lbl { font-size: 9px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; }
+.dock .nav.on { color: var(--fr-olive); }
+.dock .fab {
+  width: 58px; height: 58px; margin-top: -26px; border-radius: 50%; border: 0; cursor: pointer;
+  background: linear-gradient(135deg, var(--fr-ember) 0%, var(--fr-streak-hot) 100%);
+  color: #fff; display: inline-flex; align-items: center; justify-content: center;
+  box-shadow: 0 12px 26px rgba(176,86,30,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.dock .fab .material-symbols-rounded { font-size: 28px; }
+
+/* pulsing ring on the FAB when you haven't posted today */
+.fab-wrap { position: relative; width: 58px; height: 58px; margin-top: -26px; }
+.fab-wrap .fab { margin-top: 0; }
+.fab-wrap .ring { position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--fr-streak-hot); animation: pulse 1800ms var(--fr-ease-standard) infinite; pointer-events: none; }
+@keyframes pulse { 0%,100% { transform: scale(1); opacity: 0.7; } 50% { transform: scale(1.2); opacity: 0; } }
+
+/* ============================================================================
+   BOTTOM SHEET / DIALOG  (pickers + moderation + confirms)
+   ========================================================================== */
+.sheet-scrim { position: absolute; inset: 0; z-index: 8; background: rgba(6,7,5,0.55); -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); }
+.sheet {
+  position: absolute; z-index: 9; left: 0; right: 0; bottom: 0;
+  border-radius: 28px 28px 0 0;
+  padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+  background: color-mix(in srgb, #1c1d16 88%, transparent);
+  -webkit-backdrop-filter: blur(40px) saturate(160%); backdrop-filter: blur(40px) saturate(160%);
+  box-shadow: 0 -24px 60px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.08);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.sheet .grab { width: 40px; height: 5px; border-radius: 999px; background: rgba(255,255,255,0.22); align-self: center; }
+.dialog {
+  position: absolute; z-index: 9; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  width: 300px; padding: 22px; border-radius: 26px;
+  background: color-mix(in srgb, #1d1e17 92%, transparent);
+  -webkit-backdrop-filter: blur(40px); backdrop-filter: blur(40px);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08);
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* ----------------------------------------------------------------- util --- */
+.col { display: flex; flex-direction: column; }
+.rowx { display: flex; align-items: center; }
+.between { justify-content: space-between; }
+.center { align-items: center; }
+.gap4{gap:4px} .gap6{gap:6px} .gap8{gap:8px} .gap10{gap:10px} .gap12{gap:12px} .gap14{gap:14px} .gap16{gap:16px} .gap20{gap:20px} .gap24{gap:24px}
+.grow { flex: 1; min-width: 0; }
+.mt2{margin-top:2px}.mt4{margin-top:4px}.mt6{margin-top:6px}.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}.mta{margin-top:auto}
+.wrap{flex-wrap:wrap}.nowrap{white-space:nowrap}
+.olive{color:var(--fr-olive)} .ember{color:var(--fr-ember)} .streak{color:var(--fr-streak-hot)}
+.danger{color:var(--fr-danger)} .success{color:var(--fr-success)} .dim{color:var(--fr-on-surface-variant)}
+.white{color:#fff} .w800{font-weight:800}.w700{font-weight:700}.w600{font-weight:600}
+.full{width:100%}.tac{text-align:center}.rel{position:relative}
+.divider-soft { height: 1px; background: rgba(255,255,255,0.06); border: 0; margin: 4px 0; }
+
+/* ============================================================================
+   LIGHT THEME  (opt-in via .device.light) — concrete floor, ink type.
+   The system is dark-first; light keeps the same structure with neutral glass.
+   ========================================================================== */
+.device.light { background: var(--fr-bg); color: var(--fr-fg); }
+.device.light .scrim { background:
+  linear-gradient(180deg, rgba(232,230,222,0.5) 0%, transparent 14%),
+  linear-gradient(0deg,  rgba(232,230,222,0.7) 0%, transparent 24%); }
+.device.light .tile { background: color-mix(in srgb, #ffffff 64%, transparent); color: var(--fr-fg);
+  box-shadow: 0 20px 44px -20px rgba(26,28,24,0.3); }
+.device.light .tile::before { box-shadow: inset 0 1px 0 rgba(255,255,255,0.7); }
+.device.light .metric { color: var(--fr-fg); }
+.device.light .field .inp { color: var(--fr-fg); }
+.device.light .dock { background: color-mix(in srgb, #ffffff 80%, transparent); }
+.device.light .statusrow { color: #fff; }   /* status row stays over media */
+
+/* ============================================================================
+   COMPOSITIONAL HELPERS  (cover-fill media, hero scrims, in-tile photos)
+   ========================================================================== */
+.fill { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.fill.photo { background-color: transparent; }     /* sits over a dish-* gradient floor */
+.photo-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(0deg, rgba(7,8,5,0.90) 0%, rgba(7,8,5,0.12) 46%, rgba(7,8,5,0.34) 100%);
+}
+.photo-scrim.even { background: linear-gradient(0deg, rgba(7,8,5,0.7), rgba(7,8,5,0.35) 70%); }
+.layer { position: relative; z-index: 2; }          /* content above in-tile media */
+.hero { position: relative; display: flex; flex-direction: column; justify-content: flex-end; }
+.hero .layer { padding: var(--fr-space-md); }
+.fab-badge {                                         /* notification dot on chrome */
+  position: absolute; top: 7px; right: 7px; width: 9px; height: 9px; border-radius: 50%;
+  background: var(--fr-streak-hot); box-shadow: 0 0 0 2px rgba(20,21,16,0.8);
+}
+.spark { display: block; }
+.bar-track { height: 4px; border-radius: 999px; background: rgba(255,255,255,0.16); overflow: hidden; }
+.bar-track > i { display: block; height: 100%; border-radius: 999px; background: var(--fr-olive); }
+.grid-badges { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--fr-space-sm); }
+.badge-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 14px 8px; }
+.badge-disc {
+  width: 56px; height: 56px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--fr-on-surface-variant) 22%, transparent); color: var(--fr-on-surface-variant);
+}
+.badge-disc.earned { background: linear-gradient(135deg, var(--fr-ember), var(--fr-streak-hot)); color: #fff; box-shadow: 0 10px 24px -8px rgba(176,86,30,0.6); }

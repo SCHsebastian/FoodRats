@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Feed</title>
+<link rel="stylesheet" href="../structural.css">
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <!-- Z0 — continuous edge-to-edge media floor (warm, no plate yet) -->
+    <div class="media field"></div>
+    <!-- Z1 — legibility scrim -->
+    <div class="scrim"></div>
+
+    <!-- status row -->
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <!-- Z2 — scrolling content plane -->
+    <div class="screen">
+      <div class="plane tight">
+
+        <!-- header: oversized crew switcher (zero-chrome) -->
+        <div class="rowx between center" style="margin-top:4px">
+          <div class="col">
+            <span class="micro olive">your crew</span>
+            <div class="rowx center gap6 mt2">
+              <span class="title-xl white">Saturday Brunch</span>
+              <span class="material-symbols-rounded ico-24 dim">expand_more</span>
+            </div>
+          </div>
+          <div class="rowx gap8 center">
+            <button class="glass-btn rel"><span class="material-symbols-rounded ico-24">notifications</span><i class="fab-badge"></i></button>
+            <span class="avatar s40 moss-ring">SC</span>
+          </div>
+        </div>
+
+        <!-- day strip + streak, all floating, no bar -->
+        <div class="rowx between center" style="margin-top:14px">
+          <div class="rowx center gap10">
+            <button class="glass-btn" style="width:34px;height:34px"><span class="material-symbols-rounded ico-20">chevron_left</span></button>
+            <div class="col">
+              <span class="title-md white">Today</span>
+              <span class="micro mono bright">sat 21 jun</span>
+            </div>
+            <button class="glass-btn" style="width:34px;height:34px;opacity:.4"><span class="material-symbols-rounded ico-20">chevron_right</span></button>
+          </div>
+          <div class="col" style="align-items:flex-end">
+            <div class="rowx center gap4">
+              <span class="material-symbols-rounded streak" style="font-size:22px">local_fire_department</span>
+              <span class="metric md streak">7</span>
+            </div>
+            <span class="micro" style="margin-top:-2px">day streak</span>
+          </div>
+        </div>
+
+        <!-- weekly challenge + live count -->
+        <div class="rowx between center wrap gap8" style="margin-top:6px">
+          <span class="chip ember">🏆 This week · Martes de tacos</span>
+          <span class="micro-row bright"><span>today's plates · 0</span><span class="sep"></span><span class="olive">live</span></span>
+        </div>
+
+        <!-- EMPTY STATE — no meals today -->
+        <div class="tile deep col center gap14" style="margin-top:6px;text-align:center;padding:48px 28px">
+          <span class="rowx center" style="width:84px;height:84px;border-radius:26px;background:color-mix(in srgb,var(--fr-on-surface-variant) 16%,transparent);flex:none">
+            <span class="material-symbols-rounded dim" style="font-size:40px">restaurant</span>
+          </span>
+          <div class="col center gap6">
+            <span class="title-lg white">Nothing here yet</span>
+            <span class="body" style="max-width:220px">No one has posted a meal today.</span>
+          </div>
+        </div>
+
+        <!-- your-plate nudge (strong CTA — you haven't posted) -->
+        <div class="tile ember c6 tap rowx center gap14" style="margin-top:4px">
+          <div class="rowx center" style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.18);flex:none"><span class="material-symbols-rounded ico-24 white">photo_camera</span></div>
+          <div class="col grow">
+            <span class="title-md white">Your plate today</span>
+            <span class="micro white" style="opacity:.9;letter-spacing:.04em;text-transform:none;font-weight:600">Post to keep your 7-day streak alive</span>
+          </div>
+          <span class="material-symbols-rounded ico-24 white">chevron_right</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Z6 — floating dock (zero-chrome nav) -->
+    <div class="dock">
+      <button class="nav on"><span class="material-symbols-rounded ico-24">restaurant</span><span class="lbl">Feed</span></button>
+      <button class="nav"><span class="material-symbols-rounded ico-24">badge</span><span class="lbl">Passport</span></button>
+      <div class="fab-wrap"><span class="ring"></span><button class="fab"><span class="material-symbols-rounded">photo_camera</span></button></div>
+      <button class="nav"><span class="material-symbols-rounded ico-24">bar_chart</span><span class="lbl">Stats</span></button>
+      <button class="nav"><span class="material-symbols-rounded ico-24">person</span><span class="lbl">You</span></button>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

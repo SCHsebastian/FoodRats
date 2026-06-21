@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 200" role="img" aria-label="FoodRats">
+  <title>FoodRats</title>
+  
+    <g stroke="#1A1C18" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="30" y1="76" x2="118" y2="164" stroke-width="4"></line>
+      <line x1="30" y1="76" x2="40" y2="86" stroke-width="9"></line>
+      <path d="M110 156 L 124 170 L 120 162 L 114 160 Z" fill="#1A1C18"></path>
+    </g>
+    <g stroke="#1A1C18" stroke-width="4" stroke-linecap="round">
+      <line x1="118" y1="76" x2="30" y2="164"></line>
+      <line x1="122" y1="80" x2="114" y2="72"></line>
+      <line x1="116" y1="70" x2="110" y2="76"></line>
+      <line x1="108" y1="66" x2="104" y2="72"></line>
+    </g>
+    <circle cx="30" cy="166" r="4" fill="#1A1C18"></circle>
+    <circle cx="118" cy="166" r="4" fill="#1A1C18"></circle>
+  
+    <ellipse cx="50.8" cy="37.93600000000001" rx="17.92" ry="18.816000000000003" fill="#E8E6DE" stroke="#1A1C18" stroke-width="2"></ellipse>
+    <ellipse cx="89.2" cy="37.93600000000001" rx="17.92" ry="18.816000000000003" fill="#E8E6DE" stroke="#1A1C18" stroke-width="2"></ellipse>
+    <ellipse cx="70" cy="25.392000000000003" rx="18.816000000000003" ry="21.504" fill="#E8E6DE" stroke="#1A1C18" stroke-width="2"></ellipse>
+    <rect x="38" y="50.480000000000004" width="64" height="11.52" fill="#E8E6DE" stroke="#1A1C18" stroke-width="2" rx="2"></rect>
+  
+    <g>
+      
+      <ellipse cx="70" cy="116" rx="38.64" ry="40.480000000000004" fill="#B0561E"></ellipse>
+      
+      <ellipse cx="46.08" cy="84.72" rx="11.96" ry="13.8" fill="#B0561E"></ellipse>
+      <ellipse cx="93.92" cy="84.72" rx="11.96" ry="13.8" fill="#B0561E"></ellipse>
+      
+      <ellipse cx="46.08" cy="86.56" rx="6.44" ry="8.280000000000001" fill="#E6A47B"></ellipse>
+      <ellipse cx="93.92" cy="86.56" rx="6.44" ry="8.280000000000001" fill="#E6A47B"></ellipse>
+      
+      <ellipse cx="57.12" cy="112.32" rx="3.68" ry="4.6000000000000005" fill="#1A1C18"></ellipse>
+      <ellipse cx="82.88" cy="112.32" rx="3.68" ry="4.6000000000000005" fill="#1A1C18"></ellipse>
+      
+      <ellipse cx="70" cy="132.56" rx="4.6000000000000005" ry="3.68" fill="#1A1C18"></ellipse>
+    </g>
+</svg>

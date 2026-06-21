@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Pick a crew</title>
+<link rel="stylesheet" href="../structural.css">
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <!-- Z0 — warm atmospheric media floor (no photo) -->
+    <div class="media field"></div>
+    <!-- Z1 — legibility scrim -->
+    <div class="scrim" style="background:linear-gradient(180deg,rgba(8,9,6,.5),transparent 30%,rgba(8,9,6,.66) 82%,#0c0d08)"></div>
+
+    <!-- status row -->
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <!-- Z2 — scrolling content plane -->
+    <div class="screen">
+      <div class="plane" style="padding:88px 26px 56px;gap:0;min-height:100%">
+
+        <!-- brand hero (centered) -->
+        <div class="col center" style="text-align:center">
+          <img src="../assets/logo-crew.svg" width="92" height="80" alt="" style="filter:brightness(0) invert(1);opacity:.94;filter:brightness(0) invert(1) drop-shadow(0 10px 24px rgba(0,0,0,.5))">
+          <h1 class="metric on-media" style="font-size:56px;margin:18px 0 0;letter-spacing:-.04em">FoodRats</h1>
+          <p class="body bright" style="font-size:17px;margin:12px 0 0;max-width:260px">Eat together, even apart.</p>
+        </div>
+
+        <div style="flex:1;min-height:40px"></div>
+
+        <!-- selectable crew row (frosted tap tile) -->
+        <span class="micro olive" style="margin-bottom:10px">your crews</span>
+        <div class="tile near tap rowx center gap14" style="padding:16px">
+          <span class="avatar s56 moss-ring" style="background:#4F6E2B">SB</span>
+          <div class="col grow">
+            <span class="title-md white">Saturday Brunch</span>
+            <span class="micro-row bright" style="margin-top:3px"><span>since may 2024</span><span class="sep"></span><span class="mono nowrap">4 / 8</span></span>
+          </div>
+          <span class="material-symbols-rounded ico-24 dim">chevron_right</span>
+        </div>
+
+        <!-- actions -->
+        <div class="col gap12" style="margin-top:22px">
+          <a href="crew-create.html" class="btn primary block" style="text-decoration:none">Create a crew</a>
+          <a href="crew-join.html" class="btn glass block" style="text-decoration:none">Join with code</a>
+        </div>
+
+        <!-- footer -->
+        <p class="micro tac bright" style="margin:26px 0 0;text-transform:none;letter-spacing:.01em;font-weight:600">No public feed — just your crew.</p>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>
