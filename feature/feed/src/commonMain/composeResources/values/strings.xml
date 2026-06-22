@@ -148,4 +148,7 @@
          tap-to-expand label; the close label is for the full-screen viewer's dismiss button. -->
     <string name="feed_crew_banner_cd">Crew banner — tap to view full screen</string>
     <string name="feed_crew_banner_close_cd">Close banner</string>
+    <string name="feed_meal_photo_open_cd">View full photo</string>
+    <string name="feed_meal_photo_cd">Meal photo — pinch or double-tap to zoom</string>
+    <string name="feed_meal_photo_close_cd">Close photo</string>
 </resources>

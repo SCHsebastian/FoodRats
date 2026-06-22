@@ -148,4 +148,7 @@
          sirve también de etiqueta para ampliar; la de cerrar es para el botón del visor a pantalla completa. -->
     <string name="feed_crew_banner_cd">Imagen del grupo — toca para verla a pantalla completa</string>
     <string name="feed_crew_banner_close_cd">Cerrar imagen</string>
+    <string name="feed_meal_photo_open_cd">Ver la foto completa</string>
+    <string name="feed_meal_photo_cd">Foto del plato — pellizca o toca dos veces para ampliar</string>
+    <string name="feed_meal_photo_close_cd">Cerrar foto</string>
 </resources>

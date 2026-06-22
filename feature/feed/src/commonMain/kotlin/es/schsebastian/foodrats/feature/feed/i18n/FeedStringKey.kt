@@ -120,6 +120,9 @@ import foodrats.feature.feed.generated.resources.feed_badge_hundred
 import foodrats.feature.feed.generated.resources.feed_voter_score_glyph_free
 import foodrats.feature.feed.generated.resources.feed_crew_banner_cd
 import foodrats.feature.feed.generated.resources.feed_crew_banner_close_cd
+import foodrats.feature.feed.generated.resources.feed_meal_photo_cd
+import foodrats.feature.feed.generated.resources.feed_meal_photo_close_cd
+import foodrats.feature.feed.generated.resources.feed_meal_photo_open_cd
 import org.jetbrains.compose.resources.StringResource
 
 enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
@@ -255,4 +258,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     // C9 — clickable crew banner hero + the close button of its full-screen viewer.
     CrewBannerCd(Res.string.feed_crew_banner_cd),
     CrewBannerCloseCd(Res.string.feed_crew_banner_close_cd),
+    MealPhotoOpenCd(Res.string.feed_meal_photo_open_cd),
+    MealPhotoCd(Res.string.feed_meal_photo_cd),
+    MealPhotoCloseCd(Res.string.feed_meal_photo_close_cd),
 }

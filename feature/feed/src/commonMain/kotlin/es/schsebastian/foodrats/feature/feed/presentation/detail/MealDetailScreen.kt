@@ -1,6 +1,11 @@
 package es.schsebastian.foodrats.feature.feed.presentation.detail
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,14 +39,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.rememberAsyncImagePainter
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
@@ -335,6 +348,8 @@ private fun MealDetailBody(
 ) {
     val meal = state.meal ?: return
     var pendingDeleteCommentId by remember { mutableStateOf<MealCommentId?>(null) }
+    // Full-screen zoomable photo viewer (opened by tapping the header plate).
+    var showPhotoViewer by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Z0 — a solid, warm-concrete page floor. The plate is NO LONGER the full-screen floor: it's
@@ -349,7 +364,25 @@ private fun MealDetailBody(
             // Header: the plate, bounded to the top. The dish title floats at its foot over a scrim.
             // clipToBounds() is essential: FrMediaFloor over-scales the image (.scale(1.06f)), which
             // would otherwise bleed the bright bottom edge of the photo down over the description below.
-            Box(modifier = Modifier.fillMaxWidth().height(HEAD_HEIGHT).clipToBounds()) {
+            // Tapping the plate opens the full-screen zoomable viewer (only when there's a real photo).
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(HEAD_HEIGHT)
+                    .clipToBounds()
+                    .then(
+                        if (meal.photoUrl.isNotBlank()) {
+                            Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClickLabel = resolve(FeedStringKey.MealPhotoOpenCd),
+                                onClick = { showPhotoViewer = true },
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
+            ) {
                 // The plate, confined to the header. Standard scrim keeps it crisp; OnMedia keeps the
                 // dark wash in light theme so the white title/author stay legible over it.
                 if (meal.photoUrl.isNotBlank()) {
@@ -488,6 +521,14 @@ private fun MealDetailBody(
             onChange = { onIntent(MealDetailIntent.CommentInputChanged(it)) },
             onSend = { onIntent(MealDetailIntent.PostComment) },
             modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    if (showPhotoViewer && meal.photoUrl.isNotBlank()) {
+        MealPhotoViewer(
+            photoUrl = meal.photoUrl,
+            cacheKey = meal.plateCacheKey,
+            onDismiss = { showPhotoViewer = false },
         )
     }
 
@@ -899,6 +940,83 @@ private fun CommentsLoadingSkeleton() {
                 FrShimmerBox(modifier = Modifier.size(Sizes.avatarSm), shape = CircleShape)
                 FrShimmerBox(modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(Radius.lg))
             }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Full-screen photo viewer
+// ----------------------------------------------------------------------------------------------
+
+/**
+ * Full-screen, zoomable plate viewer. The photo is fitted on a near-opaque black scrim and can be
+ * pinch-zoomed (1×–5×), double-tapped to toggle 1×⇄2.5×, and panned while zoomed (pan is clamped so
+ * the image can't be dragged fully off-screen). A single tap while at 1× — or the close button, the
+ * backdrop, or system back — dismisses it ([Dialog] consumes back).
+ */
+@Composable
+private fun MealPhotoViewer(photoUrl: String, cacheKey: String, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        var scale by remember { mutableStateOf(1f) }
+        var offset by remember { mutableStateOf(Offset.Zero) }
+        var containerSize by remember { mutableStateOf(IntSize.Zero) }
+        val minScale = 1f
+        val maxScale = 5f
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.97f))
+                .onSizeChanged { containerSize = it },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(model = stablePlateRequest(photoUrl, cacheKey)),
+                contentDescription = resolve(FeedStringKey.MealPhotoCd),
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(minScale, maxScale)
+                            if (scale > 1f) {
+                                // Clamp pan so the (scaled) image edges can't cross the screen centre.
+                                val maxX = (containerSize.width * (scale - 1f)) / 2f
+                                val maxY = (containerSize.height * (scale - 1f)) / 2f
+                                offset = Offset(
+                                    (offset.x + pan.x).coerceIn(-maxX, maxX),
+                                    (offset.y + pan.y).coerceIn(-maxY, maxY),
+                                )
+                            } else {
+                                offset = Offset.Zero
+                            }
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { if (scale <= 1f) onDismiss() },
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = 2.5f
+                                }
+                            },
+                        )
+                    }
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    },
+            )
+            FrGlassCircleButton(
+                icon = FrIcons.Close,
+                onClick = onDismiss,
+                contentDescription = resolve(FeedStringKey.MealPhotoCloseCd),
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(Spacing.md),
+            )
         }
     }
 }
