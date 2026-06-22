@@ -14,10 +14,32 @@ package es.schsebastian.foodrats.core.domain.crew
  * Default is [Stars], matching pre-C8 behavior for all existing crews.
  */
 sealed interface CrewScoreStyle {
+    /**
+     * Stable, persisted discriminator — matches the Firestore DTO value
+     * (`CrewMapper.toDto`) AND the value the write outbox flattens
+     * ([es.schsebastian.foodrats.core.domain.outbox.PendingCommand.SetCrewScoreStyle.styleKey]).
+     * Lowercase, never localized.
+     */
+    val key: String
+
     /** Classic 1–5 stars (★) — the default before C8. */
-    data object Stars : CrewScoreStyle
+    data object Stars : CrewScoreStyle {
+        override val key: String = "stars"
+    }
     /** Emoji scale derived from the numeric score (😐 … 🤩). */
-    data object Emoji : CrewScoreStyle
+    data object Emoji : CrewScoreStyle {
+        override val key: String = "emoji"
+    }
     /** Plain numeric label — "N/5". */
-    data object Numeric : CrewScoreStyle
+    data object Numeric : CrewScoreStyle {
+        override val key: String = "numeric"
+    }
+
+    companion object {
+        /** Every style, for exhaustive mapping and tests. */
+        val all: List<CrewScoreStyle> = listOf(Stars, Emoji, Numeric)
+
+        /** Resolves a persisted [key] back to its style, or `null` if unknown (forward-compat). */
+        fun fromKey(key: String): CrewScoreStyle? = all.firstOrNull { it.key == key }
+    }
 }

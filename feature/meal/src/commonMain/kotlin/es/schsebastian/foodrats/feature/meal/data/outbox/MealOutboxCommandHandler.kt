@@ -50,7 +50,12 @@ class MealOutboxCommandHandler(
         is PendingCommand.RenameCrew,
         is PendingCommand.SetBlindVoting,
         is PendingCommand.RemoveMember,
-        is PendingCommand.LeaveCrew -> false
+        is PendingCommand.LeaveCrew,
+        is PendingCommand.SetCrewTagline,
+        is PendingCommand.SetCrewWelcomeMessage,
+        is PendingCommand.SetCrewWeeklyChallenge,
+        is PendingCommand.SetCrewScoreStyle,
+        is PendingCommand.SetCrewBannerFocalY -> false
     }
 
     override suspend fun execute(cmd: PendingCommand): OutboxExecuteResult = when (cmd) {
@@ -63,7 +68,12 @@ class MealOutboxCommandHandler(
         is PendingCommand.RenameCrew,
         is PendingCommand.SetBlindVoting,
         is PendingCommand.RemoveMember,
-        is PendingCommand.LeaveCrew -> OutboxExecuteResult.Terminal("outbox.error.wrongHandler")
+        is PendingCommand.LeaveCrew,
+        is PendingCommand.SetCrewTagline,
+        is PendingCommand.SetCrewWelcomeMessage,
+        is PendingCommand.SetCrewWeeklyChallenge,
+        is PendingCommand.SetCrewScoreStyle,
+        is PendingCommand.SetCrewBannerFocalY -> OutboxExecuteResult.Terminal("outbox.error.wrongHandler")
     }
 
     /**

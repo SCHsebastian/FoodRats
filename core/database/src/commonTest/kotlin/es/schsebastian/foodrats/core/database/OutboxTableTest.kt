@@ -52,6 +52,9 @@ class OutboxTableTest {
         enabled = null,
         targetAccountId = null,
         newName = null,
+        focalY = null,
+        setAtMillis = null,
+        styleKey = null,
     )
 
     @Test fun select_all_orders_by_created_at_ascending() {

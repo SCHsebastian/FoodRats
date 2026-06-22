@@ -1,6 +1,10 @@
 package es.schsebastian.foodrats.feature.crew.domain.usecase
 
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
@@ -15,10 +19,17 @@ import kotlinx.coroutines.flow.first
  * Validates [message] via [WelcomeMessage.of] first. A blank message is interpreted as "clear the
  * welcome message" (sends `null` to Firestore). Returns
  * [CrewError.Validation.WelcomeMessageTooLong] when the input exceeds [WelcomeMessage.MAX_LEN] = 200 chars.
+ *
+ * OFFLINE-FIRST (P2 §0.5). Validation + session resolution run first. When offline — or the direct
+ * write fails with a connectivity-class error ([CrewError.Backend.Network] /
+ * [CrewError.Backend.Unavailable]) — the change is durably parked in the [OutboxPort] and the use
+ * case returns [Result.Ok]; the `OutboxRunner` replays it (idempotently) when connectivity returns.
  */
 class SetCrewWelcomeMessageUseCase(
     private val repository: CrewRepository,
     private val session: SessionProvider,
+    private val connectivity: ConnectivityPort,
+    private val outbox: OutboxPort,
 ) {
     suspend operator fun invoke(crewId: CrewId, message: String): Result<Unit, CrewError> {
         val accountId = when (val s = session.requireCurrent()) {
@@ -29,6 +40,26 @@ class SetCrewWelcomeMessageUseCase(
             is Result.Ok  -> r.value      // null = blank input → clear message
             is Result.Err -> return Result.failure(r.error)
         }
-        return repository.setWelcomeMessage(crewId, accountId, validated?.value)
+        val value = validated?.value
+        if (!connectivity.isOnline().first()) {
+            return enqueue(crewId, accountId, value)
+        }
+        return when (val r = repository.setWelcomeMessage(crewId, accountId, value)) {
+            is Result.Ok -> r
+            is Result.Err -> when (r.error) {
+                CrewError.Backend.Network, CrewError.Backend.Unavailable ->
+                    enqueue(crewId, accountId, value)
+                else -> r
+            }
+        }
+    }
+
+    private suspend fun enqueue(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        message: String?,
+    ): Result<Unit, CrewError> {
+        outbox.enqueue(PendingCommand.SetCrewWelcomeMessage(crewId, requestedBy, message))
+        return Result.success(Unit)
     }
 }

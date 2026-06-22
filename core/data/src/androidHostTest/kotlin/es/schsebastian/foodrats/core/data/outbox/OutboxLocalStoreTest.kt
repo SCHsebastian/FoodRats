@@ -106,11 +106,36 @@ class OutboxLocalStoreTest {
                 target = (AccountId.of("acc-2") as Result.Ok).value,
             ),
             PendingCommand.LeaveCrew(crewId = crew, leaver = acc),
+            // C-series crew-settings commands (offline-first extension): tagline/welcome/challenge
+            // text reuse the `text` column; focal/setAt/styleKey use the new flattened columns.
+            PendingCommand.SetCrewTagline(crewId = crew, requestedBy = acc, tagline = "only home-cooked"),
+            PendingCommand.SetCrewWelcomeMessage(crewId = crew, requestedBy = acc, message = "Cook by 10!"),
+            PendingCommand.SetCrewWeeklyChallenge(
+                crewId = crew, requestedBy = acc, challenge = "Taco Tuesday", setAtMillis = 1_700_000_000_000L,
+            ),
+            PendingCommand.SetCrewScoreStyle(crewId = crew, requestedBy = acc, styleKey = "emoji"),
+            PendingCommand.SetCrewBannerFocalY(crewId = crew, requestedBy = acc, focalY = 0.25f),
         )
         commands.forEachIndexed { idx, cmd -> store.add(entry(idx, cmd)) }
 
         val restored = store.read().map { it.command }
         assertEquals(commands.toSet(), restored.toSet())
+    }
+
+    @Test
+    fun round_trips_crew_settings_clear_commands_with_null_text() = runTest {
+        // Tagline/welcome/challenge "clear" = null text. A null text column must round-trip as null
+        // (not be mistaken for a malformed row that gets dropped).
+        val commands: List<PendingCommand> = listOf(
+            PendingCommand.SetCrewTagline(crewId = crew, requestedBy = acc, tagline = null),
+            PendingCommand.SetCrewWelcomeMessage(crewId = crew, requestedBy = acc, message = null),
+            PendingCommand.SetCrewWeeklyChallenge(
+                crewId = crew, requestedBy = acc, challenge = null, setAtMillis = null,
+            ),
+        )
+        commands.forEachIndexed { idx, cmd -> store.add(entry(idx, cmd)) }
+
+        assertEquals(commands.toSet(), store.read().map { it.command }.toSet())
     }
 
     @Test

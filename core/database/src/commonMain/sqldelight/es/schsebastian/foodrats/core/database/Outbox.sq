@@ -33,7 +33,13 @@ CREATE TABLE outbox (
     desiredPresent       INTEGER,
     enabled              INTEGER,
     targetAccountId      TEXT,
-    newName              TEXT
+    newName              TEXT,
+    -- C-series crew-settings extension (offline-first): banner vertical focal point (0..1),
+    -- weekly-challenge set-at timestamp, and the score-style key. Added in migration 2.sqm
+    -- (v2 -> v3). Only the relevant leaf populates them; all other rows leave them NULL.
+    focalY               REAL,
+    setAtMillis          INTEGER,
+    styleKey             TEXT
 );
 
 -- Enforces enqueue coalescing: two commands sharing an idempotency key collapse to one row.
@@ -61,12 +67,14 @@ INSERT OR REPLACE INTO outbox(
     id, type, idempotencyKey, statusKind, errorKey, retryable, attemptCount,
     createdAtEpochMs, lastAttemptAtEpochMs,
     crewId, mealId, accountId, commentId, text, score, reactionKindKey,
-    desiredPresent, enabled, targetAccountId, newName
+    desiredPresent, enabled, targetAccountId, newName,
+    focalY, setAtMillis, styleKey
 ) VALUES (
     :id, :type, :idempotencyKey, :statusKind, :errorKey, :retryable, :attemptCount,
     :createdAtEpochMs, :lastAttemptAtEpochMs,
     :crewId, :mealId, :accountId, :commentId, :text, :score, :reactionKindKey,
-    :desiredPresent, :enabled, :targetAccountId, :newName
+    :desiredPresent, :enabled, :targetAccountId, :newName,
+    :focalY, :setAtMillis, :styleKey
 );
 
 -- Update the lifecycle + attempt bookkeeping for one entry (no-op if the id is absent).
@@ -147,5 +155,8 @@ SET type                 = :type,
     desiredPresent       = :desiredPresent,
     enabled              = :enabled,
     targetAccountId      = :targetAccountId,
-    newName              = :newName
+    newName              = :newName,
+    focalY               = :focalY,
+    setAtMillis          = :setAtMillis,
+    styleKey             = :styleKey
 WHERE idempotencyKey = :idempotencyKey;

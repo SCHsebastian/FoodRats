@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.data.outbox
 
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.outbox.OutboxExecuteResult
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
@@ -8,12 +9,14 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 
 /**
- * Replays the crew-admin outbox commands (offline-first P2 §1 T6) —
+ * Replays the crew-admin + crew-settings outbox commands (offline-first P2 §1 T6) —
  * [PendingCommand.RenameCrew], [PendingCommand.SetBlindVoting],
- * [PendingCommand.RemoveMember], [PendingCommand.LeaveCrew] — against
- * [CrewRepository]. All four are idempotent server-side (rename/blind set a value;
- * remove/leave a no-longer-present member succeeds), so a replay never applies
- * twice.
+ * [PendingCommand.RemoveMember], [PendingCommand.LeaveCrew], plus the C-series settings
+ * [PendingCommand.SetCrewTagline], [PendingCommand.SetCrewWelcomeMessage],
+ * [PendingCommand.SetCrewWeeklyChallenge], [PendingCommand.SetCrewScoreStyle], and
+ * [PendingCommand.SetCrewBannerFocalY] — against [CrewRepository]. All are idempotent
+ * server-side (each sets a value; remove/leave a no-longer-present member succeeds), so a
+ * replay never applies twice. (The banner IMAGE bytes are NOT queued — only its focal point.)
  *
  * The cross-feature `OutboxRunner` lives in `:core:data`, which must NEVER import a
  * `:feature:*` module, so this handler (which DOES know [CrewRepository]) lives
@@ -37,7 +40,12 @@ class CrewOutboxCommandHandler(
         is PendingCommand.RenameCrew,
         is PendingCommand.SetBlindVoting,
         is PendingCommand.RemoveMember,
-        is PendingCommand.LeaveCrew -> true
+        is PendingCommand.LeaveCrew,
+        is PendingCommand.SetCrewTagline,
+        is PendingCommand.SetCrewWelcomeMessage,
+        is PendingCommand.SetCrewWeeklyChallenge,
+        is PendingCommand.SetCrewScoreStyle,
+        is PendingCommand.SetCrewBannerFocalY -> true
         is PendingCommand.RateMeal,
         is PendingCommand.PostComment,
         is PendingCommand.DeleteComment,
@@ -53,6 +61,20 @@ class CrewOutboxCommandHandler(
             crews.removeMember(cmd.crewId, cmd.requestedBy, cmd.target).toExecuteResult()
         is PendingCommand.LeaveCrew ->
             crews.leave(cmd.crewId, cmd.leaver).toExecuteResult()
+        is PendingCommand.SetCrewTagline ->
+            crews.setTagline(cmd.crewId, cmd.requestedBy, cmd.tagline).toExecuteResult()
+        is PendingCommand.SetCrewWelcomeMessage ->
+            crews.setWelcomeMessage(cmd.crewId, cmd.requestedBy, cmd.message).toExecuteResult()
+        is PendingCommand.SetCrewWeeklyChallenge ->
+            crews.setWeeklyChallenge(cmd.crewId, cmd.requestedBy, cmd.challenge, cmd.setAtMillis).toExecuteResult()
+        is PendingCommand.SetCrewScoreStyle ->
+            // Re-parse the persisted style key. A key a NEWER build wrote that this build doesn't
+            // know is terminal (can't replay it) — mirrors ToggleReaction's unknown-kind handling.
+            CrewScoreStyle.fromKey(cmd.styleKey)
+                ?.let { crews.setScoreStyle(cmd.crewId, cmd.requestedBy, it).toExecuteResult() }
+                ?: OutboxExecuteResult.Terminal("crew.error.scoreStyleUnknown")
+        is PendingCommand.SetCrewBannerFocalY ->
+            crews.setBannerFocalY(cmd.crewId, cmd.requestedBy, cmd.focalY).toExecuteResult()
         // Not ours — [handles] returns false for these, so the runner never routes
         // them here. Mapped to a terminal so an accidental dispatch can't loop.
         is PendingCommand.RateMeal,
@@ -90,7 +112,8 @@ class CrewOutboxCommandHandler(
             CrewError.Create.CodeCollisionRetriesExhausted -> OutboxExecuteResult.Terminal("crew.error.codeCollision")
             CrewError.RemoveMember.NotOwner -> OutboxExecuteResult.Terminal("crew.error.removeNotOwner")
             CrewError.RemoveMember.CannotRemoveSelf -> OutboxExecuteResult.Terminal("crew.error.removeSelf")
-            // C9 — banner errors are never queued (bytes not serializable), but the when must be exhaustive.
+            // C9 — banner IMAGE errors are never queued (bytes not serializable; the focal point IS
+            // queued via SetCrewBannerFocalY). Listed so the when stays exhaustive.
             CrewError.Banner.UploadFailed -> OutboxExecuteResult.Terminal("crew.error.bannerUploadFailed")
             CrewError.Banner.DeleteFailed -> OutboxExecuteResult.Terminal("crew.error.bannerDeleteFailed")
         }

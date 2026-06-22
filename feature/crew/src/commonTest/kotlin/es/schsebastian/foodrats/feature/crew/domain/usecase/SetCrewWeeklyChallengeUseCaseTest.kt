@@ -11,7 +11,10 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
+import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
+import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +25,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 private class FakeSessionForChallenge(
     private val session: Session?,
@@ -51,7 +55,9 @@ class SetCrewWeeklyChallengeUseCaseTest {
     private fun useCase(
         repo: FakeCrewRepository,
         session: Session?,
-    ) = SetCrewWeeklyChallengeUseCase(repo, FakeSessionForChallenge(session), clock)
+        connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
+        outbox: RecordingOutboxPort = RecordingOutboxPort(),
+    ) = SetCrewWeeklyChallengeUseCase(repo, FakeSessionForChallenge(session), clock, connectivity, outbox)
 
     @Test fun sets_weekly_challenge_when_owner() = runTest {
         val session = Session(accountId = ownerId, activeCrewId = crewId)
@@ -108,5 +114,42 @@ class SetCrewWeeklyChallengeUseCaseTest {
         useCase(repo, session)(crewId, "Pasta night")
         val recorded = repo.lastSetWeeklyChallenge
         assertEquals(fixedNow.toEpochMilliseconds(), recorded?.third)
+    }
+
+    @Test fun offline_enqueues_with_stamped_set_at_and_returns_ok() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, "  Soup week  ")
+        assertIs<Result.Ok<Unit>>(r)
+        assertNull(repo.lastSetWeeklyChallenge, "offline must not perform the direct write")
+        assertEquals(
+            listOf<PendingCommand>(
+                PendingCommand.SetCrewWeeklyChallenge(crewId, ownerId, "Soup week", fixedNow.toEpochMilliseconds()),
+            ),
+            outbox.enqueued,
+        )
+    }
+
+    @Test fun offline_blank_enqueues_clear_command_with_null_set_at() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, "   ")
+        assertIs<Result.Ok<Unit>>(r)
+        assertEquals(
+            listOf<PendingCommand>(PendingCommand.SetCrewWeeklyChallenge(crewId, ownerId, null, null)),
+            outbox.enqueued,
+        )
+    }
+
+    @Test fun offline_still_rejects_too_long_without_enqueue() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val tooLong = "x".repeat(WeeklyChallenge.MAX_LEN + 1)
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, tooLong)
+        assertEquals(Result.failure(CrewError.Validation.WeeklyChallengeTooLong), r)
+        assertTrue(outbox.enqueued.isEmpty())
     }
 }

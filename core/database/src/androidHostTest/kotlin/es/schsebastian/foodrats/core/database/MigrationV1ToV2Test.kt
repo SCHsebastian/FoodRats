@@ -78,11 +78,16 @@ class MigrationV1ToV2Test {
         )
     }
 
-    /** Insert one row into `outbox` using all non-nullable columns, then read it back. */
+    /**
+     * Insert one row into `outbox` exercising columns from every schema version — including the
+     * v2→v3 crew-settings columns (focalY / setAtMillis / styleKey) — then read it back. Non-null
+     * values on the v3 columns mean a migrated DB that never received `2.sqm` fails here with an
+     * unknown-column error, surfacing drift.
+     */
     private fun roundTripOutbox(db: FoodRatsDatabase) {
         db.outboxQueries.upsertByIdem(
             id = "test-id",
-            type = "rate_meal",
+            type = "set_banner_focal",
             idempotencyKey = "test-idem",
             statusKind = "pending",
             errorKey = null,
@@ -101,12 +106,17 @@ class MigrationV1ToV2Test {
             enabled = null,
             targetAccountId = null,
             newName = null,
+            focalY = 0.25,
+            setAtMillis = 1_700_000_000_000L,
+            styleKey = "emoji",
         )
         val rows = db.outboxQueries.selectAll().executeAsList()
         assertEquals(1, rows.size, "outbox: expected 1 row after insert")
         assertEquals("test-id", rows.single().id)
-        assertEquals("rate_meal", rows.single().type)
+        assertEquals("set_banner_focal", rows.single().type)
         assertEquals("pending", rows.single().statusKind)
+        assertEquals(0.25, rows.single().focalY, "v2→v3 focalY column must round-trip")
+        assertEquals("emoji", rows.single().styleKey, "v2→v3 styleKey column must round-trip")
     }
 
     /** Insert one row into `crew`, then read it back. */
@@ -126,13 +136,15 @@ class MigrationV1ToV2Test {
     }
 
     @Test
-    fun migrated_v1_to_v2_has_working_outbox_and_crew_tables() {
+    fun migrated_v1_to_latest_has_working_outbox_and_crew_tables() {
         // Build a v1 database (meal + mealRating only).
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         createV1Schema(driver)
 
-        // Run the v1 → v2 migration (applies 1.sqm: creates outbox + indexes + crew).
-        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = 2)
+        // Run the full migration chain to the CURRENT schema version (applies 1.sqm: outbox + crew;
+        // then 2.sqm: the crew-settings columns). Migrating only to v2 would leave the outbox without
+        // focalY/setAtMillis/styleKey and roundTripOutbox would fail — which is the drift guard.
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
 
         val db = FoodRatsDatabase(driver)
 

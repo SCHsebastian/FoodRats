@@ -12,9 +12,11 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
  * A user mutation durably parked in the write outbox (P2 §1 T1) so it can be
  * replayed idempotently when connectivity returns.
  *
- * Covers the eight rate / comment / reaction / crew-admin mutations only — the
+ * Covers the rate / comment / reaction / crew-admin / crew-settings mutations only — the
  * meal-publish queue is a SEPARATE, untouched durable queue ([DraftQueuePort] in
- * `:feature:meal`); there is deliberately NO `PublishMeal` leaf here.
+ * `:feature:meal`); there is deliberately NO `PublishMeal` leaf here. Image-byte writes
+ * (crew banner image, avatar) are likewise NOT here — bytes can't ride the flattened-column
+ * store; they'd need a separate durable byte-queue (mirror [DraftQueuePort]).
  *
  * A `sealed interface` with `data class` leaves (not an enum) so a leaf can grow
  * a payload later without a breaking change. Every leaf references the shared
@@ -151,6 +153,76 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String =
             "crew.leave:${crewId.value}:${leaver.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
+    }
+
+    /**
+     * Set or clear ([tagline] == null) the crew tagline. Idempotent (sets the value).
+     * Pre-validated by the use case before enqueue.
+     */
+    data class SetCrewTagline(
+        val crewId: CrewId,
+        val requestedBy: AccountId,
+        val tagline: String?,
+    ) : PendingCommand {
+        override val idempotencyKey: String = "crew.tagline:${crewId.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
+    }
+
+    /**
+     * Set or clear ([message] == null) the crew's pinned welcome message. Idempotent.
+     * Pre-validated by the use case before enqueue.
+     */
+    data class SetCrewWelcomeMessage(
+        val crewId: CrewId,
+        val requestedBy: AccountId,
+        val message: String?,
+    ) : PendingCommand {
+        override val idempotencyKey: String = "crew.welcome:${crewId.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
+    }
+
+    /**
+     * Set, or clear (both `null`), the crew's weekly challenge + its set-at timestamp. Idempotent.
+     * [setAtMillis] is stamped at ENQUEUE time so a deferred replay preserves when the challenge was
+     * actually authored (rather than when it finally synced).
+     */
+    data class SetCrewWeeklyChallenge(
+        val crewId: CrewId,
+        val requestedBy: AccountId,
+        val challenge: String?,
+        val setAtMillis: Long?,
+    ) : PendingCommand {
+        override val idempotencyKey: String = "crew.challenge:${crewId.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
+    }
+
+    /**
+     * Set the crew's Score display vocabulary (C8). Idempotent. Carries the style as its persisted
+     * [es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle.key] string (like [ToggleReaction]'s
+     * [reactionKindKey]); the handler re-parses via `CrewScoreStyle.fromKey`, so a style key a newer
+     * build wrote degrades gracefully rather than failing to deserialize.
+     */
+    data class SetCrewScoreStyle(
+        val crewId: CrewId,
+        val requestedBy: AccountId,
+        val styleKey: String,
+    ) : PendingCommand {
+        override val idempotencyKey: String = "crew.scoreStyle:${crewId.value}"
+        override val aggregateKey: String = "crew:${crewId.value}"
+    }
+
+    /**
+     * Set the crew banner's vertical focal point (C9), pre-clamped to `0f..1f` by the use case.
+     * Idempotent (sets the value). The banner IMAGE itself can't be queued here (bytes); only its
+     * focal point.
+     */
+    data class SetCrewBannerFocalY(
+        val crewId: CrewId,
+        val requestedBy: AccountId,
+        val focalY: Float,
+    ) : PendingCommand {
+        override val idempotencyKey: String = "crew.bannerFocal:${crewId.value}"
         override val aggregateKey: String = "crew:${crewId.value}"
     }
 }

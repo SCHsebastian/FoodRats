@@ -93,6 +93,9 @@ class OutboxLocalStore(
                     enabled = payload.enabled,
                     targetAccountId = payload.targetAccountId,
                     newName = payload.newName,
+                    focalY = payload.focalY,
+                    setAtMillis = payload.setAtMillis,
+                    styleKey = payload.styleKey,
                     idempotencyKey = idem,
                 )
             } else {
@@ -118,6 +121,9 @@ class OutboxLocalStore(
                     enabled = payload.enabled,
                     targetAccountId = payload.targetAccountId,
                     newName = payload.newName,
+                    focalY = payload.focalY,
+                    setAtMillis = payload.setAtMillis,
+                    styleKey = payload.styleKey,
                 )
             }
         }
@@ -196,6 +202,11 @@ class OutboxLocalStore(
         const val SET_BLIND_VOTING = "set_blind_voting"
         const val REMOVE_MEMBER = "remove_member"
         const val LEAVE_CREW = "leave_crew"
+        const val SET_TAGLINE = "set_tagline"
+        const val SET_WELCOME_MESSAGE = "set_welcome_message"
+        const val SET_WEEKLY_CHALLENGE = "set_weekly_challenge"
+        const val SET_SCORE_STYLE = "set_score_style"
+        const val SET_BANNER_FOCAL = "set_banner_focal"
     }
 
     // ── domain → columns ──────────────────────────────────────────────────────
@@ -214,6 +225,9 @@ class OutboxLocalStore(
         val enabled: Long? = null,
         val targetAccountId: String? = null,
         val newName: String? = null,
+        val focalY: Double? = null,
+        val setAtMillis: Long? = null,
+        val styleKey: String? = null,
     )
 
     private class StatusColumns(val kind: String, val errorKey: String?, val retryable: Long)
@@ -280,6 +294,37 @@ class OutboxLocalStore(
             type = CommandType.LEAVE_CREW,
             crewId = crewId.value,
             accountId = leaver.value,
+        )
+        is PendingCommand.SetCrewTagline -> CommandPayload(
+            type = CommandType.SET_TAGLINE,
+            crewId = crewId.value,
+            accountId = requestedBy.value,
+            text = tagline, // null = clear
+        )
+        is PendingCommand.SetCrewWelcomeMessage -> CommandPayload(
+            type = CommandType.SET_WELCOME_MESSAGE,
+            crewId = crewId.value,
+            accountId = requestedBy.value,
+            text = message, // null = clear
+        )
+        is PendingCommand.SetCrewWeeklyChallenge -> CommandPayload(
+            type = CommandType.SET_WEEKLY_CHALLENGE,
+            crewId = crewId.value,
+            accountId = requestedBy.value,
+            text = challenge, // null + setAtMillis null = clear
+            setAtMillis = setAtMillis,
+        )
+        is PendingCommand.SetCrewScoreStyle -> CommandPayload(
+            type = CommandType.SET_SCORE_STYLE,
+            crewId = crewId.value,
+            accountId = requestedBy.value,
+            styleKey = styleKey,
+        )
+        is PendingCommand.SetCrewBannerFocalY -> CommandPayload(
+            type = CommandType.SET_BANNER_FOCAL,
+            crewId = crewId.value,
+            accountId = requestedBy.value,
+            focalY = focalY.toDouble(),
         )
     }
 
@@ -367,6 +412,40 @@ class OutboxLocalStore(
             val crew = crewId.toCrewId() ?: return null
             val leaver = accountId.toAccountId() ?: return null
             PendingCommand.LeaveCrew(crewId = crew, leaver = leaver)
+        }
+        CommandType.SET_TAGLINE -> {
+            val crew = crewId.toCrewId() ?: return null
+            val by = accountId.toAccountId() ?: return null
+            // `text` null is legitimate here — it means "clear the tagline".
+            PendingCommand.SetCrewTagline(crewId = crew, requestedBy = by, tagline = text)
+        }
+        CommandType.SET_WELCOME_MESSAGE -> {
+            val crew = crewId.toCrewId() ?: return null
+            val by = accountId.toAccountId() ?: return null
+            PendingCommand.SetCrewWelcomeMessage(crewId = crew, requestedBy = by, message = text)
+        }
+        CommandType.SET_WEEKLY_CHALLENGE -> {
+            val crew = crewId.toCrewId() ?: return null
+            val by = accountId.toAccountId() ?: return null
+            // Both `text` and `setAtMillis` null = "clear the challenge" — both legitimately nullable.
+            PendingCommand.SetCrewWeeklyChallenge(
+                crewId = crew,
+                requestedBy = by,
+                challenge = text,
+                setAtMillis = setAtMillis,
+            )
+        }
+        CommandType.SET_SCORE_STYLE -> {
+            val crew = crewId.toCrewId() ?: return null
+            val by = accountId.toAccountId() ?: return null
+            val key = styleKey?.takeIf { it.isNotBlank() } ?: return null
+            PendingCommand.SetCrewScoreStyle(crewId = crew, requestedBy = by, styleKey = key)
+        }
+        CommandType.SET_BANNER_FOCAL -> {
+            val crew = crewId.toCrewId() ?: return null
+            val by = accountId.toAccountId() ?: return null
+            val focal = focalY ?: return null
+            PendingCommand.SetCrewBannerFocalY(crewId = crew, requestedBy = by, focalY = focal.toFloat())
         }
         else -> null // unknown discriminator from a newer build → drop the row
     }

@@ -10,7 +10,10 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
+import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
+import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +24,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 private class FakeSessionForTagline(
     private val session: Session?,
@@ -47,7 +51,9 @@ class SetCrewTaglineUseCaseTest {
     private fun useCase(
         repo: FakeCrewRepository,
         session: Session?,
-    ) = SetCrewTaglineUseCase(repo, FakeSessionForTagline(session))
+        connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
+        outbox: RecordingOutboxPort = RecordingOutboxPort(),
+    ) = SetCrewTaglineUseCase(repo, FakeSessionForTagline(session), connectivity, outbox)
 
     @Test fun sets_tagline_when_owner() = runTest {
         val session = Session(accountId = ownerId, activeCrewId = crewId)
@@ -96,5 +102,40 @@ class SetCrewTaglineUseCaseTest {
         val r = useCase(repo, session)(crewId, "  house rules  ")
         assertIs<Result.Ok<Unit>>(r)
         assertEquals(crewId to "house rules", repo.lastSetTagline)
+    }
+
+    @Test fun offline_validates_then_enqueues_and_returns_ok() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, "  house rules  ")
+        assertIs<Result.Ok<Unit>>(r)
+        assertNull(repo.lastSetTagline, "offline must not perform the direct write")
+        assertEquals(
+            listOf<PendingCommand>(PendingCommand.SetCrewTagline(crewId, ownerId, "house rules")),
+            outbox.enqueued,
+        )
+    }
+
+    @Test fun offline_blank_enqueues_clear_command() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, "   ")
+        assertIs<Result.Ok<Unit>>(r)
+        assertEquals(
+            listOf<PendingCommand>(PendingCommand.SetCrewTagline(crewId, ownerId, null)),
+            outbox.enqueued,
+        )
+    }
+
+    @Test fun offline_still_rejects_too_long_without_enqueue() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val tooLong = "x".repeat(CrewTagline.MAX_LEN + 1)
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, tooLong)
+        assertEquals(Result.failure(CrewError.Validation.TaglineTooLong), r)
+        assertTrue(outbox.enqueued.isEmpty())
     }
 }

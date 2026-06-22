@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.domain.usecase
 
-import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
@@ -9,8 +10,6 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
-import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
-import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
@@ -23,10 +22,9 @@ import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-private class FakeSessionForWelcome(
+private class FakeSessionForScoreStyle(
     private val session: Session?,
 ) : SessionProvider {
     override val current: Flow<Session?> = flowOf(session)
@@ -35,7 +33,7 @@ private class FakeSessionForWelcome(
         else Result.failure(SessionError.NotSignedIn)
 }
 
-class SetCrewWelcomeMessageUseCaseTest {
+class SetCrewScoreStyleUseCaseTest {
 
     private val ownerId = aid("uid-owner")
     private val crewId = cid("c-1")
@@ -53,77 +51,52 @@ class SetCrewWelcomeMessageUseCaseTest {
         session: Session?,
         connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
         outbox: RecordingOutboxPort = RecordingOutboxPort(),
-    ) = SetCrewWelcomeMessageUseCase(repo, FakeSessionForWelcome(session), connectivity, outbox)
+    ) = SetCrewScoreStyleUseCase(repo, FakeSessionForScoreStyle(session), connectivity, outbox)
 
-    @Test fun sets_welcome_message_when_owner() = runTest {
+    @Test fun sets_score_style_when_owner() = runTest {
         val session = Session(accountId = ownerId, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val r = useCase(repo, session)(crewId, "Cook before 10 PM!")
+        val r = useCase(repo, session)(crewId, CrewScoreStyle.Emoji)
         assertIs<Result.Ok<Unit>>(r)
-        assertEquals(crewId to "Cook before 10 PM!", repo.lastSetWelcomeMessage)
-    }
-
-    @Test fun clears_welcome_message_on_blank_input() = runTest {
-        val session = Session(accountId = ownerId, activeCrewId = crewId)
-        val repo = FakeCrewRepository(listOf(sampleCrew))
-        val r = useCase(repo, session)(crewId, "   ")   // blank → null
-        assertIs<Result.Ok<Unit>>(r)
-        assertEquals(crewId to null, repo.lastSetWelcomeMessage)
-    }
-
-    @Test fun rejects_message_too_long() = runTest {
-        val session = Session(accountId = ownerId, activeCrewId = crewId)
-        val repo = FakeCrewRepository(listOf(sampleCrew))
-        val tooLong = "x".repeat(WelcomeMessage.MAX_LEN + 1)
-        val r = useCase(repo, session)(crewId, tooLong)
-        assertEquals(Result.failure(CrewError.Validation.WelcomeMessageTooLong), r)
-        assertNull(repo.lastSetWelcomeMessage)
-    }
-
-    @Test fun maps_missing_session_to_backend_unavailable() = runTest {
-        val repo = FakeCrewRepository(listOf(sampleCrew))
-        val r = useCase(repo, session = null)(crewId, "Cook before 10 PM!")
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
-        assertNull(repo.lastSetWelcomeMessage)
+        assertEquals(CrewScoreStyle.Emoji, repo.crews.value.first { it.id == crewId }.scoreStyle)
     }
 
     @Test fun rejects_non_owner() = runTest {
         val nonOwner = aid("uid-other")
         val session = Session(accountId = nonOwner, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val r = useCase(repo, session)(crewId, "Cook before 10 PM!")
+        val r = useCase(repo, session)(crewId, CrewScoreStyle.Numeric)
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
-        assertNull(repo.lastSetWelcomeMessage)
+        assertEquals(CrewScoreStyle.Stars, repo.crews.value.first { it.id == crewId }.scoreStyle)
     }
 
-    @Test fun trims_message_before_saving() = runTest {
-        val session = Session(accountId = ownerId, activeCrewId = crewId)
+    @Test fun maps_missing_session_to_backend_unavailable() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val r = useCase(repo, session)(crewId, "  house rules  ")
-        assertIs<Result.Ok<Unit>>(r)
-        assertEquals(crewId to "house rules", repo.lastSetWelcomeMessage)
+        val r = useCase(repo, session = null)(crewId, CrewScoreStyle.Emoji)
+        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
     }
 
-    @Test fun offline_validates_then_enqueues_and_returns_ok() = runTest {
+    @Test fun offline_enqueues_style_key_and_returns_ok() = runTest {
         val session = Session(accountId = ownerId, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val outbox = RecordingOutboxPort()
-        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, "  Cook by 10  ")
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, CrewScoreStyle.Emoji)
         assertIs<Result.Ok<Unit>>(r)
-        assertNull(repo.lastSetWelcomeMessage, "offline must not perform the direct write")
+        // offline must not perform the direct write — style stays at the default.
+        assertEquals(CrewScoreStyle.Stars, repo.crews.value.first { it.id == crewId }.scoreStyle)
         assertEquals(
-            listOf<PendingCommand>(PendingCommand.SetCrewWelcomeMessage(crewId, ownerId, "Cook by 10")),
+            listOf<PendingCommand>(PendingCommand.SetCrewScoreStyle(crewId, ownerId, "emoji")),
             outbox.enqueued,
         )
     }
 
-    @Test fun offline_still_rejects_too_long_without_enqueue() = runTest {
-        val session = Session(accountId = ownerId, activeCrewId = crewId)
+    @Test fun offline_no_session_returns_unavailable_without_enqueue() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val outbox = RecordingOutboxPort()
-        val tooLong = "x".repeat(WelcomeMessage.MAX_LEN + 1)
-        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, tooLong)
-        assertEquals(Result.failure(CrewError.Validation.WelcomeMessageTooLong), r)
+        val r = useCase(repo, session = null, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(
+            crewId, CrewScoreStyle.Emoji,
+        )
+        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
         assertTrue(outbox.enqueued.isEmpty())
     }
 }
