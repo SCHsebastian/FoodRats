@@ -8,9 +8,12 @@ import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicSecureTextField
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,6 +31,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
@@ -72,7 +76,11 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Motion
  *
  * @param obfuscate render as a password ([BasicSecureTextField] with reveal-last-typed) instead of a
  *   plain field — replaces the old `PasswordVisualTransformation`, and brings the platform's secure
- *   input handling (no autofill leak, no clipboard exposure).
+ *   input handling (no autofill leak, no clipboard exposure). A show/hide toggle is just this flag
+ *   driven from state (`obfuscate = !show`) — flip it and pass the eye as [trailingIcon].
+ * @param trailingIcon optional affordance pinned to the end of the input line, vertically centred over
+ *   the underline — e.g. a password show/hide eye toggle. The field stays domain-free: the caller owns
+ *   the composable (icon, click, content description).
  * @param onMedia set when the field writes directly over a real photo / `dish*` media floor (e.g. the
  *   composer or the delete-gate), which stays dark-scrimmed in BOTH themes — forces white content so
  *   the input/label/placeholder stay legible in light mode instead of flipping to dark ink.
@@ -90,6 +98,7 @@ fun FrUnderlineField(
     onMedia: Boolean = false,
     obfuscate: Boolean = false,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    trailingIcon: (@Composable () -> Unit)? = null,
 ) {
     val scheme = MaterialTheme.colorScheme
     val interaction = remember { MutableInteractionSource() }
@@ -160,19 +169,25 @@ fun FrUnderlineField(
         // frame behind a hoisted echo.
         val decorator = TextFieldDecorator { innerTextField ->
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box {
-                    if (state.text.isEmpty() && placeholder != null) {
-                        FrText(
-                            text = placeholder,
-                            color = contentColor.copy(alpha = 0.4f),
-                            style = TextStyle(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = LocalFrFontFamily.current,
-                            ),
-                        )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f)) {
+                        if (state.text.isEmpty() && placeholder != null) {
+                            FrText(
+                                text = placeholder,
+                                color = contentColor.copy(alpha = 0.4f),
+                                style = TextStyle(
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontFamily = LocalFrFontFamily.current,
+                                ),
+                            )
+                        }
+                        innerTextField()
                     }
-                    innerTextField()
+                    if (trailingIcon != null) {
+                        Spacer(Modifier.width(8.dp))
+                        trailingIcon()
+                    }
                 }
                 Box(
                     Modifier

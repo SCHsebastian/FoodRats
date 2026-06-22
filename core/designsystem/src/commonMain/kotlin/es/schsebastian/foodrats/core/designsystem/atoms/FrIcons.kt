@@ -803,6 +803,52 @@ private val PublicVector: ImageVector = materialIcon(name = "Filled.Public") {
     }
 }
 
+// Locally-defined Visibility / VisibilityOff vectors. material-icons-extended (which ships the real
+// `Icons.Filled.Visibility` / `Icons.Filled.VisibilityOff`) has no KMP-compatible iOS artifact, so we
+// replicate the standard Material "visibility" glyph here. The eye is an EvenOdd donut — outer almond
+// (fill), iris (cut to a hole), pupil (fill again) — which renders the familiar open eye independent of
+// sub-path winding. VisibilityOff reuses that donut and overlays a diagonal strike drawn as a SEPARATE
+// `materialPath` parallelogram, so the slash unions cleanly over the eye with no winding/EvenOdd interplay.
+private fun eyeAlmondDonut(builder: androidx.compose.ui.graphics.vector.PathBuilder) = with(builder) {
+    // Outer eye almond.
+    moveTo(12f, 4.5f)
+    curveTo(7f, 4.5f, 2.73f, 7.61f, 1f, 12f)
+    curveToRelative(1.73f, 4.39f, 6f, 7.5f, 11f, 7.5f)
+    reflectiveCurveToRelative(9.27f, -3.11f, 11f, -7.5f)
+    curveTo(21.27f, 7.61f, 17f, 4.5f, 12f, 4.5f)
+    close()
+    // Iris ring (EvenOdd turns this into a hole).
+    moveTo(12f, 17f)
+    curveToRelative(-2.76f, 0f, -5f, -2.24f, -5f, -5f)
+    reflectiveCurveToRelative(2.24f, -5f, 5f, -5f)
+    reflectiveCurveToRelative(5f, 2.24f, 5f, 5f)
+    reflectiveCurveToRelative(-2.24f, 5f, -5f, 5f)
+    close()
+    // Pupil (filled again by the EvenOdd rule).
+    moveTo(12f, 9f)
+    curveToRelative(-1.66f, 0f, -3f, 1.34f, -3f, 3f)
+    reflectiveCurveToRelative(1.34f, 3f, 3f, 3f)
+    reflectiveCurveToRelative(3f, -1.34f, 3f, -3f)
+    reflectiveCurveToRelative(-1.34f, -3f, -3f, -3f)
+    close()
+}
+
+private val VisibilityVector: ImageVector = materialIcon(name = "Filled.Visibility") {
+    materialPath(pathFillType = PathFillType.EvenOdd) { eyeAlmondDonut(this) }
+}
+
+private val VisibilityOffVector: ImageVector = materialIcon(name = "Filled.VisibilityOff") {
+    materialPath(pathFillType = PathFillType.EvenOdd) { eyeAlmondDonut(this) }
+    // Diagonal strike (top-left → bottom-right), a thin parallelogram drawn as its own fill.
+    materialPath {
+        moveTo(2f, 4.27f)
+        lineTo(3.27f, 3f)
+        lineTo(21f, 20.73f)
+        lineTo(19.73f, 22f)
+        close()
+    }
+}
+
 object FrIcons {
     val Back: ImageVector          = Icons.Filled.ArrowBack
     val Camera: ImageVector        = PhotoCameraVector
@@ -845,6 +891,9 @@ object FrIcons {
     val ChefHat: ImageVector       = ChefHatVector
     /** Three-dot vertical overflow icon (vendored from material-icons-extended, §build-conventions). */
     val MoreVert: ImageVector      = MoreVertVector
+    // Password reveal toggle: open eye = value visible, slashed eye = value masked.
+    val Visibility: ImageVector    = VisibilityVector
+    val VisibilityOff: ImageVector = VisibilityOffVector
 }
 
 @FrPreview

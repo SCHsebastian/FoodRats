@@ -286,20 +286,56 @@ private fun EmailPasswordForm(
         state.emailError?.let {
             FieldError(resolve((it as AuthError).toStringKey()))
         }
+        val isSignUp = state.mode == SignInMode.SignUp
         FrUnderlineField(
             value = state.password,
             onValueChange = { onIntent(SignInIntent.UpdatePassword(it)) },
             label = resolve(AuthStringKey.FieldPassword),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
+                // In sign-up the keyboard advances to the confirm field; in sign-in it's the last field.
+                imeAction = if (isSignUp) ImeAction.Next else ImeAction.Done,
             ),
-            obfuscate = true,
+            // Show/hide drives the secure-input flag: masked (BasicSecureTextField) until the eye reveals it.
+            obfuscate = !state.showPassword,
             isError = state.passwordError != null,
             enabled = !state.isLoading,
+            trailingIcon = {
+                PasswordVisibilityToggle(
+                    visible = state.showPassword,
+                    enabled = !state.isLoading,
+                    onToggle = { onIntent(SignInIntent.TogglePasswordVisibility) },
+                )
+            },
         )
         state.passwordError?.let {
             FieldError(resolve((it as AuthError).toStringKey()))
+        }
+
+        // Confirm-password — sign-up only. Must match the password above before the account is created.
+        if (isSignUp) {
+            FrUnderlineField(
+                value = state.confirmPassword,
+                onValueChange = { onIntent(SignInIntent.UpdateConfirmPassword(it)) },
+                label = resolve(AuthStringKey.FieldConfirmPassword),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+                obfuscate = !state.showConfirmPassword,
+                isError = state.confirmPasswordError != null,
+                enabled = !state.isLoading,
+                trailingIcon = {
+                    PasswordVisibilityToggle(
+                        visible = state.showConfirmPassword,
+                        enabled = !state.isLoading,
+                        onToggle = { onIntent(SignInIntent.ToggleConfirmPasswordVisibility) },
+                    )
+                },
+            )
+            state.confirmPasswordError?.let {
+                FieldError(resolve((it as AuthError).toStringKey()))
+            }
         }
 
         if (state.isLoading) {
@@ -328,6 +364,33 @@ private fun FieldError(text: String) {
         style = StructuralType.micro,
         color = LocalFrSemanticColors.current.danger,
     )
+}
+
+/**
+ * The password reveal affordance pinned to the end of a [FrUnderlineField]: an open eye while the value
+ * is shown, a slashed eye while it's masked. The 48dp box is an accessible touch target; the icon's
+ * content description flips between "Show password" / "Hide password" so TalkBack announces the action.
+ */
+@Composable
+private fun PasswordVisibilityToggle(
+    visible: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(Radius.sm))
+            .clickable(enabled = enabled, onClick = onToggle),
+        contentAlignment = Alignment.Center,
+    ) {
+        FrIcon(
+            image = if (visible) FrIcons.Visibility else FrIcons.VisibilityOff,
+            tint = StructuralColors.foreground.copy(alpha = 0.7f),
+            contentDescription = resolve(if (visible) AuthStringKey.HidePassword else AuthStringKey.ShowPassword),
+            modifier = Modifier.size(Sizes.iconMd),
+        )
+    }
 }
 
 @Composable

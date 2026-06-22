@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.catalog.stories
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -351,9 +353,32 @@ private fun CircleButtonStory() {
 @Composable
 private fun FieldStory() {
     var value by remember { mutableStateOf("Saturday Brunch") }
+    var password by remember { mutableStateOf("supersecret") }
+    var revealed by remember { mutableStateOf(false) }
     CatalogScene("Underline field", lockedTheme = ThemeMode.Dark) {
         StructuralStage {
-            FrUnderlineFieldHost(value) { value = it }
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.lg)) {
+                FrUnderlineFieldHost(value) { value = it }
+                // Password variant: obfuscate is toggled by the trailing eye (open = revealed).
+                es.schsebastian.foodrats.core.designsystem.structural.FrUnderlineField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = "PASSWORD",
+                    placeholder = "Your password",
+                    obfuscate = !revealed,
+                    trailingIcon = {
+                        es.schsebastian.foodrats.core.designsystem.atoms.FrIcon(
+                            image = if (revealed) {
+                                es.schsebastian.foodrats.core.designsystem.atoms.FrIcons.Visibility
+                            } else {
+                                es.schsebastian.foodrats.core.designsystem.atoms.FrIcons.VisibilityOff
+                            },
+                            contentDescription = if (revealed) "Hide password" else "Show password",
+                            modifier = Modifier.size(Spacing.lg).clickable { revealed = !revealed },
+                        )
+                    },
+                )
+            }
         }
     }
 }

@@ -15,6 +15,10 @@
     <string name="auth_signin_agreement_guidelines_link">Community Guidelines</string>
     <string name="auth_field_email">Email</string>
     <string name="auth_field_password">Password</string>
+    <string name="auth_field_confirm_password">Confirm password</string>
+    <!-- Accessibility labels for the password reveal toggle (eye icon). -->
+    <string name="auth_show_password">Show password</string>
+    <string name="auth_hide_password">Hide password</string>
     <string name="auth_mode_signin_cta">Sign in</string>
     <string name="auth_mode_signup_cta">Create account</string>
     <string name="auth_toggle_to_signup">No account? Sign up</string>
@@ -33,6 +37,7 @@
     <string name="auth_error_password_too_short">Password must be at least 6 characters.</string>
     <string name="auth_error_email_in_use">That email is already taken.</string>
     <string name="auth_error_wrong_credentials">Wrong email or password.</string>
+    <string name="auth_error_password_mismatch">Passwords don't match.</string>
     <string name="auth_profile_title">Settings</string>
     <string name="auth_profile_back_cta">Back</string>
     <string name="auth_profile_identity_section">General</string>

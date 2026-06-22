@@ -32,10 +32,20 @@ class SignInViewModel(
         SignInIntent.SubmitEmail        -> doEmailSubmit()
         SignInIntent.ToggleMode         -> update {
             val next = if (it.mode == SignInMode.SignIn) SignInMode.SignUp else SignInMode.SignIn
-            it.copy(mode = next, error = null, emailError = null, passwordError = null, appleComingSoon = false)
+            // Confirm-password only exists in SignUp — clear it (value + error + reveal) on every flip
+            // so a stale match can't leak across modes.
+            it.copy(
+                mode = next,
+                error = null, emailError = null, passwordError = null,
+                confirmPassword = "", confirmPasswordError = null, showConfirmPassword = false,
+                appleComingSoon = false,
+            )
         }
+        SignInIntent.TogglePasswordVisibility        -> update { it.copy(showPassword = !it.showPassword) }
+        SignInIntent.ToggleConfirmPasswordVisibility -> update { it.copy(showConfirmPassword = !it.showConfirmPassword) }
         is SignInIntent.UpdateEmail     -> update { it.copy(email = intent.value, emailError = null, error = null, appleComingSoon = false) }
-        is SignInIntent.UpdatePassword  -> update { it.copy(password = intent.value, passwordError = null, error = null, appleComingSoon = false) }
+        is SignInIntent.UpdatePassword  -> update { it.copy(password = intent.value, passwordError = null, confirmPasswordError = null, error = null, appleComingSoon = false) }
+        is SignInIntent.UpdateConfirmPassword -> update { it.copy(confirmPassword = intent.value, confirmPasswordError = null, error = null, appleComingSoon = false) }
     }
 
     private suspend fun doGoogle() {
@@ -61,11 +71,14 @@ class SignInViewModel(
         // Client-side validation first — cheaper than a network round-trip for obvious mistakes.
         val emailErr = if (!isEmailValid(s.email)) AuthError.EmailPassword.InvalidEmail else null
         val passwordErr = if (s.password.length < MIN_PASSWORD_LENGTH) AuthError.EmailPassword.WeakPassword else null
-        if (emailErr != null || passwordErr != null) {
-            update { it.copy(emailError = emailErr, passwordError = passwordErr, error = null) }
+        // Confirm-password only gates SignUp; SignIn has no confirm field.
+        val confirmErr = if (s.mode == SignInMode.SignUp && s.confirmPassword != s.password)
+            AuthError.EmailPassword.PasswordMismatch else null
+        if (emailErr != null || passwordErr != null || confirmErr != null) {
+            update { it.copy(emailError = emailErr, passwordError = passwordErr, confirmPasswordError = confirmErr, error = null) }
             return
         }
-        update { it.copy(isLoading = true, error = null, emailError = null, passwordError = null) }
+        update { it.copy(isLoading = true, error = null, emailError = null, passwordError = null, confirmPasswordError = null) }
         val isSignUp = s.mode == SignInMode.SignUp
         val r = when (s.mode) {
             SignInMode.SignIn -> auth.signInWithEmail(s.email, s.password)

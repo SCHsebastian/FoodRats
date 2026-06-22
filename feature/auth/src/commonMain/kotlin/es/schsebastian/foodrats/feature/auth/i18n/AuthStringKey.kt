@@ -32,14 +32,18 @@ import foodrats.feature.auth.generated.resources.auth_error_email_invalid
 import foodrats.feature.auth.generated.resources.auth_error_missing_server_client_id
 import foodrats.feature.auth.generated.resources.auth_error_network
 import foodrats.feature.auth.generated.resources.auth_error_no_google_accounts
+import foodrats.feature.auth.generated.resources.auth_error_password_mismatch
 import foodrats.feature.auth.generated.resources.auth_error_password_too_short
 import foodrats.feature.auth.generated.resources.auth_error_play_services
 import foodrats.feature.auth.generated.resources.auth_error_session_expired
 import foodrats.feature.auth.generated.resources.auth_error_unknown
 import foodrats.feature.auth.generated.resources.auth_error_user_cancelled
 import foodrats.feature.auth.generated.resources.auth_error_wrong_credentials
+import foodrats.feature.auth.generated.resources.auth_field_confirm_password
 import foodrats.feature.auth.generated.resources.auth_field_email
 import foodrats.feature.auth.generated.resources.auth_field_password
+import foodrats.feature.auth.generated.resources.auth_hide_password
+import foodrats.feature.auth.generated.resources.auth_show_password
 import foodrats.feature.auth.generated.resources.auth_mode_signin_cta
 import foodrats.feature.auth.generated.resources.auth_mode_signup_cta
 import foodrats.feature.auth.generated.resources.auth_or_divider
@@ -162,6 +166,9 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     SignInAgreementGuidelinesLink(Res.string.auth_signin_agreement_guidelines_link),
     FieldEmail(Res.string.auth_field_email),
     FieldPassword(Res.string.auth_field_password),
+    FieldConfirmPassword(Res.string.auth_field_confirm_password),
+    ShowPassword(Res.string.auth_show_password),
+    HidePassword(Res.string.auth_hide_password),
     ModeSignInCta(Res.string.auth_mode_signin_cta),
     ModeSignUpCta(Res.string.auth_mode_signup_cta),
     ToggleToSignUp(Res.string.auth_toggle_to_signup),
@@ -180,6 +187,7 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ErrorPasswordTooShort(Res.string.auth_error_password_too_short),
     ErrorEmailInUse(Res.string.auth_error_email_in_use),
     ErrorWrongCredentials(Res.string.auth_error_wrong_credentials),
+    ErrorPasswordMismatch(Res.string.auth_error_password_mismatch),
     ProfileTitle(Res.string.auth_profile_title),
     ProfileBackCta(Res.string.auth_profile_back_cta),
     ProfileIdentitySection(Res.string.auth_profile_identity_section),
