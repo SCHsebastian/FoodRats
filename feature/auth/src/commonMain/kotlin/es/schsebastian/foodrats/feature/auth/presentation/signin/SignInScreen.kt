@@ -33,7 +33,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -295,7 +294,7 @@ private fun EmailPasswordForm(
                 keyboardType = KeyboardType.Password,
                 imeAction = ImeAction.Done,
             ),
-            visualTransformation = PasswordVisualTransformation(),
+            obfuscate = true,
             isError = state.passwordError != null,
             enabled = !state.isLoading,
         )
