@@ -1,28 +1,39 @@
 package es.schsebastian.foodrats.app.recap
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import es.schsebastian.foodrats.app.i18n.SharedStringKey
-import es.schsebastian.foodrats.core.designsystem.atoms.FrBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.structural.FrChipTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
+import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
+import es.schsebastian.foodrats.core.designsystem.structural.FrMicroRow
+import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralChip
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -30,147 +41,174 @@ import es.schsebastian.foodrats.core.i18n.toFixed
 import es.schsebastian.foodrats.feature.achievements.i18n.AchievementStringKey
 
 /**
- * Renders one [RecapScene] full-bleed. Each scene is a self-contained, domain-aware composable that
- * reuses design-system atoms (`FrBadge`, the `LocalFrSemanticColors` meaning roles) and resolves all
- * copy through StringKeys. Kept deliberately free of the player chrome (progress bar, gestures) so
- * Wave 3's shareable-cards can render the SAME scene composable off-screen to a bitmap.
+ * Renders one [RecapScene] full-bleed in the **Structural** language: an edge-to-edge [FrMediaFloor]
+ * (the week's plate photo, or an appetizing dish "mood" brush) with bottom-anchored zero-chrome
+ * content — an olive eyebrow, an oversized title / metric, and a microscopic stat array. Kept free of
+ * the player chrome (progress bar, gestures, share CTA — all owned by [FrStoryScaffold]) so it stays a
+ * pure slot. The share-card path rasterizes a *separate* composable ([RecapShareCardContent]), so the
+ * floor's blur here never touches the rendered cards.
  */
 @Composable
 fun RecapSceneView(scene: RecapScene, modifier: Modifier = Modifier) {
     when (scene) {
         is RecapScene.Cover -> CoverScene(scene, modifier)
         is RecapScene.TopMeal -> TopMealScene(scene, modifier)
-        is RecapScene.BestCook -> CenteredScene(
-            title = resolve(SharedStringKey.RecapBestCookTitle),
-            subtitle = resolve(SharedStringKey.RecapBestCookSubtitle, scene.memberName, scene.avgScore.toFixed(1)),
-            icon = FrIcons.Crown,
-            tint = LocalFrSemanticColors.current.celebration,
-            modifier = modifier,
-        )
-        is RecapScene.MostProlific -> CenteredScene(
-            title = resolve(SharedStringKey.RecapMostProlificTitle),
-            subtitle = resolve(SharedStringKey.RecapMostProlificSubtitle, scene.memberName, scene.postCount),
-            icon = FrIcons.Restaurant,
-            tint = LocalFrSemanticColors.current.celebration,
-            modifier = modifier,
-        )
-        is RecapScene.Streak -> CenteredScene(
-            title = resolve(SharedStringKey.RecapStreakTitle),
-            subtitle = resolve(SharedStringKey.RecapStreakSubtitle, scene.streakDays),
-            icon = FrIcons.Flame,
-            tint = LocalFrSemanticColors.current.streakHot,
-            modifier = modifier,
-        )
+        is RecapScene.BestCook -> SceneFloor(modifier, brush = StructuralColors.dishMackerel) {
+            FrEyebrow(text = resolve(SharedStringKey.RecapBestCookTitle).uppercase())
+            Spacer(Modifier.height(Spacing.sm))
+            MetricLine(value = scene.avgScore.toFixed(1), unit = resolve(SharedStringKey.RecapRatingUnit), tint = LocalFrSemanticColors.current.celebration)
+            Spacer(Modifier.height(Spacing.sm))
+            BodyLine(resolve(SharedStringKey.RecapBestCookSubtitle, scene.memberName, scene.avgScore.toFixed(1)))
+        }
+        is RecapScene.MostProlific -> SceneFloor(modifier, brush = StructuralColors.dishSalad) {
+            FrEyebrow(text = resolve(SharedStringKey.RecapMostProlificTitle).uppercase())
+            Spacer(Modifier.height(Spacing.sm))
+            MetricLine(value = scene.postCount.toString(), unit = null, tint = LocalFrSemanticColors.current.celebration)
+            Spacer(Modifier.height(Spacing.sm))
+            BodyLine(resolve(SharedStringKey.RecapMostProlificSubtitle, scene.memberName, scene.postCount))
+        }
+        is RecapScene.Streak -> SceneFloor(modifier, brush = StructuralColors.dishRamen, blur = StructuralBlur.Heavy) {
+            FrEyebrow(text = resolve(SharedStringKey.RecapStreakTitle).uppercase())
+            Spacer(Modifier.height(Spacing.sm))
+            MetricLine(value = scene.streakDays.toString(), unit = null, tint = LocalFrSemanticColors.current.streakHot)
+            Spacer(Modifier.height(Spacing.sm))
+            BodyLine(resolve(SharedStringKey.RecapStreakSubtitle, scene.streakDays))
+        }
         is RecapScene.Badges -> BadgesScene(scene, modifier)
-        is RecapScene.Cuisines -> CenteredScene(
-            title = resolve(SharedStringKey.RecapCuisinesTitle),
-            subtitle = resolve(SharedStringKey.RecapCuisinesSubtitle, scene.collectedCount, scene.totalCount),
-            icon = FrIcons.Public,
-            tint = LocalFrSemanticColors.current.info,
-            modifier = modifier,
-        )
+        is RecapScene.Cuisines -> SceneFloor(modifier, brush = StructuralColors.oliveFloor) {
+            FrEyebrow(text = resolve(SharedStringKey.RecapCuisinesTitle).uppercase())
+            Spacer(Modifier.height(Spacing.sm))
+            MetricLine(
+                value = scene.collectedCount.toString(),
+                unit = resolve(SharedStringKey.RecapCuisinesRatio, scene.totalCount),
+                tint = LocalFrSemanticColors.current.info,
+            )
+            Spacer(Modifier.height(Spacing.sm))
+            BodyLine(resolve(SharedStringKey.RecapCuisinesSubtitle, scene.collectedCount, scene.totalCount))
+        }
         is RecapScene.YourWeek -> YourWeekScene(scene, modifier)
     }
 }
 
 @Composable
 private fun CoverScene(scene: RecapScene.Cover, modifier: Modifier) {
-    SceneSurface(modifier, background = MaterialTheme.colorScheme.primary) {
-        CenteredText(resolve(SharedStringKey.RecapCoverTitle), MaterialTheme.typography.headlineMedium, MaterialTheme.colorScheme.onPrimary)
-        CenteredText(resolve(SharedStringKey.RecapCoverSubtitle), MaterialTheme.typography.bodyLarge, MaterialTheme.colorScheme.onPrimary)
-        CenteredText(scene.weekLabel, MaterialTheme.typography.labelLarge, MaterialTheme.colorScheme.onPrimary)
+    SceneFloor(modifier, brush = StructuralColors.dishRamen, blur = StructuralBlur.Heavy) {
+        FrEyebrow(
+            text = resolve(SharedStringKey.RecapCoverTitle).uppercase(),
+            color = StructuralColors.foreground.copy(alpha = 0.85f),
+        )
+        Spacer(Modifier.height(Spacing.sm))
+        FrText(
+            text = resolve(SharedStringKey.RecapCoverSubtitle),
+            style = StructuralType.titleXl,
+            color = StructuralColors.foreground,
+        )
+        Spacer(Modifier.height(Spacing.sm))
+        FrText(
+            text = scene.weekLabel.uppercase(),
+            style = StructuralType.microMono,
+            color = StructuralColors.foreground.copy(alpha = 0.7f),
+        )
     }
 }
 
 @Composable
 private fun TopMealScene(scene: RecapScene.TopMeal, modifier: Modifier) {
-    SceneSurface(modifier, background = MaterialTheme.colorScheme.scrim) {
-        CenteredText(resolve(SharedStringKey.RecapTopMealTitle), MaterialTheme.typography.titleMedium, Color.White)
-        AsyncImage(
-            model = scene.photoUrl,
-            contentDescription = scene.dishName,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.size(220.dp),
-        )
-        CenteredText(scene.dishName, MaterialTheme.typography.headlineSmall, Color.White)
-        CenteredText(resolve(SharedStringKey.RecapTopMealAuthor, scene.authorName), MaterialTheme.typography.bodyMedium, Color.White)
-        CenteredText(
-            resolve(SharedStringKey.RecapTopMealScore, scene.score.toFixed(1), scene.ratingCount),
-            MaterialTheme.typography.titleSmall,
-            LocalFrSemanticColors.current.celebration,
+    // The plate IS the floor — sharp, the celebration of the week's best dish.
+    val painter = rememberAsyncImagePainter(scene.photoUrl)
+    SceneFloor(modifier, painter = painter, blur = StructuralBlur.None, scrim = FrScrimStyle.Photo) {
+        FrEyebrow(text = resolve(SharedStringKey.RecapTopMealTitle).uppercase())
+        Spacer(Modifier.height(Spacing.sm))
+        FrText(text = scene.dishName, style = StructuralType.titleXl, color = StructuralColors.foreground)
+        Spacer(Modifier.height(Spacing.sm))
+        FrMicroRow(
+            items = listOf(
+                resolve(SharedStringKey.RecapTopMealAuthor, scene.authorName).uppercase(),
+                resolve(SharedStringKey.RecapTopMealScore, scene.score.toFixed(1), scene.ratingCount).uppercase(),
+            ),
         )
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BadgesScene(scene: RecapScene.Badges, modifier: Modifier) {
-    SceneSurface(modifier, background = MaterialTheme.colorScheme.scrim) {
-        CenteredText(resolve(SharedStringKey.RecapBadgesTitle), MaterialTheme.typography.titleMedium, Color.White)
-        scene.titleKeys.take(3).forEach { key: AchievementStringKey ->
-            FrBadge(
-                icon = FrIcons.Trophy,
-                title = resolve(key),
-                earned = true,
-                progressFraction = 1f,
-                tint = LocalFrSemanticColors.current.celebration,
-            )
+    SceneFloor(modifier, brush = StructuralColors.dishMackerel) {
+        FrEyebrow(text = resolve(SharedStringKey.RecapBadgesTitle).uppercase())
+        Spacer(Modifier.height(Spacing.md))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            scene.titleKeys.take(3).forEach { key: AchievementStringKey ->
+                FrStructuralChip(
+                    label = resolve(key),
+                    tone = FrChipTone.Ember,
+                    leadingIcon = FrIcons.Trophy,
+                )
+            }
         }
     }
 }
 
 @Composable
 private fun YourWeekScene(scene: RecapScene.YourWeek, modifier: Modifier) {
-    SceneSurface(modifier, background = MaterialTheme.colorScheme.secondary) {
-        CenteredText(resolve(SharedStringKey.RecapYourWeekTitle), MaterialTheme.typography.headlineMedium, MaterialTheme.colorScheme.onSecondary)
-        CenteredText(resolve(SharedStringKey.RecapYourWeekStreak, scene.streakDays), MaterialTheme.typography.titleMedium, MaterialTheme.colorScheme.onSecondary)
-        CenteredText(resolve(SharedStringKey.RecapYourWeekCuisines, scene.cuisinesCollected), MaterialTheme.typography.titleMedium, MaterialTheme.colorScheme.onSecondary)
-        CenteredText(resolve(SharedStringKey.RecapYourWeekIngredients, scene.ingredientsCollected), MaterialTheme.typography.titleMedium, MaterialTheme.colorScheme.onSecondary)
+    SceneFloor(modifier, brush = StructuralColors.fieldFloor) {
+        FrEyebrow(text = resolve(SharedStringKey.RecapYourWeekTitle).uppercase())
+        Spacer(Modifier.height(Spacing.md))
+        BodyLine(resolve(SharedStringKey.RecapYourWeekStreak, scene.streakDays))
+        Spacer(Modifier.height(Spacing.xs))
+        BodyLine(resolve(SharedStringKey.RecapYourWeekCuisines, scene.cuisinesCollected))
+        Spacer(Modifier.height(Spacing.xs))
+        BodyLine(resolve(SharedStringKey.RecapYourWeekIngredients, scene.ingredientsCollected))
     }
 }
 
-/** A generic icon + title + subtitle scene (best cook, most prolific, streak, cuisines). */
+/** An oversized metric (weight 800, tabular) with an optional trailing unit, baseline-aligned. */
 @Composable
-private fun CenteredScene(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    tint: Color,
-    modifier: Modifier,
-) {
-    SceneSurface(modifier, background = MaterialTheme.colorScheme.scrim) {
-        FrBadge(icon = icon, title = title, earned = true, progressFraction = 1f, tint = tint)
-        CenteredText(subtitle, MaterialTheme.typography.titleMedium, Color.White)
+private fun MetricLine(value: String, unit: String?, tint: Color) {
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        FrText(text = value, style = StructuralType.metricLg, color = tint)
+        if (unit != null) {
+            FrText(
+                text = unit,
+                style = StructuralType.titleLg,
+                color = StructuralColors.foreground,
+                modifier = Modifier.padding(bottom = 10.dp),
+            )
+        }
     }
 }
 
 @Composable
-private fun CenteredText(text: String, style: TextStyle, color: Color) {
-    Text(
-        text = text,
-        style = style,
-        color = color,
-        textAlign = TextAlign.Center,
-        modifier = Modifier.fillMaxWidth(),
-    )
+private fun BodyLine(text: String) {
+    FrText(text = text, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.85f))
 }
 
+/**
+ * The shared structural scene surface: an edge-to-edge [FrMediaFloor] (Z0) with bottom-anchored
+ * content inset under the player chrome (progress bar top, share CTA bottom).
+ */
 @Composable
-private fun SceneSurface(
+private fun SceneFloor(
     modifier: Modifier,
-    background: Color,
-    content: @Composable () -> Unit,
+    painter: Painter? = null,
+    brush: Brush = StructuralColors.fieldFloor,
+    blur: StructuralBlur = StructuralBlur.Heavy,
+    scrim: FrScrimStyle = FrScrimStyle.Even,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(background)
-            .padding(horizontal = Spacing.xl),
-        contentAlignment = Alignment.Center,
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
+        FrMediaFloor(painter = painter, brush = brush, blur = blur, dim = 0.42f, scrim = scrim)
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
-        ) { content() }
+            modifier = Modifier
+                .fillMaxSize()
+                .windowInsetsPadding(WindowInsets.safeDrawing)
+                .padding(horizontal = Spacing.lg)
+                .padding(top = 56.dp, bottom = 88.dp),
+            verticalArrangement = Arrangement.Bottom,
+        ) {
+            content()
+        }
     }
 }

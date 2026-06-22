@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -84,6 +85,9 @@ fun FrGlassTile(
         else -> 22.dp
     }
 
+    // Read the theme-aware edge-light here — DrawScope lambdas are not @Composable.
+    val edgeLight = StructuralColors.topLight
+
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -102,7 +106,7 @@ fun FrGlassTile(
                 drawContent()
                 val y = 0.5.dp.toPx()
                 drawLine(
-                    color = StructuralColors.topLight,
+                    color = edgeLight,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx(),
@@ -116,6 +120,17 @@ fun FrGlassTile(
                 },
             )
             .padding(contentPadding),
-        content = content,
-    )
+    ) {
+        if (tone == FrTileTone.Glass) {
+            content()
+        } else {
+            // Ember/Olive are saturated, dark-ish brand gradients in BOTH themes — force the dark
+            // structural scheme so `foreground` content stays white (in light mode it would otherwise
+            // flip to dark ink and disappear into the gradient). Mirrors the onMedia rule for photos.
+            val columnScope = this
+            CompositionLocalProvider(LocalStructuralColors provides structuralDarkColors()) {
+                with(columnScope) { content() }
+            }
+        }
+    }
 }

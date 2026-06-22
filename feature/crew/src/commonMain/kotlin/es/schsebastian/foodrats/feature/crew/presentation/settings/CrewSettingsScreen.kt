@@ -1,29 +1,25 @@
 package es.schsebastian.foodrats.feature.crew.presentation.settings
 
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,64 +30,76 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import es.schsebastian.foodrats.core.domain.share.ShareController
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
-import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
-import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
-import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
+import es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
-import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
-import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
-import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
-import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsPicker
-import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
 import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
-import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsPicker
+import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassCircleButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassDialog
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassToggle
+import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
+import es.schsebastian.foodrats.core.designsystem.structural.FrMicroRow
+import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralRow
+import es.schsebastian.foodrats.core.designsystem.structural.FrTileDepth
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.i18n.resolve
-import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
-import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.domain.models.MimeType
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
-import kotlinx.io.readByteArray
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
+import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
+import io.github.ismoy.imagepickerkmp.domain.models.MimeType
+import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
+import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
+import kotlinx.coroutines.delay
+import kotlinx.io.readByteArray
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/**
+ * Structural crew settings: an edge-to-edge [FrMediaFloor] (the crew banner, or a mackerel mood) with
+ * floating glass chrome (back + crew name) and a zero-chrome content plane of frosted strata — the
+ * crew-identity hero, owner-only edit tiles (name, blind-voting, tagline, welcome, weekly challenge,
+ * score style, banner), the member list, switch-crew, and a crimson danger zone. ALL ViewModel wiring
+ * is preserved verbatim; only the visual layer is structural. Dialogs / the score-style sheet stay
+ * matte (their own "small screens" to port).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CrewSettingsScreen(
@@ -113,9 +121,8 @@ fun CrewSettingsScreen(
     val share = koinInject<ShareController>()
     var memberPendingRemoval by remember { mutableStateOf<AccountId?>(null) }
     var showQr by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
     val deletedMemberFallback = resolve(CrewStringKey.MemberDeleted)
-    // Name to show in the success snackbar; set by the MemberRemoved effect, cleared once shown.
+    // Name to show in the success toast; set by the MemberRemoved effect, cleared once shown.
     var memberRemovedName by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
@@ -130,199 +137,384 @@ fun CrewSettingsScreen(
         }
     }
 
-    memberRemovedName?.let { name ->
-        val message = resolve(CrewStringKey.SettingsMemberRemoved, name)
-        LaunchedEffect(name) {
-            snackbarHostState.showSnackbar(message)
-            memberRemovedName = null
-        }
-    }
+    val crew = state.crew
 
-    FrScreenScaffold(
-        snackbarHostState = snackbarHostState,
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        SectionEyebrow(resolve(CrewStringKey.SettingsTitle))
-                        FrText(
-                            text = state.crew?.name.orEmpty(),
-                            style = MaterialTheme.typography.titleMedium,
-                        )
-                    }
-                },
-                navigationIcon = {
-                    FrIconButton(
-                        icon = FrIcons.Back,
-                        onClick = onBack,
-                        contentDescription = resolve(CrewStringKey.SettingsBackCta),
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                ),
+    // When a banner is set the floor is that photo (dark in both themes) → floating chrome/eyebrows over
+    // it use white onMedia. With no banner the floor is the adaptive atmospheric one (light in light
+    // mode) → floating content uses the theme-aware foreground + the olive eyebrow accent.
+    val onMediaFloor = state.bannerImageUrl != null
+    val planeFg = if (onMediaFloor) StructuralColors.onMedia else StructuralColors.foreground
+    val planeEyebrow = if (onMediaFloor) StructuralColors.onMedia.copy(alpha = 0.85f) else MaterialTheme.colorScheme.primary
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Z0 — the crew banner blurred (or a mackerel mood) as the floor.
+        val bannerUrl = state.bannerImageUrl
+        if (bannerUrl != null) {
+            FrMediaFloor(
+                painter = coil3.compose.rememberAsyncImagePainter(bannerUrl),
+                blur = StructuralBlur.Heavy,
+                dim = 0.5f,
+                scrim = FrScrimStyle.Even,
             )
-        },
-    ) {
-        val crew = state.crew
-        val error = state.error
+        } else {
+            // No banner: an atmospheric floor that goes LIGHT in light mode (so the section eyebrows +
+            // tiles read as a proper light screen). A set banner is a real photo → stays dark (above).
+            FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft)
+        }
+
         when {
-            crew == null && error != null -> Box(
-                modifier = Modifier.fillMaxSize().padding(Spacing.lg),
-            ) { FrErrorBanner(text = resolve(error.toStringKey())) }
-
-            crew == null -> CrewSettingsSkeleton()
-
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxHeight().frContentWidth().padding(horizontal = Spacing.lg),
-                contentPadding = PaddingValues(vertical = Spacing.lg),
-                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+            crew == null && state.error != null -> Box(
+                modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg),
+                contentAlignment = Alignment.Center,
             ) {
-                // Signature: the crew hero "develops in" with a focal reveal; every section
-                // below it rises into place in sequence (small stagger so the column lands fast).
-                item {
-                    val inviteUrl = inviteUrlFor(crew.code.value)
-                    val shareMessage = resolve(CrewStringKey.InviteShareMessage, crew.name, inviteUrl)
-                    CrewHeroCard(
-                        crew = crew,
-                        onCopy = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
-                        onShareLink = {
-                            vm.onIntent(CrewSettingsIntent.ShareLinkTapped)
-                            share.shareText(shareMessage)
-                        },
-                        onShowQr = { showQr = true },
-                        modifier = Modifier.frRevealScale(),
-                    )
-                }
-
-                if (state.isOwner) {
+                FrText(
+                    text = resolve(state.error!!.toStringKey()),
+                    style = StructuralType.body,
+                    color = LocalFrSemanticColors.current.danger,
+                )
+            }
+            crew == null -> CrewSettingsSkeleton()
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = Spacing.lg,
+                        end = Spacing.lg,
+                        top = 96.dp,
+                        bottom = Spacing.xxl,
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+                ) {
+                    // (a) Identity hero + invite + share + QR.
                     item {
-                        FrCard(modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 40)) {
-                            FrTextField(
+                        FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.frRevealScale()) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+                            ) {
+                                FrText(text = crew.name, style = StructuralType.titleXl, color = StructuralColors.foreground)
+                                FrMicroRow(items = listOf(resolve(CrewStringKey.SettingsMembersCount, crew.size).uppercase()))
+                                // Invite code — tap to copy.
+                                FrGlassButton(
+                                    label = crew.code.value,
+                                    onClick = { clipboardManager.setText(AnnotatedString(crew.code.value)) },
+                                    tone = FrButtonTone.Glass,
+                                    fillWidth = true,
+                                )
+                                val inviteUrl = inviteUrlFor(crew.code.value)
+                                val shareMessage = resolve(CrewStringKey.InviteShareMessage, crew.name, inviteUrl)
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                                    FrGlassButton(
+                                        label = resolve(CrewStringKey.SettingsShareLink),
+                                        onClick = {
+                                            vm.onIntent(CrewSettingsIntent.ShareLinkTapped)
+                                            share.shareText(shareMessage)
+                                        },
+                                        tone = FrButtonTone.Primary,
+                                        leadingIcon = FrIcons.Share,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    FrGlassButton(
+                                        label = resolve(CrewStringKey.SettingsShowQr),
+                                        onClick = { showQr = true },
+                                        tone = FrButtonTone.Ghost,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if (state.isOwner) {
+                        // (b) Crew-name edit.
+                        item {
+                            SaveableFieldTile(
+                                eyebrow = null,
+                                label = resolve(CrewStringKey.SettingsCrewNameLabel),
                                 value = state.editingCrewName,
                                 onValueChange = { vm.onIntent(CrewSettingsIntent.CrewNameChanged(it)) },
-                                label = resolve(CrewStringKey.SettingsCrewNameLabel),
-                                enabled = !state.isSavingCrewName,
-                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                saving = state.isSavingCrewName,
+                                saveEnabled = state.editingCrewName.isNotBlank() &&
+                                    state.editingCrewName != crew.name && !state.isSavingCrewName,
+                                onSave = { vm.onIntent(CrewSettingsIntent.SaveCrewName) },
+                                modifier = Modifier.frRiseIn(delayMillis = 40),
                             )
-                            FrButton(
-                                label = resolve(CrewStringKey.SettingsSave),
-                                onClick = { vm.onIntent(CrewSettingsIntent.SaveCrewName) },
-                                enabled = state.editingCrewName.isNotBlank() &&
-                                    state.editingCrewName != crew.name &&
-                                    !state.isSavingCrewName,
-                                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+                        }
+
+                        // (c) Blind voting.
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.frRiseIn(delayMillis = 80)) {
+                                FrEyebrow(text = resolve(CrewStringKey.SettingsBlindVotingSection).uppercase(), color = planeEyebrow)
+                                FrGlassTile {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+                                        verticalAlignment = Alignment.Top,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                                            FrText(
+                                                text = resolve(CrewStringKey.SettingsBlindVotingLabel),
+                                                style = StructuralType.titleMd,
+                                                color = StructuralColors.foreground,
+                                            )
+                                            FrText(
+                                                text = resolve(CrewStringKey.SettingsBlindVotingDescription),
+                                                style = StructuralType.body,
+                                                color = StructuralColors.foreground.copy(alpha = 0.7f),
+                                            )
+                                        }
+                                        FrGlassToggle(
+                                            checked = crew.blindVoting,
+                                            onCheckedChange = { vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(it)) },
+                                            contentDescription = resolve(CrewStringKey.SettingsBlindVotingLabel),
+                                            enabled = !state.isSavingBlindVoting,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // (d) Tagline (house rules).
+                        item {
+                            SaveableFieldTile(
+                                eyebrow = resolve(CrewStringKey.SettingsTaglineSection).uppercase(),
+                                label = resolve(CrewStringKey.SettingsTaglineLabel),
+                                value = state.editingTagline,
+                                onValueChange = { vm.onIntent(CrewSettingsIntent.TaglineChanged(it)) },
+                                singleLine = false,
+                                saving = state.isSavingTagline,
+                                saveEnabled = !state.isSavingTagline && state.editingTagline.trim() != crew.tagline?.value.orEmpty(),
+                                onSave = { vm.onIntent(CrewSettingsIntent.SaveTagline) },
+                                eyebrowColor = planeEyebrow,
+                                modifier = Modifier.frRiseIn(delayMillis = 100),
+                                placeholder = resolve(CrewStringKey.SettingsTaglinePlaceholder),
+                            )
+                        }
+
+                        // (e) Welcome message.
+                        item {
+                            SaveableFieldTile(
+                                eyebrow = resolve(CrewStringKey.SettingsWelcomeMessageSection).uppercase(),
+                                label = resolve(CrewStringKey.SettingsWelcomeMessageLabel),
+                                value = state.editingWelcomeMessage,
+                                onValueChange = { vm.onIntent(CrewSettingsIntent.WelcomeMessageChanged(it)) },
+                                singleLine = false,
+                                saving = state.isSavingWelcomeMessage,
+                                saveEnabled = !state.isSavingWelcomeMessage && state.editingWelcomeMessage.trim() != crew.welcomeMessage?.value.orEmpty(),
+                                onSave = { vm.onIntent(CrewSettingsIntent.SaveWelcomeMessage) },
+                                eyebrowColor = planeEyebrow,
+                                modifier = Modifier.frRiseIn(delayMillis = 120),
+                                placeholder = resolve(CrewStringKey.SettingsWelcomeMessagePlaceholder),
+                            )
+                        }
+
+                        // (f) Weekly challenge.
+                        item {
+                            SaveableFieldTile(
+                                eyebrow = resolve(CrewStringKey.SettingsWeeklyChallengeSection).uppercase(),
+                                label = resolve(CrewStringKey.SettingsWeeklyChallengeLabel),
+                                value = state.editingWeeklyChallenge,
+                                onValueChange = { vm.onIntent(CrewSettingsIntent.WeeklyChallengeChanged(it)) },
+                                singleLine = false,
+                                saving = state.isSavingWeeklyChallenge,
+                                saveEnabled = !state.isSavingWeeklyChallenge && state.editingWeeklyChallenge.trim() != crew.weeklyChallenge?.value.orEmpty(),
+                                onSave = { vm.onIntent(CrewSettingsIntent.SaveWeeklyChallenge) },
+                                eyebrowColor = planeEyebrow,
+                                modifier = Modifier.frRiseIn(delayMillis = 140),
+                                placeholder = resolve(CrewStringKey.SettingsWeeklyChallengePlaceholder),
+                            )
+                        }
+
+                        // (g) Score style.
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.frRiseIn(delayMillis = 160)) {
+                                FrEyebrow(text = resolve(CrewStringKey.SettingsScoreStyleSection).uppercase(), color = planeEyebrow)
+                                val styleLabel = when (crew.scoreStyle) {
+                                    CrewScoreStyle.Stars -> resolve(CrewStringKey.SettingsScoreStyleStars)
+                                    CrewScoreStyle.Emoji -> resolve(CrewStringKey.SettingsScoreStyleEmoji)
+                                    CrewScoreStyle.Numeric -> resolve(CrewStringKey.SettingsScoreStyleNumeric)
+                                }
+                                FrGlassTile(
+                                    depth = FrTileDepth.Deep,
+                                    onClick = if (state.isSavingScoreStyle) null else ({ vm.onIntent(CrewSettingsIntent.OpenScoreStylePicker) }),
+                                ) {
+                                    TileRow(
+                                        icon = FrIcons.Star,
+                                        title = resolve(CrewStringKey.SettingsScoreStyleLabel),
+                                        subtitle = styleLabel,
+                                        trailing = {
+                                            if (state.isSavingScoreStyle) {
+                                                FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                                            } else {
+                                                Chevron()
+                                            }
+                                        },
+                                    )
+                                }
+                            }
+                        }
+
+                        // (h) Banner.
+                        item {
+                            BannerSection(
+                                hasBanner = crew.bannerPath != null,
+                                imageUrl = state.bannerImageUrl,
+                                focalY = crew.bannerFocalY,
+                                saving = state.isSavingBanner,
+                                onPicked = { vm.onIntent(CrewSettingsIntent.BannerPicked(it)) },
+                                onRemove = { vm.onIntent(CrewSettingsIntent.RemoveBanner) },
+                                onReposition = { vm.onIntent(CrewSettingsIntent.RepositionBanner(it)) },
+                                modifier = Modifier.frRiseIn(delayMillis = 180),
                             )
                         }
                     }
 
+                    // (i) Members.
                     item {
-                        BlindVotingCard(
-                            enabled = crew.blindVoting,
-                            saving = state.isSavingBlindVoting,
-                            onToggle = { vm.onIntent(CrewSettingsIntent.ToggleBlindVoting(it)) },
-                            modifier = Modifier.frRiseIn(delayMillis = 80),
-                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.frRiseIn(delayMillis = 140)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                FrEyebrow(text = resolve(CrewStringKey.SettingsMembersSection).uppercase(), color = planeEyebrow)
+                                if (state.isOwner) {
+                                    FrText(
+                                        text = resolve(CrewStringKey.SettingsOwnerBadge),
+                                        style = StructuralType.micro,
+                                        color = planeFg.copy(alpha = 0.6f),
+                                    )
+                                }
+                            }
+                            FrGlassTile {
+                                crew.members.forEachIndexed { index, m ->
+                                    if (index > 0) {
+                                        HorizontalDivider(color = StructuralColors.dividerSoft, modifier = Modifier.padding(vertical = Spacing.xxs))
+                                    }
+                                    val isMemberOwner = m.accountId == crew.ownerId
+                                    val canRemove = state.isOwner && m.accountId != state.myAccountId
+                                    val isRemoving = m.accountId in state.removingMemberIds
+                                    FrCrewMemberRow(
+                                        account = state.identities[m.accountId],
+                                        subtitle = resolve(
+                                            if (isMemberOwner) CrewStringKey.SettingsRoleOwner else CrewStringKey.SettingsRoleMember,
+                                        ),
+                                        trailing = if (canRemove) {
+                                            {
+                                                if (isRemoving) {
+                                                    FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                                                } else {
+                                                    FrIconButton(
+                                                        icon = FrIcons.Close,
+                                                        onClick = { memberPendingRemoval = m.accountId },
+                                                        contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
+                                                    )
+                                                }
+                                            }
+                                        } else {
+                                            null
+                                        },
+                                    )
+                                }
+                            }
+                        }
                     }
 
+                    // (j) Switch crew.
                     item {
-                        TaglineCard(
-                            tagline = state.editingTagline,
-                            savedTagline = crew.tagline?.value.orEmpty(),
-                            saving = state.isSavingTagline,
-                            onTaglineChange = { vm.onIntent(CrewSettingsIntent.TaglineChanged(it)) },
-                            onSave = { vm.onIntent(CrewSettingsIntent.SaveTagline) },
-                            modifier = Modifier.frRiseIn(delayMillis = 100),
-                        )
-                    }
-
-                    item {
-                        WelcomeMessageCard(
-                            message = state.editingWelcomeMessage,
-                            savedMessage = crew.welcomeMessage?.value.orEmpty(),
-                            saving = state.isSavingWelcomeMessage,
-                            onMessageChange = { vm.onIntent(CrewSettingsIntent.WelcomeMessageChanged(it)) },
-                            onSave = { vm.onIntent(CrewSettingsIntent.SaveWelcomeMessage) },
-                            modifier = Modifier.frRiseIn(delayMillis = 120),
-                        )
-                    }
-
-                    item {
-                        WeeklyChallengeCard(
-                            challenge = state.editingWeeklyChallenge,
-                            savedChallenge = crew.weeklyChallenge?.value.orEmpty(),
-                            saving = state.isSavingWeeklyChallenge,
-                            onChallengeChange = { vm.onIntent(CrewSettingsIntent.WeeklyChallengeChanged(it)) },
-                            onSave = { vm.onIntent(CrewSettingsIntent.SaveWeeklyChallenge) },
-                            modifier = Modifier.frRiseIn(delayMillis = 140),
-                        )
-                    }
-
-                    item {
-                        ScoreStyleCard(
-                            current = crew.scoreStyle,
-                            saving = state.isSavingScoreStyle,
-                            onOpen = { vm.onIntent(CrewSettingsIntent.OpenScoreStylePicker) },
-                            modifier = Modifier.frRiseIn(delayMillis = 160),
-                        )
-                    }
-
-                    // C9 — crew banner image upload/remove + reposition (owner-only).
-                    item {
-                        BannerCard(
-                            hasBanner = crew.bannerPath != null,
-                            imageUrl = state.bannerImageUrl,
-                            focalY = crew.bannerFocalY,
-                            saving = state.isSavingBanner,
-                            onPicked = { bytes -> vm.onIntent(CrewSettingsIntent.BannerPicked(bytes)) },
-                            onRemove = { vm.onIntent(CrewSettingsIntent.RemoveBanner) },
-                            onReposition = { f -> vm.onIntent(CrewSettingsIntent.RepositionBanner(f)) },
+                        FrGlassButton(
+                            label = resolve(CrewStringKey.SettingsSwitchCrew),
+                            onClick = { vm.onIntent(CrewSettingsIntent.SwitchCrew) },
+                            tone = FrButtonTone.Glass,
+                            fillWidth = true,
                             modifier = Modifier.frRiseIn(delayMillis = 180),
                         )
                     }
-                }
 
-                item {
-                    MembersCard(
-                        crew = crew,
-                        isOwner = state.isOwner,
-                        myAccountId = state.myAccountId,
-                        identities = state.identities,
-                        removingMemberIds = state.removingMemberIds,
-                        onRemove = { memberPendingRemoval = it },
-                        modifier = Modifier.frRiseIn(delayMillis = 140),
-                    )
-                }
+                    // (k) Danger zone.
+                    item {
+                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.frRiseIn(delayMillis = 220)) {
+                            FrEyebrow(
+                                text = resolve(CrewStringKey.SettingsDangerSection).uppercase(),
+                                color = LocalFrSemanticColors.current.danger,
+                            )
+                            FrGlassTile(depth = FrTileDepth.Deep) {
+                                DangerRow(
+                                    icon = FrIcons.Logout,
+                                    label = resolve(CrewStringKey.SettingsLeaveCta),
+                                    enabled = !state.isLeaving,
+                                    showTopHairline = false,
+                                    onClick = { vm.onIntent(CrewSettingsIntent.Leave) },
+                                )
+                                if (state.isOwner) {
+                                    DangerRow(
+                                        icon = FrIcons.Delete,
+                                        label = resolve(CrewStringKey.SettingsDeleteCta),
+                                        enabled = !state.isDeleting,
+                                        showTopHairline = true,
+                                        onClick = { vm.onIntent(CrewSettingsIntent.RequestDelete) },
+                                    )
+                                }
+                            }
+                        }
+                    }
 
-                item {
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsSwitchCrew),
-                        onClick = { vm.onIntent(CrewSettingsIntent.SwitchCrew) },
-                        variant = FrButtonVariant.Secondary,
-                        modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 180),
-                    )
-                }
-
-                item {
-                    DangerZoneCard(
-                        isOwner = state.isOwner,
-                        leaveEnabled = !state.isLeaving,
-                        deleteEnabled = !state.isDeleting,
-                        onLeave = { vm.onIntent(CrewSettingsIntent.Leave) },
-                        onDelete = { vm.onIntent(CrewSettingsIntent.RequestDelete) },
-                        modifier = Modifier.frRiseIn(delayMillis = 220),
-                    )
-                }
-
-                state.error?.let { err ->
-                    item { FrErrorBanner(text = resolve(err.toStringKey())) }
+                    // (l) Trailing error banner.
+                    state.error?.let { err ->
+                        item {
+                            DangerBanner(text = resolve(err.toStringKey()))
+                        }
+                    }
                 }
             }
         }
+
+        // Floating chrome — back (left) + centered crew label.
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FrGlassCircleButton(
+                icon = FrIcons.Back,
+                onClick = onBack,
+                contentDescription = resolve(CrewStringKey.SettingsBackCta),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                FrEyebrow(text = resolve(CrewStringKey.SettingsTitle).uppercase(), color = planeEyebrow)
+                FrText(
+                    text = crew?.name.orEmpty(),
+                    style = StructuralType.titleMd,
+                    color = planeFg,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            // Spacer matching the back button's footprint so the label stays centered.
+            Spacer(Modifier.size(44.dp))
+        }
+
+        // Member-removed toast.
+        memberRemovedName?.let { name ->
+            StructuralToast(
+                message = resolve(CrewStringKey.SettingsMemberRemoved, name),
+                onDismiss = { memberRemovedName = null },
+            )
+        }
     }
 
+    // QR invite dialog (kept matte — its own small screen to port).
     if (showQr) {
-        state.crew?.let { c ->
+        crew?.let { c ->
             InviteQrDialog(
                 crewName = c.name,
                 inviteUrl = inviteUrlFor(c.code.value),
@@ -331,37 +523,36 @@ fun CrewSettingsScreen(
         }
     }
 
+    // Delete-crew confirm.
     if (state.showDeleteConfirm) {
         DeleteCrewConfirmDialog(
-            crewName = state.crew?.name.orEmpty(),
+            crewName = crew?.name.orEmpty(),
             onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmDelete) },
             onDismiss = { vm.onIntent(CrewSettingsIntent.CancelDelete) },
         )
     }
 
-    // C8 — score-style bottom-sheet. Shown outside the LazyColumn so ModalBottomSheet renders
-    // as a proper overlay (can't be a LazyColumn item). Guard on `crew != null` so we can
-    // read the current scoreStyle for the initial selection.
+    // Score-style picker (bottom sheet, kept matte).
     if (state.showScoreStylePicker) {
-        state.crew?.let { c ->
+        crew?.let { c ->
             FrSettingsPicker(
                 title = resolve(CrewStringKey.SettingsScoreStyleLabel),
                 options = listOf(
-                    "stars"   to resolve(CrewStringKey.SettingsScoreStyleStars),
-                    "emoji"   to resolve(CrewStringKey.SettingsScoreStyleEmoji),
+                    "stars" to resolve(CrewStringKey.SettingsScoreStyleStars),
+                    "emoji" to resolve(CrewStringKey.SettingsScoreStyleEmoji),
                     "numeric" to resolve(CrewStringKey.SettingsScoreStyleNumeric),
                 ),
                 selectedId = when (c.scoreStyle) {
-                    CrewScoreStyle.Stars   -> "stars"
-                    CrewScoreStyle.Emoji   -> "emoji"
+                    CrewScoreStyle.Stars -> "stars"
+                    CrewScoreStyle.Emoji -> "emoji"
                     CrewScoreStyle.Numeric -> "numeric"
                 },
                 onDismiss = { vm.onIntent(CrewSettingsIntent.DismissScoreStylePicker) },
                 onSelect = { id ->
                     val style = when (id) {
-                        "emoji"   -> CrewScoreStyle.Emoji
+                        "emoji" -> CrewScoreStyle.Emoji
                         "numeric" -> CrewScoreStyle.Numeric
-                        else      -> CrewScoreStyle.Stars
+                        else -> CrewScoreStyle.Stars
                     }
                     vm.onIntent(CrewSettingsIntent.SetScoreStyle(style))
                 },
@@ -369,7 +560,7 @@ fun CrewSettingsScreen(
         }
     }
 
-    // C9 — remove-banner confirmation dialog.
+    // Remove-banner confirm.
     if (state.showRemoveBannerConfirm) {
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsBannerRemoveTitle),
@@ -382,10 +573,8 @@ fun CrewSettingsScreen(
         )
     }
 
+    // Remove-member confirm.
     memberPendingRemoval?.let { pendingId ->
-        // displayName can be empty (non-null) for email-signup members, so the old
-        // `?:` (null-only) left the dialog showing a blank name. Fall back to the
-        // @handle, and only to "deleted user" when there's truly no identity.
         val identity = state.identities[pendingId]
         val memberName = identity?.displayName?.takeIf { it.isNotBlank() }
             ?: identity?.handle?.takeIf { it.isNotBlank() }
@@ -405,509 +594,109 @@ fun CrewSettingsScreen(
     }
 }
 
-/**
- * Decorative initial-load placeholder mimicking the loaded silhouette: one hero-card block atop a
- * short stack of member rows (avatar circle + flexible name bar). Shown while the crew snapshot is
- * still resolving. Capped to the same content width as the loaded state so width doesn't jump.
- */
-@Composable
-private fun CrewSettingsSkeleton() {
-    Column(
-        modifier = Modifier.fillMaxHeight().frContentWidth().padding(Spacing.lg),
-        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-    ) {
-        FrShimmerBox(
-            modifier = Modifier.fillMaxWidth().height(120.dp),
-            shape = RoundedCornerShape(Radius.lg),
-        )
-        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-            repeat(4) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-                ) {
-                    FrShimmerBox(
-                        modifier = Modifier.size(Sizes.avatarMd),
-                        shape = CircleShape,
-                    )
-                    FrShimmerBox(
-                        modifier = Modifier.weight(1f).height(Spacing.md),
-                        shape = RoundedCornerShape(Radius.sm),
-                    )
-                }
-            }
-        }
-    }
-}
+// ---- Structural building blocks -------------------------------------------------------------------
 
-/**
- * Centered crew identity: name, member count, the tap-to-copy invite-code chip, and the invite-link
- * actions (Share link via the system share sheet + Show QR). The full shareable deep link / QR is
- * built upstream from the code (see [CrewSettingsScreen.inviteUrlFor]).
- */
+/** A glass tile holding a labelled underline field + a Save button gated by [saveEnabled]. */
 @Composable
-private fun CrewHeroCard(
-    crew: Crew,
-    onCopy: () -> Unit,
-    onShareLink: () -> Unit,
-    onShowQr: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    FrCard(modifier = modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(Spacing.md),
-        ) {
-            FrText(text = crew.name, style = MaterialTheme.typography.headlineSmall)
-            FrText(
-                text = resolve(CrewStringKey.SettingsMembersCount, crew.size),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            // Tap-to-copy invite code chip — mono + letter-spaced.
-            Surface(
-                onClick = onCopy,
-                shape = RoundedCornerShape(Radius.md),
-                color = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Box(
-                    modifier = Modifier.padding(vertical = Spacing.md, horizontal = Spacing.md),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    FrText(
-                        text = crew.code.value,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontFamily = FontFamily.Monospace,
-                            letterSpacing = 2.sp,
-                        ),
-                    )
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                FrButton(
-                    label = resolve(CrewStringKey.SettingsShareLink),
-                    onClick = onShareLink,
-                    modifier = Modifier.weight(1f),
-                )
-                FrButton(
-                    label = resolve(CrewStringKey.SettingsShowQr),
-                    onClick = onShowQr,
-                    variant = FrButtonVariant.Secondary,
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
-}
-
-/** Modal showing the crew's invite link as a scannable QR code plus a caption. */
-@Composable
-private fun InviteQrDialog(
-    crewName: String,
-    inviteUrl: String,
-    onDismiss: () -> Unit,
-) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        FrCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(Spacing.md),
-            ) {
-                FrText(
-                    text = resolve(CrewStringKey.SettingsQrCaption, crewName),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode(content = inviteUrl)
-                FrButton(
-                    label = resolve(CrewStringKey.SettingsQrClose),
-                    onClick = onDismiss,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-    }
-}
-
-/**
- * Owner-only tagline field. Shows the current tagline text editable by the owner, with a "Save"
- * button that becomes enabled once the value differs from what was last saved on the crew.
- */
-@Composable
-private fun TaglineCard(
-    tagline: String,
-    savedTagline: String,
-    saving: Boolean,
-    onTaglineChange: (String) -> Unit,
-    onSave: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(
-            text = resolve(CrewStringKey.SettingsTaglineSection),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        FrCard(modifier = Modifier.fillMaxWidth()) {
-            FrTextField(
-                value = tagline,
-                onValueChange = onTaglineChange,
-                label = resolve(CrewStringKey.SettingsTaglineLabel),
-                placeholder = resolve(CrewStringKey.SettingsTaglinePlaceholder),
-                enabled = !saving,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            FrButton(
-                label = resolve(CrewStringKey.SettingsSave),
-                onClick = onSave,
-                // Dirty check: trimmed edit must differ from what's saved on the crew (mirrors the
-                // crew-name Save gate). Avoids a redundant Firestore write when nothing changed.
-                enabled = !saving && tagline.trim() != savedTagline,
-                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
-            )
-        }
-    }
-}
-
-/** Owner-only blind-voting policy toggle: label + explanation on the left, [FrSwitch] on the right. */
-@Composable
-private fun BlindVotingCard(
-    enabled: Boolean,
-    saving: Boolean,
-    onToggle: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(
-            text = resolve(CrewStringKey.SettingsBlindVotingSection),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        FrCard(modifier = Modifier.fillMaxWidth()) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.md),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    FrText(
-                        text = resolve(CrewStringKey.SettingsBlindVotingLabel),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    FrText(
-                        text = resolve(CrewStringKey.SettingsBlindVotingDescription),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-                FrSwitch(
-                    checked = enabled,
-                    onCheckedChange = { onToggle(it) },
-                    enabled = !saving,
-                    contentDescription = resolve(CrewStringKey.SettingsBlindVotingLabel),
-                )
-            }
-        }
-    }
-}
-
-/** Members list rendered as token-divided rows inside a single card. */
-@Composable
-private fun MembersCard(
-    crew: Crew,
-    isOwner: Boolean,
-    myAccountId: AccountId?,
-    identities: Map<AccountId, es.schsebastian.foodrats.core.domain.account.Account?>,
-    removingMemberIds: Set<AccountId>,
-    onRemove: (AccountId) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            SectionEyebrow(
-                text = resolve(CrewStringKey.SettingsMembersSection),
-                color = MaterialTheme.colorScheme.primary,
-            )
-            if (isOwner) {
-                FrText(
-                    text = resolve(CrewStringKey.SettingsOwnerBadge),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
-        }
-        FrCard(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = Spacing.md, vertical = Spacing.xs),
-        ) {
-            crew.members.forEachIndexed { index, m ->
-                val isMemberOwner = m.accountId == crew.ownerId
-                val canRemove = isOwner && m.accountId != myAccountId
-                val isRemoving = m.accountId in removingMemberIds
-                FrCrewMemberRow(
-                    account = identities[m.accountId],
-                    subtitle = resolve(
-                        if (isMemberOwner) CrewStringKey.SettingsRoleOwner else CrewStringKey.SettingsRoleMember,
-                    ),
-                    trailing = if (canRemove) {
-                        {
-                            if (isRemoving) {
-                                FrProgressIndicator(
-                                    modifier = Modifier.size(Sizes.iconMd),
-                                    strokeWidth = 2.dp,
-                                )
-                            } else {
-                                FrIconButton(
-                                    icon = FrIcons.Close,
-                                    onClick = { onRemove(m.accountId) },
-                                    contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
-                                )
-                            }
-                        }
-                    } else null,
-                )
-                if (index < crew.members.lastIndex) {
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                }
-            }
-        }
-    }
-}
-
-/** Leave / Delete as full-width destructive rows inside one card. */
-@Composable
-private fun DangerZoneCard(
-    isOwner: Boolean,
-    leaveEnabled: Boolean,
-    deleteEnabled: Boolean,
-    onLeave: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val semantic = LocalFrSemanticColors.current
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        // Danger-tinted eyebrow so the destructive zone reads as set-apart, not just another section.
-        SectionEyebrow(
-            text = resolve(CrewStringKey.SettingsDangerSection),
-            color = semantic.danger,
-        )
-        FrCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(
-                    width = 1.dp,
-                    color = semantic.danger.copy(alpha = 0.4f),
-                    shape = RoundedCornerShape(Radius.lg),
-                ),
-            contentPadding = PaddingValues(0.dp),
-        ) {
-            DangerActionRow(
-                icon = FrIcons.Logout,
-                label = resolve(CrewStringKey.SettingsLeaveCta),
-                enabled = leaveEnabled,
-                onClick = onLeave,
-            )
-            if (isOwner) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                DangerActionRow(
-                    icon = FrIcons.Delete,
-                    label = resolve(CrewStringKey.SettingsDeleteCta),
-                    enabled = deleteEnabled,
-                    onClick = onDelete,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DangerActionRow(
-    icon: ImageVector,
+private fun SaveableFieldTile(
+    eyebrow: String?,
     label: String,
-    enabled: Boolean,
-    onClick: () -> Unit,
+    value: String,
+    onValueChange: (String) -> Unit,
+    singleLine: Boolean,
+    saving: Boolean,
+    saveEnabled: Boolean,
+    onSave: () -> Unit,
+    eyebrowColor: Color = MaterialTheme.colorScheme.primary,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
 ) {
-    val semantic = LocalFrSemanticColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = modifier) {
+        if (eyebrow != null) FrEyebrow(text = eyebrow, color = eyebrowColor)
+        FrGlassTile {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                es.schsebastian.foodrats.core.designsystem.structural.FrUnderlineField(
+                    value = value,
+                    onValueChange = onValueChange,
+                    label = label.uppercase(),
+                    placeholder = placeholder,
+                    singleLine = singleLine,
+                    enabled = !saving,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                FrGlassButton(
+                    label = resolve(CrewStringKey.SettingsSave),
+                    onClick = onSave,
+                    tone = FrButtonTone.Primary,
+                    enabled = saveEnabled,
+                    compact = true,
+                )
+            }
+        }
+    }
+}
+
+/** Icon-badge + title + subtitle + trailing row, the structural list-row shape. */
+@Composable
+private fun TileRow(
+    icon: ImageVector,
+    title: String,
+    subtitle: String?,
+    trailing: @Composable () -> Unit,
+) {
+    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = Spacing.md, vertical = Spacing.md),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        FrIcon(image = icon, tint = semantic.danger, modifier = Modifier.size(Sizes.iconMd))
-        FrText(
-            text = label,
-            style = MaterialTheme.typography.titleMedium,
-            color = semantic.danger,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-/**
- * Owner-only welcome message field. Shows the current welcome message editable by the owner.
- * New joiners will see this as a dismissible banner in the crew feed. A blank message clears
- * any existing message.
- */
-@Composable
-private fun WelcomeMessageCard(
-    message: String,
-    savedMessage: String,
-    saving: Boolean,
-    onMessageChange: (String) -> Unit,
-    onSave: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(
-            text = resolve(CrewStringKey.SettingsWelcomeMessageSection),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        FrCard(modifier = Modifier.fillMaxWidth()) {
-            FrTextField(
-                value = message,
-                onValueChange = onMessageChange,
-                label = resolve(CrewStringKey.SettingsWelcomeMessageLabel),
-                placeholder = resolve(CrewStringKey.SettingsWelcomeMessagePlaceholder),
-                enabled = !saving,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            FrButton(
-                label = resolve(CrewStringKey.SettingsSave),
-                onClick = onSave,
-                enabled = !saving && message.trim() != savedMessage,
-                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
-            )
-        }
-    }
-}
-
-/**
- * Owner-only weekly challenge field (C5). Shows the current challenge text editable by the owner,
- * with a "Save" button that becomes enabled once the value differs from what was last saved.
- * A blank value clears the challenge. The challenge auto-expires 7 days after being set
- * (client-side expiry check in the feed — not enforced here).
- */
-@Composable
-private fun WeeklyChallengeCard(
-    challenge: String,
-    savedChallenge: String,
-    saving: Boolean,
-    onChallengeChange: (String) -> Unit,
-    onSave: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(
-            text = resolve(CrewStringKey.SettingsWeeklyChallengeSection),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        FrCard(modifier = Modifier.fillMaxWidth()) {
-            FrTextField(
-                value = challenge,
-                onValueChange = onChallengeChange,
-                label = resolve(CrewStringKey.SettingsWeeklyChallengeLabel),
-                placeholder = resolve(CrewStringKey.SettingsWeeklyChallengePlaceholder),
-                enabled = !saving,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            FrButton(
-                label = resolve(CrewStringKey.SettingsSave),
-                onClick = onSave,
-                // Dirty check: trimmed edit must differ from the saved value (mirrors tagline gate).
-                enabled = !saving && challenge.trim() != savedChallenge,
-                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
-            )
-        }
-    }
-}
-
-/**
- * Owner-only Score-style row (C8). Shows the section header, the currently-chosen style as a
- * read-only label, and a tappable row that opens the [FrSettingsPicker] bottom sheet.
- * The [FrSettingsPicker] itself is rendered outside the LazyColumn in [CrewSettingsScreen]
- * to avoid nesting a ModalBottomSheet inside a list item.
- */
-@Composable
-private fun ScoreStyleCard(
-    current: CrewScoreStyle,
-    saving: Boolean,
-    onOpen: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val currentLabel = when (current) {
-        CrewScoreStyle.Stars   -> resolve(CrewStringKey.SettingsScoreStyleStars)
-        CrewScoreStyle.Emoji   -> resolve(CrewStringKey.SettingsScoreStyleEmoji)
-        CrewScoreStyle.Numeric -> resolve(CrewStringKey.SettingsScoreStyleNumeric)
-    }
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(
-            text = resolve(CrewStringKey.SettingsScoreStyleSection),
-            color = MaterialTheme.colorScheme.primary,
-        )
-        FrCard(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = if (saving) null else onOpen,
+        Box(
+            modifier = Modifier.size(38.dp).clip(RoundedCornerShape(Radius.sm)).background(scheme.primary.copy(alpha = 0.22f)),
+            contentAlignment = Alignment.Center,
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                FrText(
-                    text = resolve(CrewStringKey.SettingsScoreStyleLabel),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f),
-                )
-                if (saving) {
-                    FrProgressIndicator(
-                        modifier = Modifier.size(Sizes.iconMd),
-                        strokeWidth = 2.dp,
-                    )
-                } else {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.xxs),
-                    ) {
-                        FrText(
-                            text = currentLabel,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                        )
-                        FrIcon(
-                            image = FrIcons.ChevronRight,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(Sizes.iconSm),
-                        )
-                    }
-                }
+            FrIcon(image = icon, contentDescription = null, tint = scheme.primary, modifier = Modifier.size(Sizes.iconMd))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+            FrText(text = title, style = StructuralType.titleMd, color = StructuralColors.foreground)
+            if (subtitle != null) {
+                FrText(text = subtitle, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.7f))
             }
         }
+        trailing()
     }
 }
 
-/**
- * C9 — owner-only crew banner image card. When a banner is set, shows a drag-to-reposition preview
- * ([BannerRepositionPreview]) at the same fixed height + crop the feed uses, so the owner can choose
- * which slice of the image the feed shows. Below it: a "Change photo" CTA (backed by [ImagePickerKMP]
- * gallery picker) and, when a banner is already set, a "Remove banner" secondary button that triggers
- * a confirmation dialog. [saving] disables everything while an upload or delete is in flight.
- */
 @Composable
-private fun BannerCard(
+private fun DangerRow(
+    icon: ImageVector,
+    label: String,
+    enabled: Boolean,
+    showTopHairline: Boolean,
+    onClick: () -> Unit,
+) {
+    val danger = LocalFrSemanticColors.current.danger
+    FrStructuralRow(
+        onClick = if (enabled) onClick else null,
+        showTopHairline = showTopHairline,
+        leading = { FrIcon(image = icon, contentDescription = null, tint = danger, modifier = Modifier.size(Sizes.iconMd)) },
+        trailing = { Chevron() },
+    ) {
+        FrText(text = label, style = StructuralType.titleMd, color = danger)
+    }
+}
+
+@Composable
+private fun Chevron() {
+    FrIcon(
+        image = FrIcons.ChevronRight,
+        contentDescription = null,
+        tint = StructuralColors.foreground.copy(alpha = 0.4f),
+        modifier = Modifier.size(Sizes.iconMd),
+    )
+}
+
+@Composable
+private fun BannerSection(
     hasBanner: Boolean,
     imageUrl: String?,
     focalY: Float,
@@ -929,69 +718,50 @@ private fun BannerCard(
             is ImagePickerResult.Error,
             is ImagePickerResult.Dismissed,
             is ImagePickerResult.Loading,
-            is ImagePickerResult.Idle -> Unit
+            is ImagePickerResult.Idle,
+            -> Unit
         }
     }
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(
-            text = resolve(CrewStringKey.SettingsBannerSection),
-            color = MaterialTheme.colorScheme.primary,
+
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = modifier) {
+        // With a banner the floor is that dark photo → white eyebrow/hint; without one the floor is the
+        // light atmospheric floor → the olive eyebrow accent.
+        FrEyebrow(
+            text = resolve(CrewStringKey.SettingsBannerSection).uppercase(),
+            color = if (hasBanner) StructuralColors.onMedia.copy(alpha = 0.85f) else MaterialTheme.colorScheme.primary,
         )
-        FrCard(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-            ) {
-                if (saving) {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
-                    }
-                } else {
-                    if (hasBanner && imageUrl != null) {
-                        BannerRepositionPreview(
-                            imageUrl = imageUrl,
-                            focalY = focalY,
-                            onReposition = onReposition,
-                        )
-                        FrText(
-                            text = resolve(CrewStringKey.SettingsBannerRepositionHint),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    FrButton(
-                        label = resolve(CrewStringKey.SettingsBannerChange),
-                        onClick = {
-                            picker.launchGallery(
-                                allowMultiple = false,
-                                mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    if (hasBanner) {
-                        FrButton(
-                            label = resolve(CrewStringKey.SettingsBannerRemove),
-                            onClick = onRemove,
-                            variant = FrButtonVariant.Secondary,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
+        if (hasBanner && imageUrl != null) {
+            BannerRepositionPreview(imageUrl = imageUrl, focalY = focalY, onReposition = onReposition)
+            FrText(
+                text = resolve(CrewStringKey.SettingsBannerRepositionHint),
+                style = StructuralType.micro,
+                color = StructuralColors.onMedia.copy(alpha = 0.6f),
+            )
+        }
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            FrGlassButton(
+                label = resolve(CrewStringKey.SettingsBannerChange),
+                onClick = { picker.launchGallery(allowMultiple = false, mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG)) },
+                tone = FrButtonTone.Glass,
+                leadingIcon = FrIcons.GalleryImport,
+                enabled = !saving,
+                modifier = Modifier.weight(1f),
+            )
+            if (hasBanner) {
+                FrGlassButton(
+                    label = resolve(CrewStringKey.SettingsBannerRemove),
+                    onClick = onRemove,
+                    tone = FrButtonTone.Ghost,
+                    enabled = !saving,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
 }
 
-/** Fixed height of the banner crop, shared by this preview and the feed hero so they match exactly. */
 private val BannerCropHeight = 180.dp
 
-/**
- * C9 — drag-to-reposition banner preview. Renders the banner at the exact fixed height + [ContentScale.Crop]
- * the feed uses, with a [BiasAlignment] driven by a local draft focal point so the crop is WYSIWYG.
- * A vertical drag moves the focal point (0 = top, 1 = bottom); on release the final value is persisted
- * via [onReposition]. Dragging the full preview height sweeps the focal point across its whole range.
- */
 @Composable
 private fun BannerRepositionPreview(
     imageUrl: String,
@@ -1025,16 +795,92 @@ private fun BannerRepositionPreview(
     )
 }
 
+/** Crimson banner for the trailing publish/save error. */
 @Composable
-private fun SectionEyebrow(
-    text: String,
-    modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun DangerBanner(text: String) {
+    val semantic = LocalFrSemanticColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.md))
+            .background(semantic.danger)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        FrIcon(image = FrIcons.Warning, contentDescription = null, tint = semantic.onDanger)
+        FrText(text = text, color = semantic.onDanger, style = StructuralType.body)
+    }
+}
+
+/** A brief, auto-dismissing bottom glass toast (replaces the matte snackbar). */
+@Composable
+private fun StructuralToast(message: String, onDismiss: () -> Unit) {
+    LaunchedEffect(message) {
+        delay(2500)
+        onDismiss()
+    }
+    Box(
+        modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(Spacing.lg),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        FrGlassTile(depth = FrTileDepth.Near) {
+            FrText(text = message, style = StructuralType.body, color = StructuralColors.foreground)
+        }
+    }
+}
+
+@Composable
+private fun CrewSettingsSkeleton() {
+    Column(
+        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = Spacing.lg).padding(top = 96.dp),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+    ) {
+        FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.fillMaxWidth().height(180.dp)) {}
+        repeat(3) {
+            FrGlassTile(depth = FrTileDepth.Deep, modifier = Modifier.fillMaxWidth().height(88.dp)) {}
+        }
+    }
+}
+
+/**
+ * The structural QR invite dialog — a frosted [FrGlassDialog] card floating over the scrim. The
+ * caption + close pill read on dark glass; the [FrQrCode] sits on a white rounded plate so it stays
+ * dark-on-light and remains scannable against the dark stratum.
+ */
+@Composable
+private fun InviteQrDialog(
+    crewName: String,
+    inviteUrl: String,
+    onDismiss: () -> Unit,
 ) {
-    FrText(
-        text = text,
-        style = MaterialTheme.typography.labelMedium,
-        color = color,
-        modifier = modifier.semantics { heading() },   // WCAG 2.4.10 heading navigation
-    )
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        FrGlassDialog {
+            FrText(
+                text = resolve(CrewStringKey.SettingsQrCaption, crewName),
+                style = StructuralType.titleMd,
+                color = StructuralColors.foreground,
+            )
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .clip(RoundedCornerShape(Radius.lg))
+                    .background(Color.White)
+                    .padding(Spacing.md),
+            ) {
+                FrQrCode(
+                    content = inviteUrl,
+                    size = 200.dp,
+                    foreground = MaterialTheme.colorScheme.scrim,
+                    background = Color.White,
+                )
+            }
+            FrGlassButton(
+                label = resolve(CrewStringKey.SettingsQrClose),
+                onClick = onDismiss,
+                tone = FrButtonTone.Glass,
+                fillWidth = true,
+            )
+        }
+    }
 }

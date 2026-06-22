@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -50,6 +52,7 @@ enum class FrButtonTone { Primary, Ember, Glass, Ghost, Danger }
  * `Glass`/`Ghost` hairline is the only edge, and it's a 1px light, not a box). Press physics scale
  * to 0.97; `enabled = false` dims the whole pill and severs the click.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FrGlassButton(
     label: String,
@@ -95,54 +98,67 @@ fun FrGlassButton(
     val horizontalPadding = if (compact) 16.dp else 24.dp
     val labelSize = if (compact) 13.sp else 15.sp
 
+    // Outer hit area: `minimumInteractiveComponentSize()` guarantees a >=48x48dp touch target on BOTH
+    // axes (WCAG §2.5.5) without growing the visible silhouette — the extra hit area is transparent
+    // and extends beyond the painted pill (mirrors FrGlassCircleButton / FrGlassPill). It sits above
+    // `.clickable`, so the clickable node's pointer-input bounds reach the minimum on both width and
+    // height; a compact, non-fillWidth pill with a short label can no longer lay out under 48dp wide.
+    // The painted pill (inner Box) keeps its `height`-dp silhouette and is centered inside the hit area.
     Box(
         modifier = modifier
             .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier)
-            .height(height)
+            .minimumInteractiveComponentSize()
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
                 alpha = if (enabled) 1f else 0.4f
             }
-            .clip(shape)
-            .then(if (gradientFill != null) Modifier.background(gradientFill, shape) else Modifier.background(solidFill, shape))
-            .then(
-                when (tone) {
-                    FrButtonTone.Glass -> Modifier.border(1.dp, StructuralColors.foreground.copy(alpha = 0.10f), shape)
-                    FrButtonTone.Ghost -> Modifier.border(1.dp, scheme.outline, shape)
-                    else -> Modifier
-                },
-            )
             .clickable(
                 interactionSource = interaction,
                 indication = null,
                 enabled = enabled,
                 role = Role.Button,
                 onClick = onClick,
-            )
-            .padding(horizontal = horizontalPadding),
+            ),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Box(
+            modifier = Modifier
+                .then(if (fillWidth) Modifier.fillMaxWidth() else Modifier)
+                .height(height)
+                .clip(shape)
+                .then(if (gradientFill != null) Modifier.background(gradientFill, shape) else Modifier.background(solidFill, shape))
+                .then(
+                    when (tone) {
+                        FrButtonTone.Glass -> Modifier.border(1.dp, StructuralColors.foreground.copy(alpha = 0.10f), shape)
+                        FrButtonTone.Ghost -> Modifier.border(1.dp, scheme.outline, shape)
+                        else -> Modifier
+                    },
+                )
+                .padding(horizontal = horizontalPadding),
+            contentAlignment = Alignment.Center,
         ) {
-            if (leadingIcon != null) {
-                Icon(
-                    imageVector = leadingIcon,
-                    contentDescription = null,
-                    tint = content,
-                    modifier = Modifier.size(20.dp),
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (leadingIcon != null) {
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        tint = content,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                FrText(
+                    text = label,
+                    color = content,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = labelSize,
+                        fontWeight = FontWeight.Bold,
+                    ),
                 )
             }
-            FrText(
-                text = label,
-                color = content,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    fontSize = labelSize,
-                    fontWeight = FontWeight.Bold,
-                ),
-            )
         }
     }
 }

@@ -58,7 +58,6 @@ import foodrats.feature.feed.generated.resources.feed_reaction_error_meal_not_fo
 import foodrats.feature.feed.generated.resources.feed_reaction_error_offline
 import foodrats.feature.feed.generated.resources.feed_reaction_error_unauthorized
 import foodrats.feature.feed.generated.resources.feed_reaction_error_unavailable
-import foodrats.feature.feed.generated.resources.feed_reactions_label
 import foodrats.feature.feed.generated.resources.feed_detail_back_cta
 import foodrats.feature.feed.generated.resources.feed_detail_not_found
 import foodrats.feature.feed.generated.resources.feed_detail_title
@@ -101,6 +100,8 @@ import foodrats.feature.feed.generated.resources.feed_rate_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_rate_error_window_closed
 import foodrats.feature.feed.generated.resources.feed_rate_this_meal
 import foodrats.feature.feed.generated.resources.feed_title
+import foodrats.feature.feed.generated.resources.feed_your_crew_eyebrow
+import foodrats.feature.feed.generated.resources.feed_crew_settings_cd
 import foodrats.feature.feed.generated.resources.feed_votes_heading
 import foodrats.feature.feed.generated.resources.feed_voters_label
 import foodrats.feature.feed.generated.resources.feed_voter_score_compact
@@ -110,6 +111,7 @@ import foodrats.feature.feed.generated.resources.feed_location_map_cta
 import foodrats.feature.feed.generated.resources.feed_welcome_dismiss
 import foodrats.feature.feed.generated.resources.feed_weekly_challenge_label
 import foodrats.feature.feed.generated.resources.feed_your_vote
+import foodrats.feature.feed.generated.resources.feed_your_vote_locked
 import foodrats.feature.feed.generated.resources.feed_your_vote_glyph_free
 import foodrats.feature.feed.generated.resources.feed_badge_first
 import foodrats.feature.feed.generated.resources.feed_badge_ten
@@ -122,6 +124,8 @@ import org.jetbrains.compose.resources.StringResource
 
 enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     Title(Res.string.feed_title),
+    YourCrewEyebrow(Res.string.feed_your_crew_eyebrow),
+    CrewSettingsCd(Res.string.feed_crew_settings_cd),
     EmptyHeadline(Res.string.feed_empty_headline),
     EmptySubtext(Res.string.feed_empty_subtext),
     EmptySubtextPast(Res.string.feed_empty_subtext_past),
@@ -143,7 +147,6 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     BlindAuthor(Res.string.feed_blind_author),
     ReactionCta(Res.string.feed_reaction_cta),
     ReactionCount(Res.string.feed_reaction_count),
-    ReactionsLabel(Res.string.feed_reactions_label),
     ReactionErrorOffline(Res.string.feed_reaction_error_offline),
     ReactionErrorUnauthorized(Res.string.feed_reaction_error_unauthorized),
     ReactionErrorMealNotFound(Res.string.feed_reaction_error_meal_not_found),
@@ -151,6 +154,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     AverageHeading(Res.string.feed_average_heading),
     RateThisMeal(Res.string.feed_rate_this_meal),
     YourVote(Res.string.feed_your_vote),
+    YourVoteLockedEyebrow(Res.string.feed_your_vote_locked),
     RatingSummary(Res.string.feed_rating_summary),
     VoterScore(Res.string.feed_voter_score),
     VotesHeading(Res.string.feed_votes_heading),

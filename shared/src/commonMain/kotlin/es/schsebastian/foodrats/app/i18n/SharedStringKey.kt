@@ -56,8 +56,10 @@ import foodrats.shared.generated.resources.recap_best_cook_title
 import foodrats.shared.generated.resources.recap_close
 import foodrats.shared.generated.resources.recap_cover_subtitle
 import foodrats.shared.generated.resources.recap_cover_title
+import foodrats.shared.generated.resources.recap_cuisines_ratio
 import foodrats.shared.generated.resources.recap_cuisines_subtitle
 import foodrats.shared.generated.resources.recap_cuisines_title
+import foodrats.shared.generated.resources.recap_rating_unit
 import foodrats.shared.generated.resources.recap_empty_subtitle
 import foodrats.shared.generated.resources.recap_empty_title
 import foodrats.shared.generated.resources.recap_entry_cta
@@ -154,6 +156,8 @@ enum class SharedStringKey(override val resourceId: StringResource) : StringKey 
     RecapBadgesTitle(Res.string.recap_badges_title),
     RecapCuisinesTitle(Res.string.recap_cuisines_title),
     RecapCuisinesSubtitle(Res.string.recap_cuisines_subtitle),
+    RecapCuisinesRatio(Res.string.recap_cuisines_ratio),
+    RecapRatingUnit(Res.string.recap_rating_unit),
     RecapYourWeekTitle(Res.string.recap_your_week_title),
     RecapYourWeekStreak(Res.string.recap_your_week_streak),
     RecapYourWeekCuisines(Res.string.recap_your_week_cuisines),

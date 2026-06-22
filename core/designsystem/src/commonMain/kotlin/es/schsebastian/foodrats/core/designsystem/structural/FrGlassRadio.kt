@@ -31,13 +31,19 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 /**
  * The structural radio control — zero-chrome, frosted-picker selection mark. A bare 22.dp ring on
  * the media floor (no Material `RadioButton`, no box): unselected reads as a faint white edge-light,
- * selected snaps to an olive ring filled with an inset olive dot. Pressed scales to 0.92; the 22.dp
- * glyph sits inside a >=48.dp invisible [Modifier.selectable] hit area for thumb-friendly pickers.
+ * selected snaps to an olive ring filled with an inset olive dot. Pressed scales to 0.92.
+ *
+ * Pass a non-null [onClick] to make this a self-contained, focusable radio: the 22.dp glyph sits
+ * inside a >=48.dp invisible [Modifier.selectable] hit area (with [Role.RadioButton]) for
+ * thumb-friendly stand-alone pickers. Pass `onClick = null` to make it **purely decorative** — it
+ * then renders only the visual ring and adds NO semantics node, so when it's nested inside an
+ * already-labelled selectable row the row owns the single radio announcement (avoids the
+ * double-announce / unlabelled-control WCAG 4.1.2 violation).
  */
 @Composable
 fun FrGlassRadio(
     selected: Boolean,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
@@ -55,13 +61,22 @@ fun FrGlassRadio(
     Box(
         modifier = modifier
             .size(48.dp)
-            .selectable(
-                selected = selected,
-                enabled = enabled,
-                role = Role.RadioButton,
-                interactionSource = interaction,
-                indication = null,
-                onClick = onClick,
+            // Decorative when onClick == null: render only the ring, add no selection semantics so a
+            // labelled parent row stays the single radio node (WCAG 4.1.2). A non-null onClick makes
+            // this a stand-alone, focusable radio with its own >=48.dp hit area.
+            .then(
+                if (onClick != null) {
+                    Modifier.selectable(
+                        selected = selected,
+                        enabled = enabled,
+                        role = Role.RadioButton,
+                        interactionSource = interaction,
+                        indication = null,
+                        onClick = onClick,
+                    )
+                } else {
+                    Modifier
+                }
             ),
         contentAlignment = Alignment.Center,
     ) {

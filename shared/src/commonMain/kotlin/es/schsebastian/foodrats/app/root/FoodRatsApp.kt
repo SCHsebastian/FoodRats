@@ -118,6 +118,7 @@ fun FoodRatsApp() {
     val localePort = koinInject<LocalePort>()
     val appLocale by localePort.locale.collectAsState(initial = AppLocale.System)
     val appLanguageTag = appLocale.tag.ifBlank { null }
+    // Honor the user's stored theme choice. System follows the OS; Light/Dark are explicit overrides.
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeMode) {
         ThemeMode.System -> systemDark

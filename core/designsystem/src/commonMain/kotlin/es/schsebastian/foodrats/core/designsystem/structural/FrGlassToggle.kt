@@ -23,6 +23,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
@@ -39,6 +41,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 fun FrGlassToggle(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    contentDescription: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
@@ -65,7 +68,10 @@ fun FrGlassToggle(
                 enabled = enabled,
                 role = Role.Switch,
                 onValueChange = onCheckedChange,
-            ),
+            )
+            .semantics(mergeDescendants = true) {
+                this.contentDescription = contentDescription
+            },
         contentAlignment = Alignment.Center,
     ) {
         Box(
@@ -93,8 +99,8 @@ private fun FrGlassTogglePreview() {
     FoodRatsTheme(darkTheme = true) {
         Box(Modifier.background(StructuralColors.stageFloor).padding(24.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                FrGlassToggle(checked = false, onCheckedChange = {})
-                FrGlassToggle(checked = true, onCheckedChange = {})
+                FrGlassToggle(checked = false, onCheckedChange = {}, contentDescription = "Off")
+                FrGlassToggle(checked = true, onCheckedChange = {}, contentDescription = "On")
             }
         }
     }

@@ -21,6 +21,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
@@ -39,6 +41,11 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
  *
  * Translucency is faked the KMP-safe way (a tinted fill over the already-blurred floor); there is
  * no per-tile backdrop blur. Set [danger] for destructive actions (the glyph turns crimson).
+ *
+ * Pass [enabled] = false to gate the action (e.g. the Feed day-strip's prev/next arrows at the
+ * window edge): [onClick] is not invoked, the content dims, and the disabled accessibility state is
+ * announced (TalkBack/VoiceOver say "disabled" instead of an enabled, clickable button) — so callers
+ * no longer fake it with an alpha hack + no-op lambda.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +56,7 @@ fun FrGlassCircleButton(
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
     danger: Boolean = false,
+    enabled: Boolean = true,
 ) {
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
@@ -63,11 +71,17 @@ fun FrGlassCircleButton(
 
     Surface(
         onClick = onClick,
+        enabled = enabled,
         // minimumInteractiveComponentSize() guarantees a >=48dp touch target (WCAG §2.5.5) without
         // growing the visible `size`-dp silhouette — the extra hit area is transparent and extends
         // beyond the painted circle (mirrors FrGlassPill).
         modifier = modifier
-            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                if (!enabled) alpha = 0.38f
+            }
+            .semantics { if (!enabled) disabled() }
             .minimumInteractiveComponentSize()
             .size(size),
         interactionSource = interaction,

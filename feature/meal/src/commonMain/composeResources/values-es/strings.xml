@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="meal_compose_eyebrow">Plato nuevo</string>
     <string name="meal_compose_title">Compón tu plato</string>
+    <string name="meal_compose_slot_label">Momento</string>
     <string name="meal_compose_dish_label">Plato</string>
+    <string name="meal_compose_description_label">Descripción</string>
     <string name="meal_publish_title">Revisa y publica</string>
 
     <string name="meal_ingredients_classifying">Analizando ingredientes…</string>
@@ -35,6 +38,8 @@
     <string name="meal_slot_lunch">Almuerzo</string>
     <string name="meal_slot_dinner">Cena</string>
     <string name="meal_publish_no_slot">Elige una franja (Desayuno, Almuerzo o Cena) antes de publicar.</string>
+
+    <string name="meal_compose_all_slots_taken">Ya has compartido todas las comidas de hoy — vuelve mañana.</string>
 
     <string name="meal_compose_add_location">Marca dónde comiste</string>
     <string name="meal_compose_locating">Localizándote…</string>

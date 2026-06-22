@@ -9,14 +9,18 @@ import foodrats.feature.meal.generated.resources.meal_capture_session_error
 import foodrats.feature.meal.generated.resources.meal_classifier_load_failed
 import foodrats.feature.meal.generated.resources.meal_classifier_no_detection
 import foodrats.feature.meal.generated.resources.meal_compose_add_location
+import foodrats.feature.meal.generated.resources.meal_compose_all_slots_taken
 import foodrats.feature.meal.generated.resources.meal_compose_audience_all
 import foodrats.feature.meal.generated.resources.meal_compose_audience_label
 import foodrats.feature.meal.generated.resources.meal_compose_clear_location
 import foodrats.feature.meal.generated.resources.meal_compose_coordinates_format
 import foodrats.feature.meal.generated.resources.meal_compose_description_counter
+import foodrats.feature.meal.generated.resources.meal_compose_description_label
 import foodrats.feature.meal.generated.resources.meal_compose_description_placeholder
 import foodrats.feature.meal.generated.resources.meal_compose_dish_label
+import foodrats.feature.meal.generated.resources.meal_compose_eyebrow
 import foodrats.feature.meal.generated.resources.meal_compose_locating
+import foodrats.feature.meal.generated.resources.meal_compose_slot_label
 import foodrats.feature.meal.generated.resources.meal_description_moderation_warning
 import foodrats.feature.meal.generated.resources.meal_dish_moderation_warning
 import foodrats.feature.meal.generated.resources.meal_compose_title
@@ -51,11 +55,15 @@ import foodrats.feature.meal.generated.resources.meal_slot_lunch
 import org.jetbrains.compose.resources.StringResource
 
 enum class MealStringKey(override val resourceId: StringResource) : StringKey {
+    ComposeEyebrow(Res.string.meal_compose_eyebrow),
     ComposeTitle(Res.string.meal_compose_title),
+    ComposeSlotLabel(Res.string.meal_compose_slot_label),
     ComposeDishLabel(Res.string.meal_compose_dish_label),
+    ComposeDescriptionLabel(Res.string.meal_compose_description_label),
     ComposeDescriptionPlaceholder(Res.string.meal_compose_description_placeholder),
     ComposeDescriptionCounter(Res.string.meal_compose_description_counter),
     ComposeAddLocation(Res.string.meal_compose_add_location),
+    ComposeAllSlotsTaken(Res.string.meal_compose_all_slots_taken),
     ComposeAudienceLabel(Res.string.meal_compose_audience_label),
     ComposeAudienceAll(Res.string.meal_compose_audience_all),
     ComposeLocating(Res.string.meal_compose_locating),

@@ -28,6 +28,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrStoryScaffold
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.analytics.DigestStorySource
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
@@ -84,6 +85,10 @@ fun WeeklyStoryScreen(
         }
     }
 
+    // The weekly-recap player is an immersive Instagram-Stories surface — full-bleed dark media in
+    // both themes (the scenes are dish/photo floors with white-on-scrim type). Force dark so light
+    // mode doesn't flip the story chrome/type to dark-on-dark.
+    FoodRatsTheme(darkTheme = true) {
     Box(modifier = Modifier.fillMaxSize()) {
     when {
         state.isLoading -> LoadingOrEmpty(loading = true)
@@ -142,6 +147,7 @@ fun WeeklyStoryScreen(
             )
             ShareOutcomeToast(message = message, onDismiss = { vm.onIntent(WeeklyStoryIntent.DismissShareOutcome) })
         }
+    }
     }
 }
 

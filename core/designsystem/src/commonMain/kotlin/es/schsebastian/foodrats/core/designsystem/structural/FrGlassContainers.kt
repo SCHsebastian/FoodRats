@@ -39,6 +39,7 @@ fun FrGlassSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
     Column(
         modifier = modifier
             // Upward shadow: a negative Y offset would clip; a large blur reads as a soft lift.
@@ -49,7 +50,7 @@ fun FrGlassSheet(
                 drawContent()
                 val y = 0.5.dp.toPx()
                 drawLine(
-                    color = StructuralColors.topLight,
+                    color = edgeLight,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx(),
@@ -84,6 +85,7 @@ fun FrGlassDialog(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(26.dp)
+    val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
     Column(
         modifier = modifier
             .width(300.dp)
@@ -94,7 +96,7 @@ fun FrGlassDialog(
                 drawContent()
                 val y = 0.5.dp.toPx()
                 drawLine(
-                    color = StructuralColors.topLight,
+                    color = edgeLight,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx(),

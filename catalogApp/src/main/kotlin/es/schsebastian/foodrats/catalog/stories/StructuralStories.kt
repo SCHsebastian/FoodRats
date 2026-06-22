@@ -374,8 +374,8 @@ private fun ToggleStory() {
     CatalogScene("Switch", lockedTheme = ThemeMode.Dark) {
         StructuralStage {
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md), verticalAlignment = Alignment.CenterVertically) {
-                FrGlassToggle(checked = false, onCheckedChange = {})
-                FrGlassToggle(checked = on, onCheckedChange = { on = it })
+                FrGlassToggle(checked = false, onCheckedChange = {}, contentDescription = "Off")
+                FrGlassToggle(checked = on, onCheckedChange = { on = it }, contentDescription = "On")
             }
         }
     }

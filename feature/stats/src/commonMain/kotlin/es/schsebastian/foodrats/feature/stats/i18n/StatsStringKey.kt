@@ -59,6 +59,10 @@ import foodrats.feature.stats.generated.resources.stats_share_award
 import foodrats.feature.stats.generated.resources.stats_share_score_format
 import foodrats.feature.stats.generated.resources.stats_summary_avg_per_day_label
 import foodrats.feature.stats.generated.resources.stats_summary_total_plates_label
+import foodrats.feature.stats.generated.resources.stats_your_stats_eyebrow
+import foodrats.feature.stats.generated.resources.stats_your_streak_eyebrow
+import foodrats.feature.stats.generated.resources.stats_streak_days_unit
+import foodrats.feature.stats.generated.resources.stats_awards_eyebrow
 import foodrats.feature.stats.generated.resources.stats_tab_historic
 import foodrats.feature.stats.generated.resources.stats_tab_month
 import foodrats.feature.stats.generated.resources.stats_tab_week
@@ -85,6 +89,11 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
 
     SummaryTotalPlatesLabel(Res.string.stats_summary_total_plates_label),
     SummaryAvgPerDayLabel(Res.string.stats_summary_avg_per_day_label),
+
+    YourStatsEyebrow(Res.string.stats_your_stats_eyebrow),
+    YourStreakEyebrow(Res.string.stats_your_streak_eyebrow),
+    StreakDaysUnit(Res.string.stats_streak_days_unit),
+    AwardsEyebrow(Res.string.stats_awards_eyebrow),
 
     PlatePhotoFormat(Res.string.stats_plate_photo_format),
 

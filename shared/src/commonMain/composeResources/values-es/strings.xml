@@ -79,11 +79,13 @@
     <string name="recap_best_cook_subtitle">%1$s · %2$s ★ de media</string>
     <string name="recap_most_prolific_title">Más prolífico/a</string>
     <string name="recap_most_prolific_subtitle">%1$s publicó %2$d platos</string>
-    <string name="recap_streak_title">Estás que ardes</string>
+    <string name="recap_streak_title">🔥 Estás que ardes</string>
     <string name="recap_streak_subtitle">Racha de %1$d días publicando</string>
     <string name="recap_badges_title">Insignias nuevas esta semana</string>
     <string name="recap_cuisines_title">Pasaporte de cocinas</string>
     <string name="recap_cuisines_subtitle">%1$d de %2$d cocinas conseguidas</string>
+    <string name="recap_cuisines_ratio">/ %1$d</string>
+    <string name="recap_rating_unit">★</string>
     <string name="recap_your_week_title">Tu semana</string>
     <string name="recap_your_week_streak">Racha de %1$d días</string>
     <string name="recap_your_week_cuisines">%1$d cocinas</string>

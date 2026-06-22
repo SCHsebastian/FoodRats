@@ -6,17 +6,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
+import coil3.compose.rememberAsyncImagePainter
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassAvatar
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.account.Account
@@ -24,9 +26,10 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.moderation.i18n.ModerationStringKey
 
 /**
- * One blocked account: avatar + display name (or the deleted-user fallback), with a trailing Unblock
- * affordance. Domain-aware (takes an [Account]) so it lives in the feature, not `:core:designsystem`.
- * Rendered inside the blocked-users list card, so it owns only its row padding.
+ * One blocked account: a frosted glass avatar + display name (or the deleted-user fallback), with a
+ * trailing glass Unblock affordance. Domain-aware (takes an [Account]) so it lives in the feature,
+ * not `:core:designsystem`. Structural-styled: rendered inside the blocked-users list glass tile, so
+ * it owns only its row padding.
  */
 @Composable
 fun FrBlockedUserRow(
@@ -44,11 +47,15 @@ fun FrBlockedUserRow(
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         // decorative — the adjacent display-name label carries the identity for screen readers.
-        FrAvatar(initials = displayName.take(2), imageUrl = account?.avatarUrl)
+        FrGlassAvatar(
+            initials = displayName.take(2),
+            image = account?.avatarUrl?.let { rememberAsyncImagePainter(it) },
+        )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
             FrText(
                 text = displayName,
-                style = MaterialTheme.typography.titleMedium,
+                style = StructuralType.titleMd,
+                color = StructuralColors.foreground,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -56,10 +63,11 @@ fun FrBlockedUserRow(
         if (unblocking) {
             FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
         } else {
-            FrButton(
+            FrGlassButton(
                 label = resolve(ModerationStringKey.BlockedUnblockCta),
                 onClick = onUnblock,
-                variant = FrButtonVariant.Secondary,
+                tone = FrButtonTone.Glass,
+                compact = true,
             )
         }
     }

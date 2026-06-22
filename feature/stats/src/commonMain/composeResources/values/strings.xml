@@ -32,6 +32,12 @@
     <string name="stats_summary_total_plates_label">Plates</string>
     <string name="stats_summary_avg_per_day_label">Per day</string>
 
+    <!-- Structural eyebrows / units -->
+    <string name="stats_your_stats_eyebrow">Your stats</string>
+    <string name="stats_your_streak_eyebrow">Your streak</string>
+    <string name="stats_streak_days_unit">days</string>
+    <string name="stats_awards_eyebrow">Awards</string>
+
     <!-- Plate photo (accessibility content description) -->
     <string name="stats_plate_photo_format">Photo of %1$s</string>
 

@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="feed_title">Hoy</string>
+    <string name="feed_your_crew_eyebrow">Tu cuadrilla</string>
+    <string name="feed_crew_settings_cd">Ajustes de la cuadrilla</string>
     <string name="feed_empty_headline">Aún no hay nada</string>
     <string name="feed_empty_subtext">Nadie ha publicado una comida hoy.</string>
     <string name="feed_empty_subtext_past">Nadie publicó una comida ese día.</string>
@@ -30,7 +32,10 @@
     <string name="feed_blind_author">Oculto hasta que puntúes</string>
     <string name="feed_reaction_cta">Reaccionar</string>
     <string name="feed_reaction_count">%1$d</string>
-    <string name="feed_reactions_label">%1$d reacciones</string>
+    <plurals name="feed_reactions_label">
+        <item quantity="one">%1$d reacción</item>
+        <item quantity="other">%1$d reacciones</item>
+    </plurals>
     <string name="feed_reaction_error_offline">Sin conexión a internet. Inténtalo cuando vuelvas a estar en línea.</string>
     <string name="feed_reaction_error_unauthorized">No puedes reaccionar a este plato</string>
     <string name="feed_reaction_error_meal_not_found">Este plato ya no está aquí.</string>
@@ -38,6 +43,7 @@
     <string name="feed_average_heading">Promedio</string>
     <string name="feed_rate_this_meal">Puntúa este plato</string>
     <string name="feed_your_vote">Tu voto: %1$d ★</string>
+    <string name="feed_your_vote_locked">Tu voto · bloqueado</string>
     <string name="feed_your_vote_glyph_free">Tu voto: %1$s</string>
     <string name="feed_rating_summary">%1$s ★ · %2$d</string>
     <string name="feed_voter_score">%1$s: %2$d ★</string>

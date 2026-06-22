@@ -2,28 +2,37 @@ package es.schsebastian.foodrats.feature.achievements.presentation.components
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
-import es.schsebastian.foodrats.core.designsystem.atoms.FrBadge
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.structural.FrBadgeDisc
+import es.schsebastian.foodrats.core.designsystem.structural.FrBarTrack
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
+import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.achievements.domain.model.AchievementStatus
 import es.schsebastian.foodrats.feature.achievements.i18n.AchievementStringKey
 
 /**
- * Domain-aware wrapper that maps an [AchievementStatus] → [FrBadge]'s primitive props (spec §8.3,
- * §8.4). Lives in the **feature** because it touches domain types and resolves feature i18n — the
- * same rule that keeps `FrMealCard` out of `:core:designsystem`. The pure atom stays domain-free.
- *
- * Earned = `unlockedAtEpochMs != null`; the caption shows the formatted "earned on" date for an
- * earned badge, or `current / target` progress for a locked one.
+ * Structural badge cell: a glowing-or-frosted [FrBadgeDisc] over the name, the "earned on" date or
+ * `current / target` progress caption, and (when locked) a thin [FrBarTrack]. Domain-aware (it touches
+ * [AchievementStatus] + feature i18n), so it lives in the feature, never `:core:designsystem`.
  */
 @Composable
 internal fun FrAchievementCard(
@@ -35,11 +44,13 @@ internal fun FrAchievementCard(
     val earned = unlockedAt != null
     val target = status.progress.target.coerceAtLeast(1)
     val fraction = status.progress.current.toFloat() / target.toFloat()
+    val title = resolve(status.achievement.titleKey)
     val caption = if (unlockedAt != null) {
         resolve(AchievementStringKey.EarnedOnFormat, formatEpochDay(unlockedAt))
     } else {
         resolve(AchievementStringKey.ProgressFormat, status.progress.current, status.progress.target)
     }
+
     // Bespoke press feedback: the badge dips toward the finger and springs back on release.
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -48,21 +59,35 @@ internal fun FrAchievementCard(
         animationSpec = tween(durationMillis = Motion.quick, easing = Motion.Standard),
         label = "FrAchievementCardPress",
     )
-    FrBadge(
-        icon = status.achievement.iconKey.toVector(),
-        title = resolve(status.achievement.titleKey),
-        earned = earned,
-        progressFraction = fraction,
-        tint = status.achievement.iconKey.tint(),
-        tier = status.achievement.tier.toBadgeTier(),
-        caption = caption,
-        contentDescription = resolve(status.achievement.titleKey),
+
+    Column(
         modifier = modifier
             .graphicsLayer { scaleX = scale; scaleY = scale }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = LocalIndication.current,
-                onClick = onClick,
-            ),
-    )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+    ) {
+        FrBadgeDisc(
+            earned = earned,
+            icon = status.achievement.iconKey.toVector(),
+            size = 56.dp,
+            contentDescription = title,
+        )
+        FrText(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = if (earned) StructuralColors.foreground else StructuralColors.foreground.copy(alpha = 0.6f),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
+        FrText(
+            text = caption,
+            style = StructuralType.microMono,
+            color = StructuralColors.foreground.copy(alpha = 0.5f),
+            textAlign = TextAlign.Center,
+        )
+        if (!earned) {
+            FrBarTrack(progress = fraction, modifier = Modifier.fillMaxWidth().padding(top = Spacing.xxs))
+        }
+    }
 }

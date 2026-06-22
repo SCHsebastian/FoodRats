@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.i18n.PluralStringKey
 import foodrats.feature.feed.generated.resources.Res
 import foodrats.feature.feed.generated.resources.feed_plates_count
 import foodrats.feature.feed.generated.resources.feed_rating_summary_votes
+import foodrats.feature.feed.generated.resources.feed_reactions_label
 import foodrats.feature.feed.generated.resources.feed_score_summary_votes
 import org.jetbrains.compose.resources.PluralStringResource
 
@@ -22,4 +23,7 @@ enum class FeedPluralKey(override val resourceId: PluralStringResource) : Plural
      * (e.g. "3.5", "😋") and %2$d = vote count.
      */
     ScoreSummaryVotes(Res.plurals.feed_score_summary_votes),
+
+    /** Reaction-count a11y label — "1 reaction" / "N reactions". Takes %1$d = count. */
+    ReactionsLabel(Res.plurals.feed_reactions_label),
 }

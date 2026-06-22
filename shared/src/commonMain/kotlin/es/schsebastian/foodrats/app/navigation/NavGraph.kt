@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -33,13 +35,24 @@ import androidx.navigation.toRoute
 import es.schsebastian.foodrats.app.consent.ConsentScreen
 import es.schsebastian.foodrats.app.recap.WeeklyStoryScreen
 import es.schsebastian.foodrats.core.domain.analytics.DigestStorySource
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.structural.FrDock
+import es.schsebastian.foodrats.core.designsystem.structural.FrDockItem
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.ScreenName
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.session.SessionProvider
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import es.schsebastian.foodrats.app.legal.EulaGateScreen
 import es.schsebastian.foodrats.app.legal.LegalDoc
 import es.schsebastian.foodrats.app.legal.LegalDocScreen
@@ -215,6 +228,7 @@ fun NavGraph(navController: NavController = rememberNavController()) {
                     controller.popBackStack(route = Route.Main, inclusive = false)
                 },
                 onEditIngredients = { controller.navigate(Route.SelectIngredients) },
+                onClose = { controller.popBackStack() },
             )
         }
         composable<Route.SelectIngredients> {
@@ -319,7 +333,7 @@ private fun String.pascalToSnakeCase(): String = buildString {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalCoroutinesApi::class)
 @Composable
 private fun MainScaffold(rootController: NavHostController) {
     // The two tabs (Feed/Stats) are a flat switch, NOT a nested NavHost. A NavHost nested inside an
@@ -350,68 +364,100 @@ private fun MainScaffold(rootController: NavHostController) {
         previousTab?.let { analytics.track(AnalyticsEvent.ScreenMoved(from = it.toScreenName(), to = current)) }
         previousTab = selectedTab
     }
-    val activeCrew by koinInject<ActiveCrewProvider>().current.collectAsState(initial = null)
-    val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
-    val topBarAvatar by topBarAvatarVm.state.collectAsState()
     val captureNudgeVm: CaptureNudgeViewModel = koinViewModel()
     val captureNudge by captureNudgeVm.state.collectAsState()
-    Scaffold(
-        // Make the Scaffold's own surface match the bottom bar tint so the area
-        // behind the Android system navigation bar (3-button or gesture pill)
-        // doesn't show through as warm-cream/white when edge-to-edge is on.
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            MainTopBar(
-                titleKey = when (selectedTab) {
-                    MainTab.Feed -> SharedStringKey.NavTabFeed
-                    MainTab.Passport -> SharedStringKey.NavTabPassport
-                    MainTab.Stats -> SharedStringKey.NavTabStats
+
+    // Header chrome that the structural Feed renders inline (crew name + viewer avatar) is resolved
+    // here and passed down, so :feature:feed gains no new cross-context dependency. The crew name
+    // combines the active selection (CrewId) with the viewer's membership list (id → name).
+    val sessionProvider = koinInject<SessionProvider>()
+    val membership = koinInject<CrewMembershipPort>()
+    val activeCrewProvider = koinInject<ActiveCrewProvider>()
+    val activeCrewId by activeCrewProvider.current.collectAsState(initial = null)
+    val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
+    val topBarAvatar by topBarAvatarVm.state.collectAsState()
+    val crewName by remember(sessionProvider, membership, activeCrewProvider) {
+        sessionProvider.current.flatMapLatest { session ->
+            if (session == null) {
+                flowOf<String?>(null)
+            } else {
+                activeCrewProvider.current.flatMapLatest { id ->
+                    if (id == null) {
+                        flowOf<String?>(null)
+                    } else {
+                        membership.observeMyCrews(session.accountId)
+                            .map { crews -> crews.firstOrNull { it.id == id }?.name }
+                    }
+                }
+            }
+        }.distinctUntilChanged()
+    }.collectAsState(initial = null)
+
+    // Structural chrome: zero top bar, a floating frosted dock. Each tab screen owns its own
+    // edge-to-edge FrMediaFloor and fills the whole Box (drawing behind the dock); the screen adds its
+    // own bottom padding so its last content clears the floating dock. The dock's 4th item ("You")
+    // pushes Profile rather than switching an in-scaffold tab (Profile keeps its own back-stack entry).
+    val dockItems = listOf(
+        FrDockItem(FrIcons.Restaurant, resolve(SharedStringKey.NavTabFeed)),
+        FrDockItem(FrIcons.Trophy, resolve(SharedStringKey.NavTabPassport)),
+        FrDockItem(FrIcons.Stats, resolve(SharedStringKey.NavTabStats)),
+        FrDockItem(FrIcons.Person, resolve(SharedStringKey.NavProfileCta)),
+    )
+    val selectedIndex = when (selectedTab) {
+        MainTab.Feed -> 0
+        MainTab.Passport -> 1
+        MainTab.Stats -> 2
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        when (selectedTab) {
+            MainTab.Stats -> StatsScreen(
+                // In-app weekly-recap entry (roadmap §2.4). weekStart is informational — the
+                // client derives the recap from its own stats/achievements read paths.
+                onOpenRecap = {
+                    rootController.navigate(
+                        Route.WeeklyStory(weekStart = "", fromNotification = false),
+                    ) { launchSingleTop = true }
                 },
+            )
+            MainTab.Passport -> PassportScreen()
+            MainTab.Feed -> FeedScreen(
+                crewName = crewName,
                 avatarInitials = topBarAvatar.initials,
                 avatarUrl = topBarAvatar.avatarUrl,
-                showSettings = activeCrew != null,
-                // launchSingleTop on every tap-driven push: a rapid double-tap (or a recomposition
-                // that re-fires the click) must not stack a duplicate destination — the second tap
-                // reuses the existing top entry instead of pushing a clone that the user then has to
-                // Back through twice. Cheap idempotency for user-initiated navigation.
+                onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
                 onProfileClick = { rootController.navigate(Route.Profile) { launchSingleTop = true } },
-                onSettingsClick = {
-                    activeCrew?.let {
+                onCrewSettingsClick = {
+                    activeCrewId?.let {
                         rootController.navigate(Route.CrewSettings(it.value)) { launchSingleTop = true }
                     }
                 },
+                onMealClick = { mealId, dayIso ->
+                    rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
+                },
             )
-        },
-        bottomBar = {
-            MainBottomBar(
-                selected = selectedTab,
-                hasPostedToday = captureNudge.hasPostedToday,
-                onFeedClick = { selectedTab = MainTab.Feed },
-                onPassportClick = { selectedTab = MainTab.Passport },
-                onStatsClick = { selectedTab = MainTab.Stats },
-                onCaptureClick = { rootController.navigate(Route.CaptureMeal) { launchSingleTop = true } },
-            )
-        },
-    ) { innerPadding ->
-        Column(modifier = Modifier.fillMaxSize().padding(innerPadding)) {
-            when (selectedTab) {
-                MainTab.Stats -> StatsScreen(
-                    // In-app weekly-recap entry (roadmap §2.4). weekStart is informational — the
-                    // client derives the recap from its own stats/achievements read paths.
-                    onOpenRecap = {
-                        rootController.navigate(
-                            Route.WeeklyStory(weekStart = "", fromNotification = false),
-                        ) { launchSingleTop = true }
-                    },
-                )
-                MainTab.Passport -> PassportScreen()
-                MainTab.Feed -> FeedScreen(
-                    onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
-                    onMealClick = { mealId, dayIso ->
-                        rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
-                    },
-                )
-            }
         }
+        FrDock(
+            items = dockItems,
+            selectedIndex = selectedIndex,
+            onSelect = { index ->
+                when (index) {
+                    0 -> selectedTab = MainTab.Feed
+                    1 -> selectedTab = MainTab.Passport
+                    2 -> selectedTab = MainTab.Stats
+                    else -> rootController.navigate(Route.Profile) { launchSingleTop = true }
+                }
+            },
+            onFabClick = { rootController.navigate(Route.CaptureMeal) { launchSingleTop = true } },
+            fabIcon = FrIcons.Camera,
+            fabContentDescription = resolve(SharedStringKey.NavCaptureCta),
+            fabPulsing = !captureNudge.hasPostedToday,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = Spacing.lg)
+                .padding(bottom = Spacing.sm),
+        )
     }
 }

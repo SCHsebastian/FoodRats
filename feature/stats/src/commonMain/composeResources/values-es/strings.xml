@@ -2,6 +2,12 @@
 <resources>
     <string name="stats_title">Estadísticas</string>
 
+    <!-- Structural eyebrows / units -->
+    <string name="stats_your_stats_eyebrow">Tus estadísticas</string>
+    <string name="stats_your_streak_eyebrow">Tu racha</string>
+    <string name="stats_streak_days_unit">días</string>
+    <string name="stats_awards_eyebrow">Premios</string>
+
     <string name="stats_tab_week">Semana</string>
     <string name="stats_tab_month">Mes</string>
     <string name="stats_tab_historic">Histórico</string>

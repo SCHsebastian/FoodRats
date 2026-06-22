@@ -82,6 +82,7 @@ fun FrDock(
     Box(modifier) {
         val dockShape = RoundedCornerShape(32.dp)
         val leftCount = items.size / 2
+        val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -94,7 +95,7 @@ fun FrDock(
                     drawContent()
                     val y = 0.5.dp.toPx()
                     drawLine(
-                        color = StructuralColors.topLight,
+                        color = edgeLight,
                         start = Offset(0f, y),
                         end = Offset(size.width, y),
                         strokeWidth = 1.dp.toPx(),

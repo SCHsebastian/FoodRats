@@ -60,8 +60,8 @@
     <string name="achievements_night_owl_10_desc">Publish 10 dinners.</string>
 
     <!-- Errors -->
-    <string name="achievements_error_not_signed_in">You\'re not signed in.</string>
+    <string name="achievements_error_not_signed_in">You're not signed in.</string>
     <string name="achievements_error_no_active_crew">Pick a crew to see your badges.</string>
-    <string name="achievements_error_unauthorized">You\'re not allowed to see these.</string>
-    <string name="achievements_error_unavailable">Couldn\'t load badges. Try again.</string>
+    <string name="achievements_error_unauthorized">You're not allowed to see these.</string>
+    <string name="achievements_error_unavailable">Couldn't load badges. Try again.</string>
 </resources>

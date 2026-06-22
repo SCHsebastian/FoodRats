@@ -2,6 +2,7 @@
 <resources>
     <string name="crew_picker_title">Your crews</string>
     <string name="crew_picker_empty_headline">No crew yet</string>
+    <string name="crew_picker_crews_label">Your crews</string>
     <string name="crew_picker_empty_subtext">Create a crew or join one with an invite code.</string>
     <string name="crew_picker_hero_subtitle">Eat together, even apart.</string>
     <string name="crew_picker_create_cta">Create a crew</string>
@@ -15,7 +16,7 @@
     <string name="crew_settings_title">CREW</string>
     <string name="crew_settings_back_cta">Back</string>
     <string name="crew_settings_members_section">MEMBERS</string>
-    <string name="crew_settings_owner_badge">You\'re the owner</string>
+    <string name="crew_settings_owner_badge">You're the owner</string>
     <string name="crew_settings_members_count">%1$d of 8 members</string>
     <string name="crew_settings_role_owner">Owner</string>
     <string name="crew_settings_role_member">Member</string>
@@ -28,7 +29,7 @@
     <string name="crew_settings_save">Save</string>
     <string name="crew_settings_blind_voting_section">BLIND VOTING</string>
     <string name="crew_settings_blind_voting_label">Hide who cooked until you vote</string>
-    <string name="crew_settings_blind_voting_description">When on, a meal\'s author stays hidden until you\'ve scored it — so nobody is swayed by who cooked.</string>
+    <string name="crew_settings_blind_voting_description">When on, a meal's author stays hidden until you've scored it — so nobody is swayed by who cooked.</string>
     <string name="crew_settings_tagline_section">HOUSE RULES</string>
     <string name="crew_settings_tagline_label">Tagline / house rules</string>
     <string name="crew_settings_tagline_placeholder">e.g. "only home-cooked, no delivery" (max 120 chars)</string>
@@ -71,7 +72,7 @@
     <string name="crew_settings_qr_close">Done</string>
     <string name="crew_invite_share_message">Join my crew %1$s on FoodRats: %2$s</string>
     <string name="crew_invite_eyebrow">Crew invite</string>
-    <string name="crew_invite_subtitle">You\'ve been invited to join</string>
+    <string name="crew_invite_subtitle">You've been invited to join</string>
     <string name="crew_invite_join_cta">Join crew</string>
     <string name="crew_invite_decline_cta">Not now</string>
     <string name="crew_invite_back_cta">Back</string>

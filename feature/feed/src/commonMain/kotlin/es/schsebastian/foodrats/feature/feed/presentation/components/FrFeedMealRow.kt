@@ -330,7 +330,7 @@ private fun ReactionButton(
     val contentColor =
         if (reacted) semantic.celebration else MaterialTheme.colorScheme.onSurfaceVariant
     val label =
-        if (count > 0) resolve(FeedStringKey.ReactionsLabel, count) else resolve(FeedStringKey.ReactionCta)
+        if (count > 0) resolvePlural(FeedPluralKey.ReactionsLabel, count, count) else resolve(FeedStringKey.ReactionCta)
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(Radius.pill))

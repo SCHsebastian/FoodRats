@@ -53,6 +53,7 @@ fun FrStructuralRow(
         animationSpec = tween(Motion.quick, easing = Motion.Standard),
         label = "rowPress",
     )
+    val hairline = StructuralColors.hairline // DrawScope lambdas are not @Composable.
 
     Row(
         modifier = modifier
@@ -61,7 +62,7 @@ fun FrStructuralRow(
                 if (showTopHairline) {
                     Modifier.drawBehind {
                         drawLine(
-                            color = StructuralColors.hairline,
+                            color = hairline,
                             start = Offset(0f, 0f),
                             end = Offset(size.width, 0f),
                             strokeWidth = 1.dp.toPx(),

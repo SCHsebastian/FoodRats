@@ -2,6 +2,7 @@
 <resources>
     <string name="crew_picker_title">Tus grupos</string>
     <string name="crew_picker_empty_headline">Aún no tienes un grupo</string>
+    <string name="crew_picker_crews_label">Tus grupos</string>
     <string name="crew_picker_empty_subtext">Crea un grupo o únete con un código de invitación.</string>
     <string name="crew_picker_hero_subtitle">Comemos juntos, incluso a la distancia.</string>
     <string name="crew_picker_create_cta">Crear un grupo</string>

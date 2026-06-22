@@ -15,5 +15,5 @@
     <!-- Share-outcome toasts (spec §10). -->
     <string name="share_succeeded">Shared to your story</string>
     <string name="share_opened_sheet">Opening share…</string>
-    <string name="share_failed">Couldn\'t share right now.</string>
+    <string name="share_failed">Couldn't share right now.</string>
 </resources>
