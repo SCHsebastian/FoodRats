@@ -44,6 +44,128 @@ describe("crews — create + read posture", () => {
   });
 });
 
+// Reproduces the real client write path. CrewFirestoreDataSource commits join/leave/
+// remove inside a transaction with `set(crewRef, crew.copy(...))` — a FULL-DOCUMENT
+// write. GitLive `.set(dto)` re-serializes every CrewDto field with encodeDefaults=true,
+// so a crew created before a field existed (scoreStyle, bannerPath, …) receives that
+// field as a newly-ADDED key, which the old hasOnly(['memberIds','members']) counted as a
+// forbidden change and rejected. These tests write the full document the way the app does.
+const fullCrewDoc = (memberIds: string[], extra: Record<string, unknown> = {}) => ({
+  id: "c1",
+  name: "C1",
+  code: "ABC123",
+  ownerId: "alice",
+  createdAtEpochMs: 1700000000000,
+  memberIds,
+  members: Object.fromEntries(memberIds.map((u) => [u, { joinedAtEpochMs: 1700000000000 }])),
+  blindVoting: false,
+  tagline: null,
+  welcomeMessage: null,
+  weeklyChallenge: null,
+  weeklyChallengeSetAtMillis: null,
+  scoreStyle: "stars",
+  bannerPath: null,
+  bannerFocalY: null,
+  ...extra,
+});
+
+describe("crews — full-document membership writes (real client `set()` path)", () => {
+  it("a non-member can join a CURRENT-schema crew via a full-document set()", async () => {
+    await seedCrew(env, "c1", fullCrewDoc(["alice"]));
+    const db = env.authenticatedContext("charlie").firestore();
+    await assertSucceeds(setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice", "charlie"])));
+  });
+
+  it("a non-member can join an OLDER crew missing the newer fields (the reported bug)", async () => {
+    // Crew created before scoreStyle / banner* / tagline / etc. existed.
+    await seedCrew(env, "c1", {
+      id: "c1",
+      name: "C1",
+      code: "ABC123",
+      ownerId: "alice",
+      createdAtEpochMs: 1700000000000,
+      memberIds: ["alice"],
+      members: { alice: { joinedAtEpochMs: 1700000000000 } },
+    });
+    // The client re-serializes the WHOLE DTO, so the newer fields arrive as added defaults.
+    const db = env.authenticatedContext("charlie").firestore();
+    await assertSucceeds(setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice", "charlie"])));
+  });
+
+  it("a member can leave an OLDER crew via a full-document set()", async () => {
+    await seedCrew(env, "c1", {
+      id: "c1",
+      name: "C1",
+      code: "ABC123",
+      ownerId: "alice",
+      createdAtEpochMs: 1700000000000,
+      memberIds: ["alice", "bob"],
+      members: {
+        alice: { joinedAtEpochMs: 1700000000000 },
+        bob: { joinedAtEpochMs: 1700000000000 },
+      },
+    });
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice"])));
+  });
+
+  it("the owner can remove a member from an OLDER crew via a full-document set()", async () => {
+    await seedCrew(env, "c1", {
+      id: "c1",
+      name: "C1",
+      code: "ABC123",
+      ownerId: "alice",
+      createdAtEpochMs: 1700000000000,
+      memberIds: ["alice", "bob"],
+      members: {
+        alice: { joinedAtEpochMs: 1700000000000 },
+        bob: { joinedAtEpochMs: 1700000000000 },
+      },
+    });
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice"])));
+  });
+
+  it("a joiner CANNOT seize ownership in the same full-document set()", async () => {
+    await seedCrew(env, "c1", fullCrewDoc(["alice"]));
+    const db = env.authenticatedContext("charlie").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice", "charlie"], { ownerId: "charlie" })),
+    );
+  });
+
+  it("a joiner CANNOT rotate the invite code in the same full-document set()", async () => {
+    await seedCrew(env, "c1", fullCrewDoc(["alice"]));
+    const db = env.authenticatedContext("charlie").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice", "charlie"], { code: "HIJACK" })),
+    );
+  });
+
+  it("a joiner CANNOT rename the crew in the same full-document set()", async () => {
+    await seedCrew(env, "c1", fullCrewDoc(["alice"]));
+    const db = env.authenticatedContext("charlie").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice", "charlie"], { name: "Hijacked" })),
+    );
+  });
+
+  it("a joiner CANNOT flip an owner-only policy (blindVoting) while joining", async () => {
+    await seedCrew(env, "c1", fullCrewDoc(["alice"]));
+    const db = env.authenticatedContext("charlie").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice", "charlie"], { blindVoting: true })),
+    );
+  });
+
+  it("a joiner CANNOT evict an existing member while joining", async () => {
+    await seedCrew(env, "c1", fullCrewDoc(["alice", "bob"]));
+    const db = env.authenticatedContext("charlie").firestore();
+    // Drops bob and adds charlie — net size unchanged, but an existing member is gone.
+    await assertFails(setDoc(doc(db, "crews/c1"), fullCrewDoc(["alice", "charlie"])));
+  });
+});
+
 describe("crews — membership cap invariant (max 8)", () => {
   it("a non-member can join when there is room", async () => {
     await seedCrew(env, "c1", { ownerId: "alice", name: "C1", memberIds: ["alice"], members: { alice: {} } });

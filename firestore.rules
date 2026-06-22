@@ -88,6 +88,34 @@ service cloud.firestore {
 
     // Crew root
     match /crews/{crewId} {
+      // True when a membership write (join / leave / remove-member) leaves EVERY
+      // non-membership field untouched. The client commits these as a full-document
+      // `set(crewRef, crew.copy(...))` — GitLive `.set(dto)` re-serializes the WHOLE
+      // CrewDto with encodeDefaults=true, so a crew created before a field existed
+      // (scoreStyle, bannerPath, …) receives that field as a newly-ADDED key. A naive
+      // `diff().affectedKeys().hasOnly(['memberIds','members'])` counts those re-stated
+      // defaults as changes and rejected EVERY join/leave/remove on an older crew (the
+      // reported "no one can join" bug). Comparing each field to its effective
+      // (default-resolved) prior value with get(k, default) treats "absent" and
+      // "re-stated default" as equal, while still rejecting a real change — so a joiner
+      // can ONLY append themselves and can never seize ownership, rotate the invite code,
+      // backdate the crew, rename it, or flip any owner-only policy. Defaults mirror
+      // CrewDto exactly: blindVoting=false, scoreStyle='stars', every other optional null.
+      function onlyMembershipUnchanged() {
+        return request.resource.data.get('id', null) == resource.data.get('id', null)
+          && request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null)
+          && request.resource.data.get('code', null) == resource.data.get('code', null)
+          && request.resource.data.get('createdAtEpochMs', null) == resource.data.get('createdAtEpochMs', null)
+          && request.resource.data.get('name', null) == resource.data.get('name', null)
+          && request.resource.data.get('blindVoting', false) == resource.data.get('blindVoting', false)
+          && request.resource.data.get('tagline', null) == resource.data.get('tagline', null)
+          && request.resource.data.get('welcomeMessage', null) == resource.data.get('welcomeMessage', null)
+          && request.resource.data.get('weeklyChallenge', null) == resource.data.get('weeklyChallenge', null)
+          && request.resource.data.get('weeklyChallengeSetAtMillis', null) == resource.data.get('weeklyChallengeSetAtMillis', null)
+          && request.resource.data.get('scoreStyle', 'stars') == resource.data.get('scoreStyle', 'stars')
+          && request.resource.data.get('bannerPath', null) == resource.data.get('bannerPath', null)
+          && request.resource.data.get('bannerFocalY', null) == resource.data.get('bannerFocalY', null);
+      }
       // Read is open to any authenticated user. `crewId` is a random UUID, so it
       // functions as a soft access token — you need it to read the doc, and a
       // joining user must be able to read the doc inside the joinByCode transaction
@@ -162,25 +190,35 @@ service cloud.firestore {
                       (request.auth.uid in resource.data.memberIds
                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
                       ||
+                      // (3) join — a non-member appends ONLY themselves. Written as a full-document
+                      // set() by the client, so we pin every non-membership field (onlyMembershipUnchanged)
+                      // and require the prior member set to survive intact (hasAll) with the count up by one.
                       (!(request.auth.uid in resource.data.memberIds)
                        && request.auth.uid in request.resource.data.memberIds
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
                        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
-                       && request.resource.data.memberIds.size() <= 8)
+                       && request.resource.data.memberIds.size() <= 8
+                       && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+                       && onlyMembershipUnchanged())
                       ||
+                      // (4) leave — an existing member removes ONLY themselves. Full-document set();
+                      // every surviving member was already present (hasAll on the OLD set) and the
+                      // count drops by exactly one, so no other member can be evicted in the same write.
                       (request.auth.uid in resource.data.memberIds
                        && !(request.auth.uid in request.resource.data.memberIds)
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1)
+                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+                       && resource.data.memberIds.hasAll(request.resource.data.memberIds)
+                       && onlyMembershipUnchanged())
                       ||
                       // (6) owner removes ANOTHER member: owner stays a member, the removed uid is
                       // dropped from both memberIds + members, and the set shrinks by exactly one.
-                      // The owner can't remove self through this branch (they remain in both the old
-                      // and new memberIds). ownerId/createdAt/code/name are untouched (hasOnly).
+                      // The owner can't remove self through this branch (they remain in the new
+                      // memberIds). Full-document set(): every surviving member was already present
+                      // (hasAll on the OLD set) and onlyMembershipUnchanged pins ownerId/code/name/etc.
                       (resource.data.ownerId == request.auth.uid
                        && request.auth.uid in request.resource.data.memberIds
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1)
+                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+                       && resource.data.memberIds.hasAll(request.resource.data.memberIds)
+                       && onlyMembershipUnchanged())
                     );
       allow create: if request.auth != null
                     && request.auth.uid in request.resource.data.memberIds
