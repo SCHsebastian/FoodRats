@@ -247,10 +247,18 @@ internal class FirebaseCrewRepository(
         val crew = dataSource.fetchOnce(crewId) ?: return@withContext Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return@withContext Result.failure(CrewError.Authorization.NotOwner)
         val storage = bannerStorage ?: return@withContext Result.failure(CrewError.Banner.UploadFailed)
-        runCatching {
-            val path = storage.upload(crewId, bytes)
-            dataSource.setBannerPath(crewId, path)
-        }.getOrElse { Result.failure(CrewError.Banner.UploadFailed) }
+        val path = runCatching { storage.upload(crewId, bytes) }
+            .getOrElse { return@withContext Result.failure(CrewError.Banner.UploadFailed) }
+        when (val written = dataSource.setBannerPath(crewId, path)) {
+            is Result.Ok -> written
+            is Result.Err -> {
+                // The object landed but the Firestore pointer write was rejected (e.g. a rules
+                // denial). Best-effort orphan cleanup, then surface the REAL cause rather than
+                // masking every post-upload failure as the generic Banner.UploadFailed.
+                runCatching { storage.delete(crewId) }
+                written
+            }
+        }
     }
 
     override suspend fun removeBanner(

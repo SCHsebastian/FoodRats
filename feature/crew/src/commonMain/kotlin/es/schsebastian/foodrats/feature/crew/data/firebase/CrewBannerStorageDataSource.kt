@@ -17,18 +17,23 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 class CrewBannerStorageDataSource(private val storage: FirebaseStorage) {
 
     /**
-     * Uploads JPEG bytes to `crew_banners/{crewId}/banner.jpg`, overwriting any previous file,
-     * and returns the deterministic object PATH — NOT a download URL.
+     * Downscales + re-encodes [bytes] to a small JPEG (see [resizeBannerForUpload]) and uploads it
+     * to `crew_banners/{crewId}/banner.jpg`, overwriting any previous file, then returns the
+     * deterministic object PATH — NOT a download URL.
+     *
+     * The compression is load-bearing, not just an optimization: the Storage rule caps the object
+     * at 2 MB and requires `image/jpeg`. The picker hands us the raw, full-resolution gallery photo
+     * (commonly several MB, possibly a PNG); uploading it verbatim is rejected with
+     * PERMISSION_DENIED — the "banner does not get uploaded" bug. Re-encoding makes both the size
+     * limit and the declared `contentType = "image/jpeg"` hold.
      *
      * The path is persisted to `crews/{crewId}.bannerPath` and resolved to a short-lived,
      * membership-checked V4 signed URL at read time via `ImageUrlPort` — same posture as avatars.
-     *
-     * `contentType = "image/jpeg"` is required by the Storage security rule.
      */
     suspend fun upload(crewId: CrewId, bytes: ByteArray): String {
         val path = "crew_banners/${crewId.value}/banner.jpg"
         storage.reference(path).putData(
-            data = bytes.toStorageData(),
+            data = bytes.resizeBannerForUpload().toStorageData(),
             metadata = storageMetadata { contentType = "image/jpeg" },
         )
         return path
