@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.test.performTextInputSelection
 import androidx.compose.ui.text.TextRange
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -109,5 +110,44 @@ class FrUnderlineFieldTest {
 
         composeTestRule.onNodeWithText("hello").assertExists()
         composeTestRule.onNodeWithText("he").assertDoesNotExist()
+    }
+
+    /**
+     * The "punctuation is not being saved" regression. The user types a final word ending in
+     * punctuation and immediately submits; the blur a Save/Send tap causes must NOT let a lagging
+     * hoisted echo overwrite the buffer's tail. The old code keyed external adoption on `focused`, so
+     * the blur re-ran it and snapped the buffer back to the stale value — dropping "." and the word
+     * before it. The buffer must keep the full text AND flush it up on blur.
+     */
+    @Test
+    fun staleEcho_onBlur_keepsTheTrailingPunctuation() {
+        var current by mutableStateOf("")
+        composeTestRule.setContent {
+            FoodRatsTheme(darkTheme = true) {
+                Column {
+                    FrUnderlineField(value = current, onValueChange = { current = it })
+                    // Focus sink: tapping into it blurs the field under test, exactly as a Save/Send
+                    // tap does. (Robolectric's FocusManager.clearFocus does not emit an Unfocus to the
+                    // field's interaction source, so a real second focusable is the reliable blur.)
+                    FrUnderlineField(value = "", onValueChange = {}, placeholder = "sink")
+                }
+            }
+        }
+        val target = composeTestRule.onAllNodes(hasSetTextAction())[0]
+        target.performTextInput("hello.") // focuses target; buffer == "hello."
+        composeTestRule.waitForIdle()
+
+        // Conflated-StateFlow lag: the parent momentarily trails by the trailing segment while the field
+        // is still focused (the "." hasn't propagated through the MVI StateFlow yet).
+        current = "hello"
+        composeTestRule.waitForIdle()
+
+        // Blur the target by focusing the sink — exactly what tapping Save/Send does.
+        composeTestRule.onAllNodes(hasSetTextAction())[1].performTextInput("x")
+        composeTestRule.waitForIdle()
+
+        // Buffer kept the full "hello." (no clobber by the lagging echo) AND flush-on-blur reported it up.
+        composeTestRule.onNodeWithText("hello.").assertExists()
+        assertEquals("hello.", current)
     }
 }

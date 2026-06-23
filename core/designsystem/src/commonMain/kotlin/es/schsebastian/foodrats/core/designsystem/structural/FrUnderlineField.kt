@@ -119,11 +119,21 @@ fun FrUnderlineField(
             if (text != latestValue) latestOnValueChange(text)
         }
     }
-    // Adopt a GENUINE external change (async prefill of a name/bio, clear-on-submit) — but only while
-    // UNFOCUSED. While the user is typing we never let the lagging hoisted value overwrite the buffer;
-    // re-keying on `focused` means a value that arrived mid-focus is still picked up the moment the
-    // field is blurred.
-    LaunchedEffect(value, focused) {
+    // Flush the buffer UP the instant the field loses focus — BEFORE any Save/Send handler reads the
+    // hoisted value. At blur the buffer is authoritative (the user just finished typing), so the final
+    // segment — including any trailing punctuation — is guaranteed to have reached the parent.
+    LaunchedEffect(focused) {
+        if (!focused) {
+            val text = state.text.toString()
+            if (text != latestValue) latestOnValueChange(text)
+        }
+    }
+    // Adopt a GENUINE external change (async prefill of a name/bio, clear-on-submit) — keyed on `value`
+    // ALONE, never on `focused`. Keying the adoption on `focused` was the data-loss bug: the blur that a
+    // Save/Send tap causes re-ran this effect and overwrote the just-typed buffer with the lagging
+    // hoisted echo, dropping the trailing word and its punctuation. We only pull an external value in
+    // while UNFOCUSED, so an actively-typing user is never interrupted; a blur no longer triggers it.
+    LaunchedEffect(value) {
         if (!focused && value != state.text.toString()) {
             state.setTextAndPlaceCursorAtEnd(value)
         }
