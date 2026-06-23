@@ -388,15 +388,20 @@ private fun writeFormatInfo(g: IntArray, size: Int, mask: Int, ecc: QrEcc) {
     var rem = data
     for (i in 0 until 10) rem = (rem shl 1) xor ((rem ushr 9) * 0x537)
     val bits = ((data shl 10) or rem) xor 0x5412
-    // top-left + bottom positions
-    for (i in 0..5) g[8 * size + i] = (bits ushr i) and 1
-    g[8 * size + 7] = (bits ushr 6) and 1
-    g[8 * size + 8] = (bits ushr 7) and 1
-    g[7 * size + 8] = (bits ushr 8) and 1
-    for (i in 9..14) g[(14 - i) * size + 8] = (bits ushr i) and 1
-    for (i in 0..7) g[(size - 1 - i) * size + 8] = (bits ushr i) and 1
-    for (i in 8..14) g[8 * size + (size - 15 + i)] = (bits ushr i) and 1
-    g[(size - 8) * size + 8] = 1 // dark module
+    fun bit(i: Int) = (bits ushr i) and 1
+    // `g[y * size + x]`. Per ISO/IEC 18004 §8.9 the 15 format-info modules sit in an L around the
+    // top-left finder (copy 1) and split across the top-right / bottom-left strips (copy 2). The
+    // x/y of every module is exact — transposing them yields a structurally-valid but undecodable QR.
+    // Copy 1 — vertical arm down column 8, then horizontal arm along row 8.
+    for (i in 0..5) g[i * size + 8] = bit(i)        // (x=8, y=0..5)
+    g[7 * size + 8] = bit(6)                        // (x=8, y=7)
+    g[8 * size + 8] = bit(7)                        // (x=8, y=8)
+    g[8 * size + 7] = bit(8)                        // (x=7, y=8)
+    for (i in 9..14) g[8 * size + (14 - i)] = bit(i) // (x=5..0, y=8)
+    // Copy 2 — horizontal strip along row 8 (right edge), then vertical strip down column 8 (bottom).
+    for (i in 0..7) g[8 * size + (size - 1 - i)] = bit(i)   // (x=size-1..size-8, y=8)
+    for (i in 8..14) g[(size - 15 + i) * size + 8] = bit(i) // (x=8, y=size-7..size-1)
+    g[(size - 8) * size + 8] = 1 // always-dark module, (x=8, y=size-8)
 }
 
 private fun writeVersionInfo(g: IntArray, size: Int, version: Int) {
