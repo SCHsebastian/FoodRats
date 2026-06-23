@@ -47,6 +47,8 @@ data class LocalRating(
     val score: Int,
     val atMs: Long,
     val pending: Boolean,
+    /** Mirrors [RatingEntryDto.edited]: `true` once the rater has used their single vote change. */
+    val edited: Boolean = false,
 )
 
 /**
@@ -70,7 +72,7 @@ fun LocalMeal.toMealDto(): MealDto = MealDto(
     latitude = latitude,
     longitude = longitude,
     publishedAtEpochMs = publishedAtEpochMs,
-    ratings = ratings.associate { it.raterId to RatingEntryDto(score = it.score, atMs = it.atMs) },
+    ratings = ratings.associate { it.raterId to RatingEntryDto(score = it.score, atMs = it.atMs, edited = it.edited) },
     ratingSum = ratingSum.toInt(),
     voterCount = voterCount.toInt(),
     ingredients = ingredientsCsv.toIngredientList(),
@@ -135,7 +137,7 @@ fun MealDto.toLocalUpsert(): MealUpsert = MealUpsert(
     pending = 0L,
     idempotencyKey = null,
     ratings = ratings.map { (raterId, entry) ->
-        LocalRating(raterId = raterId, score = entry.score, atMs = entry.atMs, pending = false)
+        LocalRating(raterId = raterId, score = entry.score, atMs = entry.atMs, pending = false, edited = entry.edited)
     },
 )
 

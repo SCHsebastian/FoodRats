@@ -87,7 +87,13 @@ fun CrewPickerScreen(
         // Keyboard handling: at rest the form sits vertically centered; once the IME opens, pin to the
         // top and let the scrollable column lift the focused field above the keyboard (avoids the
         // "everything moves up" re-centering bug).
+        // Overflow handling: a vertically-scrolling Box with `Alignment.Center` keeps a taller-than-
+        // viewport child centered, so its top is clipped and the bottom CTAs ("Create" / "Join") sit
+        // below the fold with no way to reach them. Once there are crews (the tall case), anchor to
+        // TopCenter so the column grows downward and the scroll reveals the CTAs. Keep the centered
+        // look only for the short empty/loading state.
         val imeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+        val contentCanOverflow = imeVisible || state.crews.isNotEmpty()
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -95,7 +101,7 @@ fun CrewPickerScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .padding(horizontal = Spacing.lg, vertical = Spacing.xl),
-            contentAlignment = if (imeVisible) Alignment.TopCenter else Alignment.Center,
+            contentAlignment = if (contentCanOverflow) Alignment.TopCenter else Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,

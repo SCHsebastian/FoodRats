@@ -51,12 +51,13 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 
 /**
- * Structural delete-account confirmation. A somber dish-mackerel [FrMediaFloor] under a zero-chrome
- * scroll plane: a floating glass back button + crimson eyebrow / oversized title, a deep crimson
- * [FrGlassTile] listing the irreversible consequences, the exact-phrase [FrUnderlineField] gate, and a
- * Danger CTA enabled only when the typed phrase matches. The matte confirm dialog is replaced by a
- * frosted [FrGlassDialog]. ALL wiring (onBack / onConfirmationChanged / onRequestDialog / the dialog
- * callbacks, the in-flight + error states) is preserved verbatim — only the visual layer changed.
+ * Structural delete-account confirmation. An adaptive olive [FrMediaFloor] (dark charcoal in dark
+ * theme, warm-concrete in light) under a zero-chrome scroll plane: a floating glass back button +
+ * crimson eyebrow / oversized title, a deep crimson [FrGlassTile] listing the irreversible
+ * consequences, the exact-phrase [FrUnderlineField] gate, and a Danger CTA enabled only when the
+ * typed phrase matches. The matte confirm dialog is replaced by a frosted [FrGlassDialog]. ALL
+ * wiring (onBack / onConfirmationChanged / onRequestDialog / the dialog callbacks, the in-flight +
+ * error states) is preserved verbatim — only the visual layer changed.
  */
 @Composable
 internal fun DeleteAccountScreen(
@@ -75,11 +76,9 @@ internal fun DeleteAccountScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         FrMediaFloor(
-            brush = StructuralColors.dishMackerel,
+            brush = StructuralColors.oliveFloor,
             blur = StructuralBlur.Heavy,
-            dim = 0.5f,
-            scrim = FrScrimStyle.Even,
-            tone = FrFloorTone.OnMedia,
+            tone = FrFloorTone.Adaptive,
         )
 
         // Floating pushed-screen header — back pill top-left.
@@ -115,7 +114,7 @@ internal fun DeleteAccountScreen(
                 FrText(
                     text = resolve(AuthStringKey.DeleteAccountTitle),
                     style = StructuralType.titleXl,
-                    color = StructuralColors.onMedia,
+                    color = StructuralColors.foreground,
                 )
             }
 
@@ -146,8 +145,6 @@ internal fun DeleteAccountScreen(
                 // Exact-match gate ("DELETE <name>") — no auto-capitalization, or the keyboard would
                 // fight the precise phrase the user must reproduce.
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.None),
-                // The delete screen's floor is a dark dish mood in both themes — keep the field white.
-                onMedia = true,
                 enabled = !state.isDeletingAccount,
                 // Light the underline crimson once the user has typed a phrase that doesn't yet match
                 // the exact target — a passive mismatch cue that mirrors the delete-button gate.
@@ -185,7 +182,7 @@ internal fun DeleteAccountScreen(
                     FrText(
                         text = resolve(AuthStringKey.DeleteAccountInFlight),
                         style = StructuralType.body,
-                        color = StructuralColors.onMedia.copy(alpha = 0.85f),
+                        color = StructuralColors.foreground.copy(alpha = 0.85f),
                     )
                 }
             }

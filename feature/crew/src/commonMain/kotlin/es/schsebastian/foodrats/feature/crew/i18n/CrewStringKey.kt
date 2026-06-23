@@ -25,6 +25,7 @@ import foodrats.feature.crew.generated.resources.crew_error_unknown
 import foodrats.feature.crew.generated.resources.crew_join_code_label
 import foodrats.feature.crew.generated.resources.crew_join_submit
 import foodrats.feature.crew.generated.resources.crew_member_deleted
+import foodrats.feature.crew.generated.resources.crew_member_unnamed
 import foodrats.feature.crew.generated.resources.crew_picker_brand_name
 import foodrats.feature.crew.generated.resources.crew_picker_create_cta
 import foodrats.feature.crew.generated.resources.crew_picker_crew_button
@@ -75,6 +76,9 @@ import foodrats.feature.crew.generated.resources.crew_settings_delete_cta
 import foodrats.feature.crew.generated.resources.crew_settings_delete_title
 import foodrats.feature.crew.generated.resources.crew_settings_invite_code
 import foodrats.feature.crew.generated.resources.crew_settings_leave_cta
+import foodrats.feature.crew.generated.resources.crew_settings_leave_title
+import foodrats.feature.crew.generated.resources.crew_settings_leave_body
+import foodrats.feature.crew.generated.resources.crew_settings_leave_confirm
 import foodrats.feature.crew.generated.resources.crew_settings_members_count
 import foodrats.feature.crew.generated.resources.crew_settings_members_section
 import foodrats.feature.crew.generated.resources.crew_settings_owner_badge
@@ -129,6 +133,9 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsRoleMember(Res.string.crew_settings_role_member),
     SettingsShareCode(Res.string.crew_settings_share_code),
     SettingsLeaveCta(Res.string.crew_settings_leave_cta),
+    SettingsLeaveTitle(Res.string.crew_settings_leave_title),
+    SettingsLeaveBody(Res.string.crew_settings_leave_body),
+    SettingsLeaveConfirm(Res.string.crew_settings_leave_confirm),
     SettingsCrewSection(Res.string.crew_settings_crew_section),
     SettingsActionsSection(Res.string.crew_settings_actions_section),
     SettingsDangerSection(Res.string.crew_settings_danger_section),
@@ -183,6 +190,7 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsRemoveMemberConfirmBody(Res.string.crew_settings_remove_member_confirm_body),
     SettingsMemberRemoved(Res.string.crew_settings_member_removed),
     MemberDeleted(Res.string.crew_member_deleted),
+    MemberUnnamed(Res.string.crew_member_unnamed),
     SettingsWelcomeMessageSection(Res.string.crew_settings_welcome_message_section),
     SettingsWelcomeMessageLabel(Res.string.crew_settings_welcome_message_label),
     SettingsWelcomeMessagePlaceholder(Res.string.crew_settings_welcome_message_placeholder),

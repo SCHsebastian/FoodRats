@@ -77,6 +77,9 @@ data class LegalSection(val heading: SharedStringKey?, val body: SharedStringKey
 /** The i18n email address embedded in both legal-doc contact sections. */
 private const val CONTACT_EMAIL = "hello@chsumiapps.com"
 
+/** The i18n support web URL embedded in both legal-doc contact sections (UGC compliance §6). */
+private const val CONTACT_URL = "https://foodrats-de4ec.web.app"
+
 /**
  * Reusable scrollable screen rendering a titled, sectioned legal document (the EULA or the Community
  * Guidelines) from i18n strings. Plain prose typography — no state, no ViewModel — mirroring
@@ -147,38 +150,48 @@ fun LegalDocScreen(
 }
 
 /**
- * Renders a legal-doc contact paragraph with the embedded [CONTACT_EMAIL] as a tappable
- * `mailto:` link (Item 7 — UGC compliance §6). Uses [BasicText] with [LinkAnnotation.Url] via
- * [buildAnnotatedString]/[withLink] — the Compose Multiplatform 1.7+ declarative link API.
- * The link is underlined + primary-coloured so it reads as interactive; surrounding prose is
- * [MaterialTheme.colorScheme.onSurfaceVariant] matching the non-contact sections.
+ * Renders a legal-doc contact paragraph with the embedded [CONTACT_EMAIL] (as a `mailto:` link)
+ * and the [CONTACT_URL] (as a web link) both tappable (Item 7 — UGC compliance §6). Uses
+ * [BasicText] with [LinkAnnotation.Url] via [buildAnnotatedString]/[withLink] — the Compose
+ * Multiplatform 1.7+ declarative link API. Each link is underlined + primary-coloured so it reads
+ * as interactive; surrounding prose is [MaterialTheme.colorScheme.onSurfaceVariant] matching the
+ * non-contact sections. The two tokens are emitted in whatever positional order they appear so
+ * the same renderer works for the EULA and Community contact bodies in both locales.
  */
 @Composable
 private fun LegalContactBody(text: String) {
-    val emailIndex = text.indexOf(CONTACT_EMAIL)
     val linkColor = MaterialTheme.colorScheme.primary
+    val linkStyles = TextLinkStyles(
+        style = SpanStyle(
+            color = linkColor,
+            textDecoration = TextDecoration.Underline,
+        ),
+    )
+
+    // Each embedded link token paired with the URL it should open. The email opens via `mailto:`;
+    // the support URL is already an absolute https URL. Sorted by position so the prose between
+    // tokens is appended in reading order regardless of which comes first.
+    data class LinkToken(val display: String, val url: String)
+    val tokens = listOf(
+        LinkToken(CONTACT_EMAIL, "mailto:$CONTACT_EMAIL"),
+        LinkToken(CONTACT_URL, CONTACT_URL),
+    )
+        .map { it to text.indexOf(it.display) }
+        .filter { (_, index) -> index >= 0 }
+        .sortedBy { (_, index) -> index }
 
     val annotated = buildAnnotatedString {
-        if (emailIndex < 0) {
-            // Fallback: email not found in the resolved string; render as plain text.
-            append(text)
-            return@buildAnnotatedString
+        var cursor = 0
+        tokens.forEach { (token, index) ->
+            // Guard against overlapping/duplicate matches; skip any token already consumed.
+            if (index < cursor) return@forEach
+            append(text.substring(cursor, index))
+            withLink(LinkAnnotation.Url(url = token.url, styles = linkStyles)) {
+                append(token.display)
+            }
+            cursor = index + token.display.length
         }
-        append(text.substring(0, emailIndex))
-        withLink(
-            LinkAnnotation.Url(
-                url = "mailto:$CONTACT_EMAIL",
-                styles = TextLinkStyles(
-                    style = SpanStyle(
-                        color = linkColor,
-                        textDecoration = TextDecoration.Underline,
-                    ),
-                ),
-            ),
-        ) {
-            append(CONTACT_EMAIL)
-        }
-        append(text.substring(emailIndex + CONTACT_EMAIL.length))
+        append(text.substring(cursor))
     }
 
     BasicText(

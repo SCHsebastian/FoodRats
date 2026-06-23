@@ -69,20 +69,37 @@ fun FrGlassTile(
         FrTileTone.Olive -> Brush.linearGradient(
             listOf(scheme.primary, semantic.success),
         )
-        FrTileTone.Glass -> SolidColor(
-            when (depth) {
+        FrTileTone.Glass -> {
+            val glass = when (depth) {
                 FrTileDepth.Default -> StructuralColors.tile
                 FrTileDepth.Deep -> StructuralColors.tileDeep
                 FrTileDepth.Near -> StructuralColors.tileNear
                 FrTileDepth.Solid -> StructuralColors.tileSolid
-            },
-        )
+            }
+            // In light mode the tint is a TRANSLUCENT warm-white. `Modifier.shadow` over a translucent
+            // fill renders a hard double-edge ("white square with a wrong fade", user report 2026-06-23)
+            // — and the frosted see-through effect is imperceptible light-over-light anyway. Use an
+            // OPAQUE warm-white in light so the drop shadow renders as a clean soft lift. Dark keeps the
+            // translucent tint (the shadow vanishes into the dark floor there, so no artifact).
+            SolidColor(if (StructuralColors.isLight) glass.copy(alpha = 1f) else glass)
+        }
     }
 
-    val elevation = when (depth) {
-        FrTileDepth.Near -> 30.dp
-        FrTileDepth.Deep -> 14.dp
-        else -> 22.dp
+    // Drop-shadow depth. The original radii were tuned dark-first, where a big black shadow vanishes
+    // into the dark floor. On the warm-white light floor that same shadow becomes a heavy grey halo, so
+    // light mode uses much shallower elevations for a soft, believable lift (with the opaque fill above).
+    val elevation = if (StructuralColors.isLight) {
+        when (depth) {
+            FrTileDepth.Near -> 10.dp
+            FrTileDepth.Deep -> 3.dp
+            else -> 6.dp
+        }
+    } else {
+        when (depth) {
+            FrTileDepth.Near -> 30.dp
+            FrTileDepth.Deep -> 14.dp
+            else -> 22.dp
+        }
     }
 
     // Read the theme-aware edge-light here — DrawScope lambdas are not @Composable.

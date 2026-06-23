@@ -218,13 +218,16 @@ fun FrFeedMealRow(
                             FrProfileBadge(badgeId = badgeId, label = badgeLabel)
                         }
                     }
-                    Dot()
-                    FrText(
-                        text = resolve(ui.slot.labelKey()),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
+                    // Slot is optional — show the dot + label only when the author tagged one.
+                    ui.slot?.let { slot ->
+                        Dot()
+                        FrText(
+                            text = resolve(slot.labelKey()),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
                 }
 
                 // U5b — author bio line, hidden under blind voting (authorMasked=true means

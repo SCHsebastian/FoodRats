@@ -141,15 +141,18 @@ class MealDatabaseTest {
 
     @Test fun ratings_upsert_select_and_delete() {
         insertMeal("m1", crewId = "c1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)
-        db.mealQueries.upsertRating("m1", "rater-1", score = 4L, atMs = 10L, pending = 0L)
-        db.mealQueries.upsertRating("m1", "rater-2", score = 5L, atMs = 11L, pending = 0L)
+        db.mealQueries.upsertRating("m1", "rater-1", score = 4L, atMs = 10L, pending = 0L, edited = 0L)
+        db.mealQueries.upsertRating("m1", "rater-2", score = 5L, atMs = 11L, pending = 0L, edited = 0L)
         // Overwrite rater-1's score (PK collision → replace).
-        db.mealQueries.upsertRating("m1", "rater-1", score = 3L, atMs = 12L, pending = 1L)
+        db.mealQueries.upsertRating("m1", "rater-1", score = 3L, atMs = 12L, pending = 1L, edited = 1L)
 
         val ratings = db.mealQueries.selectRatingsForMeals(listOf("m1")).executeAsList()
         assertEquals(2, ratings.size)
         assertEquals(3L, ratings.first { it.raterId == "rater-1" }.score)
         assertEquals(1L, ratings.first { it.raterId == "rater-1" }.pending)
+        // The `edited` flag round-trips through the column (set on rater-1's overwrite).
+        assertEquals(1L, ratings.first { it.raterId == "rater-1" }.edited)
+        assertEquals(0L, ratings.first { it.raterId == "rater-2" }.edited)
 
         db.mealQueries.deleteRating("m1", "rater-1")
         val afterDelete = db.mealQueries.selectRatingsForMeals(listOf("m1")).executeAsList()
@@ -158,12 +161,12 @@ class MealDatabaseTest {
 
     @Test fun delete_meals_before_day_prunes_older_rows_and_cascades_ratings() {
         insertMeal("ancient", crewId = "c1", dayKey = "2026-01-01", publishedAtEpochMs = 1L)
-        db.mealQueries.upsertRating("ancient", "rater-1", score = 5L, atMs = 1L, pending = 0L)
+        db.mealQueries.upsertRating("ancient", "rater-1", score = 5L, atMs = 1L, pending = 0L, edited = 0L)
         insertMeal("day-before", crewId = "c1", dayKey = "2026-03-20", publishedAtEpochMs = 2L)
         // Exactly the cutoff day → kept (delete is strictly `< cutoff`).
         insertMeal("on-cutoff", crewId = "c1", dayKey = "2026-03-21", publishedAtEpochMs = 3L)
         insertMeal("recent", crewId = "c1", dayKey = "2026-06-15", publishedAtEpochMs = 4L)
-        db.mealQueries.upsertRating("recent", "rater-2", score = 4L, atMs = 5L, pending = 0L)
+        db.mealQueries.upsertRating("recent", "rater-2", score = 4L, atMs = 5L, pending = 0L, edited = 0L)
 
         db.mealQueries.deleteMealsBeforeDay("2026-03-21")
 
@@ -184,7 +187,7 @@ class MealDatabaseTest {
         // rating can't be inserted at all, so here we only assert the sweep is a no-op when every
         // rating still has a live meal — the cascade itself is covered by deleting_a_meal_cascades_*.
         insertMeal("present", crewId = "c1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)
-        db.mealQueries.upsertRating("present", "rater-1", score = 4L, atMs = 1L, pending = 0L)
+        db.mealQueries.upsertRating("present", "rater-1", score = 4L, atMs = 1L, pending = 0L, edited = 0L)
 
         db.mealQueries.deleteRatingsForAbsentMeals()
 
@@ -196,8 +199,8 @@ class MealDatabaseTest {
 
     @Test fun deleting_a_meal_cascades_to_its_ratings() {
         insertMeal("m1", crewId = "c1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)
-        db.mealQueries.upsertRating("m1", "rater-1", score = 4L, atMs = 10L, pending = 0L)
-        db.mealQueries.upsertRating("m1", "rater-2", score = 5L, atMs = 11L, pending = 0L)
+        db.mealQueries.upsertRating("m1", "rater-1", score = 4L, atMs = 10L, pending = 0L, edited = 0L)
+        db.mealQueries.upsertRating("m1", "rater-2", score = 5L, atMs = 11L, pending = 0L, edited = 0L)
         assertEquals(2, db.mealQueries.selectRatingsForMeals(listOf("m1")).executeAsList().size)
 
         db.mealQueries.deleteMealsByIds(listOf("m1"))

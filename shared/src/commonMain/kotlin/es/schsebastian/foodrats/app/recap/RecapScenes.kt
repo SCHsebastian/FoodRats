@@ -22,6 +22,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.unit.dp
 import coil3.compose.rememberAsyncImagePainter
+import es.schsebastian.foodrats.app.i18n.SharedPluralKey
 import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
@@ -37,6 +38,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.core.i18n.toFixed
 import es.schsebastian.foodrats.feature.achievements.i18n.AchievementStringKey
 
@@ -72,7 +74,7 @@ fun RecapSceneView(scene: RecapScene, modifier: Modifier = Modifier) {
             Spacer(Modifier.height(Spacing.sm))
             MetricLine(value = scene.streakDays.toString(), unit = null, tint = LocalFrSemanticColors.current.streakHot)
             Spacer(Modifier.height(Spacing.sm))
-            BodyLine(resolve(SharedStringKey.RecapStreakSubtitle, scene.streakDays))
+            BodyLine(resolvePlural(SharedPluralKey.RecapStreakSubtitle, scene.streakDays))
         }
         is RecapScene.Badges -> BadgesScene(scene, modifier)
         is RecapScene.Cuisines -> SceneFloor(modifier, brush = StructuralColors.oliveFloor) {
@@ -156,7 +158,7 @@ private fun YourWeekScene(scene: RecapScene.YourWeek, modifier: Modifier) {
     SceneFloor(modifier, brush = StructuralColors.fieldFloor) {
         FrEyebrow(text = resolve(SharedStringKey.RecapYourWeekTitle).uppercase())
         Spacer(Modifier.height(Spacing.md))
-        BodyLine(resolve(SharedStringKey.RecapYourWeekStreak, scene.streakDays))
+        BodyLine(resolvePlural(SharedPluralKey.RecapYourWeekStreak, scene.streakDays))
         Spacer(Modifier.height(Spacing.xs))
         BodyLine(resolve(SharedStringKey.RecapYourWeekCuisines, scene.cuisinesCollected))
         Spacer(Modifier.height(Spacing.xs))

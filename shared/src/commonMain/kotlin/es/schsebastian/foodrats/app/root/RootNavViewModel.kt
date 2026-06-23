@@ -102,10 +102,30 @@ class RootNavViewModel(
             RootStage.Splash                      -> Unit  // never produced by the stage flow
             RootStage.NeedsSignIn                 -> emit(RootNavEffect.NavigateTopLevel(Route.SignIn))
             RootStage.NeedsNotificationPermission -> emit(RootNavEffect.NavigateTopLevel(Route.NotificationPermission))
-            RootStage.NeedsCrew                   -> emit(RootNavEffect.NavigateTopLevel(Route.CrewPicker))
+            RootStage.NeedsCrew                   -> emitNeedsCrew()
             RootStage.NeedsConsent                -> emit(RootNavEffect.NavigateTopLevel(Route.Consent))
             RootStage.NeedsEulaGate               -> emit(RootNavEffect.NavigateTopLevel(Route.EulaGate))
             RootStage.Ready                       -> emitReady()
+        }
+    }
+
+    /**
+     * On reaching NeedsCrew, route to the crew picker — unless an invite deep link is pending. An
+     * invite is itself the crew-acquisition action (the AcceptInvite flow joins and switches the
+     * active crew, which clears this very gate), so honor it now instead of stashing it until Ready:
+     * Ready is unreachable without a crew, and the crew is exactly what the invite provides. Other
+     * pending deep links (a meal/crew-settings link to a crew the user isn't in yet) stay stashed —
+     * they're meaningless until the user has a crew, so they wait for Ready. The picker is the base
+     * so backing out of the invite returns there, not to an empty Feed.
+     */
+    private suspend fun emitNeedsCrew() {
+        val pending = currentState.pendingDeepLink
+        if (pending is Route.InvitePreview) {
+            update { it.copy(pendingDeepLink = null) }
+            FrLog.d(FrLog.Tags.RootNav) { "needsCrew: resuming invite deep link" }
+            emit(RootNavEffect.NavigateDeepLink(pending, base = Route.CrewPicker))
+        } else {
+            emit(RootNavEffect.NavigateTopLevel(Route.CrewPicker))
         }
     }
 
@@ -130,15 +150,25 @@ class RootNavViewModel(
                     return@collect
                 }
                 navLock.withLock {
-                    val ready = currentState.stage == RootStage.Ready
+                    val stage = currentState.stage
                     // All routes returned by parseDeepLink are Route.Protected, so requiresSession()
-                    // is always true here. Navigate immediately when Ready; stash otherwise.
-                    if (ready) {
-                        FrLog.d(FrLog.Tags.RootNav) { "deep link → navigate now: ${route::class.simpleName}" }
-                        emit(RootNavEffect.NavigateDeepLink(route))
-                    } else {
-                        FrLog.d(FrLog.Tags.RootNav) { "deep link stashed until Ready: ${route::class.simpleName}" }
-                        update { it.copy(pendingDeepLink = route) }
+                    // is always true here. Navigate immediately when Ready. An invite is the one
+                    // deep link that's also valid at NeedsCrew — it joins + switches the active crew
+                    // itself, so it must not be trapped behind a gate it would clear (see
+                    // emitNeedsCrew). Everything else stashes until Ready.
+                    when {
+                        stage == RootStage.Ready -> {
+                            FrLog.d(FrLog.Tags.RootNav) { "deep link → navigate now: ${route::class.simpleName}" }
+                            emit(RootNavEffect.NavigateDeepLink(route))
+                        }
+                        route is Route.InvitePreview && stage == RootStage.NeedsCrew -> {
+                            FrLog.d(FrLog.Tags.RootNav) { "invite deep link → navigate now over crew picker" }
+                            emit(RootNavEffect.NavigateDeepLink(route, base = Route.CrewPicker))
+                        }
+                        else -> {
+                            FrLog.d(FrLog.Tags.RootNav) { "deep link stashed until Ready: ${route::class.simpleName}" }
+                            update { it.copy(pendingDeepLink = route) }
+                        }
                     }
                 }
             }

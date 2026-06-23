@@ -56,12 +56,19 @@ class FirestoreAccountWriter(
     ): Result<String, AccountWriteError> = withContext(dispatchers.io) {
         if (bytes.isEmpty()) return@withContext Result.failure(AccountWriteError.Validation.EmptyBytes)
         runCatching {
-            // Upload returns the deterministic Storage PATH (not a URL); persist it as
-            // `avatarPath`. The new avatar surfaces to the UI via AccountReadPort re-emission,
-            // which resolves the path to a signed URL.
+            val doc = firestore.collection("accounts").document(accountId.value)
+            // The avatar PATH is content-versioned (`avatars/{uid}/{token}.jpg`), so a NEW image
+            // produces a NEW path string. Persisting it changes the `accounts/{uid}` DTO, which is
+            // exactly what makes the change surface live: AccountReadPort re-emits and re-resolves
+            // the path to a fresh signed URL (the old fixed path never changed → stale until restart).
+            val previousPath = readAvatarPath(accountId)
             val path = avatarStorage.upload(accountId, bytes)
-            firestore.collection("accounts").document(accountId.value)
-                .update("avatarPath" to path)
+            doc.update("avatarPath" to path)
+            // Best-effort: reclaim the previous version's object so old avatars don't accumulate.
+            // Skipped when unchanged (same image) or absent. A failure here must not fail the update.
+            if (previousPath != null && previousPath != path) {
+                runCatching { avatarStorage.delete(previousPath) }
+            }
             Result.success(path)
         }.getOrElse { Result.failure(AccountWriteError.Backend.Unavailable) }
     }
@@ -70,12 +77,21 @@ class FirestoreAccountWriter(
         accountId: AccountId,
     ): Result<Unit, AccountWriteError> = withContext(dispatchers.io) {
         runCatching {
-            // Delete Storage object first (best-effort — not-found is treated as success).
-            avatarStorage.delete(accountId)
+            // Delete the CURRENT object (path read from Firestore — it's now versioned, so we can't
+            // derive it from the uid). Best-effort: not-found is treated as success.
+            readAvatarPath(accountId)?.let { current ->
+                runCatching { avatarStorage.delete(current) }
+            }
             // Null out the Firestore path so AccountReadPort re-emits and the UI shows initials.
             firestore.collection("accounts").document(accountId.value)
                 .update("avatarPath" to null)
             Result.success(Unit)
         }.getOrElse { Result.failure(AccountWriteError.Backend.Unavailable) }
+    }
+
+    /** Current `accounts/{uid}.avatarPath`, or null if the doc/field is absent. */
+    private suspend fun readAvatarPath(accountId: AccountId): String? {
+        val snap = firestore.collection("accounts").document(accountId.value).get()
+        return if (snap.exists) snap.data<AccountDto>().avatarPath else null
     }
 }

@@ -6,7 +6,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -24,9 +23,9 @@ class DeleteMyMealUseCaseTest {
     private fun crewId(raw: String): CrewId = (CrewId.of(raw) as Result.Ok).value
     private val authorId = (AccountId.of("author-1") as Result.Ok).value
     private val day = MealDay(LocalDate.parse("2026-05-20"), TimeZone.UTC)
-    private val slot = MealSlot.Lunch
+    private val token = "tok"
 
-    // Recording fake: captures the crew set / author / day / slot the use case forwards,
+    // Recording fake: captures the crew set / author / day / token the use case forwards,
     // and returns a configurable result so we can drive both success and error paths.
     private class RecordingMealDeletePort(
         var nextResult: Result<Unit, MealDeleteError> = Result.success(Unit),
@@ -35,7 +34,7 @@ class DeleteMyMealUseCaseTest {
             val crewIds: Set<CrewId>,
             val authorId: AccountId,
             val day: MealDay,
-            val slot: MealSlot,
+            val token: String,
         )
 
         val calls = mutableListOf<Call>()
@@ -47,9 +46,9 @@ class DeleteMyMealUseCaseTest {
             crewIds: Set<CrewId>,
             authorId: AccountId,
             day: MealDay,
-            slot: MealSlot,
+            token: String,
         ): Result<Unit, MealDeleteError> {
-            calls += Call(crewIds, authorId, day, slot)
+            calls += Call(crewIds, authorId, day, token)
             return nextResult
         }
     }
@@ -71,7 +70,7 @@ class DeleteMyMealUseCaseTest {
         )
         val useCase = DeleteMyMealUseCase(RecordingMealDeletePort(), crews)
 
-        useCase(authorId, day, slot)
+        useCase(authorId, day, token)
 
         assertEquals(listOf(authorId), crews.observedFor)
     }
@@ -86,7 +85,7 @@ class DeleteMyMealUseCaseTest {
         val meals = RecordingMealDeletePort()
         val useCase = DeleteMyMealUseCase(meals, crews)
 
-        val result = useCase(authorId, day, slot)
+        val result = useCase(authorId, day, token)
 
         assertTrue(result is Result.Ok)
         assertEquals(1, meals.calls.size)
@@ -94,7 +93,7 @@ class DeleteMyMealUseCaseTest {
         assertEquals(setOf(crewId("crew-1"), crewId("crew-2")), call.crewIds)
         assertEquals(authorId, call.authorId)
         assertEquals(day, call.day)
-        assertEquals(slot, call.slot)
+        assertEquals(token, call.token)
     }
 
     @Test fun surfaces_delete_port_error() = runTest {
@@ -106,7 +105,7 @@ class DeleteMyMealUseCaseTest {
             RecordingCrewMembership(listOf(CrewSummary(crewId("crew-1"), "Crew One"))),
         )
 
-        val result = useCase(authorId, day, slot)
+        val result = useCase(authorId, day, token)
 
         assertEquals(Result.failure(MealDeleteError.Unavailable), result)
     }

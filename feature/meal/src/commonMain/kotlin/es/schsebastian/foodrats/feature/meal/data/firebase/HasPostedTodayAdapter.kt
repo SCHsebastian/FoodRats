@@ -20,8 +20,8 @@ internal class HasPostedTodayAdapter(
         day: MealDay,
     ): Result<Boolean, MealReadError> = withContext(dispatchers.io) {
         runCatching<Result<Boolean, MealReadError>> {
-            val taken = firestore.takenSlots(crewId, accountId, day.toKey())
-            Result.success(taken.isNotEmpty())
+            val posted = firestore.existingMealIds(crewId, accountId, day.toKey())
+            Result.success(posted.isNotEmpty())
         }.fold(
             onSuccess = { it },
             onFailure = { Result.failure(MealReadError.Unavailable) },

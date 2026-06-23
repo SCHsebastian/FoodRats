@@ -30,13 +30,20 @@ async function codeOf(fn: () => Promise<unknown>): Promise<string | undefined> {
 }
 
 describe("authorizedPaths — crew-scoped allow-list (#15)", () => {
-  it("keeps this crew's plate photos and members' avatars", () => {
+  it("keeps this crew's plate photos and members' avatars (legacy + versioned)", () => {
     const paths = [
       "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg",
-      "avatars/alice.jpg",
-      "avatars/bob.jpg",
+      "avatars/alice.jpg", // legacy fixed path
+      "avatars/bob/9f3c1a2b.jpg", // content-versioned path
     ];
     expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(paths);
+  });
+
+  it("keeps a member's content-versioned avatar and drops a non-member's", () => {
+    const paths = ["avatars/alice/abc123.jpg", "avatars/carol/def456.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([
+      "avatars/alice/abc123.jpg",
+    ]);
   });
 
   it("drops other crews' plates, non-member avatars, and junk", () => {

@@ -29,7 +29,14 @@ import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 fun FrEyebrow(
     text: String,
     modifier: Modifier = Modifier,
-    color: Color = MaterialTheme.colorScheme.primary,
+    // Olive `primary` (#4F6E2B) is only ≈3.5:1 on the warm-concrete light floor — below AA for small
+    // uppercase. In light fall back to a high-contrast neutral foreground; dark keeps the moss primary
+    // (which clears AA on the charcoal floor), so the dark eyebrow look is unchanged.
+    color: Color = if (StructuralColors.isLight) {
+        StructuralColors.foreground.copy(alpha = 0.85f)
+    } else {
+        MaterialTheme.colorScheme.primary
+    },
 ) {
     FrText(
         text = text,

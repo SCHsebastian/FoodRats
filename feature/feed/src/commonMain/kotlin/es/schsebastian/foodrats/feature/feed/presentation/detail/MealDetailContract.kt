@@ -21,6 +21,14 @@ data class MealDetailState(
     val notFound: Boolean = false,
     val pendingRate: Boolean = false,
     val rateError: RateError? = null,
+    /** True while the "this is your last change" confirmation dialog is showing. */
+    val showChangeVoteConfirm: Boolean = false,
+    /**
+     * True once the viewer has confirmed they want to change their already-cast vote: the locked
+     * "Your vote" tile is replaced by the picker (pre-filled with the current score) so they can
+     * re-pick. Reset on a successful re-rate (the new vote is then `edited` and locks permanently).
+     */
+    val voteEditMode: Boolean = false,
     val commentRows: List<CommentRowUi> = emptyList(),
     val commentsLoading: Boolean = true,
     val commentReadError: CommentError.Read? = null,
@@ -75,6 +83,14 @@ enum class ShareOutcomeUi { Succeeded, OpenedSheet, Failed }
 
 sealed interface MealDetailIntent : MviIntent {
     data class RateMeal(val score: Int) : MealDetailIntent
+
+    /** Viewer tapped "Change my vote" — opens the one-time-only confirmation dialog. */
+    data object RequestChangeVote : MealDetailIntent
+    /** Viewer confirmed the change in the dialog — reveals the picker, pre-filled. */
+    data object ConfirmChangeVote : MealDetailIntent
+    /** Viewer dismissed the change-vote dialog without confirming. */
+    data object CancelChangeVote : MealDetailIntent
+
     data object DismissError : MealDetailIntent
     data class CommentInputChanged(val value: String) : MealDetailIntent
     data object PostComment : MealDetailIntent

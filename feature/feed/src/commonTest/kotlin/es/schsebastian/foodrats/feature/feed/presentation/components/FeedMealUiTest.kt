@@ -42,12 +42,13 @@ class FeedMealUiTest {
         publishedAt = Instant.parse("2026-05-19T12:00:00Z"),
     )
 
-    private fun rating(rater: AccountId, score: Int) = MealRating(
+    private fun rating(rater: AccountId, score: Int, edited: Boolean = false) = MealRating(
         raterId = rater,
         raterDisplayName = "Rater",
         raterAvatarUrl = null,
         score = (Score.of(score) as Result.Ok).value,
         ratedAt = Instant.parse("2026-05-19T13:00:00Z"),
+        edited = edited,
     )
 
     @Test fun viewer_is_author_cannot_rate() {
@@ -60,6 +61,29 @@ class FeedMealUiTest {
         val ui = MealWithRatings(sampleMeal, listOf(rating(viewerId, 4))).toFeedUi(viewerId, today)
         assertFalse(ui.canRate)
         assertEquals(4, ui.viewerRating)
+    }
+
+    @Test fun viewer_can_change_vote_once_when_voted_and_not_yet_edited() {
+        val ui = MealWithRatings(sampleMeal, listOf(rating(viewerId, 4, edited = false))).toFeedUi(viewerId, today)
+        assertTrue(ui.canChangeVote)
+        assertFalse(ui.viewerRatingEdited)
+    }
+
+    @Test fun viewer_cannot_change_vote_after_editing() {
+        val ui = MealWithRatings(sampleMeal, listOf(rating(viewerId, 4, edited = true))).toFeedUi(viewerId, today)
+        assertFalse(ui.canChangeVote)
+        assertTrue(ui.viewerRatingEdited)
+    }
+
+    @Test fun viewer_cannot_change_vote_when_window_closed() {
+        val twoLater = MealDay(LocalDate.parse("2026-05-21"), zone)
+        val ui = MealWithRatings(sampleMeal, listOf(rating(viewerId, 4))).toFeedUi(viewerId, twoLater)
+        assertFalse(ui.canChangeVote)
+    }
+
+    @Test fun author_cannot_change_vote() {
+        val ui = MealWithRatings(sampleMeal, listOf(rating(viewerId, 4))).toFeedUi(authorId, today)
+        assertFalse(ui.canChangeVote)
     }
 
     @Test fun viewer_can_rate_when_open() {

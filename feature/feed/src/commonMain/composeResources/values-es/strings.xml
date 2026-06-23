@@ -8,12 +8,12 @@
     <string name="feed_empty_subtext_past">Nadie publicó una comida ese día.</string>
     <string name="feed_prev_day">Día anterior</string>
     <string name="feed_next_day">Día siguiente</string>
-    <string name="feed_no_active_crew_headline">Sin grupo seleccionado</string>
-    <string name="feed_no_active_crew_subtext">Elige un grupo para ver sus comidas.</string>
+    <string name="feed_no_active_crew_headline">Sin cuadrilla seleccionada</string>
+    <string name="feed_no_active_crew_subtext">Elige una cuadrilla para ver sus comidas.</string>
     <string name="feed_pick_crew_cta">Elige una cuadrilla</string>
     <string name="feed_error_not_signed_in">Tienes que iniciar sesión.</string>
-    <string name="feed_error_unauthorized">No eres miembro de este grupo.</string>
-    <string name="feed_error_crew_not_found">Grupo no encontrado.</string>
+    <string name="feed_error_unauthorized">No eres miembro de esta cuadrilla.</string>
+    <string name="feed_error_crew_not_found">Cuadrilla no encontrada.</string>
     <string name="feed_error_unavailable">No se ha podido cargar el feed. Inténtalo de nuevo.</string>
     <string name="feed_yesterday">Ayer</string>
     <plurals name="feed_plates_count">
@@ -26,7 +26,10 @@
         <item quantity="other">%1$s ★ · %2$d votos</item>
     </plurals>
     <string name="feed_slot_breakfast">Desayuno</string>
+    <string name="feed_slot_brunch">Brunch</string>
     <string name="feed_slot_lunch">Almuerzo</string>
+    <string name="feed_slot_snack">Tentempié</string>
+    <string name="feed_slot_merienda">Merienda</string>
     <string name="feed_slot_dinner">Cena</string>
     <string name="feed_no_votes_yet">Sin votos aún</string>
     <string name="feed_blind_author">Oculto hasta que puntúes</string>
@@ -42,6 +45,10 @@
     <string name="feed_reaction_error_unavailable">No se pudo reaccionar. Inténtalo de nuevo.</string>
     <string name="feed_average_heading">Promedio</string>
     <string name="feed_rate_this_meal">Puntúa este plato</string>
+    <string name="feed_change_vote_cta">Cambiar mi voto</string>
+    <string name="feed_change_vote_confirm_title">¿Cambiar tu voto?</string>
+    <string name="feed_change_vote_confirm_body">Solo puedes cambiar tu voto una vez. Después de esto, tu voto será definitivo.</string>
+    <string name="feed_change_vote_confirm_cta">Cambiar voto</string>
     <string name="feed_your_vote">Tu voto: %1$d ★</string>
     <string name="feed_your_vote_locked">Tu voto · bloqueado</string>
     <string name="feed_your_vote_glyph_free">Tu voto: %1$s</string>
@@ -102,7 +109,7 @@
     <string name="feed_delete_meal_cta">Eliminar comida</string>
     <string name="feed_delete_meal_confirm_title">¿Eliminar esta comida?</string>
     <string name="feed_delete_meal_confirm_body">Esto no se puede deshacer.</string>
-    <string name="feed_delete_meal_error_unauthorized">Solo el autor o el propietario del grupo puede eliminar esta comida.</string>
+    <string name="feed_delete_meal_error_unauthorized">Solo el autor o el propietario de la cuadrilla puede eliminar esta comida.</string>
     <string name="feed_delete_meal_error_not_found">Esta comida ya no está aquí.</string>
     <string name="feed_delete_meal_error_unavailable">No se pudo eliminar la comida. Inténtalo de nuevo.</string>
     <string name="feed_delete_comment_cta">Eliminar comentario</string>
@@ -116,7 +123,7 @@
     <string name="feed_queue_failed">%1$d no se pudieron publicar</string>
     <string name="feed_queue_retry_cta">Reintentar</string>
     <string name="feed_queue_dismiss_cta">Descartar</string>
-    <!-- Indicador del outbox de escritura en la barra superior del feed (P2 §1 T8): valoraciones/comentarios/reacciones/admin de crew en espera mientras estás sin conexión. -->
+    <!-- Indicador del outbox de escritura en la barra superior del feed (P2 §1 T8): valoraciones/comentarios/reacciones/admin de cuadrilla en espera mientras estás sin conexión. -->
     <string name="feed_sync_pending">%1$d esperando sincronizar</string>
     <string name="feed_sync_failed">%1$d no se pudieron sincronizar</string>
     <!-- Línea de frescura del feed en caché (offline-first P4-T2). %1$s es un tiempo relativo como "ahora mismo" / "hace 5 min". -->
@@ -127,7 +134,7 @@
     <string name="feed_report_submit_meal">Enviar reporte de plato</string>
     <string name="feed_report_submit_user">Enviar reporte de usuario</string>
     <string name="feed_report_submit_comment">Enviar reporte de comentario</string>
-    <!-- C6 — botón de cerrar el mensaje de bienvenida del grupo. -->
+    <!-- C6 — botón de cerrar el mensaje de bienvenida de la cuadrilla. -->
     <string name="feed_welcome_dismiss">Entendido</string>
     <!-- C5 — etiqueta del reto semanal en el encabezado del feed. -->
     <string name="feed_weekly_challenge_label">Esta semana: %1$s</string>
@@ -144,9 +151,9 @@
     </plurals>
     <!-- C8b — puntuación del votante sin glifo cuando scoreStyle ≠ Stars. %1$s = valor prerenderizado. -->
     <string name="feed_voter_score_glyph_free">%1$s</string>
-    <!-- C9 — imagen de cabecera del grupo en la parte superior del feed. La descripción de contenido
+    <!-- C9 — imagen de cabecera de la cuadrilla en la parte superior del feed. La descripción de contenido
          sirve también de etiqueta para ampliar; la de cerrar es para el botón del visor a pantalla completa. -->
-    <string name="feed_crew_banner_cd">Imagen del grupo — toca para verla a pantalla completa</string>
+    <string name="feed_crew_banner_cd">Imagen de la cuadrilla — toca para verla a pantalla completa</string>
     <string name="feed_crew_banner_close_cd">Cerrar imagen</string>
     <string name="feed_meal_photo_open_cd">Ver la foto completa</string>
     <string name="feed_meal_photo_cd">Foto del plato — pellizca o toca dos veces para ampliar</string>

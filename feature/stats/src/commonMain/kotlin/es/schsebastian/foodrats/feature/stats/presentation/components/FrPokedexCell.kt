@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -14,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,7 +48,10 @@ internal fun FrPokedexCell(
 ) {
     val collected = cell.collected
     val semantic = LocalFrSemanticColors.current
-    val discColor: Color = if (collected) semantic.celebration else StructuralColors.foreground.copy(alpha = 0.10f)
+    // Locked disc was `foreground` @10% — a near-invisible smear on the warm-white light floor; raise
+    // it in light so the dex slot still reads as a frosted disc. Dark is unchanged.
+    val lockedDiscAlpha = if (StructuralColors.isLight) 0.16f else 0.10f
+    val discColor: Color = if (collected) semantic.celebration else StructuralColors.foreground.copy(alpha = lockedDiscAlpha)
     val paddedIndex = index.toString().padStart(3, '0')
 
     Column(
@@ -84,13 +89,22 @@ internal fun FrPokedexCell(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
-        FrText(
-            text = cell.caption(),
-            style = StructuralType.micro.copy(textAlign = TextAlign.Center),
-            color = StructuralColors.foreground.copy(alpha = 0.5f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // Two-line caption slot — the collected caption ("Cazado 22/06") is wider than the narrow 4-up
+        // cell (the cell fits ~9 chars on one line), so a single line clipped mid-word. Fixed height so
+        // every cell stays aligned regardless of caught/locked.
+        val captionSlotHeight = with(LocalDensity.current) { (StructuralType.micro.fontSize * 1.3f * 2).toDp() }
+        Box(
+            modifier = Modifier.fillMaxWidth().height(captionSlotHeight),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            FrText(
+                text = cell.caption(),
+                style = StructuralType.micro.copy(textAlign = TextAlign.Center),
+                color = StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.65f else 0.5f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

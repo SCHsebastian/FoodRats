@@ -222,11 +222,11 @@ class DraftRetryRunnerTest {
         assertTrue(q.observe().first().isEmpty(), "removed only after the Ok")
         assertEquals(2, repo.publishCount)
         // Both publish attempts derive the same deterministic per-crew MealId.
-        val deterministic = MealId.forDaySlot(
+        val deterministic = MealId.forDayToken(
             (CrewId.of("crew-1") as Result.Ok).value,
             (AccountId.of("acc-1") as Result.Ok).value,
             MealDay(LocalDate(2026, 6, 14), TimeZone.UTC),
-            MealSlot.Lunch,
+            "tok",
         )
         assertEquals(deterministic, deterministic, "deterministic id is stable across retries")
     }

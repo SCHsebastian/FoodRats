@@ -31,7 +31,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
@@ -107,12 +106,18 @@ fun ComposePlateScreen(
     val plate = remember(bytes) { bytes?.let { decodeImageBitmap(it) } }
     val floorPainter = remember(plate) { plate?.let { BitmapPainter(it) } }
 
+    // When a photo is present the floor is always dark-scrimmed (photo dim+scrim), so white onMedia
+    // text is always correct in both themes. When there is NO photo the floor is adaptive (light in
+    // light mode, dark in dark mode) and the text must use the theme-aware foreground color instead.
+    val onFloorColor = if (floorPainter != null) StructuralColors.onMedia else StructuralColors.foreground
+
     Box(modifier = Modifier.fillMaxSize()) {
-        // Z0 — the captured plate, blurred, IS the floor. Falls back to a warm taco mood pre-capture.
+        // Z0 — the captured plate, blurred, IS the floor. Falls back to a theme-adaptive field floor
+        // pre-capture so the empty screen reads correctly in both light and dark themes.
         if (floorPainter != null) {
             FrMediaFloor(painter = floorPainter, blur = StructuralBlur.Heavy, dim = 0.55f, scrim = FrScrimStyle.Even)
         } else {
-            FrMediaFloor(brush = StructuralColors.dishTacos, blur = StructuralBlur.Soft, dim = 0.42f, scrim = FrScrimStyle.Even, tone = FrFloorTone.OnMedia)
+            FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft, tone = FrFloorTone.Adaptive)
         }
 
         // Z2 — transparent scrolling content plane.
@@ -126,12 +131,12 @@ fun ComposePlateScreen(
         ) {
             Spacer(Modifier.height(64.dp)) // clear the floating chrome row
 
-            FrEyebrow(text = resolve(MealStringKey.ComposeEyebrow).uppercase(), color = StructuralColors.onMedia.copy(alpha = 0.85f))
+            FrEyebrow(text = resolve(MealStringKey.ComposeEyebrow).uppercase(), color = onFloorColor.copy(alpha = 0.85f))
             Spacer(Modifier.height(Spacing.xs))
             FrText(
                 text = resolve(MealStringKey.ComposeTitle),
                 style = StructuralType.titleXl,
-                color = StructuralColors.onMedia,
+                color = onFloorColor,
             )
             Spacer(Modifier.height(Spacing.lg))
 
@@ -177,24 +182,25 @@ fun ComposePlateScreen(
             }
             Spacer(Modifier.height(Spacing.lg))
 
-            // Slot.
-            FrEyebrow(text = resolve(MealStringKey.ComposeSlotLabel).uppercase(), color = StructuralColors.onMedia.copy(alpha = 0.85f))
+            // Slot — an OPTIONAL "meal moment" label. Tapping a chip toggles it (tap again to clear).
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+                FrEyebrow(text = resolve(MealStringKey.ComposeSlotLabel).uppercase(), color = onFloorColor.copy(alpha = 0.85f))
+                FrEyebrow(text = resolve(MealStringKey.ComposeSlotOptional).uppercase(), color = onFloorColor.copy(alpha = 0.5f))
+            }
             Spacer(Modifier.height(Spacing.sm))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 MealSlot.entries.forEach { slot ->
-                    val taken = slot in state.takenSlots && slot != state.selectedSlot
                     FrStructuralChip(
                         label = resolve(slot.slotLabel()),
                         selected = slot == state.selectedSlot,
-                        modifier = if (taken) Modifier.alpha(0.4f) else Modifier,
-                        onClick = if (taken) null else ({ vm.onIntent(ComposePlateIntent.SelectSlot(slot)) }),
+                        onClick = { vm.onIntent(ComposePlateIntent.SelectSlot(slot)) },
                     )
                 }
             }
-            // Every slot is taken today: the VM falls back to a taken slot, so the selected slot is
-            // itself taken and Continue is gated. Explain why instead of leaving the author stuck.
+            // The author has reached the per-crew daily cap in every selected crew: Continue is
+            // gated. Explain why instead of leaving them stuck.
             AnimatedVisibility(
-                visible = state.selectedSlot in state.takenSlots,
+                visible = state.dailyLimitReached,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
             ) {
@@ -207,7 +213,7 @@ fun ComposePlateScreen(
 
             // Audience: which crews this plate is shared with. Hidden for single-crew authors.
             if (state.showCrewPicker) {
-                FrEyebrow(text = resolve(MealStringKey.ComposeAudienceLabel).uppercase(), color = StructuralColors.onMedia.copy(alpha = 0.85f))
+                FrEyebrow(text = resolve(MealStringKey.ComposeAudienceLabel).uppercase(), color = onFloorColor.copy(alpha = 0.85f))
                 Spacer(Modifier.height(Spacing.sm))
                 val allSelected = state.availableCrews.isNotEmpty() &&
                     state.availableCrews.all { it.id in state.selectedCrewIds }
@@ -233,6 +239,7 @@ fun ComposePlateScreen(
                 value = state.dish,
                 onValueChange = { vm.onIntent(ComposePlateIntent.DishChanged(it)) },
                 label = resolve(MealStringKey.ComposeDishLabel).uppercase(),
+                onMedia = floorPainter != null,
             )
             AnimatedVisibility(
                 visible = state.dishWarning,
@@ -252,6 +259,7 @@ fun ComposePlateScreen(
                 onValueChange = { vm.onIntent(ComposePlateIntent.DescriptionChanged(it)) },
                 label = resolve(MealStringKey.ComposeDescriptionLabel).uppercase(),
                 singleLine = false,
+                onMedia = floorPainter != null,
             )
             FrText(
                 text = resolve(
@@ -260,7 +268,7 @@ fun ComposePlateScreen(
                     Description.MAX_LEN,
                 ),
                 style = StructuralType.micro,
-                color = StructuralColors.onMedia.copy(alpha = if (state.descriptionTooLong) 1f else 0.6f),
+                color = onFloorColor.copy(alpha = if (state.descriptionTooLong) 1f else 0.6f),
                 modifier = Modifier.padding(top = Spacing.xs),
             )
             AnimatedVisibility(
@@ -355,7 +363,10 @@ fun ComposePlateScreen(
 
 private fun MealSlot.slotLabel(): MealStringKey = when (this) {
     MealSlot.Breakfast -> MealStringKey.SlotBreakfast
+    MealSlot.Brunch -> MealStringKey.SlotBrunch
     MealSlot.Lunch -> MealStringKey.SlotLunch
+    MealSlot.Snack -> MealStringKey.SlotSnack
+    MealSlot.Merienda -> MealStringKey.SlotMerienda
     MealSlot.Dinner -> MealStringKey.SlotDinner
 }
 
@@ -414,15 +425,16 @@ private fun FrUnderlineFieldLabeled(
     onValueChange: (String) -> Unit,
     label: String,
     singleLine: Boolean = true,
+    onMedia: Boolean = false,
 ) {
     es.schsebastian.foodrats.core.designsystem.structural.FrUnderlineField(
         value = value,
         onValueChange = onValueChange,
         label = label,
         singleLine = singleLine,
-        // The composer's floor is the captured plate photo (dark-scrimmed in both themes) — keep the
-        // field content white so it stays legible in light mode.
-        onMedia = true,
+        // When a plate photo is the floor it is always dark-scrimmed → white field text is correct in
+        // both themes. When there is no photo the floor is adaptive and field text follows the theme.
+        onMedia = onMedia,
         modifier = Modifier.fillMaxWidth(),
     )
 }

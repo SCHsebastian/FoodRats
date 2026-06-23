@@ -18,6 +18,8 @@ data class CrewSettingsState(
     val isLeaving: Boolean = false,
     val isDeleting: Boolean = false,
     val isSavingBlindVoting: Boolean = false,
+    /** True while the "Leave crew?" confirmation dialog is showing. */
+    val showLeaveConfirm: Boolean = false,
     val showDeleteConfirm: Boolean = false,
     /**
      * Members whose owner-initiated removal is in flight. The row stays in the list (the live crew
@@ -86,7 +88,14 @@ sealed interface CrewSettingsIntent : MviIntent {
      */
     data object ShareLinkTapped : CrewSettingsIntent
     data object SwitchCrew : CrewSettingsIntent
-    data object Leave : CrewSettingsIntent
+
+    /** User tapped "Leave crew" — opens the confirmation dialog. */
+    data object RequestLeave : CrewSettingsIntent
+    /** User confirmed leaving in the dialog. */
+    data object ConfirmLeave : CrewSettingsIntent
+    /** User dismissed the leave-crew dialog without confirming. */
+    data object CancelLeave : CrewSettingsIntent
+
     data object RequestDelete : CrewSettingsIntent
     data object ConfirmDelete : CrewSettingsIntent
     data object CancelDelete : CrewSettingsIntent

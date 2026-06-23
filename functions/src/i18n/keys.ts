@@ -7,19 +7,101 @@ export const KEY_WEEKLY_DIGEST = "weekly_digest";
 // task (`w1-streak-nudges-i18n`) adds the matching PushPayloadMapper branch + NotificationStringKey.
 export const KEY_SOCIAL_NUDGE = "social_nudge";
 
-// Server-side English fallback for OS lock-screen text.
-// The client resolves localized strings via data.key + interpolation params.
-export const FALLBACK = {
-  newCommentTitle: (commenter: string, dish: string) =>
-    `${commenter} commented on your ${dish}`,
+/**
+ * Per-language notification text. THE source of truth for the OS-rendered `notification` block —
+ * a backgrounded push is shown by the OS directly from this block, which the client never gets to
+ * localize. Each string mirrors the client Compose-resource copy
+ * (`feature/notifications/.../values{,-es}/strings.xml`) EXACTLY so foreground (client-localized)
+ * and background (server-localized) notifications read identically. Keep the two in sync.
+ */
+interface NotificationStrings {
+  newCommentTitle: (commenter: string, dish: string) => string;
+  newCommentBody: string;
+  newMealPostTitle: (author: string) => string;
+  newMealPostBody: (dish: string) => string;
+  weeklyDigestTitle: string;
+  weeklyDigestBody: string;
+  socialNudgeTitle: string;
+  socialNudgeBody: (posted: number, size: number) => string;
+}
+
+const EN: NotificationStrings = {
+  newCommentTitle: (commenter, dish) => `${commenter} commented on your ${dish}`,
   newCommentBody: "Tap to read",
-  newMealPostTitle: (author: string) => `${author} posted a meal`,
-  newMealPostBody: (dish: string) => `${dish} — tap to view`,
+  newMealPostTitle: (author) => `${author} posted a meal`,
+  newMealPostBody: (dish) => `${dish} — tap to view`,
   weeklyDigestTitle: "Your week in food",
-  weeklyDigestBody: (parts: string[]) => parts.join(" · "),
-  // posted = today's poster count in the crew, size = crew size. Matches the
-  // client template "%1$d of %2$d posted" (roadmap §1.1).
+  weeklyDigestBody: "Tap to see the recap",
   socialNudgeTitle: "Your crew is eating 👀",
-  socialNudgeBody: (posted: number, size: number) =>
+  socialNudgeBody: (posted, size) =>
     `${posted} of ${size} crewmates already posted today — your turn`,
+};
+
+const ES: NotificationStrings = {
+  newCommentTitle: (commenter, dish) => `${commenter} comentó tu ${dish}`,
+  newCommentBody: "Pulsa para leer",
+  newMealPostTitle: (author) => `${author} publicó una comida`,
+  newMealPostBody: (dish) => `${dish} — pulsa para ver`,
+  weeklyDigestTitle: "Tu semana en comida",
+  weeklyDigestBody: "Pulsa para ver el resumen",
+  socialNudgeTitle: "Tu crew está comiendo 👀",
+  socialNudgeBody: (posted, size) =>
+    `${posted} de ${size} compañeros ya han publicado hoy — te toca`,
+};
+
+const TABLES: Record<"en" | "es", NotificationStrings> = { en: EN, es: ES };
+
+/** Normalize a stored device language tag ("es", "es-ES", "EN", undefined) to a supported table. */
+export function normalizeLang(tag: string | undefined | null): "en" | "es" {
+  return (tag ?? "").toLowerCase().startsWith("es") ? "es" : "en";
+}
+
+/**
+ * Build the localized `{title, body}` for a push from its `key` + `data` params, in [lang].
+ * Returns null for an unknown key so the caller can fall back to the payload's default English text.
+ * The `data` shape mirrors what the triggers attach (and what the client PushPayloadMapper reads).
+ */
+export function localizeNotification(
+  lang: "en" | "es",
+  key: string,
+  data: Record<string, string>,
+): { title: string; body: string } | null {
+  const s = TABLES[lang];
+  switch (key) {
+    case KEY_NEW_COMMENT:
+      return {
+        title: s.newCommentTitle(data.commenterName ?? "", data.dishName ?? ""),
+        body: s.newCommentBody,
+      };
+    case KEY_NEW_MEAL_POST:
+      return {
+        title: s.newMealPostTitle(data.authorName ?? ""),
+        body: s.newMealPostBody(data.dishName ?? ""),
+      };
+    case KEY_WEEKLY_DIGEST:
+      // The OS body localizes to the static client copy (the rich award parts stay English-only and
+      // are reachable in-app via the deep link) — consistent with the in-app banner's body.
+      return { title: s.weeklyDigestTitle, body: s.weeklyDigestBody };
+    case KEY_SOCIAL_NUDGE: {
+      const posted = Number(data.postedCount ?? "0");
+      const size = Number(data.crewSize ?? "0");
+      return { title: s.socialNudgeTitle, body: s.socialNudgeBody(posted, size) };
+    }
+    default:
+      return null;
+  }
+}
+
+// Server-side English fallback for OS lock-screen text, used by triggers to set the payload's
+// DEFAULT notificationTitle/Body. `sendToTokens` overrides these per-recipient via
+// `localizeNotification` when the device has a stored languageTag; this stays the English baseline.
+export const FALLBACK = {
+  newCommentTitle: EN.newCommentTitle,
+  newCommentBody: EN.newCommentBody,
+  newMealPostTitle: EN.newMealPostTitle,
+  newMealPostBody: EN.newMealPostBody,
+  weeklyDigestTitle: EN.weeklyDigestTitle,
+  weeklyDigestBody: (parts: string[]) => parts.join(" · "),
+  socialNudgeTitle: EN.socialNudgeTitle,
+  socialNudgeBody: EN.socialNudgeBody,
 } as const;

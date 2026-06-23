@@ -23,6 +23,10 @@ export function makeEnv(): Promise<RulesTestEnvironment> {
   });
 }
 
-/** A meal id matching the rule's deterministic format `crew_uid_day_slot`. */
-export const mealId = (crew: string, uid: string, day: string, slot: string) =>
-  `${crew}_${uid}_${day}_${slot}`;
+/**
+ * A meal id matching the rule's deterministic format `crew_uid_day_token`. The 4th part is the
+ * per-post token (a photo hash in production); the rule treats it as opaque, so tests pass any
+ * non-`_` string here.
+ */
+export const mealId = (crew: string, uid: string, day: string, token: string) =>
+  `${crew}_${uid}_${day}_${token}`;

@@ -58,21 +58,6 @@ import es.schsebastian.foodrats.feature.ingredient.presentation.components.FrIng
 import es.schsebastian.foodrats.feature.ingredient.presentation.toStringKey
 import org.koin.compose.viewmodel.koinViewModel
 
-private val CategoryOrder: List<IngredientCategory> = listOf(
-    IngredientCategory.Vegetable,
-    IngredientCategory.Fruit,
-    IngredientCategory.Meat,
-    IngredientCategory.Fish,
-    IngredientCategory.Dairy,
-    IngredientCategory.Grain,
-    IngredientCategory.Legume,
-    IngredientCategory.Sauce,
-    IngredientCategory.Spice,
-    IngredientCategory.Sweet,
-    IngredientCategory.Beverage,
-    IngredientCategory.Other,
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectIngredientsScreen(
@@ -85,8 +70,11 @@ fun SelectIngredientsScreen(
         vm.effects.collect { if (it is SelectIngredientsEffect.NavigateBack) onDone() }
     }
 
+    // Fold the catalog into a search index once per snapshot; re-search per keystroke.
     val search = remember { SearchIngredientsUseCase() }
-    val filtered = remember(state.query, state.catalog) { search(state.catalog, state.query) }
+    val index = remember(state.catalog) { search.index(state.catalog) }
+    val filtered = remember(state.query, index) { index.search(state.query) }
+    val searching = state.query.isNotBlank()
 
     FrScreenScaffold(
         topBar = {
@@ -170,10 +158,12 @@ fun SelectIngredientsScreen(
                             }
                         }
 
-                        CategoryOrder.forEach { category ->
+                        IngredientCategory.all.forEach { category ->
                             val rows = filtered.filter { it.category == category && it.slug !in detectedSlugs }
                             if (rows.isEmpty()) return@forEach
-                            val expanded = category in state.expandedCategories
+                            // While searching, force every matching group open so results are
+                            // never hidden inside a collapsed section.
+                            val expanded = searching || category in state.expandedCategories
                             val headerDelay = (cascade++ % 6) * 40
                             item(key = "cat-${category::class.simpleName}") {
                                 SectionHeader(

@@ -2,6 +2,7 @@
 <resources>
     <string name="moderation_blocked_title">Usuarios bloqueados</string>
     <string name="moderation_blocked_back_cta">Atrás</string>
+    <string name="moderation_blocked_section_label">Seguridad</string>
     <string name="moderation_blocked_empty_headline">No has bloqueado a nadie</string>
     <string name="moderation_blocked_empty_subtext">Las personas que bloquees no aparecerán en tu feed, tus estadísticas ni los comentarios.</string>
     <string name="moderation_blocked_unblock_cta">Desbloquear</string>

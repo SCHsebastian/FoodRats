@@ -83,14 +83,19 @@ fun FrDock(
         val dockShape = RoundedCornerShape(32.dp)
         val leftCount = items.size / 2
         val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
+        val isLight = StructuralColors.isLight
+        // Light mode: an opaque fill + shallow elevation. A drop shadow over a TRANSLUCENT fill renders
+        // a hard double-edge on the light floor ("white square with a wrong fade", user report
+        // 2026-06-23); dark keeps the translucent dock (its shadow vanishes into the dark floor).
+        val dockFill = if (isLight) StructuralColors.dock.copy(alpha = 1f) else StructuralColors.dock
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(64.dp)
                 .align(Alignment.BottomCenter)
-                .shadow(18.dp, dockShape, clip = false)
+                .shadow(if (isLight) 8.dp else 18.dp, dockShape, clip = false)
                 .clip(dockShape)
-                .background(StructuralColors.dock)
+                .background(dockFill)
                 .drawWithContent {
                     drawContent()
                     val y = 0.5.dp.toPx()

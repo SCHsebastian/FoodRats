@@ -21,6 +21,7 @@ import foodrats.feature.meal.generated.resources.meal_compose_dish_label
 import foodrats.feature.meal.generated.resources.meal_compose_eyebrow
 import foodrats.feature.meal.generated.resources.meal_compose_locating
 import foodrats.feature.meal.generated.resources.meal_compose_slot_label
+import foodrats.feature.meal.generated.resources.meal_compose_slot_optional
 import foodrats.feature.meal.generated.resources.meal_description_moderation_warning
 import foodrats.feature.meal.generated.resources.meal_dish_moderation_warning
 import foodrats.feature.meal.generated.resources.meal_compose_title
@@ -50,14 +51,18 @@ import foodrats.feature.meal.generated.resources.meal_publish_confirm_title
 import foodrats.feature.meal.generated.resources.meal_publish_no_slot
 import foodrats.feature.meal.generated.resources.meal_publish_title
 import foodrats.feature.meal.generated.resources.meal_slot_breakfast
+import foodrats.feature.meal.generated.resources.meal_slot_brunch
 import foodrats.feature.meal.generated.resources.meal_slot_dinner
 import foodrats.feature.meal.generated.resources.meal_slot_lunch
+import foodrats.feature.meal.generated.resources.meal_slot_merienda
+import foodrats.feature.meal.generated.resources.meal_slot_snack
 import org.jetbrains.compose.resources.StringResource
 
 enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ComposeEyebrow(Res.string.meal_compose_eyebrow),
     ComposeTitle(Res.string.meal_compose_title),
     ComposeSlotLabel(Res.string.meal_compose_slot_label),
+    ComposeSlotOptional(Res.string.meal_compose_slot_optional),
     ComposeDishLabel(Res.string.meal_compose_dish_label),
     ComposeDescriptionLabel(Res.string.meal_compose_description_label),
     ComposeDescriptionPlaceholder(Res.string.meal_compose_description_placeholder),
@@ -74,7 +79,10 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     PublishConfirmMessage(Res.string.meal_publish_confirm_message),
     PublishConfirmCta(Res.string.meal_publish_confirm_cta),
     SlotBreakfast(Res.string.meal_slot_breakfast),
+    SlotBrunch(Res.string.meal_slot_brunch),
     SlotLunch(Res.string.meal_slot_lunch),
+    SlotSnack(Res.string.meal_slot_snack),
+    SlotMerienda(Res.string.meal_slot_merienda),
     SlotDinner(Res.string.meal_slot_dinner),
     IngredientsClassifying(Res.string.meal_ingredients_classifying),
     ClassifierBannerNoDetection(Res.string.meal_classifier_no_detection),

@@ -83,7 +83,12 @@ fun FrMemberIngredientRow(
                 style = MaterialTheme.typography.titleSmall,
             )
             FrText(
-                text = resolve(StatsStringKey.MemberTopIngredientFormat, member.ingredientName, member.mealCount),
+                text = resolvePlural(
+                    StatsPluralKey.MemberTopIngredientMetric,
+                    member.mealCount,
+                    member.ingredientName,
+                    member.mealCount,
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -136,6 +136,75 @@ class RootNavViewModelTest {
     }
 
     @Test
+    fun invite_deep_link_while_needing_a_crew_navigates_over_the_picker() = runTest {
+        // The reported bug's preconditions: signed in + prompted, but no active crew yet → NeedsCrew.
+        // An invite is itself the crew-acquisition action, so it must navigate immediately (over the
+        // picker as its base) instead of being stashed until a Ready state it can't reach yet.
+        sessionFlow.value = Session(accountId("u1"), null)
+        promptedFlow.value = true
+        crewFlow.value = null
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.CrewPicker), awaitItem())
+
+            bus.publish("https://foodrats-de4ec.web.app/invite/AB2K9P")
+            assertEquals(
+                RootNavEffect.NavigateDeepLink(Route.InvitePreview("AB2K9P"), base = Route.CrewPicker),
+                awaitItem(),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun invite_stashed_pre_auth_resumes_at_needs_crew_not_waiting_for_ready() = runTest {
+        // Crewless preconditions are met EXCEPT auth — prompted upfront so signing in lands straight
+        // on NeedsCrew. A pre-auth invite tap is stashed, then must resume the moment we reach
+        // NeedsCrew (it would otherwise be trapped: Ready needs a crew the invite itself provides).
+        promptedFlow.value = true
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.SignIn), awaitItem())
+
+            bus.publish("https://foodrats-de4ec.web.app/invite/AB2K9P")
+            sessionFlow.value = Session(accountId("u1"), null) // signs in; still no crew → NeedsCrew
+
+            var eff = awaitItem()
+            while (eff is RootNavEffect.NavigateTopLevel) eff = awaitItem()
+            assertEquals(
+                RootNavEffect.NavigateDeepLink(Route.InvitePreview("AB2K9P"), base = Route.CrewPicker),
+                eff,
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun non_invite_deep_link_while_needing_a_crew_stays_stashed_until_ready() = runTest {
+        // Guard the other side: a meal link is meaningless until the user has a crew, so it must NOT
+        // ride the NeedsCrew shortcut — it stays stashed and resumes (base Main, the default) at Ready.
+        sessionFlow.value = Session(accountId("u1"), null)
+        promptedFlow.value = true
+        crewFlow.value = null
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.CrewPicker), awaitItem())
+
+            bus.publish("https://foodrats-de4ec.web.app/meal/m1/2026-05-26")
+            expectNoEvents() // crewless: held, not navigated
+
+            crewFlow.value = crewId("c1") // acquires a crew → Ready
+            var eff = awaitItem()
+            while (eff is RootNavEffect.NavigateTopLevel) eff = awaitItem()
+            assertEquals(RootNavEffect.NavigateDeepLink(Route.MealDetail("m1", "2026-05-26")), eff)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun resolving_session_holds_on_splash_then_goes_to_main_without_sign_in_flash() = runTest {
         // Models the SessionProvider contract: while auth is restoring, `current` emits NOTHING
         // (no placeholder null). This is the regression guard for the login-flash bug — a signed-in

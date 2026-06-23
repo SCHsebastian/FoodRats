@@ -127,7 +127,12 @@ fun FeedScreen(
             heroMeal != null -> stablePlateRequest(heroMeal.feedImageUrl, heroMeal.feedImageCacheKey)
             else -> null
         }
-        if (floorModel != null) {
+        // The blurred edge-to-edge photo floor is a DARK-mode flourish: in light mode its dark dim +
+        // scrim force a near-black backdrop that clashes with the light UI (user report 2026-06-23).
+        // In light mode fall back to the light atmospheric floor — the meal photos still appear in the
+        // bento tiles and the crew banner still shows as its sharp hero. Photos stay the floor in dark.
+        val onPhotoFloor = floorModel != null && !StructuralColors.isLight
+        if (onPhotoFloor) {
             FrMediaFloor(
                 painter = rememberAsyncImagePainter(model = floorModel),
                 blur = StructuralBlur.Heavy,
@@ -162,7 +167,7 @@ fun FeedScreen(
                         crewName = crewName,
                         avatarInitials = avatarInitials,
                         avatarUrl = avatarUrl,
-                        onMediaFloor = floorModel != null,
+                        onMediaFloor = onPhotoFloor,
                         onPickCrewClick = onPickCrewClick,
                         onProfileClick = onProfileClick,
                         onCrewSettingsClick = onCrewSettingsClick,
@@ -195,12 +200,12 @@ fun FeedScreen(
                         secondary = daySecondary,
                         canGoPrev = state.canGoPrev,
                         canGoNext = state.canGoNext,
-                        onMediaFloor = floorModel != null,
+                        onMediaFloor = onPhotoFloor,
                         onPrev = { vm.onIntent(FeedIntent.PrevDay) },
                         onNext = { vm.onIntent(FeedIntent.NextDay) },
                     )
 
-                    FeedChallengeRow(challenge = state.weeklyChallenge, plateCount = meals.size, onMediaFloor = floorModel != null)
+                    FeedChallengeRow(challenge = state.weeklyChallenge, plateCount = meals.size, onMediaFloor = onPhotoFloor)
 
                     // Offline-first indicators + transient errors, kept functional over the floor.
                     state.error?.let { err ->
@@ -419,6 +424,11 @@ private fun FeedBento(
                 ui = ui,
                 heightDp = tileHeight,
                 isHero = index == 0,
+                // B4 — the narrowest (sub-3-span) tile has no room for the dish name; at <3 cols it
+                // collapses to ~3 chars + an unreadable ellipsis ("Pla…"). Drop the name there — the
+                // photo, slot chip, score, and cook avatar already identify the plate; the wider
+                // tiles (span 3/4/6) keep it.
+                showDishName = span >= 3,
                 scoreStyle = scoreStyle,
                 onClick = { onMealClick(ui.mealId) },
                 onReactClick = { onReactClick(ui.mealId) },
@@ -433,6 +443,7 @@ private fun StructuralMealTile(
     ui: FeedMealUi,
     heightDp: Dp,
     isHero: Boolean,
+    showDishName: Boolean,
     scoreStyle: FrScoreStyle,
     onClick: () -> Unit,
     onReactClick: () -> Unit,
@@ -472,7 +483,10 @@ private fun StructuralMealTile(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            FrStructuralChip(label = resolve(ui.slot.labelKey()).uppercase(), compact = true)
+            // Slot chip — only when tagged (slot is optional). The empty Spacer keeps the react
+            // pill at the row's end (SpaceBetween) when there's no chip.
+            ui.slot?.let { FrStructuralChip(label = resolve(it.labelKey()).uppercase(), compact = true) }
+                ?: Spacer(Modifier)
             ReactPill(
                 glyph = ui.dayEmote,
                 count = ui.reactionCount,
@@ -495,13 +509,15 @@ private fun StructuralMealTile(
                         ring = FrAvatarRing.None,
                         size = if (isHero) 30.dp else 24.dp,
                     )
-                    FrText(
-                        text = ui.dishName,
-                        style = if (isHero) StructuralType.titleMd else StructuralType.body,
-                        color = StructuralColors.onMedia,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (showDishName) {
+                        FrText(
+                            text = ui.dishName,
+                            style = if (isHero) StructuralType.titleMd else StructuralType.body,
+                            color = StructuralColors.onMedia,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 val author = if (ui.authorMasked) resolve(FeedStringKey.BlindAuthor) else ui.authorName
                 val time = resolve(
@@ -709,9 +725,13 @@ private fun CrewBannerViewer(url: String, onDismiss: () -> Unit) {
 // ----------------------------------------------------------------------------------------------
 
 /** Appetizing brush shown behind a tile while its photo loads (or when it has none). */
-private fun dishBrushFor(slot: MealSlotUi): Brush = when (slot) {
+private fun dishBrushFor(slot: MealSlotUi?): Brush = when (slot) {
     MealSlotUi.Breakfast -> StructuralColors.dishSalad
+    MealSlotUi.Brunch -> StructuralColors.dishTacos
     MealSlotUi.Lunch -> StructuralColors.dishMackerel
+    MealSlotUi.Snack -> StructuralColors.dishTacos
+    MealSlotUi.Merienda -> StructuralColors.dishSalad
     MealSlotUi.Dinner -> StructuralColors.dishRamen
+    null -> StructuralColors.dishMackerel
 }
 

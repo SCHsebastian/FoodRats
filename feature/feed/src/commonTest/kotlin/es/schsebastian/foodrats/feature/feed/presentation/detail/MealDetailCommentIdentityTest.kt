@@ -94,7 +94,7 @@ class FakeMealDeletePort : MealDeletePort {
         crewIds: Set<CrewId>,
         authorId: AccountId,
         day: MealDay,
-        slot: MealSlot,
+        token: String,
     ) = result
 }
 

@@ -334,6 +334,11 @@ class MealDetailViewModel(
 
     override suspend fun handle(intent: MealDetailIntent) = when (intent) {
         is MealDetailIntent.RateMeal               -> rate(intent.score)
+        MealDetailIntent.RequestChangeVote         -> update { it.copy(showChangeVoteConfirm = true) }
+        MealDetailIntent.CancelChangeVote          -> update { it.copy(showChangeVoteConfirm = false) }
+        MealDetailIntent.ConfirmChangeVote         -> update {
+            it.copy(showChangeVoteConfirm = false, voteEditMode = true)
+        }
         MealDetailIntent.DismissError              -> update {
             it.copy(
                 error = null,
@@ -452,7 +457,9 @@ class MealDetailViewModel(
         // copy in the crew currently in view.
         val byAuthor = meal != null && viewerId != null && meal.author.accountId == viewerId
         val r = if (byAuthor) {
-            deleteMyMeal(viewerId, meal.day, meal.slot)
+            // The token is the last `_`-segment of the meal id, shared by every per-crew copy of
+            // this post — so the fan-out delete can reconstruct each crew's copy from it.
+            deleteMyMeal(viewerId, meal.day, meal.id.value.substringAfterLast('_'))
         } else {
             val crewId = activeCrew.current.first()
             if (crewId == null) {
@@ -487,7 +494,9 @@ class MealDetailViewModel(
         if (r is Result.Ok) analytics.track(AnalyticsEvent.MealRated(parsedMealId, scoreRaw))
         update {
             when (r) {
-                is Result.Ok  -> it.copy(pendingRate = false)
+                // On success leave edit mode: the re-rate is now `edited` and the synced meal will
+                // lock the "Your vote" tile (no further change). A failed change keeps the picker up.
+                is Result.Ok  -> it.copy(pendingRate = false, voteEditMode = false)
                 is Result.Err -> it.copy(pendingRate = false, rateError = r.error)
             }
         }

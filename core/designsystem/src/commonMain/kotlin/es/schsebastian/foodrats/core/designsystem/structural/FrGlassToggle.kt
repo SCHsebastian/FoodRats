@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -45,9 +46,15 @@ fun FrGlassToggle(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val isLight = StructuralColors.isLight
     val trackShape = RoundedCornerShape(Radius.pill)
-    val offBg = StructuralColors.foreground.copy(alpha = 0.16f)
+    // The OFF track was tuned white-on-dark (`foreground` @16%); on the warm-white light floor that
+    // near-black smear is nearly invisible — raise the alpha so an OFF switch still reads as a pill.
+    val offBg = StructuralColors.foreground.copy(alpha = if (isLight) 0.28f else 0.16f)
     val onBg = MaterialTheme.colorScheme.primary
+    // The thumb stays a light disc in BOTH themes so it pops against the OFF track and the olive ON
+    // track (in dark `foreground` is already white; in light `foreground` would vanish into the pill).
+    val knobColor = if (isLight) Color.White else StructuralColors.foreground
 
     val trackColor by animateColorAsState(
         targetValue = if (checked) onBg else offBg,
@@ -87,7 +94,7 @@ fun FrGlassToggle(
                     .offset(x = knobX)
                     .size(22.dp)
                     .clip(CircleShape)
-                    .background(StructuralColors.foreground, CircleShape),
+                    .background(knobColor, CircleShape),
             )
         }
     }

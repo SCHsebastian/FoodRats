@@ -235,18 +235,17 @@ class BackgroundMealUploadCoordinator(
                 scheduler.cancel()
                 _status.value = MealUploadStatus.Succeeded
                 // meal_published fires on the TRUE outcome (publish Result Ok), not at enqueue —
-                // this is the funnel-conversion + publishing-depth event. No PII (slot/counts only).
-                draft.slot?.let { slot ->
-                    analytics.track(
-                        AnalyticsEvent.MealPublished(
-                            slot = slot,
-                            ingredientCount = draft.ingredients.size,
-                            hasDescription = draft.description.value.isNotBlank(),
-                            audienceCrewCount = draft.audienceCrewIds.size,
-                            source = PublishSource.UNKNOWN,
-                        ),
-                    )
-                }
+                // this is the funnel-conversion + publishing-depth event. No PII (slot/counts only;
+                // slot is optional and emitted as "none" when absent).
+                analytics.track(
+                    AnalyticsEvent.MealPublished(
+                        slot = draft.slot,
+                        ingredientCount = draft.ingredients.size,
+                        hasDescription = draft.description.value.isNotBlank(),
+                        audienceCrewCount = draft.audienceCrewIds.size,
+                        source = PublishSource.UNKNOWN,
+                    ),
+                )
                 // No local streak nudge is scheduled here. The server-side `streakNudge` Cloud
                 // Function (roadmap §1.1) is now the single "go post" channel — a per-crew,
                 // social-proof push to non-posters. Scheduling the local DailyInactivityWorker too

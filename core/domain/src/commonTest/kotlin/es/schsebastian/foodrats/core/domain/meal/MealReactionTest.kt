@@ -14,11 +14,11 @@ import kotlin.time.Instant
 class MealReactionTest {
 
     private val crew = CrewId("crew-1")
-    private val meal = MealId.forDaySlot(
+    private val meal = MealId.forDayToken(
         crewId = crew,
         authorId = AccountId("author-1"),
         day = MealDay(LocalDate(2026, 5, 18), TimeZone.UTC),
-        slot = MealSlot.Lunch,
+        token = "tok",
     )
     private val alice = AccountId("alice")
     private val bob = AccountId("bob")

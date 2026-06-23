@@ -69,20 +69,25 @@ fun FoodRatsApp() {
             }
             is RootNavEffect.NavigateDeepLink -> {
                 // Mirror the NavigateTopLevel guard. A deep-link tap that arrives mid-flow must NOT
-                // clobber the user's stack: if Main is already present we're in authenticated content,
-                // so just push the leaf on top of where they are. Only when Main is absent (cold start
-                // or a stashed link resumed at Ready) do we first establish the authenticated base so
-                // Back from the leaf lands on Feed. launchSingleTop avoids stacking duplicates when the
-                // same notification is tapped twice.
-                val alreadyInAuthedContent =
-                    rootController.currentBackStack.value.any { it.destination.hasRoute<Route.Main>() }
-                if (!alreadyInAuthedContent) {
-                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → establish Main base then push ${eff.route::class.simpleName}" }
-                    rootController.navigateTopLevel(Route.Main)
-                } else {
-                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → push ${eff.route::class.simpleName} (already in authenticated content)" }
+                // clobber the user's stack: if the base is already present we're in the right context,
+                // so just push the leaf on top of where they are. Only when the base is absent (cold
+                // start or a stashed link resumed) do we first establish it so Back from the leaf lands
+                // there. launchSingleTop avoids stacking duplicates when the same notification is tapped
+                // twice. The base is Main for the usual case, CrewPicker for a pre-crew invite (so Back
+                // returns to the picker, not an empty Feed — see RootNavViewModel.emitNeedsCrew).
+                val baseAlreadyInStack = rootController.currentBackStack.value.any { entry ->
+                    when (eff.base) {
+                        Route.CrewPicker -> entry.destination.hasRoute<Route.CrewPicker>()
+                        else             -> entry.destination.hasRoute<Route.Main>()
+                    }
                 }
-                if (eff.route != Route.Main) {
+                if (!baseAlreadyInStack) {
+                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → establish ${eff.base::class.simpleName} base then push ${eff.route::class.simpleName}" }
+                    rootController.navigateTopLevel(eff.base)
+                } else {
+                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → push ${eff.route::class.simpleName} (base already in stack)" }
+                }
+                if (eff.route != eff.base) {
                     rootController.navigate(eff.route) { launchSingleTop = true }
                 }
             }

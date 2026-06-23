@@ -17,8 +17,9 @@ data class AccountDto(
     val id: String? = null,
     val handle: String? = null,
     val displayName: String? = null,
-    // Storage object PATH of the avatar (`avatars/{uid}.jpg`), NOT a URL — non-null signals
-    // "has avatar" and is resolved to a signed URL at read time (AccountReadPort impl).
+    // Storage object PATH of the avatar (content-versioned `avatars/{uid}/{token}.jpg`), NOT a URL —
+    // non-null signals "has avatar" and is resolved to a signed URL at read time (AccountReadPort
+    // impl). The path changes on every distinct image so the snapshot re-emits and the UI refreshes.
     val avatarPath: String? = null,
     // Personal tagline / bio (≤ 100 chars). Null-pinned default: GitLive encodeDefaults=true
     // serializes this field as `null` on every write, which is safe because the accounts/{uid}

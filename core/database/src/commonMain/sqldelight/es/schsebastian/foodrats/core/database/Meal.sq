@@ -41,6 +41,9 @@ CREATE TABLE mealRating (
     score   INTEGER NOT NULL,
     atMs    INTEGER NOT NULL,
     pending INTEGER NOT NULL DEFAULT 0,
+    -- 1 once the rater has used their single allowed vote change (one re-rate max). Mirrors
+    -- RatingEntryDto.edited; drives the "change my vote" affordance lock in the detail UI.
+    edited  INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (mealId, raterId),
     FOREIGN KEY (mealId) REFERENCES meal(mealId) ON DELETE CASCADE
 );
@@ -132,8 +135,8 @@ deletePendingRatings:
 DELETE FROM mealRating WHERE mealId = :mealId AND pending = 1;
 
 upsertRating:
-INSERT OR REPLACE INTO mealRating(mealId, raterId, score, atMs, pending)
-VALUES (:mealId, :raterId, :score, :atMs, :pending);
+INSERT OR REPLACE INTO mealRating(mealId, raterId, score, atMs, pending, edited)
+VALUES (:mealId, :raterId, :score, :atMs, :pending, :edited);
 
 deleteRating:
 DELETE FROM mealRating WHERE mealId = :mealId AND raterId = :raterId;

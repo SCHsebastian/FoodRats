@@ -386,18 +386,11 @@ private class FakeSyncFirestore : es.schsebastian.foodrats.feature.meal.data.fir
         }
     }
 
-    override suspend fun mealExists(
+    override suspend fun existingMealIds(
         crewId: CrewId,
         authorId: es.schsebastian.foodrats.core.domain.model.AccountId,
         dayKey: String,
-        slot: es.schsebastian.foodrats.core.domain.meal.MealSlot,
-    ): Boolean = false
-
-    override suspend fun takenSlots(
-        crewId: CrewId,
-        authorId: es.schsebastian.foodrats.core.domain.model.AccountId,
-        dayKey: String,
-    ): Set<es.schsebastian.foodrats.core.domain.meal.MealSlot> = emptySet()
+    ): Set<String> = emptySet()
 
     override suspend fun deleteMeal(crewId: CrewId, mealId: String) = Unit
 
@@ -452,18 +445,11 @@ private class FakeOneFailFirestore(
             emit(recovery)
         }
 
-    override suspend fun mealExists(
+    override suspend fun existingMealIds(
         crewId: CrewId,
         authorId: es.schsebastian.foodrats.core.domain.model.AccountId,
         dayKey: String,
-        slot: es.schsebastian.foodrats.core.domain.meal.MealSlot,
-    ): Boolean = false
-
-    override suspend fun takenSlots(
-        crewId: CrewId,
-        authorId: es.schsebastian.foodrats.core.domain.model.AccountId,
-        dayKey: String,
-    ): Set<es.schsebastian.foodrats.core.domain.meal.MealSlot> = emptySet()
+    ): Set<String> = emptySet()
 
     override suspend fun deleteMeal(crewId: CrewId, mealId: String) = Unit
 

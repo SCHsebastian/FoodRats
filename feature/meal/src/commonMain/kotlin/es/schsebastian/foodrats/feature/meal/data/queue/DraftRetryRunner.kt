@@ -164,10 +164,9 @@ class DraftRetryRunner(
      * funnel-conversion + publishing-depth event. No PII — slot + counts only.
      */
     private fun trackPublished(draft: MealDraft) {
-        val slot = draft.slot ?: return
         analytics.track(
             AnalyticsEvent.MealPublished(
-                slot = slot,
+                slot = draft.slot,
                 ingredientCount = draft.ingredients.size,
                 hasDescription = draft.description.value.isNotBlank(),
                 audienceCrewCount = draft.audienceCrewIds.size,

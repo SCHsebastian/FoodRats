@@ -2,6 +2,7 @@ import { getMessaging, BatchResponse } from "firebase-admin/messaging";
 import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import { readTokens, pruneToken, DeviceToken } from "./tokens";
+import { localizeNotification, normalizeLang } from "../i18n/keys";
 
 export interface PushPayload {
   kind: "NewComment" | "NewMealPost" | "WeeklyDigest" | "SocialNudge";
@@ -77,16 +78,32 @@ async function sendToTokens(
     key: payload.key,
     ...payload.data,
   };
-  const message = {
-    tokens: tokens.map((t) => t.token),
-    notification: {
-      title: payload.notificationTitle,
-      body: payload.notificationBody,
-    },
-    data,
-  };
-  const response: BatchResponse = await getMessaging().sendEachForMulticast(message);
-  await pruneUnregistered(uid, tokens, response);
+  // The OS renders the `notification` block of a backgrounded push directly, with no chance for the
+  // client to localize it — so we localize it HERE, per device language. Tokens are grouped by their
+  // stored languageTag (English fallback when absent), and each group gets its own multicast with a
+  // localized title/body. The `data` block is identical for all (the client re-localizes in foreground).
+  const groups = new Map<"en" | "es", DeviceToken[]>();
+  for (const t of tokens) {
+    const lang = normalizeLang(t.languageTag);
+    (groups.get(lang) ?? groups.set(lang, []).get(lang)!).push(t);
+  }
+
+  await Promise.all(
+    [...groups.entries()].map(async ([lang, groupTokens]) => {
+      const localized = localizeNotification(lang, payload.key, data);
+      const message = {
+        tokens: groupTokens.map((t) => t.token),
+        notification: {
+          // Fall back to the payload's English default for any key without a localizer.
+          title: localized?.title ?? payload.notificationTitle,
+          body: localized?.body ?? payload.notificationBody,
+        },
+        data,
+      };
+      const response: BatchResponse = await getMessaging().sendEachForMulticast(message);
+      await pruneUnregistered(uid, groupTokens, response);
+    }),
+  );
 }
 
 async function pruneUnregistered(

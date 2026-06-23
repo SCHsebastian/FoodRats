@@ -83,7 +83,7 @@ class MealDetailViewModelTest {
             crewIds: Set<CrewId>,
             authorId: AccountId,
             day: MealDay,
-            slot: MealSlot,
+            token: String,
         ): Result<Unit, MealDeleteError> {
             deleteFromAllCrewsCalls++
             return Result.success(Unit)
@@ -194,6 +194,42 @@ class MealDetailViewModelTest {
             assertFalse(expectMostRecentItem().meal!!.authorMasked)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // --- vote change (one edit) ------------------------------------------------
+
+    @Test fun change_vote_flow_confirms_then_edit_mode_then_clears_on_successful_rate() = runTest {
+        val vm = newSut(mealAuthor = authorId) // viewer != author → eligible to vote
+        runCurrent()
+
+        vm.onIntent(MealDetailIntent.RequestChangeVote)
+        runCurrent()
+        assertTrue(vm.state.value.showChangeVoteConfirm)
+        assertFalse(vm.state.value.voteEditMode)
+
+        vm.onIntent(MealDetailIntent.ConfirmChangeVote)
+        runCurrent()
+        assertFalse(vm.state.value.showChangeVoteConfirm)
+        assertTrue(vm.state.value.voteEditMode)
+
+        vm.onIntent(MealDetailIntent.RateMeal(5))
+        runCurrent()
+        // A successful re-rate leaves edit mode (the synced meal locks the "Your vote" tile).
+        assertFalse(vm.state.value.voteEditMode)
+        assertFalse(vm.state.value.pendingRate)
+    }
+
+    @Test fun cancel_change_vote_closes_confirm_without_entering_edit_mode() = runTest {
+        val vm = newSut(mealAuthor = authorId)
+        runCurrent()
+
+        vm.onIntent(MealDetailIntent.RequestChangeVote)
+        runCurrent()
+        vm.onIntent(MealDetailIntent.CancelChangeVote)
+        runCurrent()
+
+        assertFalse(vm.state.value.showChangeVoteConfirm)
+        assertFalse(vm.state.value.voteEditMode)
     }
 
     // --- comment-row canDelete gate --------------------------------------------

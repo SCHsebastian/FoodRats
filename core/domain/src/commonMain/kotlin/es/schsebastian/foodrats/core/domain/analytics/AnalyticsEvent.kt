@@ -187,7 +187,8 @@ sealed interface AnalyticsEvent {
 
     /** Publish enqueued (Result Ok). Multi-crew → [audienceCrewCount], no single crew_id. */
     data class MealPublished(
-        val slot: MealSlot,
+        // Null when the author tagged no slot — emitted as "none" (slot is optional now).
+        val slot: MealSlot?,
         val ingredientCount: Int,
         val hasDescription: Boolean,
         val audienceCrewCount: Int,
@@ -195,7 +196,7 @@ sealed interface AnalyticsEvent {
     ) : AnalyticsEvent {
         override val name = "meal_published"
         override val params = mapOf(
-            "meal_slot" to text(slot.key()),
+            "meal_slot" to text(slot?.key() ?: "none"),
             "ingredient_count" to count(ingredientCount),
             "has_description" to flag(hasDescription),
             "audience_crew_count" to count(audienceCrewCount),

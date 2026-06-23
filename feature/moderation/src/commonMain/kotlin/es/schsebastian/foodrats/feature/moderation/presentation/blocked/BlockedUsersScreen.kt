@@ -129,7 +129,7 @@ fun BlockedUsersScreen(
                 contentDescription = resolve(ModerationStringKey.BlockedBackCta),
             )
             Column(modifier = Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                FrEyebrow(text = resolve(ModerationStringKey.BlockedBackCta).uppercase())
+                FrEyebrow(text = resolve(ModerationStringKey.BlockedSectionLabel).uppercase())
                 FrText(
                     text = resolve(ModerationStringKey.BlockedTitle),
                     style = StructuralType.titleMd.copy(textAlign = TextAlign.Center),

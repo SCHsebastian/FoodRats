@@ -13,4 +13,15 @@ sealed interface IngredientCategory {
     data object Sweet     : IngredientCategory
     data object Beverage  : IngredientCategory
     data object Other     : IngredientCategory
+
+    companion object {
+        /**
+         * Canonical display order of every category — the single source of truth the
+         * picker groups by (so the list is stable and every group is reachable).
+         */
+        val all: List<IngredientCategory> = listOf(
+            Vegetable, Fruit, Meat, Fish, Dairy, Grain,
+            Legume, Sauce, Spice, Sweet, Beverage, Other,
+        )
+    }
 }

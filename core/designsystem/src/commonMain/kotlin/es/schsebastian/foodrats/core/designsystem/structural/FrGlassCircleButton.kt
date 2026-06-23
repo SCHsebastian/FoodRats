@@ -31,7 +31,6 @@ import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
-import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 
 /**
  * Dark frosted floating chrome — the round back / share / close affordance that hovers over
@@ -55,6 +54,10 @@ fun FrGlassCircleButton(
     contentDescription: String,
     modifier: Modifier = Modifier,
     size: Dp = 44.dp,
+    // The inner glyph scales with the button `size` (default 44dp → ~24dp, matching the old `iconMd`).
+    // Without this, small callers (the 30dp comment Flag/Block/Delete actions) crammed a fixed 24dp
+    // glyph into a 30dp circle → the icon rendered oversized/clipped.
+    iconSize: Dp = size * 0.55f,
     danger: Boolean = false,
     enabled: Boolean = true,
 ) {
@@ -93,7 +96,7 @@ fun FrGlassCircleButton(
             FrIcon(
                 image = icon,
                 contentDescription = contentDescription,
-                modifier = Modifier.size(Sizes.iconMd),
+                modifier = Modifier.size(iconSize),
             )
         }
     }

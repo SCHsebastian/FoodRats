@@ -57,7 +57,7 @@
     <string name="legal_community_heading_blocking">Bloqueos</string>
     <string name="legal_community_body_blocking">Puedes bloquear a cualquier usuario. Una vez bloqueado, sus comidas, comentarios y reacciones desaparecen de tu inicio y ya no podrá interactuar contigo. Puedes gestionar los usuarios bloqueados desde tu Perfil.</string>
 
-    <string name="legal_community_heading_enforcement">Aplicación</string>
+    <string name="legal_community_heading_enforcement">Aplicación de las normas</string>
     <string name="legal_community_body_enforcement">Revisamos las denuncias y eliminamos el contenido infractor en un plazo de 24 horas. El contenido denunciado por varias personas se oculta automáticamente a la espera de revisión. Los reincidentes son expulsados de FoodRats. Actuamos sobre el contenido objetable y los usuarios abusivos a nuestra entera discreción.</string>
 
     <string name="legal_community_heading_contact">Contacto</string>
@@ -80,14 +80,20 @@
     <string name="recap_most_prolific_title">Más prolífico/a</string>
     <string name="recap_most_prolific_subtitle">%1$s publicó %2$d platos</string>
     <string name="recap_streak_title">🔥 Estás que ardes</string>
-    <string name="recap_streak_subtitle">Racha de %1$d días publicando</string>
+    <plurals name="recap_streak_subtitle">
+        <item quantity="one">Racha de %1$d día publicando</item>
+        <item quantity="other">Racha de %1$d días publicando</item>
+    </plurals>
     <string name="recap_badges_title">Insignias nuevas esta semana</string>
     <string name="recap_cuisines_title">Pasaporte de cocinas</string>
     <string name="recap_cuisines_subtitle">%1$d de %2$d cocinas conseguidas</string>
     <string name="recap_cuisines_ratio">/ %1$d</string>
     <string name="recap_rating_unit">★</string>
     <string name="recap_your_week_title">Tu semana</string>
-    <string name="recap_your_week_streak">Racha de %1$d días</string>
+    <plurals name="recap_your_week_streak">
+        <item quantity="one">Racha de %1$d día</item>
+        <item quantity="other">Racha de %1$d días</item>
+    </plurals>
     <string name="recap_your_week_cuisines">%1$d cocinas</string>
     <string name="recap_your_week_ingredients">%1$d ingredientes</string>
     <string name="recap_empty_title">Una semana tranquila</string>

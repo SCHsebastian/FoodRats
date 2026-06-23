@@ -23,7 +23,7 @@ internal class PlateStorageDataSource(
      * `request.resource.contentType.matches('image/jpe?g')`. Android's Firebase Storage
      * SDK infers the type from the `.jpg` path extension; iOS does not — without
      * explicit metadata iOS sends `application/octet-stream` and the rule rejects
-     * with PERMISSION_DENIED, surfacing as "No tienes acceso a este grupo."
+     * with PERMISSION_DENIED, surfacing as "No tienes acceso a esta cuadrilla."
      *
      * API note: GitLive Firebase Storage 2.1.0 uses an expect/actual `Data` type:
      * - Android actual: `typealias Data = ByteArray`

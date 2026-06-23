@@ -150,7 +150,20 @@ open class MealLocalStore(
         queries.transaction {
             val meal = queries.selectMealById(mealId).executeAsOneOrNull()
                 ?: return@transaction // meal not cached locally → nothing to show optimistically
-            queries.upsertRating(mealId = mealId, raterId = raterId, score = score.toLong(), atMs = atMs, pending = 1L)
+            // A pre-existing local rating with a DIFFERENT score means this optimistic write is the
+            // one allowed CHANGE — stamp edited = 1 so the UI locks the "change my vote" affordance
+            // immediately (mirrors the server transaction). A first vote, or a re-pick of the same
+            // score (an idempotent no-op server-side), stays edited = 0 and doesn't consume it.
+            val isEdit = queries.selectRatingsForMeals(listOf(mealId)).executeAsList()
+                .any { it.raterId == raterId && it.score != score.toLong() }
+            queries.upsertRating(
+                mealId = mealId,
+                raterId = raterId,
+                score = score.toLong(),
+                atMs = atMs,
+                pending = 1L,
+                edited = if (isEdit) 1L else 0L,
+            )
             val ratings = queries.selectRatingsForMeals(listOf(mealId)).executeAsList()
             queries.setMealOptimisticRate(
                 ratingSum = ratings.sumOf { it.score },
@@ -231,6 +244,7 @@ open class MealLocalStore(
                 score = r.score.toLong(),
                 atMs = r.atMs,
                 pending = if (r.pending) 1L else 0L,
+                edited = if (r.edited) 1L else 0L,
             )
         }
     }
@@ -260,6 +274,6 @@ private fun MealRow.toLocalMeal(ratings: List<MealRatingRow>): LocalMeal = Local
     pending = pending,
     idempotencyKey = idempotencyKey,
     ratings = ratings.map {
-        LocalRating(raterId = it.raterId, score = it.score.toInt(), atMs = it.atMs, pending = it.pending != 0L)
+        LocalRating(raterId = it.raterId, score = it.score.toInt(), atMs = it.atMs, pending = it.pending != 0L, edited = it.edited != 0L)
     },
 )

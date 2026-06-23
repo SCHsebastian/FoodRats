@@ -9,7 +9,9 @@ data class MealDto(
     val authorName: String? = null,
     val crewId: String? = null,
     val dayKey: String? = null,
-    val slot: String = "lunch",
+    // Optional "meal moment" label, one of MealSlot.key() or "" for no slot. Default "" so a meal
+    // published without a slot serializes cleanly (and so older/unknown values read back as "no slot").
+    val slot: String = "",
     // Storage object PATH of the plate photo (`crews/{crewId}/meals/{mealId}.jpg`), NOT a
     // URL — resolved to a signed URL at read time. (Author avatar is no longer denormalized
     // here: identity, including the avatar path, resolves live via AccountReadPort.)

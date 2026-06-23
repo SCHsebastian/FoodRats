@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.moderation.i18n
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.moderation.generated.resources.Res
 import foodrats.feature.moderation.generated.resources.moderation_blocked_back_cta
+import foodrats.feature.moderation.generated.resources.moderation_blocked_section_label
 import foodrats.feature.moderation.generated.resources.moderation_blocked_empty_headline
 import foodrats.feature.moderation.generated.resources.moderation_blocked_empty_subtext
 import foodrats.feature.moderation.generated.resources.moderation_blocked_member_deleted
@@ -21,6 +22,7 @@ import org.jetbrains.compose.resources.StringResource
 enum class ModerationStringKey(override val resourceId: StringResource) : StringKey {
     BlockedTitle(Res.string.moderation_blocked_title),
     BlockedBackCta(Res.string.moderation_blocked_back_cta),
+    BlockedSectionLabel(Res.string.moderation_blocked_section_label),
     BlockedEmptyHeadline(Res.string.moderation_blocked_empty_headline),
     BlockedEmptySubtext(Res.string.moderation_blocked_empty_subtext),
     BlockedUnblockCta(Res.string.moderation_blocked_unblock_cta),

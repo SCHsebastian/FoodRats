@@ -87,8 +87,11 @@ import foodrats.feature.feed.generated.resources.feed_sync_failed
 import foodrats.feature.feed.generated.resources.feed_sync_pending
 import foodrats.feature.feed.generated.resources.feed_synced_ago
 import foodrats.feature.feed.generated.resources.feed_slot_breakfast
+import foodrats.feature.feed.generated.resources.feed_slot_brunch
 import foodrats.feature.feed.generated.resources.feed_slot_dinner
 import foodrats.feature.feed.generated.resources.feed_slot_lunch
+import foodrats.feature.feed.generated.resources.feed_slot_merienda
+import foodrats.feature.feed.generated.resources.feed_slot_snack
 import foodrats.feature.feed.generated.resources.feed_time_of_day
 import foodrats.feature.feed.generated.resources.feed_yesterday
 import foodrats.feature.feed.generated.resources.feed_voter_score
@@ -99,6 +102,10 @@ import foodrats.feature.feed.generated.resources.feed_rate_error_unauthorized
 import foodrats.feature.feed.generated.resources.feed_rate_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_rate_error_window_closed
 import foodrats.feature.feed.generated.resources.feed_rate_this_meal
+import foodrats.feature.feed.generated.resources.feed_change_vote_cta
+import foodrats.feature.feed.generated.resources.feed_change_vote_confirm_title
+import foodrats.feature.feed.generated.resources.feed_change_vote_confirm_body
+import foodrats.feature.feed.generated.resources.feed_change_vote_confirm_cta
 import foodrats.feature.feed.generated.resources.feed_title
 import foodrats.feature.feed.generated.resources.feed_your_crew_eyebrow
 import foodrats.feature.feed.generated.resources.feed_crew_settings_cd
@@ -140,7 +147,10 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     Yesterday(Res.string.feed_yesterday),
     TimeOfDay(Res.string.feed_time_of_day),
     SlotBreakfast(Res.string.feed_slot_breakfast),
+    SlotBrunch(Res.string.feed_slot_brunch),
     SlotLunch(Res.string.feed_slot_lunch),
+    SlotSnack(Res.string.feed_slot_snack),
+    SlotMerienda(Res.string.feed_slot_merienda),
     SlotDinner(Res.string.feed_slot_dinner),
     ErrorNotSignedIn(Res.string.feed_error_not_signed_in),
     ErrorUnauthorized(Res.string.feed_error_unauthorized),
@@ -156,6 +166,10 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     ReactionErrorUnavailable(Res.string.feed_reaction_error_unavailable),
     AverageHeading(Res.string.feed_average_heading),
     RateThisMeal(Res.string.feed_rate_this_meal),
+    ChangeVoteCta(Res.string.feed_change_vote_cta),
+    ChangeVoteConfirmTitle(Res.string.feed_change_vote_confirm_title),
+    ChangeVoteConfirmBody(Res.string.feed_change_vote_confirm_body),
+    ChangeVoteConfirmCta(Res.string.feed_change_vote_confirm_cta),
     YourVote(Res.string.feed_your_vote),
     YourVoteLockedEyebrow(Res.string.feed_your_vote_locked),
     RatingSummary(Res.string.feed_rating_summary),

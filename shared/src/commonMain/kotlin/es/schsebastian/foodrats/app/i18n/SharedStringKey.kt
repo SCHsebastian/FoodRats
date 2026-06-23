@@ -67,14 +67,12 @@ import foodrats.shared.generated.resources.recap_most_prolific_subtitle
 import foodrats.shared.generated.resources.recap_most_prolific_title
 import foodrats.shared.generated.resources.recap_progress
 import foodrats.shared.generated.resources.recap_share_cta
-import foodrats.shared.generated.resources.recap_streak_subtitle
 import foodrats.shared.generated.resources.recap_streak_title
 import foodrats.shared.generated.resources.recap_top_meal_author
 import foodrats.shared.generated.resources.recap_top_meal_score
 import foodrats.shared.generated.resources.recap_top_meal_title
 import foodrats.shared.generated.resources.recap_your_week_cuisines
 import foodrats.shared.generated.resources.recap_your_week_ingredients
-import foodrats.shared.generated.resources.recap_your_week_streak
 import foodrats.shared.generated.resources.recap_your_week_title
 import org.jetbrains.compose.resources.StringResource
 
@@ -152,14 +150,12 @@ enum class SharedStringKey(override val resourceId: StringResource) : StringKey 
     RecapMostProlificTitle(Res.string.recap_most_prolific_title),
     RecapMostProlificSubtitle(Res.string.recap_most_prolific_subtitle),
     RecapStreakTitle(Res.string.recap_streak_title),
-    RecapStreakSubtitle(Res.string.recap_streak_subtitle),
     RecapBadgesTitle(Res.string.recap_badges_title),
     RecapCuisinesTitle(Res.string.recap_cuisines_title),
     RecapCuisinesSubtitle(Res.string.recap_cuisines_subtitle),
     RecapCuisinesRatio(Res.string.recap_cuisines_ratio),
     RecapRatingUnit(Res.string.recap_rating_unit),
     RecapYourWeekTitle(Res.string.recap_your_week_title),
-    RecapYourWeekStreak(Res.string.recap_your_week_streak),
     RecapYourWeekCuisines(Res.string.recap_your_week_cuisines),
     RecapYourWeekIngredients(Res.string.recap_your_week_ingredients),
     RecapEmptyTitle(Res.string.recap_empty_title),

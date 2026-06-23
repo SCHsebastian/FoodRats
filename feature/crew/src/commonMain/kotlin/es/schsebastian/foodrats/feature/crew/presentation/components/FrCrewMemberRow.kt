@@ -32,7 +32,11 @@ fun FrCrewMemberRow(
     subtitle: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val displayName = account?.displayName ?: resolve(CrewStringKey.MemberDeleted)
+    val displayName = when {
+        account == null -> resolve(CrewStringKey.MemberDeleted)
+        account.displayName.isBlank() -> resolve(CrewStringKey.MemberUnnamed)
+        else -> account.displayName
+    }
     Row(
         modifier = modifier.fillMaxWidth().padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,

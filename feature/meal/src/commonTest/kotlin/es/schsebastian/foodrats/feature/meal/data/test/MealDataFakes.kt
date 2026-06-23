@@ -35,12 +35,14 @@ internal class FakeMealFirestore : MealFirestore {
     var deleteFault: Throwable? = null
     var rateFault: Throwable? = null
     var rateOutcome: MealFirestore.RateOutcome = MealFirestore.RateOutcome.Ok
-    var existingSlots: Set<MealSlot> = emptySet()
-    // When non-null, `mealExists` reports these slots AFTER a write has thrown — models a
-    // concurrent publish that created the doc between the free-slot pre-check and this rejected
-    // write (the double-fire race). Lets a test assert the orphan-cleanup is skipped for a blob
-    // that now backs a live doc.
-    var existingSlotsAfterWriteFault: Set<MealSlot>? = null
+    // The author's already-existing meal ids for the (crew, day). `size` drives the daily-cap
+    // gate; membership of the deterministic id drives idempotency.
+    var existingIds: Set<String> = emptySet()
+    // When non-null, `existingMealIds` reports these ids AFTER a write has thrown — models a
+    // concurrent publish that created the doc between the pre-check and this rejected write (the
+    // double-fire race). Lets a test assert the orphan-cleanup is skipped for a blob that now
+    // backs a live doc.
+    var existingIdsAfterWriteFault: Set<String>? = null
     private var writeFaultRaised = false
 
     data class WriteCall(val dto: MealDto, val docId: String)
@@ -59,18 +61,8 @@ internal class FakeMealFirestore : MealFirestore {
     override fun observeForRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<List<MealDto>> =
         flowOf(emptyList())
 
-    override suspend fun mealExists(
-        crewId: CrewId,
-        authorId: AccountId,
-        dayKey: String,
-        slot: MealSlot,
-    ): Boolean {
-        val slots = if (writeFaultRaised) (existingSlotsAfterWriteFault ?: existingSlots) else existingSlots
-        return slot in slots
-    }
-
-    override suspend fun takenSlots(crewId: CrewId, authorId: AccountId, dayKey: String): Set<MealSlot> =
-        existingSlots
+    override suspend fun existingMealIds(crewId: CrewId, authorId: AccountId, dayKey: String): Set<String> =
+        if (writeFaultRaised) (existingIdsAfterWriteFault ?: existingIds) else existingIds
 
     override suspend fun deleteMeal(crewId: CrewId, mealId: String) {
         deleteCalls += crewId to mealId

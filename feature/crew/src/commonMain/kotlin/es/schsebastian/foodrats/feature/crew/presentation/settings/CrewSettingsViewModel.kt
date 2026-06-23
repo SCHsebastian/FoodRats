@@ -109,7 +109,9 @@ class CrewSettingsViewModel(
         is CrewSettingsIntent.ToggleBlindVoting -> doToggleBlindVoting(intent.enabled)
         CrewSettingsIntent.ShareLinkTapped -> analytics.track(AnalyticsEvent.CrewInviteShared(crewId))
         CrewSettingsIntent.SwitchCrew -> emit(CrewSettingsEffect.NavigateToCrewPicker)
-        CrewSettingsIntent.Leave -> doLeave()
+        CrewSettingsIntent.RequestLeave -> update { it.copy(showLeaveConfirm = true) }
+        CrewSettingsIntent.CancelLeave -> update { it.copy(showLeaveConfirm = false) }
+        CrewSettingsIntent.ConfirmLeave -> doLeave()
         CrewSettingsIntent.RequestDelete -> update { it.copy(showDeleteConfirm = true) }
         CrewSettingsIntent.CancelDelete -> update { it.copy(showDeleteConfirm = false) }
         CrewSettingsIntent.ConfirmDelete -> doDelete()
@@ -159,7 +161,7 @@ class CrewSettingsViewModel(
 
     private suspend fun doLeave() {
         val account = session.current.first()?.accountId ?: return
-        update { it.copy(isLeaving = true, error = null) }
+        update { it.copy(isLeaving = true, showLeaveConfirm = false, error = null) }
         when (val r = leaveCrew(crewId, account)) {
             is Result.Ok -> {
                 analytics.track(AnalyticsEvent.CrewLeft(crewId))

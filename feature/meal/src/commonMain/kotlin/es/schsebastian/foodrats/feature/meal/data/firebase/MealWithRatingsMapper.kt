@@ -59,6 +59,7 @@ fun MealDto.toMealWithRatings(
             raterAvatarUrl = member?.avatarUrl,
             score = score,
             ratedAt = Instant.fromEpochMilliseconds(entry.atMs),
+            edited = entry.edited,
         )
     }
     return Result.success(MealWithRatings(meal, ratings))

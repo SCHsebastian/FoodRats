@@ -13,6 +13,7 @@
     <string name="achievements_detail_how_earned_label">How you earned it</string>
     <string name="achievements_detail_how_to_earn_label">How to earn it</string>
     <string name="achievements_detail_close_cta">Close</string>
+    <string name="achievements_back_cta">Back</string>
     <string name="achievements_empty_subtext">Publish meals to start earning badges.</string>
 
     <!-- first_plate -->

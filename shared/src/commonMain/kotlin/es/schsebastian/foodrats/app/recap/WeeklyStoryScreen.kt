@@ -89,6 +89,10 @@ fun WeeklyStoryScreen(
     // both themes (the scenes are dish/photo floors with white-on-scrim type). Force dark so light
     // mode doesn't flip the story chrome/type to dark-on-dark.
     FoodRatsTheme(darkTheme = true) {
+    // On a Light-theme device the OS keeps dark status-bar icons by default, which are nearly
+    // invisible on the dark recap background. Force white icons while this screen is in
+    // composition and restore on exit.
+    StatusBarIconsAppearance(lightIcons = true)
     Box(modifier = Modifier.fillMaxSize()) {
     when {
         state.isLoading -> LoadingOrEmpty(loading = true)

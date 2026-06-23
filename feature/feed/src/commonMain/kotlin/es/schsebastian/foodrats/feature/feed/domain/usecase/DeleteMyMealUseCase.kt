@@ -4,7 +4,6 @@ import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlinx.coroutines.flow.first
@@ -25,9 +24,9 @@ class DeleteMyMealUseCase(
     suspend operator fun invoke(
         authorId: AccountId,
         day: MealDay,
-        slot: MealSlot,
+        token: String,
     ): Result<Unit, MealDeleteError> {
         val crewIds = crews.observeMyCrews(authorId).first().map { it.id }.toSet()
-        return meals.deleteFromAllCrews(crewIds, authorId, day, slot)
+        return meals.deleteFromAllCrews(crewIds, authorId, day, token)
     }
 }

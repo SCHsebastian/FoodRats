@@ -126,7 +126,7 @@ fun ProfileScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft, scrim = FrScrimStyle.Even)
+        FrMediaFloor(brush = StructuralColors.stageFloor, blur = StructuralBlur.Soft, scrim = FrScrimStyle.Even)
         Column(
             modifier = Modifier
                 .fillMaxSize()

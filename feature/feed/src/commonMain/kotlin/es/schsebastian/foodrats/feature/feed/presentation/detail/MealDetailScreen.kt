@@ -413,8 +413,11 @@ private fun MealDetailBody(
                     modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
                     verticalArrangement = Arrangement.Bottom,
                 ) {
-                    FrStructuralChip(label = resolve(meal.slot.labelKey()).uppercase())
-                    Spacer(Modifier.height(Spacing.sm))
+                    // Slot chip — only when tagged (slot is optional).
+                    meal.slot?.let { slot ->
+                        FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
+                        Spacer(Modifier.height(Spacing.sm))
+                    }
                     FrText(
                         text = meal.dishName,
                         style = StructuralType.titleXl,
@@ -454,6 +457,8 @@ private fun MealDetailBody(
                     meal = meal,
                     pendingRate = state.pendingRate,
                     scoreStyle = state.scoreStyle,
+                    voteEditMode = state.voteEditMode,
+                    showChangeVoteConfirm = state.showChangeVoteConfirm,
                     onIntent = onIntent,
                 )
 
@@ -583,7 +588,8 @@ private fun AuthorRow(meal: FeedMealUi) {
                 overflow = TextOverflow.Ellipsis,
             )
             FrMicroRow(
-                items = listOf(time, resolve(meal.slot.labelKey()).uppercase()),
+                // Slot is optional — drop it from the micro row when the author tagged none.
+                items = listOfNotNull(time, meal.slot?.let { resolve(it.labelKey()).uppercase() }),
                 color = StructuralColors.onMedia.copy(alpha = 0.72f),
             )
         }
@@ -690,10 +696,15 @@ private fun RatingSection(
     meal: FeedMealUi,
     pendingRate: Boolean,
     scoreStyle: FrScoreStyle,
+    voteEditMode: Boolean,
+    showChangeVoteConfirm: Boolean,
     onIntent: (MealDetailIntent) -> Unit,
 ) {
     when {
-        meal.viewerRating != null -> {
+        // Already voted and NOT actively changing → the locked tile, plus the one-time-only
+        // "Change my vote" affordance while [FeedMealUi.canChangeVote] (voted, not yet edited,
+        // window open). Once the change is used the affordance is gone and the tile is final.
+        meal.viewerRating != null && !voteEditMode -> {
             val voteText = when (scoreStyle) {
                 FrScoreStyle.Stars   -> resolve(FeedStringKey.YourVote, meal.viewerRating)
                 FrScoreStyle.Emoji   -> scoreToEmoji(meal.viewerRating.coerceIn(1, 5))
@@ -709,19 +720,46 @@ private fun RatingSection(
                         FrText(text = voteText, style = StructuralType.titleLg, color = StructuralColors.foreground)
                     }
                 }
+                if (meal.canChangeVote) {
+                    FrGlassButton(
+                        label = resolve(FeedStringKey.ChangeVoteCta),
+                        onClick = { onIntent(MealDetailIntent.RequestChangeVote) },
+                        tone = FrButtonTone.Glass,
+                        compact = true,
+                        enabled = !pendingRate,
+                    )
+                }
             }
         }
-        meal.canRate -> Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            FrEyebrow(text = resolve(FeedStringKey.RateThisMeal).uppercase(), color = StructuralColors.foreground.copy(alpha = 0.85f))
+        // First vote OR an in-progress change → the picker (pre-filled with the current score in
+        // edit mode so the user can adjust from where they were).
+        meal.canRate || voteEditMode -> Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            FrEyebrow(
+                text = resolve(if (voteEditMode) FeedStringKey.ChangeVoteCta else FeedStringKey.RateThisMeal).uppercase(),
+                color = StructuralColors.foreground.copy(alpha = 0.85f),
+            )
             FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.fillMaxWidth()) {
                 FrStarRatingPicker(
                     onSelect = { score -> onIntent(MealDetailIntent.RateMeal(score)) },
+                    value = if (voteEditMode) (meal.viewerRating ?: 0) else 0,
                     enabled = !pendingRate,
                     style = scoreStyle,
                 )
             }
         }
         else -> Unit
+    }
+
+    // One-time-only confirmation before the single allowed change.
+    if (showChangeVoteConfirm) {
+        FrConfirmDialog(
+            title = resolve(FeedStringKey.ChangeVoteConfirmTitle),
+            message = resolve(FeedStringKey.ChangeVoteConfirmBody),
+            confirmLabel = resolve(FeedStringKey.ChangeVoteConfirmCta),
+            dismissLabel = resolve(FeedStringKey.DeleteCancelCta),
+            onConfirm = { onIntent(MealDetailIntent.ConfirmChangeVote) },
+            onDismiss = { onIntent(MealDetailIntent.CancelChangeVote) },
+        )
     }
 }
 
@@ -1102,8 +1140,12 @@ private fun FrMediaFloorBrush() {
 }
 
 /** Appetizing brush shown behind the plate while it loads (or when the meal has none). */
-private fun dishBrushFor(slot: MealSlotUi): Brush = when (slot) {
+private fun dishBrushFor(slot: MealSlotUi?): Brush = when (slot) {
     MealSlotUi.Breakfast -> StructuralColors.dishSalad
+    MealSlotUi.Brunch -> StructuralColors.dishTacos
     MealSlotUi.Lunch -> StructuralColors.dishMackerel
+    MealSlotUi.Snack -> StructuralColors.dishTacos
+    MealSlotUi.Merienda -> StructuralColors.dishSalad
     MealSlotUi.Dinner -> StructuralColors.dishRamen
+    null -> StructuralColors.dishMackerel
 }

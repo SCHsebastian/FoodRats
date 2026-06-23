@@ -38,6 +38,9 @@
     <string name="crew_settings_invite_code">Invite code</string>
     <string name="crew_settings_share">Share</string>
     <string name="crew_settings_copy_cta">Copy code</string>
+    <string name="crew_settings_leave_title">Leave crew?</string>
+    <string name="crew_settings_leave_body">You'll lose access to %1$s's meals and feed. You can rejoin later with an invite code.</string>
+    <string name="crew_settings_leave_confirm">Leave</string>
     <string name="crew_settings_delete_cta">Delete crew</string>
     <string name="crew_settings_delete_title">Delete crew?</string>
     <string name="crew_settings_delete_body">This will permanently delete %1$s and remove all members. This action cannot be undone.</string>
@@ -66,6 +69,7 @@
     <string name="crew_settings_remove_member_confirm_body">%1$s will lose access to the crew.</string>
     <string name="crew_settings_member_removed">%1$s was removed from the crew.</string>
     <string name="crew_member_deleted">Deleted user</string>
+    <string name="crew_member_unnamed">Unnamed</string>
     <string name="crew_settings_share_link">Share invite link</string>
     <string name="crew_settings_show_qr">Show QR code</string>
     <string name="crew_settings_qr_caption">Scan to join %1$s</string>

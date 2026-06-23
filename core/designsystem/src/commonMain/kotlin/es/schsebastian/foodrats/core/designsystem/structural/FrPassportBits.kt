@@ -60,8 +60,10 @@ fun FrBadgeDisc(
                 shape = CircleShape,
             )
         } else {
+            // Locked fill was `foreground` @10% — a near-invisible smear on the warm-white light floor;
+            // raise it in light so a held slot still reads as a frosted disc.
             Modifier.background(
-                color = StructuralColors.foreground.copy(alpha = 0.10f),
+                color = StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.16f else 0.10f),
                 shape = CircleShape,
             )
         }
@@ -107,7 +109,9 @@ fun FrBarTrack(
     progress: Float,
     modifier: Modifier = Modifier,
     height: Dp = 4.dp,
-    trackColor: Color = StructuralColors.foreground.copy(alpha = 0.16f),
+    // Empty-rail track was `foreground` @16% — invisible on the warm-white light floor; raise in light
+    // so the unfilled portion of a progress/voter bar still reads.
+    trackColor: Color = StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.28f else 0.16f),
     fillColor: Color = MaterialTheme.colorScheme.primary,
 ) {
     val pill = RoundedCornerShape(Radius.pill)

@@ -18,7 +18,7 @@
     <string name="meal_compose_audience_label">Share with</string>
     <string name="meal_compose_audience_all">All crews</string>
 
-    <string name="meal_error_already_posted">You already posted a meal today.</string>
+    <string name="meal_error_already_posted">You've reached your 10 meals for today in this crew.</string>
     <string name="meal_error_no_crew_selected">Pick at least one crew to share with.</string>
     <string name="meal_error_not_today">Drafts can only be published the day they were started.</string>
     <string name="meal_error_publish_unavailable">Couldn't publish. Try again.</string>
@@ -35,11 +35,15 @@
     <string name="meal_error_read_crew_not_found">Crew not found.</string>
     <string name="meal_error_read_not_found">Meal not found.</string>
     <string name="meal_slot_breakfast">Breakfast</string>
+    <string name="meal_slot_brunch">Brunch</string>
     <string name="meal_slot_lunch">Lunch</string>
+    <string name="meal_slot_snack">Snack</string>
+    <string name="meal_slot_merienda">Afternoon Snack</string>
     <string name="meal_slot_dinner">Dinner</string>
-    <string name="meal_publish_no_slot">Pick a slot (Breakfast, Lunch, or Dinner) before publishing.</string>
+    <string name="meal_compose_slot_optional">Optional</string>
+    <string name="meal_publish_no_slot">Pick a meal moment before publishing.</string>
 
-    <string name="meal_compose_all_slots_taken">You've already shared every meal today — come back tomorrow.</string>
+    <string name="meal_compose_all_slots_taken">You've shared 10 meals today — come back tomorrow.</string>
 
     <string name="meal_compose_add_location">Pin where you ate</string>
     <string name="meal_compose_locating">Finding you…</string>

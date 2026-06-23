@@ -12,7 +12,9 @@ data class SelectIngredientsState(
     val catalog: List<Ingredient> = emptyList(),
     val detected: Set<IngredientSlug> = emptySet(),
     val selected: Set<IngredientSlug> = emptySet(),
-    val expandedCategories: Set<IngredientCategory> = setOf(IngredientCategory.Vegetable),
+    // Every group is open on entry so the user can browse and find all of them; an
+    // active search additionally force-expands matches in the screen (see SelectIngredientsScreen).
+    val expandedCategories: Set<IngredientCategory> = IngredientCategory.all.toSet(),
     val loading: Boolean = true,
 ) : MviState {
     val capReached: Boolean get() = selected.size >= MAX

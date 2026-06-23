@@ -26,8 +26,10 @@ data class ComposePlateState(
      */
     val dishWarning: Boolean = false,
     val error: MealError? = null,
-    val selectedSlot: MealSlot = MealSlot.Lunch,
-    val takenSlots: Set<MealSlot> = emptySet(),
+    /** Optional "meal moment" label — `null` means none chosen (the user may skip it). */
+    val selectedSlot: MealSlot? = null,
+    /** True when every selected crew is at the daily cap; gates `canContinue` and shows a banner. */
+    val dailyLimitReached: Boolean = false,
     val photoBytes: ByteArray? = null,
     val coordinates: Coordinates? = null,
     val locating: Boolean = false,
@@ -57,7 +59,7 @@ data class ComposePlateState(
             dishWarning == other.dishWarning &&
             error == other.error &&
             selectedSlot == other.selectedSlot &&
-            takenSlots == other.takenSlots &&
+            dailyLimitReached == other.dailyLimitReached &&
             coordinates == other.coordinates &&
             locating == other.locating &&
             showConfirm == other.showConfirm &&
@@ -78,8 +80,8 @@ data class ComposePlateState(
         result = 31 * result + descriptionWarning.hashCode()
         result = 31 * result + dishWarning.hashCode()
         result = 31 * result + (error?.hashCode() ?: 0)
-        result = 31 * result + selectedSlot.hashCode()
-        result = 31 * result + takenSlots.hashCode()
+        result = 31 * result + (selectedSlot?.hashCode() ?: 0)
+        result = 31 * result + dailyLimitReached.hashCode()
         result = 31 * result + (coordinates?.hashCode() ?: 0)
         result = 31 * result + locating.hashCode()
         result = 31 * result + showConfirm.hashCode()

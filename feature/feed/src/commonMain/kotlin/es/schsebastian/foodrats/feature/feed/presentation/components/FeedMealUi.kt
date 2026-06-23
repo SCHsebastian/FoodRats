@@ -17,18 +17,24 @@ data class RaterVoteUi(
 
 /** Presentation mirror of [MealSlot] so the row never imports a domain type. */
 enum class MealSlotUi {
-    Breakfast, Lunch, Dinner;
+    Breakfast, Brunch, Lunch, Snack, Merienda, Dinner;
 
     fun labelKey(): FeedStringKey = when (this) {
         Breakfast -> FeedStringKey.SlotBreakfast
+        Brunch -> FeedStringKey.SlotBrunch
         Lunch -> FeedStringKey.SlotLunch
+        Snack -> FeedStringKey.SlotSnack
+        Merienda -> FeedStringKey.SlotMerienda
         Dinner -> FeedStringKey.SlotDinner
     }
 }
 
 private fun MealSlot.toUi(): MealSlotUi = when (this) {
     MealSlot.Breakfast -> MealSlotUi.Breakfast
+    MealSlot.Brunch -> MealSlotUi.Brunch
     MealSlot.Lunch -> MealSlotUi.Lunch
+    MealSlot.Snack -> MealSlotUi.Snack
+    MealSlot.Merienda -> MealSlotUi.Merienda
     MealSlot.Dinner -> MealSlotUi.Dinner
 }
 
@@ -81,7 +87,8 @@ data class FeedMealUi(
     val thumbHash: String? = null,
     val dishName: String,
     val description: String,
-    val slot: MealSlotUi,
+    /** Optional "meal moment" label — `null` when the author tagged none (slot is optional). */
+    val slot: MealSlotUi?,
     val publishedAtEpochMs: Long,
     /** Local hour-of-day (0..23) the meal was published, in the feed's zone. */
     val publishedHour: Int,
@@ -93,6 +100,17 @@ data class FeedMealUi(
     val votes: List<RaterVoteUi>,
     val viewerRating: Int?,
     val canRate: Boolean,
+    /**
+     * `true` when the viewer has already used their single allowed vote change on this meal — the
+     * "Your vote" tile is then permanently locked (no change affordance). Mirrors [MealRating.edited].
+     */
+    val viewerRatingEdited: Boolean = false,
+    /**
+     * `true` when the viewer may still CHANGE their already-cast vote (voted, not yet edited, the
+     * rating window is open, not the author). The one allowed change is gated behind a confirmation
+     * in the detail UI. Mutually exclusive with [canRate] (which is the first-vote affordance).
+     */
+    val canChangeVote: Boolean = false,
     val latitude: Double? = null,
     val longitude: Double? = null,
     /** Resolved, localized ingredient display names. Empty unless resolved by the caller. */
@@ -208,7 +226,7 @@ fun MealWithRatings.toFeedUi(
         thumbHash = meal.thumbHash,
         dishName = meal.dish.value,
         description = meal.description.value,
-        slot = meal.slot.toUi(),
+        slot = meal.slot?.toUi(),
         publishedAtEpochMs = meal.publishedAt.toEpochMilliseconds(),
         publishedHour = publishedLocal.hour,
         publishedMinute = publishedLocal.minute,
@@ -220,6 +238,9 @@ fun MealWithRatings.toFeedUi(
             .map { RaterVoteUi(it.raterDisplayName, it.raterAvatarUrl, it.score.value) },
         viewerRating = viewer?.score?.value,
         canRate = !isAuthor && viewer == null && windowOpen,
+        viewerRatingEdited = viewer?.edited == true,
+        // The one allowed change: voted, not yet edited, window still open, not the author.
+        canChangeVote = !isAuthor && viewer != null && !viewer.edited && windowOpen,
         latitude = meal.coordinates?.latitude,
         longitude = meal.coordinates?.longitude,
         ingredients = ingredientNames,

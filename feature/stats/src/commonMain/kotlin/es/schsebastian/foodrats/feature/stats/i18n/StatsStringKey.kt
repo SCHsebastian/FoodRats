@@ -20,7 +20,6 @@ import foodrats.feature.stats.generated.resources.stats_error_unauthorized
 import foodrats.feature.stats.generated.resources.stats_error_unavailable
 import foodrats.feature.stats.generated.resources.stats_hero_i_posted_today
 import foodrats.feature.stats.generated.resources.stats_hero_no_streak
-import foodrats.feature.stats.generated.resources.stats_member_top_ingredient_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_format_glyph_free
 import foodrats.feature.stats.generated.resources.stats_most_criticized_title
@@ -118,7 +117,6 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
 
     MostUsedIngredientTitle(Res.string.stats_most_used_ingredient_title),
     TopIngredientByMemberTitle(Res.string.stats_top_ingredient_by_member_title),
-    MemberTopIngredientFormat(Res.string.stats_member_top_ingredient_format),
 
     CookAwardNeedsMoreSingular(Res.string.stats_cook_award_needs_more_singular),
     CookAwardNeedsMorePlural(Res.string.stats_cook_award_needs_more_plural),

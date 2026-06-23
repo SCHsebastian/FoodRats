@@ -81,14 +81,20 @@
     <string name="recap_most_prolific_title">Most prolific</string>
     <string name="recap_most_prolific_subtitle">%1$s posted %2$d plates</string>
     <string name="recap_streak_title">🔥 You're on a roll</string>
-    <string name="recap_streak_subtitle">%1$d-day posting streak</string>
+    <plurals name="recap_streak_subtitle">
+        <item quantity="one">%1$d-day posting streak</item>
+        <item quantity="other">%1$d-day posting streak</item>
+    </plurals>
     <string name="recap_badges_title">New badges this week</string>
     <string name="recap_cuisines_title">Cuisine passport</string>
     <string name="recap_cuisines_subtitle">%1$d of %2$d cuisines collected</string>
     <string name="recap_cuisines_ratio">/ %1$d</string>
     <string name="recap_rating_unit">★</string>
     <string name="recap_your_week_title">Your week</string>
-    <string name="recap_your_week_streak">%1$d-day streak</string>
+    <plurals name="recap_your_week_streak">
+        <item quantity="one">%1$d-day streak</item>
+        <item quantity="other">%1$d-day streak</item>
+    </plurals>
     <string name="recap_your_week_cuisines">%1$d cuisines</string>
     <string name="recap_your_week_ingredients">%1$d ingredients</string>
     <string name="recap_empty_title">A quiet week</string>

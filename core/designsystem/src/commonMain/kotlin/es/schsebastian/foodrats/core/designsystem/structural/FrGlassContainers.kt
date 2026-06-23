@@ -40,12 +40,15 @@ fun FrGlassSheet(
 ) {
     val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
     val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
+    val isLight = StructuralColors.isLight
     Column(
         modifier = modifier
-            // Upward shadow: a negative Y offset would clip; a large blur reads as a soft lift.
-            .shadow(34.dp, shape, clip = false)
+            // Upward shadow: a negative Y offset would clip; a large blur reads as a soft lift. Light
+            // mode trims the elevation (a 34dp black shadow is a heavy halo on the warm floor — user
+            // report 2026-06-23) and pins the fill opaque so the shadow never double-edges.
+            .shadow(if (isLight) 16.dp else 34.dp, shape, clip = false)
             .clip(shape)
-            .background(StructuralColors.sheet, shape)
+            .background(if (isLight) StructuralColors.sheet.copy(alpha = 1f) else StructuralColors.sheet, shape)
             .drawWithContent {
                 drawContent()
                 val y = 0.5.dp.toPx()
@@ -58,6 +61,9 @@ fun FrGlassSheet(
             },
     ) {
         if (showGrabHandle) {
+            // The handle was `foreground` @22% (≈1.4:1) — invisible on the warm-white light sheet; raise
+            // the alpha in light so the grab affordance stays visible.
+            val handleAlpha = if (StructuralColors.isLight) 0.40f else 0.22f
             Box(
                 modifier = Modifier
                     .padding(top = 10.dp)
@@ -65,7 +71,7 @@ fun FrGlassSheet(
                     .width(40.dp)
                     .height(5.dp)
                     .clip(RoundedCornerShape(Radius.pill))
-                    .background(StructuralColors.foreground.copy(alpha = 0.22f)),
+                    .background(StructuralColors.foreground.copy(alpha = handleAlpha)),
             )
         }
         Column(modifier = Modifier.padding(contentPadding), content = content)
@@ -86,12 +92,15 @@ fun FrGlassDialog(
 ) {
     val shape = RoundedCornerShape(26.dp)
     val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
+    val isLight = StructuralColors.isLight
     Column(
         modifier = modifier
             .width(300.dp)
-            .shadow(40.dp, shape, clip = false)
+            // Light mode trims the 40dp halo and pins the fill opaque (see FrGlassSheet — user report
+            // 2026-06-23: a shadow over a translucent fill double-edges on the warm floor).
+            .shadow(if (isLight) 18.dp else 40.dp, shape, clip = false)
             .clip(shape)
-            .background(StructuralColors.dialog, shape)
+            .background(if (isLight) StructuralColors.dialog.copy(alpha = 1f) else StructuralColors.dialog, shape)
             .drawWithContent {
                 drawContent()
                 val y = 0.5.dp.toPx()

@@ -178,6 +178,7 @@ class MealLocalStoreTest {
             assertEquals("rater-1", rating.raterId)
             assertEquals(4, rating.score)
             assertEquals(true, rating.pending)
+            assertEquals(false, rating.edited, "a first optimistic vote is not yet edited")
             cancelAndIgnoreRemainingEvents()
         }
 
@@ -199,6 +200,35 @@ class MealLocalStoreTest {
             assertEquals(4L, meal.ratingSum)
             assertEquals(1L, meal.voterCount)
             assertEquals(false, meal.ratings.single().pending, "the confirmed rating is no longer pending")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun apply_rate_marks_edited_on_a_changed_score_but_not_on_a_same_score_repeat() = runTest {
+        // Server-confirmed first vote of 4 already held locally.
+        store.upsertAll(
+            listOf(
+                dto(
+                    "m1",
+                    publishedAtEpochMs = 100L,
+                    ratings = mapOf("rater-1" to RatingEntryDto(score = 4, atMs = 10L)),
+                ),
+            ),
+        )
+
+        // A re-pick of the SAME score is an idempotent no-op — must NOT consume the one edit.
+        store.applyRate("m1", "rater-1", score = 4, atMs = 20L, idempotencyKey = "rate:c1:m1:rater-1")
+        store.observeFeed("c1", "2026-06-19").test {
+            assertEquals(false, awaitItem().single().ratings.single().edited)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // A genuine CHANGE to a different score marks the entry edited.
+        store.applyRate("m1", "rater-1", score = 2, atMs = 30L, idempotencyKey = "rate:c1:m1:rater-1")
+        store.observeFeed("c1", "2026-06-19").test {
+            val rating = awaitItem().single().ratings.single()
+            assertEquals(2, rating.score)
+            assertEquals(true, rating.edited, "changing to a new score consumes the one allowed edit")
             cancelAndIgnoreRemainingEvents()
         }
     }

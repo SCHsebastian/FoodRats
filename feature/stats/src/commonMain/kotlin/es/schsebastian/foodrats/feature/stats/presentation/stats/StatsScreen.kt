@@ -95,10 +95,13 @@ fun StatsScreen(
     val state by vm.state.collectAsStateWithLifecycle()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Z0 — media floor: the week's best plate (blurred), else the olive field brush.
+        // Z0 — media floor: the week's best plate (blurred), else the olive field brush. The blurred
+        // photo floor is a DARK-mode flourish; in light mode its dark dim + scrim force a near-black
+        // backdrop (and the theme-aware `foreground` header text would vanish into it). In light mode
+        // use the light atmospheric floor so the screen reads light. (User report 2026-06-23.)
         val floorPhoto = state.snapshot?.week?.bestMeal?.photoUrl
             ?: state.snapshot?.week?.mostVotedMeal?.photoUrl
-        if (floorPhoto != null) {
+        if (floorPhoto != null && !StructuralColors.isLight) {
             FrMediaFloor(
                 painter = rememberAsyncImagePainter(model = floorPhoto),
                 blur = StructuralBlur.Heavy,
@@ -425,7 +428,12 @@ private fun TabBody(
                                 overflow = TextOverflow.Ellipsis,
                             )
                             FrText(
-                                text = resolve(StatsStringKey.MemberTopIngredientFormat, member.ingredientName, member.mealCount),
+                                text = resolvePlural(
+                                    StatsPluralKey.MemberTopIngredientMetric,
+                                    member.mealCount,
+                                    member.ingredientName,
+                                    member.mealCount,
+                                ),
                                 style = StructuralType.micro,
                                 color = StructuralColors.foreground.copy(alpha = 0.85f),
                             )

@@ -26,7 +26,10 @@
         <item quantity="other">%1$s ★ · %2$d votes</item>
     </plurals>
     <string name="feed_slot_breakfast">Breakfast</string>
+    <string name="feed_slot_brunch">Brunch</string>
     <string name="feed_slot_lunch">Lunch</string>
+    <string name="feed_slot_snack">Snack</string>
+    <string name="feed_slot_merienda">Afternoon Snack</string>
     <string name="feed_slot_dinner">Dinner</string>
     <string name="feed_no_votes_yet">No votes yet</string>
     <string name="feed_blind_author">Hidden until you rate</string>
@@ -42,6 +45,10 @@
     <string name="feed_reaction_error_unavailable">Couldn't react. Try again.</string>
     <string name="feed_average_heading">Average</string>
     <string name="feed_rate_this_meal">Rate this meal</string>
+    <string name="feed_change_vote_cta">Change my vote</string>
+    <string name="feed_change_vote_confirm_title">Change your vote?</string>
+    <string name="feed_change_vote_confirm_body">You can only change your vote once. After this, your vote is final.</string>
+    <string name="feed_change_vote_confirm_cta">Change vote</string>
     <string name="feed_your_vote">Your vote: %1$d ★</string>
     <string name="feed_your_vote_locked">Your vote · locked</string>
     <string name="feed_your_vote_glyph_free">Your vote: %1$s</string>

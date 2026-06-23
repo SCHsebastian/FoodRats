@@ -5,6 +5,7 @@ import foodrats.feature.stats.generated.resources.Res
 import foodrats.feature.stats.generated.resources.stats_hero_crew_streak
 import foodrats.feature.stats.generated.resources.stats_hero_personal_streak
 import foodrats.feature.stats.generated.resources.stats_hero_plates_today
+import foodrats.feature.stats.generated.resources.stats_member_top_ingredient_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_prolific_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_metric_format
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_voters
@@ -17,4 +18,5 @@ enum class StatsPluralKey(override val resourceId: PluralStringResource) : Plura
     MostVotedPlateVoters(Res.plurals.stats_most_voted_plate_voters),
     MostProlificMetric(Res.plurals.stats_most_prolific_metric_format),
     MostUsedIngredientMetric(Res.plurals.stats_most_used_ingredient_metric_format),
+    MemberTopIngredientMetric(Res.plurals.stats_member_top_ingredient_metric_format),
 }

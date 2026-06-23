@@ -8,12 +8,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -81,6 +85,7 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
+import es.schsebastian.foodrats.feature.crew.presentation.settings.components.LeaveCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
 import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
 import io.github.ismoy.imagepickerkmp.domain.models.MimeType
@@ -176,11 +181,11 @@ fun CrewSettingsScreen(
             crew == null -> CrewSettingsSkeleton()
             else -> {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().statusBarsPadding(),
                     contentPadding = PaddingValues(
                         start = Spacing.lg,
                         end = Spacing.lg,
-                        top = 96.dp,
+                        top = 72.dp,
                         bottom = Spacing.xxl,
                     ),
                     verticalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -204,7 +209,11 @@ fun CrewSettingsScreen(
                                 )
                                 val inviteUrl = inviteUrlFor(crew.code.value)
                                 val shareMessage = resolve(CrewStringKey.InviteShareMessage, crew.name, inviteUrl)
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                                // Stacked full-width, not a 50/50 Row: neither "Share invite link" nor
+                                // "Compartir invitación"/"Mostrar código QR" fits a half-width pill on one
+                                // line, so the side-by-side layout wrapped to 2–3 lines. Full-width pills
+                                // hold their label on one line in every language.
+                                Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                                     FrGlassButton(
                                         label = resolve(CrewStringKey.SettingsShareLink),
                                         onClick = {
@@ -213,13 +222,13 @@ fun CrewSettingsScreen(
                                         },
                                         tone = FrButtonTone.Primary,
                                         leadingIcon = FrIcons.Share,
-                                        modifier = Modifier.weight(1f),
+                                        fillWidth = true,
                                     )
                                     FrGlassButton(
                                         label = resolve(CrewStringKey.SettingsShowQr),
                                         onClick = { showQr = true },
                                         tone = FrButtonTone.Ghost,
-                                        modifier = Modifier.weight(1f),
+                                        fillWidth = true,
                                     )
                                 }
                             }
@@ -446,7 +455,7 @@ fun CrewSettingsScreen(
                                     label = resolve(CrewStringKey.SettingsLeaveCta),
                                     enabled = !state.isLeaving,
                                     showTopHairline = false,
-                                    onClick = { vm.onIntent(CrewSettingsIntent.Leave) },
+                                    onClick = { vm.onIntent(CrewSettingsIntent.RequestLeave) },
                                 )
                                 if (state.isOwner) {
                                     DangerRow(
@@ -469,6 +478,32 @@ fun CrewSettingsScreen(
                     }
                 }
             }
+        }
+
+        // Top scrim band BEHIND the floating chrome: occludes section eyebrows/tiles that scroll up
+        // under the (otherwise fully transparent) bar mid-list — content fades into the band instead of
+        // blending with the bar's text. Decorative only (no semantics, no touch handling — sits behind the
+        // Row so the back button + label stay tappable/visible above it). Theme/banner-aware to match the
+        // screen: a DARK ink gradient over a banner photo (keeps the white onMedia bar text readable), a
+        // LIGHT warm-floor gradient otherwise (so it blends into the light atmospheric floor). Opaque-ish
+        // at the very top, fading to fully transparent at the bar's bottom edge.
+        if (crew != null) {
+            val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+            val bandHeight = statusBarTop + 64.dp
+            val bandTopColor =
+                if (onMediaFloor) Color.Black.copy(alpha = 0.55f) else StructuralColors.tileSolid.copy(alpha = 0.95f)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(bandHeight)
+                    .background(
+                        Brush.verticalGradient(
+                            0f to bandTopColor,
+                            0.6f to bandTopColor.copy(alpha = bandTopColor.alpha * 0.5f),
+                            1f to bandTopColor.copy(alpha = 0f),
+                        ),
+                    ),
+            )
         }
 
         // Floating chrome — back (left) + centered crew label.
@@ -521,6 +556,15 @@ fun CrewSettingsScreen(
                 onDismiss = { showQr = false },
             )
         }
+    }
+
+    // Leave-crew confirm.
+    if (state.showLeaveConfirm) {
+        LeaveCrewConfirmDialog(
+            crewName = crew?.name.orEmpty(),
+            onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmLeave) },
+            onDismiss = { vm.onIntent(CrewSettingsIntent.CancelLeave) },
+        )
     }
 
     // Delete-crew confirm.

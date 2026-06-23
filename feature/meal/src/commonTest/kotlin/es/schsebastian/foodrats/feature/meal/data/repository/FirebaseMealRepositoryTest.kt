@@ -73,7 +73,10 @@ class FirebaseMealRepositoryTest {
     private val account = (AccountId.of("acc-1") as Result.Ok).value
     private val dish = (DishName.of("Pizza") as Result.Ok).value
     private val today = MealDay(LocalDate(2026, 5, 18), zone)
-    private val mealId = (MealId.of("crew-1_acc-1_2026-05-18_lunch") as Result.Ok).value
+    // The publish path keys the doc id by a stable hash of the plate bytes (the draft below uses
+    // byteArrayOf(1,2,3)); compute it the same way so the expected ids track the production formula.
+    private val token = byteArrayOf(1, 2, 3).contentHashCode().toUInt().toString(16)
+    private val mealId = (MealId.of("crew-1_acc-1_2026-05-18_$token") as Result.Ok).value
 
     private fun slug(raw: String): IngredientSlug = IngredientSlug.of(raw).getOrNull()!!
 
@@ -288,7 +291,7 @@ class FirebaseMealRepositoryTest {
         val f = Fixture().apply {
             firestore.writeFault = RuntimeException("PERMISSION_DENIED: create rule !exists rejected the duplicate")
             // The doc is absent at the pre-check but present once the write is rejected (the race).
-            firestore.existingSlotsAfterWriteFault = setOf(MealSlot.Lunch)
+            firestore.existingIdsAfterWriteFault = setOf(mealId.value)
         }
         val repo = repository(f)
 
@@ -324,19 +327,19 @@ class FirebaseMealRepositoryTest {
         assertEquals(0, f.firestore.writes.size)
     }
 
-    /** No slot selected short-circuits after the photo check, before upload/write. */
-    @Test fun publish_without_slot_returns_no_slot_selected() = runTest {
+    /** Slot is optional: a draft with no slot publishes, persisting an empty slot string. */
+    @Test fun publish_without_slot_succeeds_and_persists_empty_slot() = runTest {
         val f = Fixture()
         val repo = repository(f)
 
         val result = repo.publish(draft(slot = null))
 
-        assertEquals(Result.failure(MealError.Publish.NoSlotSelected), result)
-        assertEquals(0, f.firestore.writes.size)
+        assertTrue(result is Result.Ok)
+        assertEquals("", f.firestore.writes.single().dto.slot)
     }
 
     /** The happy path stamps the author identity + plate PATH onto the DTO and writes under
-     *  the deterministic day/slot doc id. */
+     *  the deterministic token doc id. */
     @Test fun publish_writes_author_identity_and_deterministic_doc_id() = runTest {
         val f = Fixture().apply {
             identity.author = MealAuthorIdentity.Author("acc-1", "Chef Ada", "https://fake/ada.png")
@@ -368,18 +371,19 @@ class FirebaseMealRepositoryTest {
         assertEquals(2, f.storage.uploads.size)
         assertEquals(setOf(crew.value, crew2.value), f.firestore.writes.map { it.dto.crewId }.toSet())
         assertEquals(setOf(crew, crew2), f.storage.uploads.map { it.crewId }.toSet())
-        // Per-crew deterministic doc ids.
+        // Per-crew deterministic token doc ids.
         assertEquals(
-            setOf("crew-1_acc-1_2026-05-18_lunch", "crew-2_acc-1_2026-05-18_lunch"),
+            setOf("crew-1_acc-1_2026-05-18_$token", "crew-2_acc-1_2026-05-18_$token"),
             f.firestore.writes.map { it.docId }.toSet(),
         )
     }
 
-    /** When the slot is already taken in every selected crew, nothing is written and the result
-     *  is AlreadyPostedToday (the audience-aware "no crew left to receive it" rule). */
-    @Test fun publish_returns_already_posted_when_slot_taken_in_all_selected_crews() = runTest {
+    /** When every selected crew is already at the per-crew daily cap, nothing is written and the
+     *  result is AlreadyPostedToday (the audience-aware "no crew left to receive it" rule). */
+    @Test fun publish_returns_already_posted_when_all_selected_crews_at_daily_cap() = runTest {
         val crew2 = (CrewId.of("crew-2") as Result.Ok).value
-        val f = Fixture().apply { firestore.existingSlots = setOf(MealSlot.Lunch) }
+        // 10 existing ids (the cap) for the (crew, day) — the fake reports this for every crew.
+        val f = Fixture().apply { firestore.existingIds = (1..10).map { "crew-1_acc-1_2026-05-18_id$it" }.toSet() }
         val repo = repository(f)
 
         val result = repo.publish(draft().copy(audienceCrewIds = setOf(crew, crew2)))
@@ -610,20 +614,20 @@ class FirebaseMealRepositoryTest {
         assertEquals(Result.failure(MealDeleteError.Unavailable), result)
     }
 
-    /** Author "delete my post": removes the (day, slot) plate from every crew, at each crew's
-     *  own deterministic doc id. */
+    /** Author "delete my post": removes the plate (identified by its shared token) from every
+     *  crew, reconstructing each crew's own deterministic doc id from that token. */
     @Test fun deleteFromAllCrews_deletes_each_crews_deterministic_doc() = runTest {
         val crew2 = (CrewId.of("crew-2") as Result.Ok).value
         val f = Fixture()
         val repo = repository(f)
 
-        val result = repo.deleteFromAllCrews(setOf(crew, crew2), account, today, MealSlot.Lunch)
+        val result = repo.deleteFromAllCrews(setOf(crew, crew2), account, today, "tok1")
 
         assertEquals(Result.success(Unit), result)
         assertEquals(
             setOf(
-                crew to "crew-1_acc-1_2026-05-18_lunch",
-                crew2 to "crew-2_acc-1_2026-05-18_lunch",
+                crew to "crew-1_acc-1_2026-05-18_tok1",
+                crew2 to "crew-2_acc-1_2026-05-18_tok1",
             ),
             f.firestore.deleteCalls.toSet(),
         )
@@ -634,7 +638,7 @@ class FirebaseMealRepositoryTest {
         val f = Fixture().apply { firestore.deleteFault = RuntimeException("UNAVAILABLE: network down") }
         val repo = repository(f)
 
-        val result = repo.deleteFromAllCrews(setOf(crew), account, today, MealSlot.Lunch)
+        val result = repo.deleteFromAllCrews(setOf(crew), account, today, "tok1")
 
         assertEquals(Result.failure(MealDeleteError.Unavailable), result)
     }

@@ -48,7 +48,10 @@ fun FrGlassRadio(
     enabled: Boolean = true,
 ) {
     val scheme = MaterialTheme.colorScheme
-    val ringColor = if (selected) scheme.primary else StructuralColors.foreground.copy(alpha = 0.45f)
+    // The unselected ring was `foreground` @45% (≈2.3:1) — fine white-on-dark, but a faint dark hairline
+    // on the warm-white light floor. Raise it in light so an unselected option still reads as a ring.
+    val unselectedAlpha = if (StructuralColors.isLight) 0.70f else 0.45f
+    val ringColor = if (selected) scheme.primary else StructuralColors.foreground.copy(alpha = unselectedAlpha)
 
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()

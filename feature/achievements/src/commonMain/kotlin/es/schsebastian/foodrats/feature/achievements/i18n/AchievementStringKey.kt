@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.achievements.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.achievements.generated.resources.Res
+import foodrats.feature.achievements.generated.resources.achievements_back_cta
 import foodrats.feature.achievements.generated.resources.achievements_best_cook_desc
 import foodrats.feature.achievements.generated.resources.achievements_best_cook_title
 import foodrats.feature.achievements.generated.resources.achievements_celebration_ack
@@ -70,6 +71,7 @@ enum class AchievementStringKey(override val resourceId: StringResource) : Strin
     DetailHowEarnedLabel(Res.string.achievements_detail_how_earned_label),
     DetailHowToEarnLabel(Res.string.achievements_detail_how_to_earn_label),
     DetailCloseCta(Res.string.achievements_detail_close_cta),
+    BackCta(Res.string.achievements_back_cta),
     EmptySubtext(Res.string.achievements_empty_subtext),
 
     // first_plate

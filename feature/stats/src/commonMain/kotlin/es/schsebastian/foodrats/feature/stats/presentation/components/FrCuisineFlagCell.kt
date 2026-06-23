@@ -3,8 +3,10 @@ package es.schsebastian.foodrats.feature.stats.presentation.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -65,25 +68,50 @@ internal fun FrCuisineFlagCell(
             modifier = Modifier
                 .size(FlagTile)
                 .clip(tileShape)
-                .border(1.dp, StructuralColors.topLight, tileShape)
+                // `topLight` (black @8% in light) loses the frosted edge on the warm-white floor; raise
+                // the frame alpha in light so each specimen keeps a crisp edge. Dark is unchanged.
+                .border(
+                    1.dp,
+                    StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.18f else 0.10f),
+                    tileShape,
+                )
                 .alpha(if (collected) 1f else 0.4f),
             contentScale = ContentScale.Crop,
             colorFilter = if (collected) null else GrayscaleFilter,
         )
-        FrText(
-            text = cell.cuisine.displayName,
-            style = StructuralType.body.copy(textAlign = TextAlign.Center),
-            color = if (collected) StructuralColors.foreground else StructuralColors.foreground.copy(alpha = 0.6f),
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        FrText(
-            text = cell.caption(),
-            style = StructuralType.micro.copy(textAlign = TextAlign.Center),
-            color = StructuralColors.foreground.copy(alpha = 0.5f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        // Fixed two-line slot so 1-line and 2-line cuisine names never change tile height (the
+        // "Estadounidense" / "De Oriente Medio" overflow bug). Derived from the body line metrics
+        // (14 sp × 1.5 em × 2 lines) via the current density so it scales with the user's font size
+        // instead of a brittle hardcoded dp that clips a second line at large accessibility scales.
+        val nameSlotHeight = with(LocalDensity.current) { (StructuralType.body.fontSize * 1.5f * 2).toDp() }
+        Box(
+            modifier = Modifier.fillMaxWidth().height(nameSlotHeight),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            FrText(
+                text = cell.cuisine.displayName,
+                style = StructuralType.body.copy(textAlign = TextAlign.Center),
+                color = if (collected) StructuralColors.foreground else StructuralColors.foreground.copy(alpha = 0.6f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        // Fixed two-line caption slot. The collected caption ("Conseguida 22/06") is wider than the
+        // narrow 4-up cell even after shortening the date — the WORD overflows — so a single line clipped
+        // to "Conseguid…". Two lines (in a fixed slot so every cell stays the same height) lets it wrap.
+        val captionSlotHeight = with(LocalDensity.current) { (StructuralType.micro.fontSize * 1.3f * 2).toDp() }
+        Box(
+            modifier = Modifier.fillMaxWidth().height(captionSlotHeight),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            FrText(
+                text = cell.caption(),
+                style = StructuralType.micro.copy(textAlign = TextAlign.Center),
+                color = StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.65f else 0.5f),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

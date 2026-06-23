@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.feature.notifications.domain.error.NotificationError
 import es.schsebastian.foodrats.feature.notifications.domain.model.DeviceToken
 import es.schsebastian.foodrats.feature.notifications.domain.repository.DeviceTokenRepository
+import es.schsebastian.foodrats.feature.notifications.domain.repository.EffectiveLanguageTag
 import es.schsebastian.foodrats.feature.notifications.domain.repository.FcmTokenProvider
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.DeregisterDeviceTokenUseCase
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.RegisterDeviceTokenUseCase
@@ -23,8 +24,11 @@ private class FakeRepo(
     var nextResult: Result<Unit, NotificationError.Token> = Result.success(Unit),
 ) : DeviceTokenRepository {
     var deleted = false
-    override suspend fun upsert(accountId: AccountId, token: DeviceToken): Result<Unit, NotificationError.Token> =
-        nextResult
+    override suspend fun upsert(
+        accountId: AccountId,
+        token: DeviceToken,
+        languageTag: String?,
+    ): Result<Unit, NotificationError.Token> = nextResult
     override suspend fun delete(accountId: AccountId, token: DeviceToken): Result<Unit, NotificationError.Token> {
         deleted = true
         return nextResult
@@ -50,7 +54,7 @@ class TokenRegistrationAdapterTest {
         repo: FakeRepo,
         session: FakeSession,
     ) = TokenRegistrationAdapter(
-        register = RegisterDeviceTokenUseCase(provider, repo, session),
+        register = RegisterDeviceTokenUseCase(provider, repo, session, EffectiveLanguageTag { "en" }),
         deregister = DeregisterDeviceTokenUseCase(provider, repo, session),
     )
 

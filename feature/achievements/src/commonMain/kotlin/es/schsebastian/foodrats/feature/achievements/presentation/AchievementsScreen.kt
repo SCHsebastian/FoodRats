@@ -107,7 +107,7 @@ fun AchievementsScreen(
             FrGlassCircleButton(
                 icon = FrIcons.Back,
                 onClick = onBack,
-                contentDescription = resolve(AchievementStringKey.DetailCloseCta),
+                contentDescription = resolve(AchievementStringKey.BackCta),
             )
             FrText(
                 text = resolve(AchievementStringKey.ScreenTitle),

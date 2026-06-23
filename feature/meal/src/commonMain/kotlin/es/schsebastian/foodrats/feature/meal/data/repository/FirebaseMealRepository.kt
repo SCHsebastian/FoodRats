@@ -11,8 +11,8 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealKind
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.Score
@@ -199,8 +199,7 @@ internal class FirebaseMealRepository(
             runCatching<Result<Meal, MealError>> {
                 val plate = draft.plate
                     ?: return@runCatching Result.failure(MealError.Validation.NoPhoto)
-                val slot = draft.slot
-                    ?: return@runCatching Result.failure(MealError.Publish.NoSlotSelected)
+                // Slot is optional now — no NoSlotSelected check; "" persists as "no slot".
                 if (draft.ingredients.size > MAX_INGREDIENTS) {
                     return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
                 }
@@ -209,41 +208,34 @@ internal class FirebaseMealRepository(
                 }
                 val author = draft.authorId
                 val dayKey = draft.day.toKey()
-                // Skip crews where this (day, slot) is already posted — keeps a retry from
-                // re-writing crews a prior attempt succeeded on (and the create rule would
-                // reject the duplicate anyway).
-                val freeCrews = draft.audienceCrewIds.filter { crewId ->
-                    !firestore.mealExists(crewId, author, dayKey, slot)
-                }
-                if (freeCrews.isEmpty()) {
-                    return@runCatching Result.failure(MealError.Publish.AlreadyPostedToday)
-                }
+                val slotKey = draft.slot?.key() ?: ""
+                // Stable per-draft idempotency token derived from the photo bytes: identical on
+                // every retry (same plate) and across the per-crew copies of one logical post, so
+                // the deterministic MealId.forDayToken keeps re-publishing idempotent and lets
+                // "delete my post" reconstruct each crew's copy.
+                val token = plate.photoBytes.contentHashCode().toUInt().toString(16)
                 val currentAuthor = authorIdentity.current()
                 // Resolve the cuisine ONCE for the whole fan-out from the detected dish. Advisory:
                 // a missing/unmapped dish OR a lookup fault yields null (cuisine just stays
                 // unstamped) — it must NEVER block publishing. Stays inside this publish
-                // withContext (the single IO boundary); loadDishCuisine itself does no extra hop
-                // beyond its own, which is fine — it's still one logical publish operation.
+                // withContext (the single IO boundary).
                 val cuisineSlug = draft.detectedDishSlug
                     ?.takeIf { it.isNotBlank() }
                     ?.let { runCatching { cuisineRead.loadDishCuisine(it) }.getOrNull() }
                 var representative: Meal? = null
                 var anyFailed = false
-                var anyAlreadyExists = false
                 var lastFault: Throwable? = null
-                for (crewId in freeCrews) {
-                    val mealId = MealId.forDaySlot(crewId, author, draft.day, slot)
-                    // Upload OUTSIDE the try: a storage failure must surface as PhotoUploadFailed
-                    // (mapped below), aborting the fan-out — a retry re-does the unwritten crews.
-                    val platePath = storage.upload(crewId, mealId.value, plate)
+                for (crewId in draft.audienceCrewIds) {
+                    val existing = firestore.existingMealIds(crewId, author, dayKey)
+                    val mealId = MealId.forDayToken(crewId, author, draft.day, token)
                     val dto = MealDto(
                         id = mealId.value,
                         authorId = author.value,
                         authorName = currentAuthor?.displayName.orEmpty(),
                         crewId = crewId.value,
                         dayKey = dayKey,
-                        slot = slot.key(),
-                        platePath = platePath,
+                        slot = slotKey,
+                        platePath = "crews/${crewId.value}/meals/${mealId.value}.jpg",
                         dishName = draft.dish?.value,
                         description = draft.description.value,
                         latitude = draft.coordinates?.latitude,
@@ -259,28 +251,36 @@ internal class FirebaseMealRepository(
                         // meal is Solo. Branch on draft.kind only when the Together build ships.
                         kind = MealKind.Solo.toDiscriminator(),
                     )
+                    // Idempotent retry / double-fire: this exact post already reached this crew.
+                    // Don't set a representative — a skip is not a fresh publish; if NOTHING is
+                    // written we report AlreadyPostedToday (the queue treats that as success).
+                    if (mealId.value in existing) continue
+                    // Daily cap reached for this crew — skip it (the rule has no count, so this
+                    // client-side guard is the cap). Other selected crews may still have room.
+                    if (existing.size >= MealPublishPolicy.MAX_MEALS_PER_CREW_PER_DAY) continue
+                    // Upload returns the deterministic plate path; rebuild the dto with it. A storage
+                    // failure surfaces as PhotoUploadFailed (mapped below) and aborts the fan-out —
+                    // a retry re-does the unwritten crews.
+                    val platePath = storage.upload(crewId, mealId.value, plate)
+                    val dtoWithPath = dto.copy(platePath = platePath)
                     try {
-                        firestore.write(dto, mealId.value)
-                        if (representative == null) {
-                            representative = (dto.toDomain() as? Result.Ok)?.value
-                        }
+                        firestore.write(dtoWithPath, mealId.value)
+                        if (representative == null) representative = (dtoWithPath.toDomain() as? Result.Ok)?.value
                     } catch (t: Throwable) {
-                        // `.set()` OVERWRITES — it never throws ALREADY_EXISTS — so same-slot
-                        // uniqueness is enforced ONLY by the create rule's `!exists(...)`, whose
-                        // rejection surfaces as PERMISSION_DENIED, not ALREADY_EXISTS. A
-                        // concurrent / retried / double-fired publish of the SAME draft therefore
-                        // lands here with a LIVE doc already owning this deterministic blob (our
-                        // upload just overwrote it). Reclaiming the blob in that case would strip
-                        // the image off a published meal — the "image uploaded then vanishes" bug.
-                        // So before treating the blob as an orphan, confirm no live doc exists: if
-                        // one does (or the check is inconclusive), it's a benign duplicate — leave
-                        // the blob intact and report AlreadyPostedToday.
+                        // `.set()` OVERWRITES — it never throws ALREADY_EXISTS — so uniqueness is
+                        // enforced by the create rule's `!exists(...)`, whose rejection surfaces as
+                        // PERMISSION_DENIED. A concurrent / retried / double-fired publish of the
+                        // SAME draft lands here with a LIVE doc already owning this deterministic
+                        // blob (our upload just overwrote it). Reclaiming it would strip the image
+                        // off a published meal — the "image vanishes" bug. So confirm no live doc
+                        // exists before treating the blob as an orphan.
                         val docExists = t.toFirebaseFault() == FirebaseFault.AlreadyExists ||
-                            runCatching { firestore.mealExists(crewId, author, dayKey, slot) }
+                            runCatching { firestore.existingMealIds(crewId, author, dayKey).contains(mealId.value) }
                                 .getOrDefault(true)
-                        if (docExists) {
-                            anyAlreadyExists = true
-                        } else {
+                        // When a live doc already backs this blob (our prior attempt or a concurrent
+                        // publish) leave it intact and treat as already-posted (no representative). Only
+                        // a genuine fault with NO live doc is an orphan to clean up + a real failure.
+                        if (!docExists) {
                             anyFailed = true
                             lastFault = t
                             FrLog.w("MealRepo", t) { "fan-out write failed for crew ${crewId.value}: ${t.message}" }
@@ -297,10 +297,9 @@ internal class FirebaseMealRepository(
                     // silently dropping the plate from some of the chosen crews.
                     rep != null               -> Result.failure(MealError.Publish.PublishUnavailable)
                     // Nothing written and a real fault hit → surface it through the mapper so the
-                    // PERMISSION_DENIED / UNAVAILABLE / ALREADY_EXISTS classification matches the
-                    // single-crew path.
+                    // PERMISSION_DENIED / UNAVAILABLE classification matches the single-crew path.
                     anyFailed                 -> throw lastFault!!
-                    // Every targeted crew already had this slot (raced the pre-check) → already posted.
+                    // Every targeted crew was at the cap (or raced) → daily limit reached.
                     else                      -> Result.failure(MealError.Publish.AlreadyPostedToday)
                 }
             }.fold(
@@ -309,44 +308,15 @@ internal class FirebaseMealRepository(
             )
         }
 
-    override suspend fun hasMealForSlot(
-        crewId: CrewId,
-        day: MealDay,
-        slot: MealSlot,
-    ): Result<Boolean, MealError.Read> = withContext(dispatchers.io) {
-        runCatching<Result<Boolean, MealError.Read>> {
-            val authorId = currentAccountId()
-                ?: return@runCatching Result.failure(MealError.Read.Unauthorized)
-            Result.success(firestore.mealExists(crewId, authorId, day.toKey(), slot))
-        }.fold(
-            onSuccess = { it },
-            onFailure = { Result.failure(MealError.Read.NotFound) },
-        )
-    }
-
-    override suspend fun takenSlotsFor(
-        crewId: CrewId,
-        day: MealDay,
-    ): Result<Set<MealSlot>, MealError.Read> = withContext(dispatchers.io) {
-        runCatching<Result<Set<MealSlot>, MealError.Read>> {
-            val authorId = currentAccountId()
-                ?: return@runCatching Result.failure(MealError.Read.Unauthorized)
-            Result.success(firestore.takenSlots(crewId, authorId, day.toKey()))
-        }.fold(
-            onSuccess = { it },
-            onFailure = { Result.failure(MealError.Read.NotFound) },
-        )
-    }
-
-    override suspend fun takenSlotsPerCrew(
+    override suspend fun mealCountsPerCrew(
         crewIds: Set<CrewId>,
         day: MealDay,
-    ): Result<Map<CrewId, Set<MealSlot>>, MealError.Read> = withContext(dispatchers.io) {
-        runCatching<Result<Map<CrewId, Set<MealSlot>>, MealError.Read>> {
+    ): Result<Map<CrewId, Int>, MealError.Read> = withContext(dispatchers.io) {
+        runCatching<Result<Map<CrewId, Int>, MealError.Read>> {
             val authorId = currentAccountId()
                 ?: return@runCatching Result.failure(MealError.Read.Unauthorized)
             val dayKey = day.toKey()
-            Result.success(crewIds.associateWith { crewId -> firestore.takenSlots(crewId, authorId, dayKey) })
+            Result.success(crewIds.associateWith { crewId -> firestore.existingMealIds(crewId, authorId, dayKey).size })
         }.fold(
             onSuccess = { it },
             onFailure = { Result.failure(MealError.Read.NotFound) },
@@ -378,7 +348,7 @@ internal class FirebaseMealRepository(
         crewIds: Set<CrewId>,
         authorId: AccountId,
         day: MealDay,
-        slot: MealSlot,
+        token: String,
     ): Result<Unit, MealDeleteError> = withContext(dispatchers.io) {
         if (crewIds.isEmpty()) return@withContext Result.success(Unit)
         // Deleting a non-existent doc is a no-op success in Firestore, so a crew that never
@@ -387,7 +357,9 @@ internal class FirebaseMealRepository(
         // author path that should never be permission, leaving transient Unavailable as retryable.
         var lastError: MealDeleteError? = null
         for (crewId in crewIds) {
-            val mealId = MealId.forDaySlot(crewId, authorId, day, slot).value
+            // Each crew's copy of this logical post shares the same token suffix, so the id is
+            // reconstructible per crew from the token alone.
+            val mealId = MealId.forDayToken(crewId, authorId, day, token).value
             runCatching { firestore.deleteMeal(crewId, mealId) }
                 .onFailure { t ->
                     when (t.toFirebaseFault()) {

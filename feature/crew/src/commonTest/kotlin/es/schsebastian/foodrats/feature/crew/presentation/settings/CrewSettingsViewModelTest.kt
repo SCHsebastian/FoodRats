@@ -315,11 +315,12 @@ class CrewSettingsViewModelTest {
         val vm = buildVm(memberId, repo, analytics)
 
         vm.effects.test {
-            vm.onIntent(CrewSettingsIntent.Leave)
+            vm.onIntent(CrewSettingsIntent.ConfirmLeave)
             assertEquals(CrewSettingsEffect.Left, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(false, vm.state.value.isLeaving)
+        assertEquals(false, vm.state.value.showLeaveConfirm)
         assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.CrewLeft(crewId)), analytics.events.toList())
         // Note: after a successful leave the crew is removed from the fake repo, so
         // observeCrew re-emits NotFound — that error surfacing back onto state is the
@@ -337,10 +338,25 @@ class CrewSettingsViewModelTest {
         val analytics = RecordingAnalyticsTracker()
         val vm = buildVm(memberId, repo, analytics)
 
-        vm.onIntent(CrewSettingsIntent.Leave)
+        vm.onIntent(CrewSettingsIntent.ConfirmLeave)
 
         assertEquals(CrewError.Backend.PermissionDenied, vm.state.value.error)
         assertEquals(false, vm.state.value.isLeaving)
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test
+    fun request_leave_opens_dialog_and_cancel_closes_it_without_leaving() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(memberId, repo, analytics)
+
+        vm.onIntent(CrewSettingsIntent.RequestLeave)
+        assertTrue(vm.state.value.showLeaveConfirm)
+
+        vm.onIntent(CrewSettingsIntent.CancelLeave)
+        assertEquals(false, vm.state.value.showLeaveConfirm)
+        // No leave was attempted, so nothing tracked.
         assertTrue(analytics.events.isEmpty())
     }
 

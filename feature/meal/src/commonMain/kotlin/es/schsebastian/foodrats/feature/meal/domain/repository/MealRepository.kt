@@ -6,7 +6,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealDraftIngredientsPort
 import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
@@ -18,16 +17,15 @@ interface MealRepository : MealReadPort, MealRatingPort, MealDeletePort, MealDra
     suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError>
     fun observeDraft(): Flow<MealDraft?>
     suspend fun clearDraft()
-    suspend fun hasMealForSlot(crewId: CrewId, day: MealDay, slot: MealSlot): Result<Boolean, MealError.Read>
-    suspend fun takenSlotsFor(crewId: CrewId, day: MealDay): Result<Set<MealSlot>, MealError.Read>
 
     /**
-     * For each crew in [crewIds], the slots the author has already posted on [day].
-     * Lets the composer disable a slot only when it's taken in *every* selected crew
-     * (the audience-aware "already posted" rule). One Firestore read per crew.
+     * For each crew in [crewIds], how many meals the author has already published on [day].
+     * Drives the composer's daily-cap gate ([MealPublishPolicy.MAX_MEALS_PER_CREW_PER_DAY]) and
+     * the audience-aware publish check (publishing is allowed while *any* selected crew is under
+     * the cap). One Firestore read per crew.
      */
-    suspend fun takenSlotsPerCrew(
+    suspend fun mealCountsPerCrew(
         crewIds: Set<CrewId>,
         day: MealDay,
-    ): Result<Map<CrewId, Set<MealSlot>>, MealError.Read>
+    ): Result<Map<CrewId, Int>, MealError.Read>
 }

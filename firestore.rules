@@ -230,16 +230,25 @@ service cloud.firestore {
                       || resource.data.ownerId == request.auth.uid
                     );
 
-      // Meals are scoped under crews. Up to 3 per author per day — one per slot.
-      // Deterministic doc ID enforces same-day-per-slot uniqueness without composite indexes.
+      // Meals are scoped under crews. The per-author per-day cap (10) is enforced CLIENT-SIDE —
+      // Firestore rules can't count documents. The doc id is `crewId_uid_dayKey_token` where token
+      // is a stable per-post hash (idempotent retries + reconstructible per-crew delete). The rule
+      // pins ownership, the optional slot vocabulary, and the id shape via split('_') (none of the
+      // four parts contains '_': auto-ids/uids are alphanumeric, dayKey is YYYY-MM-DD, token is hex).
       match /meals/{mealId} {
         allow read:   if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds;
         allow create: if request.auth != null
                       && request.auth.uid == request.resource.data.authorId
+                      && request.resource.data.crewId == crewId
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
-                      && request.resource.data.slot in ["breakfast", "lunch", "dinner"]
-                      && mealId == crewId + "_" + request.auth.uid + "_" + request.resource.data.dayKey + "_" + request.resource.data.slot
+                      && (request.resource.data.slot == ""
+                          || request.resource.data.slot in ["breakfast", "brunch", "lunch", "snack", "merienda", "dinner"])
+                      && request.resource.data.id == mealId
+                      && mealId.split("_").size() == 4
+                      && mealId.split("_")[0] == crewId
+                      && mealId.split("_")[1] == request.auth.uid
+                      && mealId.split("_")[2] == request.resource.data.dayKey
                       && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId))
                       // Whitelist the client-writable fields at publish. The server-owned fields
                       // `thumbHash` / `thumbnailPath` are written later by the image pipeline via
@@ -272,9 +281,12 @@ service cloud.firestore {
                       && (!('publishedAtEpochMs' in request.resource.data)
                           || request.resource.data.publishedAtEpochMs <= request.time.toMillis() + 300000);
         // Rating-write update: a voter (not the author) may add their own entry to the
-        // `ratings` map. The diff must be limited to the three denormalized rating fields,
-        // the voter can only touch their own key in the map, and the cached sum/count
-        // must equal the recomputed values from the new map.
+        // `ratings` map, OR change it exactly ONCE. The diff is limited to the three
+        // denormalized rating fields, the voter can only touch their own key in the map,
+        // and the cached sum/count must equal the recomputed values from the new map.
+        // A voter gets one change: a first vote writes `edited:false`, the single allowed
+        // change overwrites it with `edited:true`, and any further attempt (entry already
+        // `edited`) is rejected here. `.get('edited', false)` tolerates pre-feature entries.
         allow update: if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
                       && request.auth.uid != resource.data.authorId
@@ -282,15 +294,29 @@ service cloud.firestore {
                            .hasOnly(['ratings', 'ratingSum', 'voterCount'])
                       && request.resource.data.ratings.diff(resource.data.ratings).affectedKeys()
                            .hasOnly([request.auth.uid])
-                      && !(request.auth.uid in resource.data.ratings)
                       && request.resource.data.ratings[request.auth.uid].score is int
                       && request.resource.data.ratings[request.auth.uid].score >= 1
                       && request.resource.data.ratings[request.auth.uid].score <= 5
                       && request.resource.data.voterCount == request.resource.data.ratings.size()
-                      // ratingSum must equal the old sum plus the voter's new score, preventing
-                      // a client from inflating or deflating the aggregate independently.
-                      && request.resource.data.ratingSum == resource.data.ratingSum + request.resource.data.ratings[request.auth.uid].score
-                      && request.time.toMillis() - resource.data.publishedAtEpochMs < 172800000;
+                      && request.time.toMillis() - resource.data.publishedAtEpochMs < 172800000
+                      && (
+                        // First vote: no prior entry; the new entry is not-yet-edited; the sum
+                        // grows by exactly the new score (a client can't inflate the aggregate).
+                        (
+                          !(request.auth.uid in resource.data.ratings)
+                          && request.resource.data.ratings[request.auth.uid].get('edited', false) == false
+                          && request.resource.data.ratingSum == resource.data.ratingSum + request.resource.data.ratings[request.auth.uid].score
+                        )
+                        ||
+                        // The single allowed change: prior entry exists and was NOT yet edited; the
+                        // new entry is marked edited; the sum adjusts by the score delta (old → new).
+                        (
+                          request.auth.uid in resource.data.ratings
+                          && resource.data.ratings[request.auth.uid].get('edited', false) == false
+                          && request.resource.data.ratings[request.auth.uid].get('edited', false) == true
+                          && request.resource.data.ratingSum == resource.data.ratingSum - resource.data.ratings[request.auth.uid].score + request.resource.data.ratings[request.auth.uid].score
+                        )
+                      );
 
         // Delete: the meal's author OR the crew owner may delete it. Author = self-service,
         // owner = moderation. Orphaned subcollections (comments, deprecated ratings) are
