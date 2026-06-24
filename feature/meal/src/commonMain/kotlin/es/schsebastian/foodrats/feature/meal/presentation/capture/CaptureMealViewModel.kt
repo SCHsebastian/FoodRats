@@ -35,14 +35,22 @@ class CaptureMealViewModel(
                 }
                 val allCrewIds = crewMembership.observeMyCrews(session.accountId).first().map { it.id }.toSet()
                 if (allCrewIds.isEmpty()) { update { it.copy(error = MealStringKey.CaptureNoCrews) }; return }
-                // Seed the audience from the persisted default (intersected with current memberships),
-                // falling back to ALL crews when no preference has been saved or the saved set no
-                // longer intersects the user's current crews (e.g. they left every saved crew).
-                val savedDefault = defaultAudience?.defaultAudience?.first()
-                val audienceCrewIds = savedDefault
-                    ?.intersect(allCrewIds)
-                    ?.takeIf { it.isNotEmpty() }
-                    ?: allCrewIds
+                // Default the audience to the crew the user is currently viewing — the composer is
+                // launched from a crew's feed, so a meal should land where they're looking. That active
+                // crew is a far stronger signal than any persisted preference (the prior "last-used
+                // default" silently posted to whatever crew was used last, even from another crew's feed).
+                // Fall back to the saved default (intersected with current memberships), then ALL crews,
+                // when there's no active crew or it's no longer a membership.
+                val audienceCrewIds = session.activeCrewId
+                    ?.takeIf { it in allCrewIds }
+                    ?.let { setOf(it) }
+                    ?: run {
+                        val savedDefault = defaultAudience?.defaultAudience?.first()
+                        savedDefault
+                            ?.intersect(allCrewIds)
+                            ?.takeIf { it.isNotEmpty() }
+                            ?: allCrewIds
+                    }
                 update { it.copy(error = null) }
                 startDraft(session.accountId, audienceCrewIds).also { result ->
                     if (result is Result.Err) update { it.copy(error = MealStringKey.CaptureDraftFailed) }

@@ -77,10 +77,11 @@ class ComposePlateViewModelTest {
         classifyResult: (ByteArray) -> Result<List<DishLabel>, ClassifierError>,
         dishMap: Map<String, List<String>> = mapOf("pizza" to listOf("tomato", "cheese")),
         mealAiEnabled: Boolean = true,
+        crews: List<CrewId> = listOf(crew),
     ): ComposePlateViewModel = ComposePlateViewModel(
         updateDraft = UpdateMealDraftUseCase(repo),
         repository = repo,
-        crewMembership = FakeCrewMembership(crew),
+        crewMembership = FakeCrewMembership(crews),
         uploadCoordinator = object : MealUploadCoordinator { override fun enqueueDraftUpload() {} },
         locationProvider = object : LocationProvider {
             override suspend fun current(): Result<Coordinates, LocationError> =
@@ -231,9 +232,43 @@ class ComposePlateViewModelTest {
         }
     }
 
-    private class FakeCrewMembership(private val crew: CrewId) : CrewMembershipPort {
+    @Test fun seeded_audience_subset_is_not_clobbered_to_all_crews() = runTest {
+        // Regression: the composer is opened with the draft pre-seeded to ONE crew (the active
+        // crew the user launched from), while they belong to three. loadCrewsAndCounts must keep
+        // that subset, not reconcile it up to "all crews" — the bug was reading the transient empty
+        // initial selection (observeDraft vs observeMyCrews race) and defaulting to all.
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val crew3 = (CrewId.of("crew-3") as Result.Ok).value
+        val seeded = draftWithPhoto("plate").copy(audienceCrewIds = setOf(crew))
+        val repo = FakeMealRepository().apply { saveDraft(seeded) }
+        val vm = vmWith(repo, classifyResult = { Result.failure(ClassifierError.Run.InferenceFailed) }, crews = listOf(crew, crew2, crew3))
+
+        vm.state.test {
+            assertEquals(setOf(crew), expectMostRecentItem().selectedCrewIds)
+        }
+        // And the persisted draft audience stays the single seeded crew.
+        assertEquals(setOf(crew), repo.observeDraft().first()!!.audienceCrewIds)
+    }
+
+    @Test fun seeded_audience_drops_a_left_crew_but_keeps_the_rest() = runTest {
+        // The reconcile still does its job: a seeded crew the user is no longer a member of is
+        // dropped from the audience (here crew3 is gone), without inflating to all crews.
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val crew3 = (CrewId.of("crew-3") as Result.Ok).value
+        val seeded = draftWithPhoto("plate").copy(audienceCrewIds = setOf(crew, crew3))
+        val repo = FakeMealRepository().apply { saveDraft(seeded) }
+        val vm = vmWith(repo, classifyResult = { Result.failure(ClassifierError.Run.InferenceFailed) }, crews = listOf(crew, crew2))
+
+        vm.state.test {
+            assertEquals(setOf(crew), expectMostRecentItem().selectedCrewIds)
+        }
+        assertEquals(setOf(crew), repo.observeDraft().first()!!.audienceCrewIds)
+    }
+
+    private class FakeCrewMembership(private val crews: List<CrewId>) : CrewMembershipPort {
+        constructor(crew: CrewId) : this(listOf(crew))
         override fun observeMyCrews(accountId: AccountId): Flow<List<CrewSummary>> =
-            MutableStateFlow(listOf(CrewSummary(crew, "Crew ${crew.value}")))
+            MutableStateFlow(crews.map { CrewSummary(it, "Crew ${it.value}") })
     }
 
     private class FakeClassifier(

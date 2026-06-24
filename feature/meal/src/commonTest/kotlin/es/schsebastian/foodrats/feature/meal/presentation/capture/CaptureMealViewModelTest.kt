@@ -132,25 +132,12 @@ class CaptureMealViewModelTest {
         assertEquals(emptyList(), analytics.events)
     }
 
-    @Test fun no_saved_default_seeds_draft_with_all_crews() = runTest {
+    @Test fun active_crew_seeds_draft_with_active_crew_only() = runTest {
+        // Launched from crew's feed (active crew) with crew2 also available and crew2 saved as the
+        // last-used default: the active crew wins, so the draft targets ONLY the active crew.
         val repo = FakeMealRepository()
         val crews = listOf(crew, crew2)
-        val vm = viewModel(repo = repo, crews = crews, savedDefaultAudience = null)
-        vm.state.test {
-            vm.onIntent(CaptureMealIntent.Start)
-            expectMostRecentItem()
-        }
-        repo.observeDraft().test {
-            val draft = awaitItem()
-            assertEquals(setOf(crew, crew2), draft?.audienceCrewIds)
-        }
-    }
-
-    @Test fun saved_default_seeds_draft_with_saved_subset() = runTest {
-        val repo = FakeMealRepository()
-        // Only crew is in the saved default; crew2 is available but not saved.
-        val crews = listOf(crew, crew2)
-        val vm = viewModel(repo = repo, crews = crews, savedDefaultAudience = setOf(crew))
+        val vm = viewModel(repo = repo, session = Session(account, crew), crews = crews, savedDefaultAudience = setOf(crew2))
         vm.state.test {
             vm.onIntent(CaptureMealIntent.Start)
             expectMostRecentItem()
@@ -161,12 +148,57 @@ class CaptureMealViewModelTest {
         }
     }
 
-    @Test fun saved_default_outside_current_crews_falls_back_to_all_crews() = runTest {
+    @Test fun active_crew_not_a_member_falls_back_to_saved_or_all() = runTest {
+        // Active crew references a crew the user isn't a member of (stale) → ignore it and fall back.
+        val stale = (CrewId.of("stale-crew") as Result.Ok).value
+        val repo = FakeMealRepository()
+        val crews = listOf(crew, crew2)
+        val vm = viewModel(repo = repo, session = Session(account, stale), crews = crews, savedDefaultAudience = null)
+        vm.state.test {
+            vm.onIntent(CaptureMealIntent.Start)
+            expectMostRecentItem()
+        }
+        repo.observeDraft().test {
+            val draft = awaitItem()
+            assertEquals(setOf(crew, crew2), draft?.audienceCrewIds)
+        }
+    }
+
+    @Test fun no_active_crew_no_saved_default_seeds_draft_with_all_crews() = runTest {
+        val repo = FakeMealRepository()
+        val crews = listOf(crew, crew2)
+        val vm = viewModel(repo = repo, session = Session(account, null), crews = crews, savedDefaultAudience = null)
+        vm.state.test {
+            vm.onIntent(CaptureMealIntent.Start)
+            expectMostRecentItem()
+        }
+        repo.observeDraft().test {
+            val draft = awaitItem()
+            assertEquals(setOf(crew, crew2), draft?.audienceCrewIds)
+        }
+    }
+
+    @Test fun no_active_crew_saved_default_seeds_draft_with_saved_subset() = runTest {
+        val repo = FakeMealRepository()
+        // Only crew is in the saved default; crew2 is available but not saved.
+        val crews = listOf(crew, crew2)
+        val vm = viewModel(repo = repo, session = Session(account, null), crews = crews, savedDefaultAudience = setOf(crew))
+        vm.state.test {
+            vm.onIntent(CaptureMealIntent.Start)
+            expectMostRecentItem()
+        }
+        repo.observeDraft().test {
+            val draft = awaitItem()
+            assertEquals(setOf(crew), draft?.audienceCrewIds)
+        }
+    }
+
+    @Test fun no_active_crew_saved_default_outside_current_crews_falls_back_to_all_crews() = runTest {
         // The saved default references a crew the user has since left.
         val leftCrew = (CrewId.of("left-crew") as Result.Ok).value
         val repo = FakeMealRepository()
         val crews = listOf(crew)
-        val vm = viewModel(repo = repo, crews = crews, savedDefaultAudience = setOf(leftCrew))
+        val vm = viewModel(repo = repo, session = Session(account, null), crews = crews, savedDefaultAudience = setOf(leftCrew))
         vm.state.test {
             vm.onIntent(CaptureMealIntent.Start)
             expectMostRecentItem()

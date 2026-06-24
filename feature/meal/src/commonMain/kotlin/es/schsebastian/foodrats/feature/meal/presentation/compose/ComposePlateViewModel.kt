@@ -147,10 +147,14 @@ class ComposePlateViewModel(
             update { it.copy(availableCrews = crews) }
             // Reconcile the chosen audience with the live crew set: drop crews the author
             // left and, if that empties it (or the draft never seeded one), default to all.
+            // Reconcile against the DRAFT's audience (the source of truth), NOT
+            // currentState.selectedCrewIds: this collector races the init observeDraft collector,
+            // and reading the transient state here can see the empty *initial* selection before the
+            // draft has populated it — clobbering the seeded active-crew audience to "all crews".
             val availableIds = crews.map { it.id }.toSet()
-            val current = currentState.selectedCrewIds
-            val effective = current.intersect(availableIds).ifEmpty { availableIds }
-            if (effective != current) {
+            val draftAudience = repository.observeDraft().first()?.audienceCrewIds ?: emptySet()
+            val effective = draftAudience.intersect(availableIds).ifEmpty { availableIds }
+            if (effective != draftAudience) {
                 updateDraft(UpdateMealDraftCommand.SetAudience(effective))
                 update { it.copy(selectedCrewIds = effective) }
             }
