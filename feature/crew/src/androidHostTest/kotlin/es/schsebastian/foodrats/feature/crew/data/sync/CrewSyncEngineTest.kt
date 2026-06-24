@@ -199,8 +199,13 @@ private class FakeCrewListSource : CrewDataSource {
     }
 
     override suspend fun createCrew(name: String, founder: AccountId, nowMs: Long): CrewDto = error("unused")
-    override suspend fun joinByCode(code: CrewCode, joiner: AccountId, nowMs: Long): CrewDto = error("unused")
-    override suspend fun leave(crewId: CrewId, leaver: AccountId) = Unit
+    override suspend fun requestToJoin(code: CrewCode, requester: AccountId, nowMs: Long) = Unit
+    override fun observeJoinRequests(crewId: CrewId): Flow<List<es.schsebastian.foodrats.feature.crew.data.firebase.JoinRequestDto>> =
+        kotlinx.coroutines.flow.flowOf(emptyList())
+    override suspend fun approveJoinRequest(crewId: CrewId, requester: AccountId, nowMs: Long) = Unit
+    override suspend fun declineJoinRequest(crewId: CrewId, requester: AccountId): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun transferOwnership(crewId: CrewId, newOwner: AccountId): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId?) = Unit
     override suspend fun removeMember(crewId: CrewId, target: AccountId) = Unit
     override fun observeCrew(crewId: CrewId): Flow<CrewDto?> = error("unused")
     override suspend fun fetchOnce(crewId: CrewId): Crew? = null

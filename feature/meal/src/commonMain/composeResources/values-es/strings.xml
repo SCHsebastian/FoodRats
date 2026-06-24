@@ -31,6 +31,9 @@
     <string name="meal_error_validation_too_many_ingredients">Demasiados ingredientes (máx. 30).</string>
     <string name="meal_compose_description_placeholder">¿Qué comiste? (opcional)</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
+    <string name="meal_compose_dish_counter">%1$d / %2$d</string>
+    <string name="meal_compose_counter_a11y">%1$d de %2$d caracteres usados</string>
+    <string name="meal_compose_photo_description">Tu foto de la comida</string>
     <string name="meal_error_read_unauthorized">No tienes acceso a esta cuadrilla.</string>
     <string name="meal_error_read_crew_not_found">Cuadrilla no encontrada.</string>
     <string name="meal_error_read_not_found">Comida no encontrada.</string>

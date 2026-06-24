@@ -12,6 +12,7 @@ import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
+import es.schsebastian.foodrats.core.domain.meal.MealValueObjectError
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationVerdict
@@ -75,6 +76,7 @@ class ComposePlateViewModel(
                     selectedSlot = draft?.slot,
                     canContinue = computeCanContinue(
                         dish = it.dish,
+                        dishTooLong = it.dishTooLong,
                         descriptionTooLong = it.descriptionTooLong,
                         descriptionFlagged = it.descriptionWarning,
                         dishFlagged = it.dishWarning,
@@ -170,7 +172,7 @@ class ComposePlateViewModel(
             it.copy(
                 dailyLimitReached = limitReached,
                 canContinue = computeCanContinue(
-                    it.dish, it.descriptionTooLong, it.descriptionWarning, it.dishWarning,
+                    it.dish, it.dishTooLong, it.descriptionTooLong, it.descriptionWarning, it.dishWarning,
                     it.photoBytes, it.selectedCrewIds, limitReached,
                 ),
             )
@@ -180,17 +182,26 @@ class ComposePlateViewModel(
     override suspend fun handle(intent: ComposePlateIntent) {
         when (intent) {
             is ComposePlateIntent.DishChanged -> {
+                // Inline length feedback (mirrors the description path): show the right message and gate
+                // Continue AS THE USER TYPES, instead of only rejecting an over-length title on submit.
+                val dishTooLong = intent.value.trim().length > DishName.MAX_LEN
                 // UGC §3 HARD-BLOCK: screen the dish title and block publish if objectionable.
                 val dishFlagged = textModeration.evaluate(intent.value, languageTag.first()) is
                     TextModerationVerdict.Objectionable
                 update {
                     it.copy(
                         dish = intent.value,
+                        dishTooLong = dishTooLong,
                         dishWarning = dishFlagged,
-                        error = null,
+                        // Keep a same-field error in front; don't clobber a still-valid description error.
+                        error = when {
+                            dishTooLong -> MealError.Validation.TooLong
+                            it.descriptionTooLong -> MealError.Validation.DescriptionTooLong
+                            else -> null
+                        },
                         canContinue = computeCanContinue(
-                            intent.value, it.descriptionTooLong, it.descriptionWarning, dishFlagged,
-                            it.photoBytes, it.selectedCrewIds, it.dailyLimitReached,
+                            intent.value, dishTooLong, it.descriptionTooLong, it.descriptionWarning,
+                            dishFlagged, it.photoBytes, it.selectedCrewIds, it.dailyLimitReached,
                         ),
                     )
                 }
@@ -205,8 +216,15 @@ class ComposePlateViewModel(
                         descriptionInput = intent.value,
                         descriptionTooLong = tooLong,
                         descriptionWarning = warning,
-                        error = if (tooLong) MealError.Validation.DescriptionTooLong else null,
-                        canContinue = computeCanContinue(it.dish, tooLong, warning, it.dishWarning, it.photoBytes, it.selectedCrewIds, it.dailyLimitReached),
+                        error = when {
+                            tooLong -> MealError.Validation.DescriptionTooLong
+                            it.dishTooLong -> MealError.Validation.TooLong
+                            else -> null
+                        },
+                        canContinue = computeCanContinue(
+                            it.dish, it.dishTooLong, tooLong, warning, it.dishWarning,
+                            it.photoBytes, it.selectedCrewIds, it.dailyLimitReached,
+                        ),
                     )
                 }
             }
@@ -291,9 +309,18 @@ class ComposePlateViewModel(
      */
     private suspend fun persistDraft(): Boolean {
         val state = currentState
-        val dish = DishName.of(state.dish).getOrElse {
-            update { it.copy(error = MealError.Validation.Blank) }
-            return false
+        val dish = when (val r = DishName.of(state.dish)) {
+            is Result.Ok -> r.value
+            is Result.Err -> {
+                // Map the value-object failure to the RIGHT message: a too-long title must not surface
+                // as "Tell us what you ate." (Blank) — the original bug.
+                val err = when (r.error) {
+                    MealValueObjectError.DishNameTooLong -> MealError.Validation.TooLong
+                    else -> MealError.Validation.Blank
+                }
+                update { it.copy(error = err) }
+                return false
+            }
         }
         val description = Description.of(state.descriptionInput).getOrElse {
             update { it.copy(error = MealError.Validation.DescriptionTooLong) }
@@ -328,6 +355,7 @@ class ComposePlateViewModel(
 
     private fun computeCanContinue(
         dish: String,
+        dishTooLong: Boolean,
         descriptionTooLong: Boolean,
         descriptionFlagged: Boolean,
         dishFlagged: Boolean,
@@ -335,6 +363,7 @@ class ComposePlateViewModel(
         audience: Set<CrewId>,
         dailyLimitReached: Boolean,
     ): Boolean = dish.isNotBlank() &&
+        !dishTooLong &&
         !descriptionTooLong &&
         !descriptionFlagged &&
         !dishFlagged &&

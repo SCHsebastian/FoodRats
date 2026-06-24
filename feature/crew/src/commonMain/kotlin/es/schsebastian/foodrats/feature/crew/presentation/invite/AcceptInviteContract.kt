@@ -1,6 +1,5 @@
 package es.schsebastian.foodrats.feature.crew.presentation.invite
 
-import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
@@ -14,8 +13,13 @@ data class AcceptInviteState(
     val isResolving: Boolean = false,
     /** The resolved crew (name + member count) for the preview, once known. */
     val crew: Crew? = null,
-    /** True while a join is in flight. */
+    /** True while the join request is being filed. */
     val isJoining: Boolean = false,
+    /**
+     * True once the join request was filed successfully. The screen then shows a "waiting for the
+     * owner's approval" confirmation instead of the join CTA — the user is NOT yet a member.
+     */
+    val requestSent: Boolean = false,
     val error: CrewError? = null,
 ) : MviState
 
@@ -26,7 +30,5 @@ sealed interface AcceptInviteIntent : MviIntent {
     data object DismissError : AcceptInviteIntent
 }
 
-sealed interface AcceptInviteEffect : MviEffect {
-    /** Join succeeded → land the user on the active crew's Main feed. */
-    data class Joined(val crewId: CrewId) : AcceptInviteEffect
-}
+/** No effects — the request-sent confirmation is driven by [AcceptInviteState.requestSent]. */
+sealed interface AcceptInviteEffect : MviEffect

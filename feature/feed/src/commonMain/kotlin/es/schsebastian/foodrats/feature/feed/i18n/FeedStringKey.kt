@@ -7,6 +7,9 @@ import foodrats.feature.feed.generated.resources.feed_comments_error_objectionab
 import foodrats.feature.feed.generated.resources.feed_comments_error_too_long
 import foodrats.feature.feed.generated.resources.feed_comments_error_unauthorized
 import foodrats.feature.feed.generated.resources.feed_comments_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_comment_edited
+import foodrats.feature.feed.generated.resources.feed_edit_comment_cta
+import foodrats.feature.feed.generated.resources.feed_edit_comment_save_cta
 import foodrats.feature.feed.generated.resources.feed_report_meal_cta
 import foodrats.feature.feed.generated.resources.feed_report_user_cta
 import foodrats.feature.feed.generated.resources.feed_report_comment_cta
@@ -237,6 +240,9 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     DeleteMealErrorNotFound(Res.string.feed_delete_meal_error_not_found),
     DeleteMealErrorUnavailable(Res.string.feed_delete_meal_error_unavailable),
     DeleteCommentCta(Res.string.feed_delete_comment_cta),
+    EditCommentCta(Res.string.feed_edit_comment_cta),
+    EditCommentSaveCta(Res.string.feed_edit_comment_save_cta),
+    CommentEdited(Res.string.feed_comment_edited),
     DeleteCommentConfirmTitle(Res.string.feed_delete_comment_confirm_title),
     DeleteConfirmCta(Res.string.feed_delete_confirm_cta),
     DeleteCancelCta(Res.string.feed_delete_cancel_cta),

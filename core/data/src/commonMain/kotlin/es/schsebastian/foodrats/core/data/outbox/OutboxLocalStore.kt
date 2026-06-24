@@ -196,6 +196,7 @@ class OutboxLocalStore(
     private object CommandType {
         const val RATE_MEAL = "rate_meal"
         const val POST_COMMENT = "post_comment"
+        const val EDIT_COMMENT = "edit_comment"
         const val DELETE_COMMENT = "delete_comment"
         const val TOGGLE_REACTION = "toggle_reaction"
         const val RENAME_CREW = "rename_crew"
@@ -257,6 +258,13 @@ class OutboxLocalStore(
             commentId = commentId.value,
             text = text.value,
             accountId = authorId.value,
+        )
+        is PendingCommand.EditComment -> CommandPayload(
+            type = CommandType.EDIT_COMMENT,
+            crewId = crewId.value,
+            mealId = mealId.value,
+            commentId = commentId.value,
+            text = text.value,
         )
         is PendingCommand.DeleteComment -> CommandPayload(
             type = CommandType.DELETE_COMMENT,
@@ -369,6 +377,13 @@ class OutboxLocalStore(
             val body = text?.let { CommentText.of(it).getOrNull() } ?: return null
             val author = accountId.toAccountId() ?: return null
             PendingCommand.PostComment(crewId = crew, mealId = meal, commentId = cId, text = body, authorId = author)
+        }
+        CommandType.EDIT_COMMENT -> {
+            val crew = crewId.toCrewId() ?: return null
+            val meal = mealId.toMealId() ?: return null
+            val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
+            val body = text?.let { CommentText.of(it).getOrNull() } ?: return null
+            PendingCommand.EditComment(crewId = crew, mealId = meal, commentId = cId, text = body)
         }
         CommandType.DELETE_COMMENT -> {
             val crew = crewId.toCrewId() ?: return null

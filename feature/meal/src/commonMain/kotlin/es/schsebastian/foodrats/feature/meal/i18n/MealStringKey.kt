@@ -14,12 +14,15 @@ import foodrats.feature.meal.generated.resources.meal_compose_audience_all
 import foodrats.feature.meal.generated.resources.meal_compose_audience_label
 import foodrats.feature.meal.generated.resources.meal_compose_clear_location
 import foodrats.feature.meal.generated.resources.meal_compose_coordinates_format
+import foodrats.feature.meal.generated.resources.meal_compose_counter_a11y
 import foodrats.feature.meal.generated.resources.meal_compose_description_counter
 import foodrats.feature.meal.generated.resources.meal_compose_description_label
 import foodrats.feature.meal.generated.resources.meal_compose_description_placeholder
+import foodrats.feature.meal.generated.resources.meal_compose_dish_counter
 import foodrats.feature.meal.generated.resources.meal_compose_dish_label
 import foodrats.feature.meal.generated.resources.meal_compose_eyebrow
 import foodrats.feature.meal.generated.resources.meal_compose_locating
+import foodrats.feature.meal.generated.resources.meal_compose_photo_description
 import foodrats.feature.meal.generated.resources.meal_compose_slot_label
 import foodrats.feature.meal.generated.resources.meal_compose_slot_optional
 import foodrats.feature.meal.generated.resources.meal_description_moderation_warning
@@ -67,6 +70,9 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ComposeDescriptionLabel(Res.string.meal_compose_description_label),
     ComposeDescriptionPlaceholder(Res.string.meal_compose_description_placeholder),
     ComposeDescriptionCounter(Res.string.meal_compose_description_counter),
+    ComposeDishCounter(Res.string.meal_compose_dish_counter),
+    ComposeCounterA11y(Res.string.meal_compose_counter_a11y),
+    ComposePhotoDescription(Res.string.meal_compose_photo_description),
     ComposeAddLocation(Res.string.meal_compose_add_location),
     ComposeAllSlotsTaken(Res.string.meal_compose_all_slots_taken),
     ComposeAudienceLabel(Res.string.meal_compose_audience_label),

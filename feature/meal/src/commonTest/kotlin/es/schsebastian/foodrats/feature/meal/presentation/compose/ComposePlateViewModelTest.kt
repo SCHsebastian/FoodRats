@@ -12,6 +12,8 @@ import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.ClassifierError
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishLabel
+import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
@@ -153,6 +155,51 @@ class ComposePlateViewModelTest {
             assertFalse(st.classifying)
             assertEquals(ClassifierError.Run.InferenceFailed, st.classifierError)
             assertTrue(st.canContinue, "classification is advisory — must not block publishing")
+        }
+    }
+
+    @Test fun dish_too_long_blocks_continue_and_shows_too_long_message() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onIntent(ComposePlateIntent.DishChanged("x".repeat(DishName.MAX_LEN + 1)))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertTrue(st.dishTooLong)
+            // The RIGHT message: "Keep the dish name short." (TooLong), not the blank "Tell us what you ate."
+            assertEquals(MealError.Validation.TooLong, st.error)
+            assertFalse(st.canContinue, "an over-length dish must block Continue")
+        }
+    }
+
+    @Test fun valid_dish_clears_too_long_message() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onIntent(ComposePlateIntent.DishChanged("x".repeat(DishName.MAX_LEN + 1)))
+        vm.onIntent(ComposePlateIntent.DishChanged("Pizza"))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertFalse(st.dishTooLong)
+            assertEquals(null, st.error)
+            assertTrue(st.canContinue, "a valid dish + photo + crew should allow Continue")
+        }
+    }
+
+    @Test fun over_length_dish_on_confirm_maps_to_too_long_not_blank() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onIntent(ComposePlateIntent.DishChanged("x".repeat(DishName.MAX_LEN + 1)))
+        vm.onIntent(ComposePlateIntent.RequestConfirm)
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            // The submit path (persistDraft → DishName.of) must distinguish too-long from blank.
+            assertEquals(MealError.Validation.TooLong, st.error)
+            assertFalse(st.showConfirm, "a too-long dish must not open the publish confirm dialog")
         }
     }
 

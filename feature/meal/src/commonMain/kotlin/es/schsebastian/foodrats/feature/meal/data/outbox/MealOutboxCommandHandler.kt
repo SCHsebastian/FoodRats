@@ -16,7 +16,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 
 /**
  * Replays the meal-bounded-context outbox commands (offline-first P2 §1 T6) —
- * [PendingCommand.RateMeal], [PendingCommand.PostComment],
+ * [PendingCommand.RateMeal], [PendingCommand.PostComment], [PendingCommand.EditComment],
  * [PendingCommand.DeleteComment], [PendingCommand.ToggleReaction] — against the
  * `:core:domain` write ports ([MealRatingPort], [MealCommentPort],
  * [MealReactionPort]).
@@ -45,6 +45,7 @@ class MealOutboxCommandHandler(
     override fun handles(cmd: PendingCommand): Boolean = when (cmd) {
         is PendingCommand.RateMeal,
         is PendingCommand.PostComment,
+        is PendingCommand.EditComment,
         is PendingCommand.DeleteComment,
         is PendingCommand.ToggleReaction -> true
         is PendingCommand.RenameCrew,
@@ -61,6 +62,7 @@ class MealOutboxCommandHandler(
     override suspend fun execute(cmd: PendingCommand): OutboxExecuteResult = when (cmd) {
         is PendingCommand.RateMeal -> rate(cmd)
         is PendingCommand.PostComment -> post(cmd)
+        is PendingCommand.EditComment -> edit(cmd)
         is PendingCommand.DeleteComment -> delete(cmd)
         is PendingCommand.ToggleReaction -> toggleReaction(cmd)
         // Not ours — [handles] returns false for these, so the runner never routes
@@ -120,6 +122,22 @@ class MealOutboxCommandHandler(
                 // Hard-blocked before enqueue by the on-device text filter (UGC §3), so this never
                 // reaches the outbox; permanent (re-screening can't change the verdict) if it ever did.
                 CommentError.Write.Objectionable -> OutboxExecuteResult.Terminal("meal.error.commentObjectionable")
+            }
+        }
+
+    private suspend fun edit(cmd: PendingCommand.EditComment): OutboxExecuteResult =
+        when (val r = comments.edit(cmd.crewId, cmd.mealId, cmd.commentId, cmd.text)) {
+            is Result.Ok -> OutboxExecuteResult.Success
+            is Result.Err -> when (r.error) {
+                // Transient — back off and retry.
+                CommentError.Edit.Unavailable -> OutboxExecuteResult.Retryable("meal.error.commentEditUnavailable")
+                // Permanent — retrying cannot fix it (the comment is gone, the caller isn't the
+                // author, or the text is invalid / was screened before enqueue).
+                CommentError.Edit.NotFound      -> OutboxExecuteResult.Terminal("meal.error.commentEditNotFound")
+                CommentError.Edit.NotAuthor     -> OutboxExecuteResult.Terminal("meal.error.commentEditNotAuthor")
+                CommentError.Edit.Blank         -> OutboxExecuteResult.Terminal("meal.error.commentBlank")
+                CommentError.Edit.TooLong       -> OutboxExecuteResult.Terminal("meal.error.commentTooLong")
+                CommentError.Edit.Objectionable -> OutboxExecuteResult.Terminal("meal.error.commentObjectionable")
             }
         }
 

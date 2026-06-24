@@ -25,10 +25,14 @@ import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
+import es.schsebastian.foodrats.feature.crew.domain.usecase.ApproveJoinRequestUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.DeclineJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.ObservePendingJoinRequestsUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.TransferCrewOwnershipUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase
@@ -428,6 +432,10 @@ class CrewSettingsViewModelTest {
             setCrewScoreStyle = SetCrewScoreStyleUseCase(repo, session, connectivity, outbox),
             leaveCrew = LeaveCrewUseCase(repo, connectivity, outbox),
             removeMember = RemoveMemberUseCase(repo, session, connectivity, outbox),
+            observeJoinRequests = ObservePendingJoinRequestsUseCase(repo),
+            approveJoinRequest = ApproveJoinRequestUseCase(repo, session),
+            declineJoinRequest = DeclineJoinRequestUseCase(repo, session),
+            transferOwnership = TransferCrewOwnershipUseCase(repo, session),
             setCrewBanner = SetCrewBannerUseCase(repo, session),
             removeCrewBanner = RemoveCrewBannerUseCase(repo, session),
             setCrewBannerFocal = SetCrewBannerFocalUseCase(repo, session, connectivity, outbox),

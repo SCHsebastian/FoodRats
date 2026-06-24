@@ -21,6 +21,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,11 +77,21 @@ fun CrewPickerScreen(
     vm: CrewPickerViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    // Transient "request sent — waiting for the owner's approval" confirmation. Driven by the
+    // JoinRequested effect (the user isn't a member yet, so there's no navigation), auto-hidden.
+    var requestSent by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
             when (eff) {
                 is CrewPickerEffect.CrewSelected -> onCrewSelected(eff.crewId.value)
+                CrewPickerEffect.JoinRequested -> requestSent = true
             }
+        }
+    }
+    LaunchedEffect(requestSent) {
+        if (requestSent) {
+            delay(4000)
+            requestSent = false
         }
     }
 
@@ -208,8 +222,28 @@ fun CrewPickerScreen(
                 state.error?.let { err ->
                     DangerBanner(text = resolve(err.toStringKey()))
                 }
+
+                if (requestSent) {
+                    ConfirmBanner(text = resolve(CrewStringKey.PickerJoinRequested))
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ConfirmBanner(text: String) {
+    val semantic = LocalFrSemanticColors.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.md))
+            .background(semantic.success)
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        FrText(text = text, style = StructuralType.body, color = semantic.onSuccess)
     }
 }
 

@@ -26,6 +26,8 @@ class CrewErrorToStringKeyTest {
     @Test fun maps_remove_member_not_owner() = assertEquals(CrewStringKey.ErrorRemoveMemberNotOwner, CrewError.RemoveMember.NotOwner.toStringKey())
     @Test fun maps_remove_member_cannot_remove_self() = assertEquals(CrewStringKey.ErrorRemoveMemberCannotRemoveSelf, CrewError.RemoveMember.CannotRemoveSelf.toStringKey())
     @Test fun maps_remove_member_member_not_found() = assertEquals(CrewStringKey.ErrorRemoveMemberMemberNotFound, CrewError.RemoveMember.MemberNotFound.toStringKey())
+    @Test fun maps_transfer_not_owner() = assertEquals(CrewStringKey.ErrorTransferNotOwner, CrewError.Transfer.NotOwner.toStringKey())
+    @Test fun maps_transfer_target_not_member() = assertEquals(CrewStringKey.ErrorTransferTargetNotMember, CrewError.Transfer.TargetNotMember.toStringKey())
     @Test fun maps_validation_tagline_too_long() = assertEquals(CrewStringKey.ErrorValidationTaglineTooLong, CrewError.Validation.TaglineTooLong.toStringKey())
     @Test fun maps_validation_welcome_message_too_long() = assertEquals(CrewStringKey.ErrorValidationWelcomeMessageTooLong, CrewError.Validation.WelcomeMessageTooLong.toStringKey())
     @Test fun maps_validation_weekly_challenge_too_long() = assertEquals(CrewStringKey.ErrorValidationWeeklyChallengeTooLong, CrewError.Validation.WeeklyChallengeTooLong.toStringKey())

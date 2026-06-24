@@ -27,6 +27,8 @@ fun CrewError.toStringKey(): CrewStringKey = when (this) {
     CrewError.RemoveMember.NotOwner         -> CrewStringKey.ErrorRemoveMemberNotOwner
     CrewError.RemoveMember.CannotRemoveSelf -> CrewStringKey.ErrorRemoveMemberCannotRemoveSelf
     CrewError.RemoveMember.MemberNotFound   -> CrewStringKey.ErrorRemoveMemberMemberNotFound
+    CrewError.Transfer.NotOwner             -> CrewStringKey.ErrorTransferNotOwner
+    CrewError.Transfer.TargetNotMember      -> CrewStringKey.ErrorTransferTargetNotMember
     CrewError.Banner.UploadFailed           -> CrewStringKey.ErrorBannerUploadFailed
     CrewError.Banner.DeleteFailed           -> CrewStringKey.ErrorBannerDeleteFailed
 }

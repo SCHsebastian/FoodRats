@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
+import es.schsebastian.foodrats.feature.crew.domain.model.JoinRequest
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
 import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
@@ -92,6 +93,18 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             bannerFocalY = bannerFocalY?.toFloat()?.coerceIn(0f, 1f) ?: 0.5f,
         ),
     )
+}
+
+/**
+ * Maps a [JoinRequestDto] to a [JoinRequest]. Returns `null` for an incomplete/malformed doc
+ * (missing or unparseable accountId, or missing timestamp) so the owner's pending list silently
+ * skips junk rather than failing the whole stream.
+ */
+fun JoinRequestDto.toDomain(): JoinRequest? {
+    val rawId = accountId ?: return null
+    val accountId = (AccountId.of(rawId) as? Result.Ok)?.value ?: return null
+    val requestedAtMs = requestedAtEpochMs ?: return null
+    return JoinRequest(accountId = accountId, requestedAt = Instant.fromEpochMilliseconds(requestedAtMs))
 }
 
 /** Maps a [CrewScoreStyle] to the Firestore string stored in [CrewDto.scoreStyle]. */

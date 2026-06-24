@@ -14,7 +14,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,7 +32,6 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
 import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
-import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
@@ -46,26 +44,18 @@ import org.koin.core.parameter.parametersOf
 
 /**
  * Accept-an-invite preview (roadmap §3.2). Reached from a `…/invite/{code}` deep link / QR scan via
- * [Route.InvitePreview]. Resolves and previews the crew (name + member count) and joins on accept
- * through the existing join-by-code path; [onJoined] lands the user on the crew's Main feed.
+ * [Route.InvitePreview]. Resolves and previews the crew (name + member count). Accepting FILES A
+ * JOIN REQUEST — there is no instant join — so on success the screen shows a "waiting for the owner's
+ * approval" confirmation rather than navigating into a crew the user isn't a member of yet.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AcceptInviteScreen(
     code: String,
-    onJoined: (CrewId) -> Unit,
     onBack: () -> Unit,
     vm: AcceptInviteViewModel = koinViewModel(parameters = { parametersOf(code) }),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-
-    LaunchedEffect(Unit) {
-        vm.effects.collect { eff ->
-            when (eff) {
-                is AcceptInviteEffect.Joined -> onJoined(eff.crewId)
-            }
-        }
-    }
 
     FrScreenScaffold(
         topBar = {
@@ -92,6 +82,37 @@ fun AcceptInviteScreen(
                 contentAlignment = Alignment.Center,
             ) {
                 error?.let { FrErrorBanner(text = resolve(it.toStringKey())) }
+            }
+
+            state.requestSent -> Column(
+                modifier = Modifier.fillMaxHeight()
+                    .frContentWidth(Breakpoints.formMax)
+                    .padding(Spacing.lg),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.lg, Alignment.CenterVertically),
+            ) {
+                FrCard(modifier = Modifier.fillMaxWidth().frRevealScale()) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+                    ) {
+                        FrText(
+                            text = resolve(CrewStringKey.InviteRequestSentTitle),
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                        FrText(
+                            text = resolve(CrewStringKey.InviteRequestSentBody, crew.name),
+                            style = MaterialTheme.typography.bodyMedium.copy(textAlign = TextAlign.Center),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                FrButton(
+                    label = resolve(CrewStringKey.InviteDoneCta),
+                    onClick = onBack,
+                    modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 90),
+                )
             }
 
             else -> Column(
@@ -124,7 +145,7 @@ fun AcceptInviteScreen(
                     }
                 }
                 error?.let { FrErrorBanner(text = resolve(it.toStringKey())) }
-                // Join/Decline rise in just behind the card so the accept choice arrives last.
+                // Request-to-join / Decline rise in just behind the card so the choice arrives last.
                 FrButton(
                     label = resolve(CrewStringKey.InviteJoinCta),
                     onClick = { vm.onIntent(AcceptInviteIntent.Join) },

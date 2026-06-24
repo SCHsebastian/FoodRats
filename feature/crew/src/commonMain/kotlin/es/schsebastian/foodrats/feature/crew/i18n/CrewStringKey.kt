@@ -108,6 +108,26 @@ import foodrats.feature.crew.generated.resources.crew_badge_first
 import foodrats.feature.crew.generated.resources.crew_badge_ten
 import foodrats.feature.crew.generated.resources.crew_badge_fifty
 import foodrats.feature.crew.generated.resources.crew_badge_hundred
+import foodrats.feature.crew.generated.resources.crew_picker_join_requested
+import foodrats.feature.crew.generated.resources.crew_invite_request_sent_title
+import foodrats.feature.crew.generated.resources.crew_invite_request_sent_body
+import foodrats.feature.crew.generated.resources.crew_invite_done_cta
+import foodrats.feature.crew.generated.resources.crew_settings_requests_section
+import foodrats.feature.crew.generated.resources.crew_settings_requests_count
+import foodrats.feature.crew.generated.resources.crew_settings_approve_cta
+import foodrats.feature.crew.generated.resources.crew_settings_decline_cta
+import foodrats.feature.crew.generated.resources.crew_settings_member_approved
+import foodrats.feature.crew.generated.resources.crew_settings_request_declined
+import foodrats.feature.crew.generated.resources.crew_settings_make_owner_cta
+import foodrats.feature.crew.generated.resources.crew_settings_transfer_confirm_title
+import foodrats.feature.crew.generated.resources.crew_settings_transfer_confirm_body
+import foodrats.feature.crew.generated.resources.crew_settings_transfer_confirm
+import foodrats.feature.crew.generated.resources.crew_settings_ownership_transferred
+import foodrats.feature.crew.generated.resources.crew_settings_leave_owner_title
+import foodrats.feature.crew.generated.resources.crew_settings_leave_owner_body
+import foodrats.feature.crew.generated.resources.crew_settings_leave_owner_auto
+import foodrats.feature.crew.generated.resources.crew_error_transfer_not_owner
+import foodrats.feature.crew.generated.resources.crew_error_transfer_target_not_member
 import org.jetbrains.compose.resources.StringResource
 
 enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
@@ -220,4 +240,25 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     BadgeTen(Res.string.crew_badge_ten),
     BadgeFifty(Res.string.crew_badge_fifty),
     BadgeHundred(Res.string.crew_badge_hundred),
+    // Owner features — join requests, transfer ownership, owner-leave handoff.
+    PickerJoinRequested(Res.string.crew_picker_join_requested),
+    InviteRequestSentTitle(Res.string.crew_invite_request_sent_title),
+    InviteRequestSentBody(Res.string.crew_invite_request_sent_body),
+    InviteDoneCta(Res.string.crew_invite_done_cta),
+    SettingsRequestsSection(Res.string.crew_settings_requests_section),
+    SettingsRequestsCount(Res.string.crew_settings_requests_count),
+    SettingsApproveCta(Res.string.crew_settings_approve_cta),
+    SettingsDeclineCta(Res.string.crew_settings_decline_cta),
+    SettingsMemberApproved(Res.string.crew_settings_member_approved),
+    SettingsRequestDeclined(Res.string.crew_settings_request_declined),
+    SettingsMakeOwnerCta(Res.string.crew_settings_make_owner_cta),
+    SettingsTransferConfirmTitle(Res.string.crew_settings_transfer_confirm_title),
+    SettingsTransferConfirmBody(Res.string.crew_settings_transfer_confirm_body),
+    SettingsTransferConfirm(Res.string.crew_settings_transfer_confirm),
+    SettingsOwnershipTransferred(Res.string.crew_settings_ownership_transferred),
+    SettingsLeaveOwnerTitle(Res.string.crew_settings_leave_owner_title),
+    SettingsLeaveOwnerBody(Res.string.crew_settings_leave_owner_body),
+    SettingsLeaveOwnerAuto(Res.string.crew_settings_leave_owner_auto),
+    ErrorTransferNotOwner(Res.string.crew_error_transfer_not_owner),
+    ErrorTransferTargetNotMember(Res.string.crew_error_transfer_target_not_member),
 }

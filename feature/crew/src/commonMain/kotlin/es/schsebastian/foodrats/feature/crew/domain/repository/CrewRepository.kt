@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.JoinRequest
 import kotlinx.coroutines.flow.Flow
 
 interface CrewRepository {
@@ -14,8 +15,33 @@ interface CrewRepository {
     /** Creates a new Crew with the calling user as the sole founding member. */
     suspend fun create(name: String, founder: AccountId): Result<Crew, CrewError>
 
-    /** Joins an existing Crew by invite code. Transactional under contention. */
-    suspend fun joinByCode(code: CrewCode, joiner: AccountId): Result<Crew, CrewError>
+    /**
+     * Files a request to join the crew behind invite [code] (no instant join — owner approval is
+     * required). Resolves the code to a crew, then writes `crews/{crewId}/joinRequests/{requester}`.
+     * Returns [CrewError.Invite.CodeUnknown] for an unknown code, [CrewError.Membership.NotFound] if
+     * the crew is gone, [CrewError.Membership.AlreadyMember] if the requester is already in the crew.
+     */
+    suspend fun requestToJoinByCode(code: CrewCode, requester: AccountId): Result<Unit, CrewError>
+
+    /** Streams the pending join requests for [crewId] (owner-only by Firestore rule). */
+    fun observeJoinRequests(crewId: CrewId): Flow<Result<List<JoinRequest>, CrewError>>
+
+    /**
+     * Approves a pending join request: atomically adds [requester] to the crew and deletes their
+     * request doc. Only the owner ([requestedBy]) may approve; the cap is re-checked server-side.
+     * Idempotent — approving a requester who is already a member just clears the stale request.
+     */
+    suspend fun approveJoinRequest(crewId: CrewId, requestedBy: AccountId, requester: AccountId): Result<Unit, CrewError>
+
+    /** Declines (deletes) a pending join request. Only the owner ([requestedBy]) may decline. */
+    suspend fun declineJoinRequest(crewId: CrewId, requestedBy: AccountId, requester: AccountId): Result<Unit, CrewError>
+
+    /**
+     * Transfers crew ownership to [newOwner], who must be a current member. Only the owner
+     * ([requestedBy]) may transfer. Returns [CrewError.Transfer.NotOwner] /
+     * [CrewError.Transfer.TargetNotMember] on a violation; enforced server-side by the Firestore rule.
+     */
+    suspend fun transferOwnership(crewId: CrewId, requestedBy: AccountId, newOwner: AccountId): Result<Unit, CrewError>
 
     /**
      * Resolves a Crew by its invite [code] WITHOUT joining — for the accept-invite preview (the
@@ -24,8 +50,12 @@ interface CrewRepository {
      */
     suspend fun findByCode(code: CrewCode): Result<Crew, CrewError>
 
-    /** Leaves a Crew. Hard-deletes the Crew + invite code if `leaver` was the last member. */
-    suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError>
+    /**
+     * Leaves a Crew. Hard-deletes the Crew + invite code if `leaver` was the last member. If `leaver`
+     * is the OWNER and other members remain, ownership is reassigned in the same atomic write: to
+     * [successor] when given (and still a member), otherwise to the longest-tenured remaining member.
+     */
+    suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId? = null): Result<Unit, CrewError>
 
     /** Streams the crews this account is a member of. */
     fun observeMyCrews(accountId: AccountId): Flow<Result<List<Crew>, CrewError>>

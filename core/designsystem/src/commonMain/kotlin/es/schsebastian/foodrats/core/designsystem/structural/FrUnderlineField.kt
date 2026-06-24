@@ -34,6 +34,10 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -84,6 +88,11 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Motion
  * @param onMedia set when the field writes directly over a real photo / `dish*` media floor (e.g. the
  *   composer or the delete-gate), which stays dark-scrimmed in BOTH themes — forces white content so
  *   the input/label/placeholder stay legible in light mode instead of flipping to dark ink.
+ * @param accessibilityLabel the field's accessible name read by TalkBack/VoiceOver (WCAG 4.1.2 / 3.3.2).
+ *   Defaults to [label]; pass a natural-case string when [label] is a visual all-caps eyebrow so screen
+ *   readers don't spell it out. The visible label is hidden from the a11y tree to avoid a double read.
+ * @param errorMessage when [isError] is set, the message announced as the field's error state (WCAG
+ *   3.3.1). Drives only semantics — the visible error cue is still the caller's banner/underline color.
  */
 @Composable
 fun FrUnderlineField(
@@ -97,6 +106,8 @@ fun FrUnderlineField(
     isError: Boolean = false,
     onMedia: Boolean = false,
     obfuscate: Boolean = false,
+    accessibilityLabel: String? = label,
+    errorMessage: String? = null,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     trailingIcon: (@Composable () -> Unit)? = null,
 ) {
@@ -164,6 +175,9 @@ fun FrUnderlineField(
                     fontSize = 10.sp,
                     letterSpacing = 0.18.em,
                 ),
+                // The label is mirrored into the field's accessible name below; hide the visual node from
+                // the a11y tree so TalkBack doesn't read the label twice (WCAG 4.1.2).
+                modifier = Modifier.clearAndSetSemantics {},
             )
         }
 
@@ -208,10 +222,19 @@ fun FrUnderlineField(
             }
         }
 
+        // Name the field for screen readers (WCAG 4.1.2 / 3.3.2) and surface its error state (3.3.1).
+        // Without this the structural field reads as an unnamed "Edit box".
+        val fieldModifier = Modifier
+            .fillMaxWidth()
+            .semantics {
+                if (accessibilityLabel != null) contentDescription = accessibilityLabel
+                if (isError && errorMessage != null) error(errorMessage)
+            }
+
         if (obfuscate) {
             BasicSecureTextField(
                 state = state,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = fieldModifier,
                 enabled = enabled,
                 textStyle = textStyle,
                 keyboardOptions = keyboardOptions,
@@ -223,7 +246,7 @@ fun FrUnderlineField(
         } else {
             BasicTextField(
                 state = state,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = fieldModifier,
                 enabled = enabled,
                 textStyle = textStyle,
                 lineLimits = if (singleLine) TextFieldLineLimits.SingleLine else TextFieldLineLimits.MultiLine(),

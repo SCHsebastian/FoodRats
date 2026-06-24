@@ -7,6 +7,8 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
+import es.schsebastian.foodrats.feature.crew.domain.model.JoinRequest
+import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
 import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
@@ -20,11 +22,25 @@ class FakeCrewRepository(
     initial: List<Crew> = emptyList(),
 ) : CrewRepository {
     val crews = MutableStateFlow(initial)
+    /** Pending join requests per crew, observed by [observeJoinRequests]. */
+    val joinRequests = MutableStateFlow<Map<CrewId, List<JoinRequest>>>(emptyMap())
     var nextCreate: Result<Crew, CrewError>? = null
-    var nextJoin: Result<Crew, CrewError>? = null
+    /** When set, overrides the default requestToJoinByCode behavior (success no-op). */
+    var nextRequestToJoin: Result<Unit, CrewError>? = null
+    /** When set, overrides the default approveJoinRequest behavior (owner check + add member). */
+    var nextApprove: Result<Unit, CrewError>? = null
+    /** When set, overrides the default declineJoinRequest behavior (owner check + drop request). */
+    var nextDecline: Result<Unit, CrewError>? = null
+    /** When set, overrides the default transferOwnership behavior (owner/member checks + mutation). */
+    var nextTransfer: Result<Unit, CrewError>? = null
     /** When set, overrides the default findByCode behavior (lookup by code in [crews]). */
     var nextFindByCode: Result<Crew, CrewError>? = null
     var nextLeave: Result<Unit, CrewError>? = null
+    var lastRequestToJoin: Pair<CrewCode, AccountId>? = null
+    var lastApprove: Pair<CrewId, AccountId>? = null
+    var lastDecline: Pair<CrewId, AccountId>? = null
+    var lastTransfer: Pair<CrewId, AccountId>? = null
+    var lastLeave: Triple<CrewId, AccountId, AccountId?>? = null
     /** When set, overrides the default rename behavior (ownership check + mutation). */
     var nextRename: Result<Unit, CrewError>? = null
     /** When set, overrides the default delete behavior (ownership check + mutation). */
@@ -68,13 +84,63 @@ class FakeCrewRepository(
         return r
     }
 
-    override suspend fun joinByCode(
+    override suspend fun requestToJoinByCode(
         code: CrewCode,
-        joiner: AccountId,
-    ): Result<Crew, CrewError> {
-        val r = nextJoin ?: error("nextJoin not stubbed")
-        if (r is Result.Ok) crews.value = crews.value + r.value
-        return r
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        lastRequestToJoin = code to requester
+        return nextRequestToJoin ?: Result.success(Unit)
+    }
+
+    override fun observeJoinRequests(crewId: CrewId): Flow<Result<List<JoinRequest>, CrewError>> =
+        joinRequests.map { Result.success(it[crewId].orEmpty()) }
+
+    override suspend fun approveJoinRequest(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        lastApprove = crewId to requester
+        nextApprove?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        crews.value = crews.value.map {
+            if (it.id == crewId && it.members.none { m -> m.accountId == requester })
+                it.copy(members = it.members + Member(requester, Instant.fromEpochMilliseconds(0L)))
+            else it
+        }
+        joinRequests.value = joinRequests.value + (crewId to joinRequests.value[crewId].orEmpty().filterNot { it.accountId == requester })
+        return Result.success(Unit)
+    }
+
+    override suspend fun declineJoinRequest(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        lastDecline = crewId to requester
+        nextDecline?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        joinRequests.value = joinRequests.value + (crewId to joinRequests.value[crewId].orEmpty().filterNot { it.accountId == requester })
+        return Result.success(Unit)
+    }
+
+    override suspend fun transferOwnership(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        newOwner: AccountId,
+    ): Result<Unit, CrewError> {
+        lastTransfer = crewId to newOwner
+        nextTransfer?.let { return it }
+        val crew = crews.value.firstOrNull { it.id == crewId }
+            ?: return Result.failure(CrewError.Membership.NotFound)
+        if (requestedBy != crew.ownerId) return Result.failure(CrewError.Transfer.NotOwner)
+        if (crew.members.none { it.accountId == newOwner }) return Result.failure(CrewError.Transfer.TargetNotMember)
+        crews.value = crews.value.map { if (it.id == crewId) it.copy(ownerId = newOwner) else it }
+        return Result.success(Unit)
     }
 
     override suspend fun findByCode(code: CrewCode): Result<Crew, CrewError> {
@@ -83,7 +149,8 @@ class FakeCrewRepository(
             ?: Result.failure(CrewError.Invite.CodeUnknown)
     }
 
-    override suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> {
+    override suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId?): Result<Unit, CrewError> {
+        lastLeave = Triple(crewId, leaver, successor)
         val r = nextLeave ?: error("nextLeave not stubbed")
         if (r is Result.Ok) crews.value = crews.value.filterNot { it.id == crewId }
         return r

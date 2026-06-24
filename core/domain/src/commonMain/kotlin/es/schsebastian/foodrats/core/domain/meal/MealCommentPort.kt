@@ -24,10 +24,23 @@ sealed interface CommentError {
         data object NotFound         : Delete
         data object Unavailable      : Delete
     }
+    /** Editing the text of an already-posted comment. Author-only (unlike [Delete], the owner cannot edit). */
+    sealed interface Edit : CommentError {
+        /** The caller is not the comment's author (only the author may edit). */
+        data object NotAuthor    : Edit
+        data object NotFound     : Edit
+        data object Blank        : Edit
+        data object TooLong      : Edit
+
+        /** Blocked by the on-device text filter before reaching Firestore or the outbox (UGC §3). */
+        data object Objectionable : Edit
+        data object Unavailable   : Edit
+    }
 }
 
 interface MealCommentPort {
     fun observe(crewId: CrewId, mealId: MealId): Flow<Result<List<MealComment>, CommentError.Read>>
     suspend fun post(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Write>
+    suspend fun edit(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Edit>
     suspend fun delete(crewId: CrewId, mealId: MealId, commentId: MealCommentId): Result<Unit, CommentError.Delete>
 }

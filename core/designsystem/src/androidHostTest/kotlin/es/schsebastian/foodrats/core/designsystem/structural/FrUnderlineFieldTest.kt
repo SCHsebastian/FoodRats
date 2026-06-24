@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,23 @@ class FrUnderlineFieldTest {
             composeTestRule.waitForIdle()
         }
         assertEquals("hola", current)
+    }
+
+    /**
+     * WCAG 4.1.2 / 3.3.2 — the field must carry an accessible name so TalkBack reads "Dish, edit box"
+     * rather than an unnamed "Edit box". The visual all-caps label is hidden from the a11y tree
+     * (`clearAndSetSemantics`) so it isn't read a second time / spelled out.
+     */
+    @Test
+    fun accessibilityLabel_namesTheField_andHidesVisualLabelFromA11y() {
+        composeTestRule.setContent {
+            FoodRatsTheme(darkTheme = true) {
+                FrUnderlineField(value = "", onValueChange = {}, label = "DISH", accessibilityLabel = "Dish")
+            }
+        }
+        composeTestRule.onNodeWithContentDescription("Dish").assertExists()
+        // The visual "DISH" eyebrow is cleared from semantics — no duplicate a11y text node.
+        composeTestRule.onNodeWithText("DISH").assertDoesNotExist()
     }
 
     @Test

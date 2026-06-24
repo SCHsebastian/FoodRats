@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -115,6 +116,8 @@ fun FrGlassTile(
 
     Column(
         modifier = modifier
+            // A tappable tile must clear a 48dp touch target (WCAG 2.5.5) regardless of content height.
+            .then(if (onClick != null) Modifier.minimumInteractiveComponentSize() else Modifier)
             .then(if (onClick != null) Modifier.graphicsLayer { scaleX = scale; scaleY = scale } else Modifier)
             .shadow(elevation, shape, clip = false)
             .clip(shape)

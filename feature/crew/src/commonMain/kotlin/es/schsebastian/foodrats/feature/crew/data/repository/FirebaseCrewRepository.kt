@@ -21,6 +21,7 @@ import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.JoinRequest
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -60,27 +61,75 @@ internal class FirebaseCrewRepository(
         )
     }
 
-    override suspend fun joinByCode(
+    override suspend fun requestToJoinByCode(
         code: CrewCode,
-        joiner: AccountId,
-    ): Result<Crew, CrewError> = withContext(dispatchers.io) {
-        runCatching {
-            dataSource.joinByCode(code, joiner, clock.now().toEpochMilliseconds())
-                .toDomain()
-        }.fold(
-            onSuccess = { it },
+        requester: AccountId,
+    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
+        runCatching { dataSource.requestToJoin(code, requester, clock.now().toEpochMilliseconds()) }.fold(
+            onSuccess = { Result.success(Unit) },
             onFailure = { t ->
                 Result.failure(
                     when (t) {
                         CodeUnknownException   -> CrewError.Invite.CodeUnknown
                         NotFoundException      -> CrewError.Membership.NotFound
-                        FullException          -> CrewError.Membership.Full
                         AlreadyMemberException -> CrewError.Membership.AlreadyMember
                         else                   -> errorMapper.map(t)
                     },
                 )
             },
         )
+    }
+
+    override fun observeJoinRequests(crewId: CrewId): Flow<Result<List<JoinRequest>, CrewError>> =
+        dataSource.observeJoinRequests(crewId)
+            .map<List<es.schsebastian.foodrats.feature.crew.data.firebase.JoinRequestDto>, Result<List<JoinRequest>, CrewError>> { dtos ->
+                Result.success(dtos.mapNotNull { it.toDomain() })
+            }
+            .catch { t -> emit(Result.failure(errorMapper.map(t))) }
+            .flowOn(dispatchers.io)
+
+    override suspend fun approveJoinRequest(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return runCatching {
+            dataSource.approveJoinRequest(crewId, requester, clock.now().toEpochMilliseconds())
+        }.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { t ->
+                Result.failure(
+                    when (t) {
+                        NotFoundException -> CrewError.Membership.NotFound
+                        FullException     -> CrewError.Membership.Full
+                        else              -> errorMapper.map(t)
+                    },
+                )
+            },
+        )
+    }
+
+    override suspend fun declineJoinRequest(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.declineJoinRequest(crewId, requester)
+    }
+
+    override suspend fun transferOwnership(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        newOwner: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Transfer.NotOwner)
+        if (crew.members.none { it.accountId == newOwner }) return Result.failure(CrewError.Transfer.TargetNotMember)
+        return dataSource.transferOwnership(crewId, newOwner)
     }
 
     override suspend fun findByCode(code: CrewCode): Result<Crew, CrewError> =
@@ -99,9 +148,9 @@ internal class FirebaseCrewRepository(
             )
         }
 
-    override suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> =
+    override suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId?): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
-            runCatching { dataSource.leave(crewId, leaver) }.fold(
+            runCatching { dataSource.leave(crewId, leaver, successor) }.fold(
                 onSuccess = { Result.success(Unit) },
                 onFailure = { t ->
                     Result.failure(

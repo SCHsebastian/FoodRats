@@ -35,6 +35,13 @@ data class MealDetailState(
     val commentInput: String = "",
     val isPostingComment: Boolean = false,
     val commentWriteError: CommentError.Write? = null,
+    /** Id of the comment currently being edited inline; `null` when no row is in edit mode. */
+    val editingCommentId: MealCommentId? = null,
+    /** In-progress edited text for [editingCommentId]. */
+    val commentEditInput: String = "",
+    /** True while an edit save is in flight. */
+    val isEditingComment: Boolean = false,
+    val commentEditError: CommentError.Edit? = null,
     val canDeleteMeal: Boolean = false,
     /** True when the viewer may report/block the meal's author (signed in + not their own meal). */
     val canModerateMeal: Boolean = false,
@@ -94,6 +101,16 @@ sealed interface MealDetailIntent : MviIntent {
     data object DismissError : MealDetailIntent
     data class CommentInputChanged(val value: String) : MealDetailIntent
     data object PostComment : MealDetailIntent
+
+    /** Enter inline edit mode for the viewer's own comment, pre-filling the field with its text. */
+    data class StartEditComment(val id: MealCommentId) : MealDetailIntent
+    /** Update the in-progress edited text. */
+    data class EditCommentInputChanged(val value: String) : MealDetailIntent
+    /** Leave edit mode without saving. */
+    data object CancelEditComment : MealDetailIntent
+    /** Save the edited text for the comment currently in edit mode. */
+    data object SubmitEditComment : MealDetailIntent
+
     data object DeleteMeal : MealDetailIntent
     data class DeleteComment(val id: MealCommentId) : MealDetailIntent
 

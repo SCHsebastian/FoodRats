@@ -19,6 +19,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
@@ -102,6 +103,7 @@ class MealDetailShareTest {
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(),
             storyShareController = share,
             analytics = analytics,

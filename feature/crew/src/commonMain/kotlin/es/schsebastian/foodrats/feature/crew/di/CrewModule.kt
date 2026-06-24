@@ -26,15 +26,19 @@ import es.schsebastian.foodrats.feature.crew.data.outbox.CrewOutboxCommandHandle
 import es.schsebastian.foodrats.feature.crew.data.sync.CrewSyncEngine
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
+import es.schsebastian.foodrats.feature.crew.domain.usecase.ApproveJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
-import es.schsebastian.foodrats.feature.crew.domain.usecase.JoinCrewByCodeUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.DeclineJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveMyCrewsUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.ObservePendingJoinRequestsUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RequestToJoinCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.TransferCrewOwnershipUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase
@@ -210,7 +214,11 @@ val crewModule = module {
     }
 
     factoryOf(::CreateCrewUseCase)
-    factoryOf(::JoinCrewByCodeUseCase)
+    factoryOf(::RequestToJoinCrewUseCase)
+    factoryOf(::ObservePendingJoinRequestsUseCase)
+    factoryOf(::ApproveJoinRequestUseCase)
+    factoryOf(::DeclineJoinRequestUseCase)
+    factoryOf(::TransferCrewOwnershipUseCase)
     factoryOf(::ResolveCrewByCodeUseCase)
     factoryOf(::LeaveCrewUseCase)
     factoryOf(::ObserveMyCrewsUseCase)
@@ -231,7 +239,7 @@ val crewModule = module {
 
     viewModel {
         CrewPickerViewModel(
-            session = get(), observeMyCrews = get(), createCrew = get(), joinCrew = get(),
+            session = get(), observeMyCrews = get(), createCrew = get(), requestToJoin = get(),
             switchActive = get(), analytics = get(),
         )
     }
@@ -240,9 +248,7 @@ val crewModule = module {
             code = code,
             session = get(),
             resolveCrew = get(),
-            joinCrew = get(),
-            switchActive = get(),
-            analytics = get(),
+            requestToJoin = get(),
         )
     }
     viewModel { (crewId: CrewId) ->
@@ -258,6 +264,10 @@ val crewModule = module {
             setCrewScoreStyle = get(),
             leaveCrew = get(),
             removeMember = get(),
+            observeJoinRequests = get(),
+            approveJoinRequest = get(),
+            declineJoinRequest = get(),
+            transferOwnership = get(),
             setCrewBanner = get(),
             removeCrewBanner = get(),
             setCrewBannerFocal = get(),

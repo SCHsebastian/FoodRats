@@ -24,6 +24,7 @@ fun CommentDto.toDomain(crewId: CrewId, mealId: MealId): Result<MealComment, Com
             authorId = accountId,
             text = text,
             createdAt = Instant.fromEpochMilliseconds(createdAtEpochMs ?: 0L),
+            editedAt = editedAtEpochMs?.let { Instant.fromEpochMilliseconds(it) },
         )
     )
 }

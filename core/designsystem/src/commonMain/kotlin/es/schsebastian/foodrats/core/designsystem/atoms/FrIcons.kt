@@ -365,6 +365,27 @@ private val DeleteVector: ImageVector = materialIcon(name = "Filled.Delete") {
     }
 }
 
+// Vendored Edit glyph — material-icons-core has no Filled.Edit. Standard MD "edit" pencil.
+private val EditVector: ImageVector = materialIcon(name = "Filled.Edit") {
+    materialPath {
+        moveTo(3f, 17.25f)
+        verticalLineTo(21f)
+        horizontalLineToRelative(3.75f)
+        lineTo(17.81f, 9.94f)
+        lineToRelative(-3.75f, -3.75f)
+        lineTo(3f, 17.25f)
+        close()
+        moveTo(20.71f, 7.04f)
+        curveToRelative(0.39f, -0.39f, 0.39f, -1.02f, 0f, -1.41f)
+        lineToRelative(-2.34f, -2.34f)
+        curveToRelative(-0.39f, -0.39f, -1.02f, -0.39f, -1.41f, 0f)
+        lineToRelative(-1.83f, 1.83f)
+        lineToRelative(3.75f, 3.75f)
+        lineToRelative(1.83f, -1.83f)
+        close()
+    }
+}
+
 // Vendored ChatBubble glyph — material-icons-core has no Filled.ChatBubble. Standard
 // MD "chat_bubble" filled rounded-rectangle speech bubble with a tail at bottom-left.
 private val CommentVector: ImageVector = materialIcon(name = "Filled.Comment") {
@@ -870,6 +891,7 @@ object FrIcons {
     val Flag: ImageVector          = FlagVector
     val Block: ImageVector         = BlockVector
     val Delete: ImageVector        = DeleteVector
+    val Edit: ImageVector          = EditVector
     // Profile / settings rows.
     val Person: ImageVector        = PersonVector
     val Theme: ImageVector         = DarkModeVector

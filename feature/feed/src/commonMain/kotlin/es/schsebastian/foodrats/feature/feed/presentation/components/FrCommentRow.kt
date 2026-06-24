@@ -29,8 +29,12 @@ fun FrCommentRow(
     modifier: Modifier = Modifier,
     loading: Boolean = false,
     isDeleted: Boolean = false,
+    isEdited: Boolean = false,
     canDelete: Boolean = false,
     onDelete: () -> Unit = {},
+    // Author-only: edit your own comment text.
+    canEdit: Boolean = false,
+    onEdit: () -> Unit = {},
     // UGC compliance §4/§5 — report/block this commenter (hidden on your own comments).
     canModerate: Boolean = false,
     onReport: () -> Unit = {},

@@ -94,7 +94,12 @@ class OutboxLocalStoreTest {
                 text = CommentText.of("hello").getOrNull()!!,
                 authorId = acc,
             ),
-            PendingCommand.DeleteComment(crewId = crew, mealId = meal, commentId = MealCommentId("c-2")),
+            PendingCommand.EditComment(
+                crewId = crew, mealId = meal,
+                commentId = MealCommentId("c-2"),
+                text = CommentText.of("edited").getOrNull()!!,
+            ),
+            PendingCommand.DeleteComment(crewId = crew, mealId = meal, commentId = MealCommentId("c-3")),
             PendingCommand.ToggleReaction(
                 crewId = crew, mealId = meal, reactorId = acc,
                 reactionKindKey = ReactionKind.DailyGlyph.key, desiredPresent = true,

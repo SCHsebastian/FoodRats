@@ -22,11 +22,21 @@ class LeaveCrewUseCase(
     private val connectivity: ConnectivityPort,
     private val outbox: OutboxPort,
 ) {
-    suspend operator fun invoke(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> {
+    /**
+     * [successor] (optional) is the member the owner picked to inherit the crew when an OWNER leaves
+     * with others remaining. It is honored only on the online path — the offline replay can't carry
+     * the choice through the existing [PendingCommand.LeaveCrew] shape, so a queued owner-leave falls
+     * back to the longest-tenured remaining member (the documented auto policy).
+     */
+    suspend operator fun invoke(
+        crewId: CrewId,
+        leaver: AccountId,
+        successor: AccountId? = null,
+    ): Result<Unit, CrewError> {
         if (!connectivity.isOnline().first()) {
             return enqueue(crewId, leaver)
         }
-        return when (val r = repo.leave(crewId, leaver)) {
+        return when (val r = repo.leave(crewId, leaver, successor)) {
             is Result.Ok -> r
             is Result.Err -> when (r.error) {
                 CrewError.Backend.Network, CrewError.Backend.Unavailable ->

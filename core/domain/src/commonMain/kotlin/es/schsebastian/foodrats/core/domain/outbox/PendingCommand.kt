@@ -84,6 +84,23 @@ sealed interface PendingCommand {
             "comment:${commentId.value}"
     }
 
+    /**
+     * Edit an already-posted comment's [text]. Idempotent (the server-side edit overwrites the
+     * `text` field; a replay re-applies the same text). Shares the `comment:{id}` aggregate with
+     * [PostComment]/[DeleteComment] so a post-then-edit on the same comment drains FIFO.
+     */
+    data class EditComment(
+        val crewId: CrewId,
+        val mealId: MealId,
+        val commentId: MealCommentId,
+        val text: CommentText,
+    ) : PendingCommand {
+        override val idempotencyKey: String =
+            "comment.edit:${crewId.value}:${mealId.value}:${commentId.value}"
+        override val aggregateKey: String =
+            "comment:${commentId.value}"
+    }
+
     /** Delete a comment by id. Idempotent (deleting an absent doc is a success). */
     data class DeleteComment(
         val crewId: CrewId,

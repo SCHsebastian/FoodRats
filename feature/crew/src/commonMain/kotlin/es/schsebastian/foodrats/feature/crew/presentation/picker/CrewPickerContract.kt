@@ -33,4 +33,6 @@ sealed interface CrewPickerIntent : MviIntent {
 
 sealed interface CrewPickerEffect : MviEffect {
     data class CrewSelected(val crewId: CrewId) : CrewPickerEffect
+    /** A join request was filed — show a "waiting for owner approval" confirmation; no navigation. */
+    data object JoinRequested : CrewPickerEffect
 }

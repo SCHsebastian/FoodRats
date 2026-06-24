@@ -13,4 +13,10 @@ class CommentErrorToStringKeyTest {
     @Test fun write_too_long()       = assertEquals(FeedStringKey.CommentsErrorTooLong,      CommentError.Write.TooLong.toStringKey())
     @Test fun write_objectionable()  = assertEquals(FeedStringKey.CommentsErrorObjectionable, CommentError.Write.Objectionable.toStringKey())
     @Test fun write_unavailable()    = assertEquals(FeedStringKey.CommentsErrorUnavailable,  CommentError.Write.Unavailable.toStringKey())
+    @Test fun edit_not_author()      = assertEquals(FeedStringKey.CommentsErrorUnauthorized, CommentError.Edit.NotAuthor.toStringKey())
+    @Test fun edit_not_found()       = assertEquals(FeedStringKey.CommentsErrorUnavailable,  CommentError.Edit.NotFound.toStringKey())
+    @Test fun edit_blank()           = assertEquals(FeedStringKey.CommentsErrorBlank,        CommentError.Edit.Blank.toStringKey())
+    @Test fun edit_too_long()        = assertEquals(FeedStringKey.CommentsErrorTooLong,      CommentError.Edit.TooLong.toStringKey())
+    @Test fun edit_objectionable()   = assertEquals(FeedStringKey.CommentsErrorObjectionable, CommentError.Edit.Objectionable.toStringKey())
+    @Test fun edit_unavailable()     = assertEquals(FeedStringKey.CommentsErrorUnavailable,  CommentError.Edit.Unavailable.toStringKey())
 }

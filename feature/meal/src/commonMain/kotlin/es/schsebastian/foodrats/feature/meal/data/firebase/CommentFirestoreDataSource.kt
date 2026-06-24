@@ -30,6 +30,19 @@ internal class CommentFirestoreDataSource(
             .set(dto)
     }
 
+    override suspend fun update(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: String,
+        text: String,
+        editedAtEpochMs: Long,
+    ) {
+        firestore.collection("crews").document(crewId.value)
+            .collection("meals").document(mealId.value)
+            .collection("comments").document(commentId)
+            .update("text" to text, "editedAtEpochMs" to editedAtEpochMs)
+    }
+
     override suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String) {
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId.value)

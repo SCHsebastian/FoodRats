@@ -28,17 +28,38 @@ interface CrewDataSource {
     ): CrewDto
 
     /**
-     * Throws one of [CodeUnknownException] / [NotFoundException] / [FullException] /
-     * [AlreadyMemberException] (+ mapped backend throwables) on failure.
+     * Files a join request at `crews/{crewId}/joinRequests/{requester}` after resolving [code] to a
+     * crew. No instant join — owner approval is required.
+     * Throws [CodeUnknownException] (code doc missing) / [NotFoundException] (crew gone) /
+     * [AlreadyMemberException] (requester already in the crew) (+ mapped backend throwables).
      */
-    suspend fun joinByCode(
-        code: CrewCode,
-        joiner: AccountId,
-        nowMs: Long,
-    ): CrewDto
+    suspend fun requestToJoin(code: CrewCode, requester: AccountId, nowMs: Long)
 
-    /** Throws [NotFoundException] / [NotMemberException] (+ mapped backend throwables) on failure. */
-    suspend fun leave(crewId: CrewId, leaver: AccountId)
+    /** Streams the pending join-request DTOs for [crewId] (owner-only by Firestore rule). */
+    fun observeJoinRequests(crewId: CrewId): Flow<List<JoinRequestDto>>
+
+    /**
+     * Atomically adds [requester] to the crew (with [nowMs] as their join time) and deletes their
+     * request doc. Idempotent: if the requester is already a member, only the request is cleared.
+     * Throws [NotFoundException] (crew gone) / [FullException] (crew at cap) (+ mapped backend throwables).
+     */
+    suspend fun approveJoinRequest(crewId: CrewId, requester: AccountId, nowMs: Long)
+
+    /** Deletes the pending request doc for [requester] (the decline / cancel path). */
+    suspend fun declineJoinRequest(crewId: CrewId, requester: AccountId): Result<Unit, CrewError>
+
+    /**
+     * Reassigns `crews/{crewId}.ownerId` to [newOwner]. Updates only the `ownerId` field — the
+     * transfer-ownership Firestore rule enforces this server-side (new owner must be a member).
+     */
+    suspend fun transferOwnership(crewId: CrewId, newOwner: AccountId): Result<Unit, CrewError>
+
+    /**
+     * Throws [NotFoundException] / [NotMemberException] (+ mapped backend throwables) on failure.
+     * When [leaver] is the owner and other members remain, ownership is reassigned atomically: to
+     * [successor] if given (and a remaining member), otherwise to the longest-tenured remaining member.
+     */
+    suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId? = null)
 
     /**
      * Owner-initiated removal of [target] from the crew. Atomic: drops [target] from both

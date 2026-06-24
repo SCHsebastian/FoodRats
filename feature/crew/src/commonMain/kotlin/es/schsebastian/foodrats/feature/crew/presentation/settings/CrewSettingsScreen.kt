@@ -77,9 +77,11 @@ import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
@@ -129,6 +131,9 @@ fun CrewSettingsScreen(
     val deletedMemberFallback = resolve(CrewStringKey.MemberDeleted)
     // Name to show in the success toast; set by the MemberRemoved effect, cleared once shown.
     var memberRemovedName by remember { mutableStateOf<String?>(null) }
+    var memberApprovedName by remember { mutableStateOf<String?>(null) }
+    var ownershipTransferredName by remember { mutableStateOf<String?>(null) }
+    var requestDeclinedShown by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         vm.effects.collect { eff ->
@@ -138,6 +143,11 @@ fun CrewSettingsScreen(
                 CrewSettingsEffect.Deleted -> onDeleted()
                 is CrewSettingsEffect.MemberRemoved ->
                     memberRemovedName = eff.displayName ?: deletedMemberFallback
+                is CrewSettingsEffect.MemberApproved ->
+                    memberApprovedName = eff.displayName ?: deletedMemberFallback
+                CrewSettingsEffect.RequestDeclined -> requestDeclinedShown = true
+                is CrewSettingsEffect.OwnershipTransferred ->
+                    ownershipTransferredName = eff.displayName ?: deletedMemberFallback
             }
         }
     }
@@ -380,6 +390,60 @@ fun CrewSettingsScreen(
                         }
                     }
 
+                    // (i0) Join requests — owner-only intake list (approve / decline).
+                    if (state.isOwner && state.pendingRequests.isNotEmpty()) {
+                        item {
+                            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.frRiseIn(delayMillis = 130)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    FrEyebrow(text = resolve(CrewStringKey.SettingsRequestsSection).uppercase(), color = planeEyebrow)
+                                    FrText(
+                                        text = resolve(CrewStringKey.SettingsRequestsCount, state.pendingRequests.size).uppercase(),
+                                        style = StructuralType.micro,
+                                        color = planeFg.copy(alpha = 0.6f),
+                                    )
+                                }
+                                FrGlassTile {
+                                    state.pendingRequests.forEachIndexed { index, req ->
+                                        if (index > 0) {
+                                            HorizontalDivider(color = StructuralColors.dividerSoft, modifier = Modifier.padding(vertical = Spacing.xxs))
+                                        }
+                                        val processing = req.accountId in state.processingRequestIds
+                                        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                                            FrCrewMemberRow(
+                                                account = state.identities[req.accountId],
+                                                trailing = if (processing) {
+                                                    { FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp) }
+                                                } else {
+                                                    null
+                                                },
+                                            )
+                                            if (!processing) {
+                                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                                                    FrGlassButton(
+                                                        label = resolve(CrewStringKey.SettingsApproveCta),
+                                                        onClick = { vm.onIntent(CrewSettingsIntent.ApproveRequest(req.accountId)) },
+                                                        tone = FrButtonTone.Primary,
+                                                        modifier = Modifier.weight(1f),
+                                                    )
+                                                    FrGlassButton(
+                                                        label = resolve(CrewStringKey.SettingsDeclineCta),
+                                                        onClick = { vm.onIntent(CrewSettingsIntent.DeclineRequest(req.accountId)) },
+                                                        tone = FrButtonTone.Ghost,
+                                                        modifier = Modifier.weight(1f),
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // (i) Members.
                     item {
                         Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm), modifier = Modifier.frRiseIn(delayMillis = 140)) {
@@ -403,23 +467,38 @@ fun CrewSettingsScreen(
                                         HorizontalDivider(color = StructuralColors.dividerSoft, modifier = Modifier.padding(vertical = Spacing.xxs))
                                     }
                                     val isMemberOwner = m.accountId == crew.ownerId
-                                    val canRemove = state.isOwner && m.accountId != state.myAccountId
+                                    // The owner can manage every OTHER member: hand them ownership
+                                    // ("Make owner") and/or remove them. Neither applies to self or
+                                    // (transfer) to the current owner.
+                                    val canManage = state.isOwner && m.accountId != state.myAccountId
                                     val isRemoving = m.accountId in state.removingMemberIds
                                     FrCrewMemberRow(
                                         account = state.identities[m.accountId],
                                         subtitle = resolve(
                                             if (isMemberOwner) CrewStringKey.SettingsRoleOwner else CrewStringKey.SettingsRoleMember,
                                         ),
-                                        trailing = if (canRemove) {
+                                        trailing = if (canManage) {
                                             {
                                                 if (isRemoving) {
                                                     FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
                                                 } else {
-                                                    FrIconButton(
-                                                        icon = FrIcons.Close,
-                                                        onClick = { memberPendingRemoval = m.accountId },
-                                                        contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
-                                                    )
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
+                                                    ) {
+                                                        if (!isMemberOwner) {
+                                                            FrIconButton(
+                                                                icon = FrIcons.Crown,
+                                                                onClick = { vm.onIntent(CrewSettingsIntent.RequestTransfer(m.accountId)) },
+                                                                contentDescription = resolve(CrewStringKey.SettingsMakeOwnerCta),
+                                                            )
+                                                        }
+                                                        FrIconButton(
+                                                            icon = FrIcons.Close,
+                                                            onClick = { memberPendingRemoval = m.accountId },
+                                                            contentDescription = resolve(CrewStringKey.SettingsRemoveMemberCta),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         } else {
@@ -545,6 +624,27 @@ fun CrewSettingsScreen(
                 onDismiss = { memberRemovedName = null },
             )
         }
+        // Join-request approved toast.
+        memberApprovedName?.let { name ->
+            StructuralToast(
+                message = resolve(CrewStringKey.SettingsMemberApproved, name),
+                onDismiss = { memberApprovedName = null },
+            )
+        }
+        // Join-request declined toast.
+        if (requestDeclinedShown) {
+            StructuralToast(
+                message = resolve(CrewStringKey.SettingsRequestDeclined),
+                onDismiss = { requestDeclinedShown = false },
+            )
+        }
+        // Ownership-transferred toast.
+        ownershipTransferredName?.let { name ->
+            StructuralToast(
+                message = resolve(CrewStringKey.SettingsOwnershipTransferred, name),
+                onDismiss = { ownershipTransferredName = null },
+            )
+        }
     }
 
     // QR invite dialog (kept matte — its own small screen to port).
@@ -558,12 +658,43 @@ fun CrewSettingsScreen(
         }
     }
 
-    // Leave-crew confirm.
+    // Leave-crew confirm. An OWNER leaving with members remaining picks a successor (or leaves it on
+    // automatic — longest-tenured); everyone else gets the plain confirm.
     if (state.showLeaveConfirm) {
-        LeaveCrewConfirmDialog(
-            crewName = crew?.name.orEmpty(),
-            onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmLeave) },
-            onDismiss = { vm.onIntent(CrewSettingsIntent.CancelLeave) },
+        val c = crew
+        if (state.isOwner && c != null && c.size > 1) {
+            LeaveOwnerDialog(
+                members = c.members.filter { it.accountId != state.myAccountId },
+                identities = state.identities,
+                selectedSuccessor = state.selectedSuccessor,
+                deletedFallback = deletedMemberFallback,
+                onSelect = { vm.onIntent(CrewSettingsIntent.SelectSuccessor(it)) },
+                onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmLeave) },
+                onDismiss = { vm.onIntent(CrewSettingsIntent.CancelLeave) },
+            )
+        } else {
+            LeaveCrewConfirmDialog(
+                crewName = c?.name.orEmpty(),
+                onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmLeave) },
+                onDismiss = { vm.onIntent(CrewSettingsIntent.CancelLeave) },
+            )
+        }
+    }
+
+    // Transfer-ownership confirm.
+    state.transferTarget?.let { targetId ->
+        val identity = state.identities[targetId]
+        val name = identity?.displayName?.takeIf { it.isNotBlank() }
+            ?: identity?.handle?.takeIf { it.isNotBlank() }
+            ?: deletedMemberFallback
+        FrConfirmDialog(
+            title = resolve(CrewStringKey.SettingsTransferConfirmTitle, name),
+            message = resolve(CrewStringKey.SettingsTransferConfirmBody, name),
+            confirmLabel = resolve(CrewStringKey.SettingsTransferConfirm),
+            dismissLabel = resolve(CrewStringKey.SettingsCancel),
+            onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmTransfer) },
+            onDismiss = { vm.onIntent(CrewSettingsIntent.CancelTransfer) },
+            destructive = false,
         )
     }
 
@@ -926,5 +1057,88 @@ private fun InviteQrDialog(
                 fillWidth = true,
             )
         }
+    }
+}
+
+/**
+ * The owner-leave hand-off dialog (feature 3). Lets the departing owner pick the member who inherits
+ * the crew — or leave it on "Automatic", which hands ownership to the longest-tenured remaining member
+ * server-side. Shown only when an owner with other members leaves.
+ */
+@Composable
+private fun LeaveOwnerDialog(
+    members: List<Member>,
+    identities: Map<AccountId, Account?>,
+    selectedSuccessor: AccountId?,
+    deletedFallback: String,
+    onSelect: (AccountId?) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        FrGlassDialog {
+            FrText(
+                text = resolve(CrewStringKey.SettingsLeaveOwnerTitle),
+                style = StructuralType.titleMd,
+                color = StructuralColors.foreground,
+            )
+            FrText(
+                text = resolve(CrewStringKey.SettingsLeaveOwnerBody),
+                style = StructuralType.body,
+                color = StructuralColors.foreground.copy(alpha = 0.7f),
+            )
+            SuccessorOption(
+                label = resolve(CrewStringKey.SettingsLeaveOwnerAuto),
+                selected = selectedSuccessor == null,
+                onClick = { onSelect(null) },
+            )
+            members.forEach { m ->
+                val identity = identities[m.accountId]
+                val name = identity?.displayName?.takeIf { it.isNotBlank() }
+                    ?: identity?.handle?.takeIf { it.isNotBlank() }
+                    ?: deletedFallback
+                SuccessorOption(
+                    label = name,
+                    selected = selectedSuccessor == m.accountId,
+                    onClick = { onSelect(m.accountId) },
+                )
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FrGlassButton(
+                    label = resolve(CrewStringKey.SettingsCancel),
+                    onClick = onDismiss,
+                    tone = FrButtonTone.Glass,
+                    modifier = Modifier.weight(1f),
+                )
+                FrGlassButton(
+                    label = resolve(CrewStringKey.SettingsLeaveConfirm),
+                    onClick = onConfirm,
+                    tone = FrButtonTone.Primary,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+/** One selectable successor row: a crown marks the current choice. */
+@Composable
+private fun SuccessorOption(label: String, selected: Boolean, onClick: () -> Unit) {
+    FrStructuralRow(
+        onClick = onClick,
+        trailing = {
+            if (selected) {
+                FrIcon(
+                    image = FrIcons.Crown,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(Sizes.iconMd),
+                )
+            } else {
+                Spacer(Modifier.size(Sizes.iconMd))
+            }
+        },
+    ) {
+        FrText(text = label, style = StructuralType.body, color = StructuralColors.foreground)
     }
 }

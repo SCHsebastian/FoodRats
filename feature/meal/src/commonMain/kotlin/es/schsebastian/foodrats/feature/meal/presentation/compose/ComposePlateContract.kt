@@ -13,6 +13,8 @@ import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 
 data class ComposePlateState(
     val dish: String = "",
+    /** True when the dish title exceeds `DishName.MAX_LEN`; gates `canContinue` and lights the counter. */
+    val dishTooLong: Boolean = false,
     val descriptionInput: String = "",
     val descriptionTooLong: Boolean = false,
     /**
@@ -53,6 +55,7 @@ data class ComposePlateState(
         if (this === other) return true
         if (other !is ComposePlateState) return false
         return dish == other.dish &&
+            dishTooLong == other.dishTooLong &&
             descriptionInput == other.descriptionInput &&
             descriptionTooLong == other.descriptionTooLong &&
             descriptionWarning == other.descriptionWarning &&
@@ -75,6 +78,7 @@ data class ComposePlateState(
 
     override fun hashCode(): Int {
         var result = dish.hashCode()
+        result = 31 * result + dishTooLong.hashCode()
         result = 31 * result + descriptionInput.hashCode()
         result = 31 * result + descriptionTooLong.hashCode()
         result = 31 * result + descriptionWarning.hashCode()

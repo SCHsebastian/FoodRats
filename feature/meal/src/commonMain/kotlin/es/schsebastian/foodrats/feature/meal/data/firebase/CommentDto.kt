@@ -8,4 +8,6 @@ data class CommentDto(
     val authorId: String? = null,
     val text: String? = null,
     val createdAtEpochMs: Long? = null,
+    /** Set when the author edits the comment; absent on a never-edited comment. */
+    val editedAtEpochMs: Long? = null,
 )

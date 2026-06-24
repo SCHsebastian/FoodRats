@@ -17,8 +17,8 @@ import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
-import es.schsebastian.foodrats.feature.crew.domain.usecase.JoinCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveMyCrewsUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RequestToJoinCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -72,7 +72,7 @@ class CrewPickerViewModelTest {
             session = FakeSessionProvider(Session(me, null)),
             observeMyCrews = ObserveMyCrewsUseCase(repo),
             createCrew = CreateCrewUseCase(repo),
-            joinCrew = JoinCrewByCodeUseCase(repo),
+            requestToJoin = RequestToJoinCrewUseCase(repo),
             switchActive = SwitchActiveCrewUseCase(active),
             analytics = analytics,
         )

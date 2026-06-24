@@ -31,6 +31,13 @@ private class DeleteRecordingCommentPort : MealCommentPort {
         text: CommentText,
     ): Result<Unit, CommentError.Write> = Result.success(Unit)
 
+    override suspend fun edit(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: MealCommentId,
+        text: CommentText,
+    ): Result<Unit, CommentError.Edit> = Result.success(Unit)
+
     override suspend fun delete(
         crewId: CrewId,
         mealId: MealId,

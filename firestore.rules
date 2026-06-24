@@ -88,22 +88,25 @@ service cloud.firestore {
 
     // Crew root
     match /crews/{crewId} {
-      // True when a membership write (join / leave / remove-member) leaves EVERY
+      // True when a membership write (approve / leave / remove-member) leaves EVERY
       // non-membership field untouched. The client commits these as a full-document
       // `set(crewRef, crew.copy(...))` — GitLive `.set(dto)` re-serializes the WHOLE
       // CrewDto with encodeDefaults=true, so a crew created before a field existed
       // (scoreStyle, bannerPath, …) receives that field as a newly-ADDED key. A naive
       // `diff().affectedKeys().hasOnly(['memberIds','members'])` counts those re-stated
-      // defaults as changes and rejected EVERY join/leave/remove on an older crew (the
+      // defaults as changes and rejected EVERY membership write on an older crew (the
       // reported "no one can join" bug). Comparing each field to its effective
       // (default-resolved) prior value with get(k, default) treats "absent" and
-      // "re-stated default" as equal, while still rejecting a real change — so a joiner
-      // can ONLY append themselves and can never seize ownership, rotate the invite code,
-      // backdate the crew, rename it, or flip any owner-only policy. Defaults mirror
+      // "re-stated default" as equal, while still rejecting a real change — so a membership
+      // write can ONLY shift the member set and can never seize ownership, rotate the invite
+      // code, backdate the crew, rename it, or flip any owner-only policy. Defaults mirror
       // CrewDto exactly: blindVoting=false, scoreStyle='stars', every other optional null.
-      function onlyMembershipUnchanged() {
+      // Every NON-membership field EXCEPT ownerId is untouched. ownerId is handled separately so the
+      // two ownership-changing membership branches (transfer / owner-leave-reassign) can reuse this
+      // while validating the ownerId transition themselves. All other membership writes pin ownerId
+      // via onlyMembershipUnchanged() below.
+      function nonMembershipFieldsUnchanged() {
         return request.resource.data.get('id', null) == resource.data.get('id', null)
-          && request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null)
           && request.resource.data.get('code', null) == resource.data.get('code', null)
           && request.resource.data.get('createdAtEpochMs', null) == resource.data.get('createdAtEpochMs', null)
           && request.resource.data.get('name', null) == resource.data.get('name', null)
@@ -116,109 +119,112 @@ service cloud.firestore {
           && request.resource.data.get('bannerPath', null) == resource.data.get('bannerPath', null)
           && request.resource.data.get('bannerFocalY', null) == resource.data.get('bannerFocalY', null);
       }
+      function onlyMembershipUnchanged() {
+        return request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null)
+          && nonMembershipFieldsUnchanged();
+      }
       // Read is open to any authenticated user. `crewId` is a random UUID, so it
       // functions as a soft access token — you need it to read the doc, and a
       // joining user must be able to read the doc inside the joinByCode transaction
       // before writing themselves into memberIds. Consistent with /crewCodes/ which
       // is already readable by any authenticated user.
       allow read:   if request.auth != null;
-      // Update is partitioned into explicit branches so non-owners can't rename
-      // the crew and rogue clients can't rewrite ownerId / createdAt / code:
-      //   (1) owner renames `name`
-      //   (2) any current member renames themselves inside the `members` map
-      //   (3) join — non-member adds self (auth.uid moves from absent to present in memberIds)
-      //   (4) leave — existing member removes self (and only self) from memberIds + members
-      //   (5) owner toggles the `blindVoting` policy flag (owner-only; no other field touched)
-      //   (6) remove-member — owner removes another member (never self) from memberIds + members
-      //   (7) owner sets/clears the `tagline` field (owner-only; no other field touched)
+      // ── Update — dispatched on TWO cheap discriminators (did ownerId change? did memberIds
+      // change?) so each write kind pays only for its own group's expressions. Before this split
+      // every membership/ownership write re-evaluated the heavy field-pin across many OR branches
+      // and could trip Firestore's 1000-expression-per-request ceiling (a legitimate write would
+      // then be wrongly DENIED). The three groups are mutually exclusive on (ownerIdChanged,
+      // membersChanged):
+      //   • ownerId changed         → transfer-ownership (14) | owner-leave-reassign (15)
+      //   • memberIds changed       → approve (13) | leave (4) | remove-member (6)
+      //   • neither changed         → owner single-field settings (1,5,7–12) | member self-rename (2)
+      function isOwner()  { return resource.data.ownerId == request.auth.uid; }
+      function isMember() { return request.auth.uid in resource.data.memberIds; }
+      function changed()  { return request.resource.data.diff(resource.data).affectedKeys(); }
+      function ownerIdChanged() {
+        return request.resource.data.get('ownerId', null) != resource.data.get('ownerId', null);
+      }
+      function membersChanged() {
+        return request.resource.data.get('memberIds', []) != resource.data.get('memberIds', []);
+      }
+      // Owner single-field settings writes (1,5,7–12). Each touches exactly one field group; the
+      // owner is always a member, so isOwner() suffices. Neither ownerId nor memberIds moves here.
+      function ownerSettingsWrite() {
+        return isOwner() && (
+          changed().hasOnly(['name'])
+          || (changed().hasOnly(['blindVoting']) && request.resource.data.blindVoting is bool)
+          || (changed().hasOnly(['tagline'])
+              && (request.resource.data.tagline == null || request.resource.data.tagline is string))
+          || (changed().hasOnly(['welcomeMessage'])
+              && (request.resource.data.welcomeMessage == null || request.resource.data.welcomeMessage is string))
+          || (changed().hasOnly(['weeklyChallenge', 'weeklyChallengeSetAtMillis'])
+              && (request.resource.data.weeklyChallenge == null || request.resource.data.weeklyChallenge is string)
+              && (request.resource.data.weeklyChallengeSetAtMillis == null || request.resource.data.weeklyChallengeSetAtMillis is int))
+          || (changed().hasOnly(['scoreStyle'])
+              && request.resource.data.scoreStyle in ['stars', 'emoji', 'numeric'])
+          || (changed().hasOnly(['bannerPath'])
+              && (request.resource.data.bannerPath == null || request.resource.data.bannerPath is string))
+          || (changed().hasOnly(['bannerFocalY'])
+              && request.resource.data.bannerFocalY is number
+              && request.resource.data.bannerFocalY >= 0
+              && request.resource.data.bannerFocalY <= 1)
+        );
+      }
+      // (2) any current member edits ONLY their own entry in the `members` map (display-name rename).
+      function memberMapWrite() {
+        return isMember() && changed().hasOnly(['members']);
+      }
+      // Membership writes that PRESERVE ownerId — approve (13) / leave (4) / remove (6). The full
+      // doc is set() by the client, so onlyMembershipUnchanged() pins every non-membership field
+      // (evaluated ONCE for the whole group). Each shape is a cheap size/hasAll check.
+      function membershipWrite() {
+        return onlyMembershipUnchanged() && (
+          // (13) approve — owner appends exactly one member; owner stays; old members survive; ≤ 8.
+          (isOwner()
+           && request.auth.uid in request.resource.data.memberIds
+           && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+           && request.resource.data.memberIds.size() <= 8
+           && request.resource.data.memberIds.hasAll(resource.data.memberIds))
+          ||
+          // (4) leave — a member removes ONLY themselves; no other member evicted.
+          (isMember()
+           && !(request.auth.uid in request.resource.data.memberIds)
+           && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+           && resource.data.memberIds.hasAll(request.resource.data.memberIds))
+          ||
+          // (6) remove-member — owner removes ANOTHER member; owner stays; exactly one dropped.
+          (isOwner()
+           && request.auth.uid in request.resource.data.memberIds
+           && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+           && resource.data.memberIds.hasAll(request.resource.data.memberIds))
+        );
+      }
+      // (14) transfer ownership — owner reassigns ownerId to a current member, nothing else.
+      function transferOwnershipWrite() {
+        return isOwner()
+          && changed().hasOnly(['ownerId'])
+          && request.resource.data.ownerId != resource.data.ownerId
+          && request.resource.data.ownerId in resource.data.memberIds;
+      }
+      // (15) owner leaves & hands off — owner removes ONLY self AND sets ownerId to a remaining
+      // member. nonMembershipFieldsUnchanged() pins code/name/policy (NOT ownerId, which moves here).
+      function ownerLeaveReassignWrite() {
+        return isOwner()
+          && request.auth.uid in resource.data.memberIds
+          && !(request.auth.uid in request.resource.data.memberIds)
+          && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+          && resource.data.memberIds.hasAll(request.resource.data.memberIds)
+          && request.resource.data.ownerId != request.auth.uid
+          && request.resource.data.ownerId in request.resource.data.memberIds
+          && nonMembershipFieldsUnchanged();
+      }
       allow update: if request.auth != null
                     && (
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
-                      ||
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blindVoting'])
-                       && request.resource.data.blindVoting is bool)
-                      ||
-                      // (7) owner sets or clears the tagline (null = cleared; string = up to 120 chars).
-                      // `in` check is on resource.data (existing doc) so the owner must still be a member.
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tagline'])
-                       && (request.resource.data.tagline == null || request.resource.data.tagline is string))
-                      ||
-                      // (8) owner sets or clears the welcomeMessage (null = cleared; string = up to 200 chars).
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['welcomeMessage'])
-                       && (request.resource.data.welcomeMessage == null || request.resource.data.welcomeMessage is string))
-                      ||
-                      // (9) owner sets or clears the weeklyChallenge + weeklyChallengeSetAtMillis (both
-                      // must be written together — either both null (clear) or string + int (set)).
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['weeklyChallenge', 'weeklyChallengeSetAtMillis'])
-                       && (request.resource.data.weeklyChallenge == null || request.resource.data.weeklyChallenge is string)
-                       && (request.resource.data.weeklyChallengeSetAtMillis == null || request.resource.data.weeklyChallengeSetAtMillis is int))
-                      ||
-                      // (10) owner sets the scoreStyle vocabulary (C8). Only the three valid
-                      // string values are accepted; any unknown value or type is rejected.
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['scoreStyle'])
-                       && request.resource.data.scoreStyle in ['stars', 'emoji', 'numeric'])
-                      ||
-                      // (11) owner sets or clears the bannerPath (C9). null = removed; string = Storage
-                      // object path for the crew banner image. The Storage write is enforced by
-                      // storage.rules; this rule only locks the Firestore field pointer.
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bannerPath'])
-                       && (request.resource.data.bannerPath == null || request.resource.data.bannerPath is string))
-                      ||
-                      // (12) owner sets the banner vertical focal point (C9): a number in 0..1 that
-                      // tells the fixed-height feed crop which slice of the image to show.
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bannerFocalY'])
-                       && request.resource.data.bannerFocalY is number
-                       && request.resource.data.bannerFocalY >= 0
-                       && request.resource.data.bannerFocalY <= 1)
-                      ||
-                      (request.auth.uid in resource.data.memberIds
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
-                      ||
-                      // (3) join — a non-member appends ONLY themselves. Written as a full-document
-                      // set() by the client, so we pin every non-membership field (onlyMembershipUnchanged)
-                      // and require the prior member set to survive intact (hasAll) with the count up by one.
-                      (!(request.auth.uid in resource.data.memberIds)
-                       && request.auth.uid in request.resource.data.memberIds
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
-                       && request.resource.data.memberIds.size() <= 8
-                       && request.resource.data.memberIds.hasAll(resource.data.memberIds)
-                       && onlyMembershipUnchanged())
-                      ||
-                      // (4) leave — an existing member removes ONLY themselves. Full-document set();
-                      // every surviving member was already present (hasAll on the OLD set) and the
-                      // count drops by exactly one, so no other member can be evicted in the same write.
-                      (request.auth.uid in resource.data.memberIds
-                       && !(request.auth.uid in request.resource.data.memberIds)
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
-                       && resource.data.memberIds.hasAll(request.resource.data.memberIds)
-                       && onlyMembershipUnchanged())
-                      ||
-                      // (6) owner removes ANOTHER member: owner stays a member, the removed uid is
-                      // dropped from both memberIds + members, and the set shrinks by exactly one.
-                      // The owner can't remove self through this branch (they remain in the new
-                      // memberIds). Full-document set(): every surviving member was already present
-                      // (hasAll on the OLD set) and onlyMembershipUnchanged pins ownerId/code/name/etc.
-                      (resource.data.ownerId == request.auth.uid
-                       && request.auth.uid in request.resource.data.memberIds
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
-                       && resource.data.memberIds.hasAll(request.resource.data.memberIds)
-                       && onlyMembershipUnchanged())
+                      ownerIdChanged()
+                        ? (transferOwnershipWrite() || ownerLeaveReassignWrite())
+                        : membersChanged()
+                            ? membershipWrite()
+                            : (ownerSettingsWrite() || memberMapWrite())
                     );
       allow create: if request.auth != null
                     && request.auth.uid in request.resource.data.memberIds
@@ -229,6 +235,37 @@ service cloud.firestore {
                       (request.auth.uid in resource.data.memberIds && resource.data.memberIds.size() == 1)
                       || resource.data.ownerId == request.auth.uid
                     );
+
+      // Join requests — the owner's intake inbox. A non-member who has the invite code
+      // (resolved to this crewId via crewCodes) files crews/{crewId}/joinRequests/{uid};
+      // the owner Approves (a crew membership write, branch 13, which deletes this doc in the
+      // same transaction) or Declines (deletes this doc). The doc id IS the requester uid, so a
+      // requester can only ever touch their own request. There is NO instant self-join — owner
+      // approval is the sole membership-grant path.
+      match /joinRequests/{requesterId} {
+        function isCrewOwner() {
+          return request.auth != null
+                 && get(/databases/$(database)/documents/crews/$(crewId)).data.ownerId == request.auth.uid;
+        }
+        // Owner sees every pending request; a requester sees only their own.
+        allow read: if request.auth != null
+                    && (request.auth.uid == requesterId || isCrewOwner());
+        // A non-member files their own request. `accountId` mirrors the doc id; the requester
+        // must not already be a member. Knowing the crewId (a random soft-token id resolved from
+        // the invite code) is the capability to file here, exactly as for reading the crew.
+        allow create: if request.auth != null
+                      && request.auth.uid == requesterId
+                      && request.resource.data.accountId == requesterId
+                      && request.resource.data.requestedAtEpochMs is int
+                      && request.resource.data.keys().hasOnly(['accountId', 'requestedAtEpochMs'])
+                      && !(request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds);
+        // Decline (owner) or cancel (the requester). Approval also deletes the doc, but inside the
+        // owner's add-member transaction — covered here by isCrewOwner().
+        allow delete: if request.auth != null
+                      && (request.auth.uid == requesterId || isCrewOwner());
+        // Requests are immutable once filed — approve/decline are create-of-member / delete-of-request.
+        allow update: if false;
+      }
 
       // Meals are scoped under crews. The per-author per-day cap (10) is enforced CLIENT-SIDE —
       // Firestore rules can't count documents. The doc id is `crewId_uid_dayKey_token` where token
@@ -361,15 +398,17 @@ service cloud.firestore {
                         && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
                         && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000;
 
-          // Comments are immutable once posted, EXCEPT an idempotent self-replay: when the
-          // offline outbox replays a queued comment whose doc was already written (same
-          // client-minted id), the `.set()` lands as an update. Allow it ONLY when nothing
-          // meaningful changes — same author, same text — so a replay converges instead of
-          // being denied, but a comment can never be edited.
+          // The author may edit their OWN comment's text (1–500 chars). `authorId` is immutable
+          // so an edit can never re-attribute a comment, and only the author (never the crew
+          // owner) may rewrite the words. createdAtEpochMs is intentionally NOT pinned: the
+          // offline outbox's idempotent post-replay re-stamps it via a full `.set()`, and the
+          // prior rule tolerated that too. Real edits use a partial update that never touches it.
           allow update: if request.auth != null
                         && request.auth.uid == resource.data.authorId
                         && request.resource.data.authorId == resource.data.authorId
-                        && request.resource.data.text == resource.data.text;
+                        && request.resource.data.text is string
+                        && request.resource.data.text.size() >= 1
+                        && request.resource.data.text.size() <= 500;
 
           // Delete: the comment's author OR the crew owner may delete it (self-service
           // + moderation), mirroring the meal delete rule above.

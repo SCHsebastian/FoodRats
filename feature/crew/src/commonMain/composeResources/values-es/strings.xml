@@ -77,7 +77,7 @@
     <string name="crew_invite_share_message">Únete a mi cuadrilla %1$s en FoodRats: %2$s</string>
     <string name="crew_invite_eyebrow">Invitación a la cuadrilla</string>
     <string name="crew_invite_subtitle">Te han invitado a unirte a</string>
-    <string name="crew_invite_join_cta">Unirme a la cuadrilla</string>
+    <string name="crew_invite_join_cta">Solicitar unirme</string>
     <string name="crew_invite_decline_cta">Ahora no</string>
     <string name="crew_invite_back_cta">Atrás</string>
     <string name="crew_settings_welcome_message_section">MENSAJE DE BIENVENIDA</string>
@@ -109,4 +109,25 @@
     <string name="crew_badge_ten">10 Platos</string>
     <string name="crew_badge_fifty">50 Platos</string>
     <string name="crew_badge_hundred">100 Platos</string>
+    <!-- Funciones del dueño — solicitudes de ingreso (aprobar/rechazar), transferir propiedad, relevo al salir. -->
+    <string name="crew_picker_join_requested">Solicitud enviada: entrarás cuando el dueño la apruebe.</string>
+    <string name="crew_invite_request_sent_title">Solicitud enviada</string>
+    <string name="crew_invite_request_sent_body">Entrarás en %1$s cuando el dueño apruebe tu solicitud.</string>
+    <string name="crew_invite_done_cta">Listo</string>
+    <string name="crew_settings_requests_section">SOLICITUDES DE INGRESO</string>
+    <string name="crew_settings_requests_count">%1$d en espera</string>
+    <string name="crew_settings_approve_cta">Aprobar</string>
+    <string name="crew_settings_decline_cta">Rechazar</string>
+    <string name="crew_settings_member_approved">%1$s ya está en la cuadrilla.</string>
+    <string name="crew_settings_request_declined">Solicitud rechazada.</string>
+    <string name="crew_settings_make_owner_cta">Hacer dueño</string>
+    <string name="crew_settings_transfer_confirm_title">¿Hacer dueño a %1$s?</string>
+    <string name="crew_settings_transfer_confirm_body">%1$s pasará a ser el dueño de la cuadrilla. Tú seguirás como miembro, pero perderás los controles de dueño.</string>
+    <string name="crew_settings_transfer_confirm">Transferir</string>
+    <string name="crew_settings_ownership_transferred">%1$s ahora es el dueño.</string>
+    <string name="crew_settings_leave_owner_title">Eres el dueño</string>
+    <string name="crew_settings_leave_owner_body">Elige quién se queda con la cuadrilla. Si lo dejas en automático, el miembro más antiguo pasará a ser el dueño.</string>
+    <string name="crew_settings_leave_owner_auto">Automático (miembro más antiguo)</string>
+    <string name="crew_error_transfer_not_owner">Solo el dueño de la cuadrilla puede transferir la propiedad.</string>
+    <string name="crew_error_transfer_target_not_member">Solo puedes ceder la propiedad a un miembro actual.</string>
 </resources>

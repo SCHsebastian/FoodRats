@@ -95,34 +95,71 @@ class CrewFirestoreDataSource(
         throw CodeCollisionExhaustedException
     }
 
-    override suspend fun joinByCode(
+    override suspend fun requestToJoin(
         code: CrewCode,
-        joiner: AccountId,
+        requester: AccountId,
         nowMs: Long,
-    ): CrewDto {
-        val codeRef = codesCol.document(code.value)
-        return firestore.runTransaction {
-            val codeSnap = get(codeRef)
-            if (!codeSnap.exists) throw CodeUnknownException
-            val codeDto = codeSnap.data<CrewCodeDto>()
-            val crewId = codeDto.crewId ?: throw NotFoundException
-            val crewRef = crewsCol.document(crewId)
+    ): Unit = withContext(dispatchers.io) {
+        val codeSnap = codesCol.document(code.value).get()
+        if (!codeSnap.exists) throw CodeUnknownException
+        val crewId = codeSnap.data<CrewCodeDto>().crewId ?: throw NotFoundException
+        val crewSnap = crewsCol.document(crewId).get()
+        if (!crewSnap.exists) throw NotFoundException
+        val crew = crewSnap.data<CrewDto>()
+        if (requester.value in crew.memberIds) throw AlreadyMemberException
+        crewsCol.document(crewId).collection("joinRequests").document(requester.value)
+            .set(JoinRequestDto(accountId = requester.value, requestedAtEpochMs = nowMs))
+    }
+
+    override fun observeJoinRequests(crewId: CrewId): Flow<List<JoinRequestDto>> =
+        crewsCol.document(crewId.value).collection("joinRequests")
+            .snapshots
+            .map { snap -> snap.documents.map { it.data<JoinRequestDto>() } }
+
+    override suspend fun approveJoinRequest(
+        crewId: CrewId,
+        requester: AccountId,
+        nowMs: Long,
+    ): Unit = withContext(dispatchers.io) {
+        val crewRef = crewsCol.document(crewId.value)
+        val reqRef = crewRef.collection("joinRequests").document(requester.value)
+        firestore.runTransaction {
             val crewSnap = get(crewRef)
             if (!crewSnap.exists) throw NotFoundException
             val crew = crewSnap.data<CrewDto>()
-            if (joiner.value in crew.memberIds) throw AlreadyMemberException
-            // Authoritative, atomic cap check — must stay INSIDE the transaction to avoid a
-            // TOCTOU race. References CrewSize.MAX so the 3..8 invariant has one source of truth.
-            if (!CrewSize.canAdd(crew.memberIds.size)) throw FullException
-            val updatedMemberIds = crew.memberIds + joiner.value
-            val updatedMembers = crew.members + (joiner.value to MemberDto(joinedAtEpochMs = nowMs))
-            val updated = crew.copy(memberIds = updatedMemberIds, members = updatedMembers)
-            set(crewRef, updated)
-            updated
+            // Idempotent: a requester already in the crew just gets their stale request cleared.
+            if (requester.value !in crew.memberIds) {
+                // Authoritative, atomic cap check — references CrewSize.MAX (single source of truth).
+                if (!CrewSize.canAdd(crew.memberIds.size)) throw FullException
+                set(
+                    crewRef,
+                    crew.copy(
+                        memberIds = crew.memberIds + requester.value,
+                        members = crew.members + (requester.value to MemberDto(joinedAtEpochMs = nowMs)),
+                    ),
+                )
+            }
+            delete(reqRef)
         }
     }
 
-    override suspend fun leave(crewId: CrewId, leaver: AccountId) {
+    override suspend fun declineJoinRequest(crewId: CrewId, requester: AccountId): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).collection("joinRequests").document(requester.value).delete()
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    override suspend fun transferOwnership(crewId: CrewId, newOwner: AccountId): Result<Unit, CrewError> =
+        withContext(dispatchers.io) {
+            runCatching {
+                crewsCol.document(crewId.value).update("ownerId" to newOwner.value)
+                Result.success(Unit)
+            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        }
+
+    override suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId?) {
         val crewRef = crewsCol.document(crewId.value)
         firestore.runTransaction {
             val crewSnap = get(crewRef)
@@ -131,15 +168,34 @@ class CrewFirestoreDataSource(
             if (leaver.value !in crew.memberIds) throw NotMemberException
             val remainingIds = crew.memberIds - leaver.value
             val remainingMembers = crew.members - leaver.value
-            if (remainingIds.isEmpty()) {
-                val codeRef = crew.code?.let { codesCol.document(it) }
-                delete(crewRef)
-                if (codeRef != null) delete(codeRef)
-            } else {
-                set(crewRef, crew.copy(memberIds = remainingIds, members = remainingMembers))
+            when {
+                remainingIds.isEmpty() -> {
+                    val codeRef = crew.code?.let { codesCol.document(it) }
+                    delete(crewRef)
+                    if (codeRef != null) delete(codeRef)
+                }
+                crew.ownerId == leaver.value -> {
+                    // Owner leaving with members remaining → hand ownership off atomically, to the
+                    // chosen successor (if still a member) or the longest-tenured remaining member.
+                    val newOwner = successor?.value?.takeIf { it in remainingIds }
+                        ?: longestTenured(remainingIds, crew.members)
+                    set(crewRef, crew.copy(ownerId = newOwner, memberIds = remainingIds, members = remainingMembers))
+                }
+                else ->
+                    set(crewRef, crew.copy(memberIds = remainingIds, members = remainingMembers))
             }
         }
     }
+
+    /**
+     * Longest-tenured remaining member = earliest [MemberDto.joinedAtEpochMs] (ties broken by account
+     * id ascending), mirroring the server-side `deleteAccount` reassignment policy. Members with no
+     * recorded join time sort last (treated as newest).
+     */
+    private fun longestTenured(remainingIds: List<String>, members: Map<String, MemberDto>): String =
+        remainingIds.sortedWith(
+            compareBy({ members[it]?.joinedAtEpochMs ?: Long.MAX_VALUE }, { it }),
+        ).first()
 
     override suspend fun removeMember(crewId: CrewId, target: AccountId): Unit =
         withContext(dispatchers.io) {

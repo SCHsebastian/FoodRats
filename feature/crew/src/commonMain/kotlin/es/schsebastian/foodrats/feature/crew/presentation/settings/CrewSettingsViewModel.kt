@@ -13,12 +13,16 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.feature.crew.domain.usecase.ApproveJoinRequestUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.DeclineJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.ObservePendingJoinRequestsUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveMemberUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RenameCrewUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.TransferCrewOwnershipUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetBlindVotingUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase
@@ -46,6 +50,10 @@ class CrewSettingsViewModel(
     private val setCrewScoreStyle: SetCrewScoreStyleUseCase,
     private val leaveCrew: LeaveCrewUseCase,
     private val removeMember: RemoveMemberUseCase,
+    private val observeJoinRequests: ObservePendingJoinRequestsUseCase,
+    private val approveJoinRequest: ApproveJoinRequestUseCase,
+    private val declineJoinRequest: DeclineJoinRequestUseCase,
+    private val transferOwnership: TransferCrewOwnershipUseCase,
     private val setCrewBanner: SetCrewBannerUseCase,
     private val removeCrewBanner: RemoveCrewBannerUseCase,
     private val setCrewBannerFocal: SetCrewBannerFocalUseCase,
@@ -89,11 +97,27 @@ class CrewSettingsViewModel(
             }
         }
         viewModelScope.launch {
+            // Resolve identities for BOTH current members and pending join-request authors, so the
+            // owner's requests list can render the requester's name/avatar live.
             state
-                .map { s -> s.crew?.members?.map { it.accountId }?.toSet() ?: emptySet() }
+                .map { s ->
+                    ((s.crew?.members?.map { it.accountId } ?: emptyList()) +
+                        s.pendingRequests.map { it.accountId }).toSet()
+                }
                 .distinctUntilChanged()
                 .flatMapLatest { ids -> accountRead.observeMany(ids) }
                 .collect { identities -> update { it.copy(identities = identities) } }
+        }
+        // Pending join requests (owner-only by Firestore rule). A non-owner subscription is denied
+        // → the repo emits Result.Err, which we map to an empty list (the section is owner-gated in
+        // the UI anyway) rather than surfacing it as the screen's error.
+        viewModelScope.launch {
+            observeJoinRequests(crewId).collect { r ->
+                when (r) {
+                    is Result.Ok  -> update { it.copy(pendingRequests = r.value) }
+                    is Result.Err -> update { it.copy(pendingRequests = emptyList()) }
+                }
+            }
         }
         // C9 — resolve the current banner's signed URL so the owner's reposition preview can show the
         // real image (the crew snapshot only carries the Storage path). Port resolves path → URL.
@@ -109,13 +133,19 @@ class CrewSettingsViewModel(
         is CrewSettingsIntent.ToggleBlindVoting -> doToggleBlindVoting(intent.enabled)
         CrewSettingsIntent.ShareLinkTapped -> analytics.track(AnalyticsEvent.CrewInviteShared(crewId))
         CrewSettingsIntent.SwitchCrew -> emit(CrewSettingsEffect.NavigateToCrewPicker)
-        CrewSettingsIntent.RequestLeave -> update { it.copy(showLeaveConfirm = true) }
+        CrewSettingsIntent.RequestLeave -> update { it.copy(showLeaveConfirm = true, selectedSuccessor = null) }
         CrewSettingsIntent.CancelLeave -> update { it.copy(showLeaveConfirm = false) }
         CrewSettingsIntent.ConfirmLeave -> doLeave()
+        is CrewSettingsIntent.SelectSuccessor -> update { it.copy(selectedSuccessor = intent.accountId) }
         CrewSettingsIntent.RequestDelete -> update { it.copy(showDeleteConfirm = true) }
         CrewSettingsIntent.CancelDelete -> update { it.copy(showDeleteConfirm = false) }
         CrewSettingsIntent.ConfirmDelete -> doDelete()
         is CrewSettingsIntent.RemoveMemberConfirmed -> doRemoveMember(intent)
+        is CrewSettingsIntent.ApproveRequest -> doApprove(intent.accountId)
+        is CrewSettingsIntent.DeclineRequest -> doDecline(intent.accountId)
+        is CrewSettingsIntent.RequestTransfer -> update { it.copy(transferTarget = intent.accountId) }
+        CrewSettingsIntent.CancelTransfer -> update { it.copy(transferTarget = null) }
+        CrewSettingsIntent.ConfirmTransfer -> doTransfer()
         CrewSettingsIntent.DismissError -> update { it.copy(error = null) }
         is CrewSettingsIntent.TaglineChanged -> update { it.copy(editingTagline = intent.value) }
         CrewSettingsIntent.SaveTagline -> doSaveTagline()
@@ -161,14 +191,58 @@ class CrewSettingsViewModel(
 
     private suspend fun doLeave() {
         val account = session.current.first()?.accountId ?: return
+        // Owner leaving with members remaining → hand ownership to the chosen successor (or, when
+        // none is picked, the longest-tenured member is selected by the repository). For a non-owner
+        // or a sole member the successor is irrelevant.
+        val successor = currentState.selectedSuccessor
         update { it.copy(isLeaving = true, showLeaveConfirm = false, error = null) }
-        when (val r = leaveCrew(crewId, account)) {
+        when (val r = leaveCrew(crewId, account, successor)) {
             is Result.Ok -> {
                 analytics.track(AnalyticsEvent.CrewLeft(crewId))
-                update { it.copy(isLeaving = false) }
+                update { it.copy(isLeaving = false, selectedSuccessor = null) }
                 emit(CrewSettingsEffect.Left)
             }
             is Result.Err -> update { it.copy(isLeaving = false, error = r.error) }
+        }
+    }
+
+    private suspend fun doApprove(target: AccountId) {
+        val name = currentState.identities[target]?.displayName
+        update { it.copy(processingRequestIds = it.processingRequestIds + target, error = null) }
+        when (val r = approveJoinRequest(crewId, target)) {
+            is Result.Ok -> {
+                update { it.copy(processingRequestIds = it.processingRequestIds - target) }
+                emit(CrewSettingsEffect.MemberApproved(name))
+            }
+            is Result.Err -> update {
+                it.copy(processingRequestIds = it.processingRequestIds - target, error = r.error)
+            }
+        }
+    }
+
+    private suspend fun doDecline(target: AccountId) {
+        update { it.copy(processingRequestIds = it.processingRequestIds + target, error = null) }
+        when (val r = declineJoinRequest(crewId, target)) {
+            is Result.Ok -> {
+                update { it.copy(processingRequestIds = it.processingRequestIds - target) }
+                emit(CrewSettingsEffect.RequestDeclined)
+            }
+            is Result.Err -> update {
+                it.copy(processingRequestIds = it.processingRequestIds - target, error = r.error)
+            }
+        }
+    }
+
+    private suspend fun doTransfer() {
+        val target = currentState.transferTarget ?: return
+        val name = currentState.identities[target]?.displayName
+        update { it.copy(isTransferring = true, transferTarget = null, error = null) }
+        when (val r = transferOwnership(crewId, target)) {
+            is Result.Ok -> {
+                update { it.copy(isTransferring = false) }
+                emit(CrewSettingsEffect.OwnershipTransferred(name))
+            }
+            is Result.Err -> update { it.copy(isTransferring = false, error = r.error) }
         }
     }
 

@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.feed.di
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
@@ -31,6 +32,7 @@ val feedModule = module {
     factoryOf(::DeleteMealUseCase)
     factoryOf(::DeleteMyMealUseCase)
     factoryOf(::DeleteCommentUseCase)
+    factoryOf(::EditCommentUseCase)
     // TimeZone is bound once in coreDataModule (loaded app-wide); feed resolves it from there.
     // analytics is passed EXPLICITLY (CHARTER rule 9) so the NoopAnalyticsTracker default never
     // short-circuits graph resolution — same reason MealReactionPort is bound positionally here.
@@ -79,6 +81,7 @@ val feedModule = module {
             deleteMeal = get(),
             deleteMyMeal = get(),
             deleteComment = get(),
+            editComment = get(),
             crewOwner = get(),
             storyShareController = get(),
             // UGC compliance §3/§4/§5 — passed EXPLICITLY (the VM ctor defaults are test-only no-ops).

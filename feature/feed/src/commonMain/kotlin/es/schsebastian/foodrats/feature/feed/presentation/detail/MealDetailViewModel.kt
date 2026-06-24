@@ -47,6 +47,7 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
@@ -94,6 +95,7 @@ class MealDetailViewModel(
     private val deleteMeal: DeleteMealUseCase,
     private val deleteMyMeal: DeleteMyMealUseCase,
     private val deleteComment: DeleteCommentUseCase,
+    private val editComment: EditCommentUseCase,
     private val crewOwner: CrewOwnerPort,
     private val storyShareController: StoryShareController,
     // UGC compliance §3/§4/§5 — comment text filter, report, and block. Defaults keep the large
@@ -317,6 +319,8 @@ class MealDetailViewModel(
         // state, unrelated to the viewer's delete permission — it must not gate it.
         val canDelete = viewerId != null &&
             (c.authorId == viewerId || ownerId == viewerId)
+        // Editing is AUTHOR-ONLY — unlike delete, the crew owner may not rewrite someone else's words.
+        val canEdit = viewerId != null && c.authorId == viewerId
         CommentRowUi(
             id = c.id,
             displayName = account?.displayName.orEmpty(),
@@ -325,7 +329,9 @@ class MealDetailViewModel(
             relative = c.createdAt.toRelative(clock.now()),
             loading = !resolved,
             isDeleted = isDeleted,
+            isEdited = c.editedAt != null,
             canDelete = canDelete,
+            canEdit = canEdit,
             authorId = c.authorId.value,
             // Report/block is offered on everyone else's comments (UGC §4/§5) — never your own.
             canModerate = viewerId != null && c.authorId != viewerId,
@@ -344,6 +350,7 @@ class MealDetailViewModel(
                 error = null,
                 rateError = null,
                 commentWriteError = null,
+                commentEditError = null,
                 mealDeleteError = null,
                 commentDeleteError = null,
             )
@@ -352,6 +359,14 @@ class MealDetailViewModel(
             it.copy(commentInput = intent.value, commentWriteError = null)
         }
         MealDetailIntent.PostComment               -> postComment()
+        is MealDetailIntent.StartEditComment       -> startEditComment(intent.id)
+        is MealDetailIntent.EditCommentInputChanged -> update {
+            it.copy(commentEditInput = intent.value, commentEditError = null)
+        }
+        MealDetailIntent.CancelEditComment         -> update {
+            it.copy(editingCommentId = null, commentEditInput = "", commentEditError = null)
+        }
+        MealDetailIntent.SubmitEditComment         -> submitEditComment()
         MealDetailIntent.DeleteMeal                -> deleteMealAction()
         is MealDetailIntent.DeleteComment          -> deleteCommentAction(intent.id)
         MealDetailIntent.ShareTapped               -> shareMeal()
@@ -482,6 +497,61 @@ class MealDetailViewModel(
         val parsedMealId = MealId.of(mealId).getOrElse { return }
         val r = deleteComment(crewId, parsedMealId, id)
         if (r is Result.Err) update { it.copy(commentDeleteError = r.error) }
+    }
+
+    /** Enter inline edit mode, pre-filling the field with the row's current text. */
+    private fun startEditComment(id: MealCommentId) {
+        val current = currentState.commentRows.firstOrNull { it.id == id } ?: return
+        update {
+            it.copy(
+                editingCommentId = id,
+                commentEditInput = current.text,
+                commentEditError = null,
+            )
+        }
+    }
+
+    /**
+     * Saves the edited text for [MealDetailState.editingCommentId]. Validates + screens the new text
+     * on-device (UGC §3 — edits are screened exactly like new comments) BEFORE routing to the
+     * offline-first [EditCommentUseCase]. On success the row leaves edit mode; the Firestore listener
+     * re-emits the new text (online) or the outbox replays it (offline).
+     */
+    private suspend fun submitEditComment() {
+        val id = currentState.editingCommentId ?: return
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(commentEditError = CommentError.Edit.Unavailable) }
+        val parsedMealId = MealId.of(mealId).getOrElse {
+            return update { it.copy(commentEditError = CommentError.Edit.Unavailable) }
+        }
+        val text = when (val v = CommentText.of(currentState.commentEditInput)) {
+            is Result.Ok  -> v.value
+            is Result.Err -> return update {
+                val editErr = when (v.error) {
+                    CommentValidationError.Blank   -> CommentError.Edit.Blank
+                    CommentValidationError.TooLong -> CommentError.Edit.TooLong
+                }
+                it.copy(commentEditError = editErr)
+            }
+        }
+        val verdict = textModeration.evaluate(text.value, languageTag.first())
+        if (verdict is TextModerationVerdict.Objectionable) {
+            return update { it.copy(commentEditError = CommentError.Edit.Objectionable) }
+        }
+        update { it.copy(isEditingComment = true, commentEditError = null) }
+        when (val r = editComment(crewId, parsedMealId, id, text)) {
+            is Result.Ok  -> update {
+                it.copy(
+                    isEditingComment = false,
+                    editingCommentId = null,
+                    commentEditInput = "",
+                    commentEditError = null,
+                )
+            }
+            is Result.Err -> update {
+                it.copy(isEditingComment = false, commentEditError = r.error)
+            }
+        }
     }
 
     private suspend fun rate(scoreRaw: Int) {

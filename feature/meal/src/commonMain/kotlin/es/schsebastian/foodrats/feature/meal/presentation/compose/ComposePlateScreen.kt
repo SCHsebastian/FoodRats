@@ -34,6 +34,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
@@ -59,6 +64,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.meal.Description
+import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -137,6 +143,7 @@ fun ComposePlateScreen(
                 text = resolve(MealStringKey.ComposeTitle),
                 style = StructuralType.titleXl,
                 color = onFloorColor,
+                modifier = Modifier.semantics { heading() },
             )
             Spacer(Modifier.height(Spacing.lg))
 
@@ -150,7 +157,9 @@ fun ComposePlateScreen(
                 ) {
                     Image(
                         bitmap = plate,
-                        contentDescription = null,
+                        // Confirm to screen readers that a photo is attached (the blurred floor copy stays
+                        // decorative so the same image isn't announced twice).
+                        contentDescription = resolve(MealStringKey.ComposePhotoDescription),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize(),
                     )
@@ -160,7 +169,11 @@ fun ComposePlateScreen(
                             tone = FrChipTone.Ember,
                             leadingIcon = FrIcons.Star,
                             compact = true,
-                            modifier = Modifier.align(Alignment.TopStart).padding(Spacing.sm),
+                            // Announce "Analyzing ingredients…" when the AI starts looking at the plate.
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(Spacing.sm)
+                                .semantics { liveRegion = LiveRegionMode.Polite },
                         )
                     }
                 }
@@ -180,11 +193,33 @@ fun ComposePlateScreen(
                     trailing = { Chevron() },
                 )
             }
+            // Advisory: the AI couldn't detect ingredients. Muted (not a crimson DangerBanner) because
+            // classification never gates publishing — the user can still add ingredients by hand.
+            AnimatedVisibility(
+                visible = state.classifierError != null && !state.classifying,
+                enter = fadeIn(),
+                exit = fadeOut(),
+            ) {
+                state.classifierError?.let {
+                    FrText(
+                        text = resolve(it.toStringKey()),
+                        style = StructuralType.micro,
+                        color = onFloorColor.copy(alpha = 0.7f),
+                        modifier = Modifier
+                            .padding(top = Spacing.xs)
+                            .semantics { liveRegion = LiveRegionMode.Polite },
+                    )
+                }
+            }
             Spacer(Modifier.height(Spacing.lg))
 
             // Slot — an OPTIONAL "meal moment" label. Tapping a chip toggles it (tap again to clear).
             Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                FrEyebrow(text = resolve(MealStringKey.ComposeSlotLabel).uppercase(), color = onFloorColor.copy(alpha = 0.85f))
+                FrEyebrow(
+                    text = resolve(MealStringKey.ComposeSlotLabel).uppercase(),
+                    color = onFloorColor.copy(alpha = 0.85f),
+                    modifier = Modifier.semantics { heading() },
+                )
                 FrEyebrow(text = resolve(MealStringKey.ComposeSlotOptional).uppercase(), color = onFloorColor.copy(alpha = 0.5f))
             }
             Spacer(Modifier.height(Spacing.sm))
@@ -213,7 +248,11 @@ fun ComposePlateScreen(
 
             // Audience: which crews this plate is shared with. Hidden for single-crew authors.
             if (state.showCrewPicker) {
-                FrEyebrow(text = resolve(MealStringKey.ComposeAudienceLabel).uppercase(), color = onFloorColor.copy(alpha = 0.85f))
+                FrEyebrow(
+                    text = resolve(MealStringKey.ComposeAudienceLabel).uppercase(),
+                    color = onFloorColor.copy(alpha = 0.85f),
+                    modifier = Modifier.semantics { heading() },
+                )
                 Spacer(Modifier.height(Spacing.sm))
                 val allSelected = state.availableCrews.isNotEmpty() &&
                     state.availableCrews.all { it.id in state.selectedCrewIds }
@@ -238,8 +277,15 @@ fun ComposePlateScreen(
             FrUnderlineFieldLabeled(
                 value = state.dish,
                 onValueChange = { vm.onIntent(ComposePlateIntent.DishChanged(it)) },
-                label = resolve(MealStringKey.ComposeDishLabel).uppercase(),
+                label = resolve(MealStringKey.ComposeDishLabel),
                 onMedia = floorPainter != null,
+            )
+            CharacterCounter(
+                current = state.dish.length,
+                max = DishName.MAX_LEN,
+                overLimit = state.dishTooLong,
+                color = onFloorColor,
+                keyText = resolve(MealStringKey.ComposeDishCounter, state.dish.length, DishName.MAX_LEN),
             )
             AnimatedVisibility(
                 visible = state.dishWarning,
@@ -257,19 +303,20 @@ fun ComposePlateScreen(
             FrUnderlineFieldLabeled(
                 value = state.descriptionInput,
                 onValueChange = { vm.onIntent(ComposePlateIntent.DescriptionChanged(it)) },
-                label = resolve(MealStringKey.ComposeDescriptionLabel).uppercase(),
+                label = resolve(MealStringKey.ComposeDescriptionLabel),
                 singleLine = false,
                 onMedia = floorPainter != null,
             )
-            FrText(
-                text = resolve(
+            CharacterCounter(
+                current = state.descriptionInput.length,
+                max = Description.MAX_LEN,
+                overLimit = state.descriptionTooLong,
+                color = onFloorColor,
+                keyText = resolve(
                     MealStringKey.ComposeDescriptionCounter,
                     state.descriptionInput.length,
                     Description.MAX_LEN,
                 ),
-                style = StructuralType.micro,
-                color = onFloorColor.copy(alpha = if (state.descriptionTooLong) 1f else 0.6f),
-                modifier = Modifier.padding(top = Spacing.xs),
             )
             AnimatedVisibility(
                 visible = state.descriptionWarning,
@@ -417,7 +464,9 @@ private fun Chevron() {
 
 /**
  * The structural [FrUnderlineField] wrapped to always span the content width. Kept as a thin local
- * wrapper so the call sites stay terse and consistent.
+ * wrapper so the call sites stay terse and consistent. Takes the [label] in natural case: it's
+ * uppercased for the visual eyebrow but passed verbatim as the field's accessible name so screen
+ * readers read "Dish" rather than spelling out "D-I-S-H".
  */
 @Composable
 private fun FrUnderlineFieldLabeled(
@@ -430,12 +479,37 @@ private fun FrUnderlineFieldLabeled(
     es.schsebastian.foodrats.core.designsystem.structural.FrUnderlineField(
         value = value,
         onValueChange = onValueChange,
-        label = label,
+        label = label.uppercase(),
+        accessibilityLabel = label,
         singleLine = singleLine,
         // When a plate photo is the floor it is always dark-scrimmed → white field text is correct in
         // both themes. When there is no photo the floor is adaptive and field text follows the theme.
         onMedia = onMedia,
         modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+/**
+ * The `N / MAX` character counter under a text field. The over-limit cue is NOT color-only (WCAG 1.4.1):
+ * the field's danger banner carries the textual "too long" message; here a screen-reader-friendly
+ * `contentDescription` ("N of MAX characters used") replaces the literal "N / MAX" glyph reading.
+ */
+@Composable
+private fun CharacterCounter(
+    current: Int,
+    max: Int,
+    overLimit: Boolean,
+    color: androidx.compose.ui.graphics.Color,
+    keyText: String,
+) {
+    val a11y = resolve(MealStringKey.ComposeCounterA11y, current, max)
+    FrText(
+        text = keyText,
+        style = StructuralType.micro,
+        color = color.copy(alpha = if (overLimit) 1f else 0.6f),
+        modifier = Modifier
+            .padding(top = Spacing.xs)
+            .semantics { contentDescription = a11y },
     )
 }
 
@@ -451,7 +525,10 @@ private fun DangerBanner(text: String, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(Radius.md))
             .background(semantic.danger)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            .padding(horizontal = Spacing.md, vertical = Spacing.sm)
+            // Announce the message when the banner appears (WCAG 4.1.3) — a blocked publish / moderation
+            // hit / daily-cap hit must reach TalkBack/VoiceOver without the user re-traversing the screen.
+            .semantics { liveRegion = LiveRegionMode.Polite },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {

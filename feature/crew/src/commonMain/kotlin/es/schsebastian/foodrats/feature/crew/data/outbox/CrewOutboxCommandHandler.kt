@@ -48,6 +48,7 @@ class CrewOutboxCommandHandler(
         is PendingCommand.SetCrewBannerFocalY -> true
         is PendingCommand.RateMeal,
         is PendingCommand.PostComment,
+        is PendingCommand.EditComment,
         is PendingCommand.DeleteComment,
         is PendingCommand.ToggleReaction -> false
     }
@@ -79,6 +80,7 @@ class CrewOutboxCommandHandler(
         // them here. Mapped to a terminal so an accidental dispatch can't loop.
         is PendingCommand.RateMeal,
         is PendingCommand.PostComment,
+        is PendingCommand.EditComment,
         is PendingCommand.DeleteComment,
         is PendingCommand.ToggleReaction -> OutboxExecuteResult.Terminal("outbox.error.wrongHandler")
     }
@@ -112,6 +114,10 @@ class CrewOutboxCommandHandler(
             CrewError.Create.CodeCollisionRetriesExhausted -> OutboxExecuteResult.Terminal("crew.error.codeCollision")
             CrewError.RemoveMember.NotOwner -> OutboxExecuteResult.Terminal("crew.error.removeNotOwner")
             CrewError.RemoveMember.CannotRemoveSelf -> OutboxExecuteResult.Terminal("crew.error.removeSelf")
+            // Transfer-ownership is online-only (never queued), but the when over CrewError must
+            // stay exhaustive — a transfer error reaching here is unreplayable, so terminal.
+            CrewError.Transfer.NotOwner -> OutboxExecuteResult.Terminal("crew.error.transferNotOwner")
+            CrewError.Transfer.TargetNotMember -> OutboxExecuteResult.Terminal("crew.error.transferTargetNotMember")
             // C9 — banner IMAGE errors are never queued (bytes not serializable; the focal point IS
             // queued via SetCrewBannerFocalY). Listed so the when stays exhaustive.
             CrewError.Banner.UploadFailed -> OutboxExecuteResult.Terminal("crew.error.bannerUploadFailed")

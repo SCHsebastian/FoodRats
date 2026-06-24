@@ -26,6 +26,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,6 +48,8 @@ enum class FrChipTone { Glass, Ember }
  * loud state. `compact` shrinks it to the dense uppercase micro-pill.
  *
  * @param onClick when non-null the chip becomes a tappable filter with a press-scale cue and `Role.Button`.
+ *   Its [selected] state is mirrored into semantics so TalkBack/VoiceOver announce "selected" instead of
+ *   leaving the choice conveyed by fill color alone (WCAG 4.1.2 / 1.4.1).
  */
 @Composable
 fun FrStructuralChip(
@@ -93,6 +97,7 @@ fun FrStructuralChip(
         fontWeight = FontWeight.Bold,
     )
 
+    val isSelected = selected
     Box(
         modifier = modifier
             .then(if (onClick != null) Modifier.minimumInteractiveComponentSize() else Modifier)
@@ -102,12 +107,15 @@ fun FrStructuralChip(
             .background(fill, shape)
             .then(
                 if (onClick != null) {
-                    Modifier.clickable(
-                        interactionSource = interaction,
-                        indication = null,
-                        role = Role.Button,
-                        onClick = onClick,
-                    )
+                    Modifier
+                        .clickable(
+                            interactionSource = interaction,
+                            indication = null,
+                            role = Role.Button,
+                            onClick = onClick,
+                        )
+                        // Announce the toggle state so selection isn't conveyed by color alone.
+                        .semantics { this.selected = isSelected }
                 } else {
                     Modifier
                 },

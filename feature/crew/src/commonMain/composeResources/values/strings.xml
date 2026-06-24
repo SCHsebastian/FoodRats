@@ -77,7 +77,7 @@
     <string name="crew_invite_share_message">Join my crew %1$s on FoodRats: %2$s</string>
     <string name="crew_invite_eyebrow">Crew invite</string>
     <string name="crew_invite_subtitle">You've been invited to join</string>
-    <string name="crew_invite_join_cta">Join crew</string>
+    <string name="crew_invite_join_cta">Request to join</string>
     <string name="crew_invite_decline_cta">Not now</string>
     <string name="crew_invite_back_cta">Back</string>
     <string name="crew_settings_welcome_message_section">WELCOME MESSAGE</string>
@@ -109,4 +109,25 @@
     <string name="crew_badge_ten">10 Plates</string>
     <string name="crew_badge_fifty">50 Plates</string>
     <string name="crew_badge_hundred">100 Plates</string>
+    <!-- Owner features — join requests (approve/decline), transfer ownership, owner-leave handoff. -->
+    <string name="crew_picker_join_requested">Request sent — you'll join once the owner approves.</string>
+    <string name="crew_invite_request_sent_title">Request sent</string>
+    <string name="crew_invite_request_sent_body">You'll join %1$s once the owner approves your request.</string>
+    <string name="crew_invite_done_cta">Done</string>
+    <string name="crew_settings_requests_section">JOIN REQUESTS</string>
+    <string name="crew_settings_requests_count">%1$d waiting</string>
+    <string name="crew_settings_approve_cta">Approve</string>
+    <string name="crew_settings_decline_cta">Decline</string>
+    <string name="crew_settings_member_approved">%1$s is now in the crew.</string>
+    <string name="crew_settings_request_declined">Request declined.</string>
+    <string name="crew_settings_make_owner_cta">Make owner</string>
+    <string name="crew_settings_transfer_confirm_title">Make %1$s the owner?</string>
+    <string name="crew_settings_transfer_confirm_body">%1$s will become the crew owner. You'll stay a member but lose owner controls.</string>
+    <string name="crew_settings_transfer_confirm">Transfer</string>
+    <string name="crew_settings_ownership_transferred">%1$s is now the owner.</string>
+    <string name="crew_settings_leave_owner_title">You're the owner</string>
+    <string name="crew_settings_leave_owner_body">Pick who takes over the crew. Leave it on automatic and the longest-standing member becomes owner.</string>
+    <string name="crew_settings_leave_owner_auto">Automatic (longest-standing member)</string>
+    <string name="crew_error_transfer_not_owner">Only the crew owner can transfer ownership.</string>
+    <string name="crew_error_transfer_target_not_member">You can only hand ownership to a current member.</string>
 </resources>

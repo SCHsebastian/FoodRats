@@ -86,6 +86,9 @@
     <string name="feed_comments_error_unavailable">Couldn't post. Try again.</string>
     <string name="feed_comments_error_unauthorized">You can't comment on this meal</string>
     <string name="feed_comments_error_objectionable">That comment may break the community guidelines. Please rephrase it.</string>
+    <string name="feed_edit_comment_cta">Edit comment</string>
+    <string name="feed_edit_comment_save_cta">Save</string>
+    <string name="feed_comment_edited">(edited)</string>
     <string name="feed_report_meal_cta">Report meal</string>
     <string name="feed_report_user_cta">Report user</string>
     <string name="feed_report_comment_cta">Report comment</string>

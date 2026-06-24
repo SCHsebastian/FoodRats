@@ -172,10 +172,10 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             val args = entry.toRoute<Route.InvitePreview>()
             AcceptInviteScreen(
                 code = args.code,
-                onJoined = { controller.navigateTopLevel(Route.Main) },
                 onBack = {
                     // From a cold-start invite the only thing behind us is Main (established by the
-                    // deep-link handler); pop to it so "Not now" lands on the feed rather than exiting.
+                    // deep-link handler); pop to it so "Not now" / "Done" lands on the feed rather
+                    // than exiting. The user isn't a member yet — they join once the owner approves.
                     if (!controller.popBackStack()) controller.navigateTopLevel(Route.Main)
                 },
             )

@@ -1,8 +1,6 @@
 package es.schsebastian.foodrats.feature.crew.presentation.invite
 
 import app.cash.turbine.test
-import es.schsebastian.foodrats.core.domain.analytics.JoinMethod
-import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
@@ -12,10 +10,8 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
-import es.schsebastian.foodrats.feature.crew.domain.usecase.JoinCrewByCodeUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RequestToJoinCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUseCase
-import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
-import es.schsebastian.foodrats.feature.crew.presentation.picker.FakeActiveCrew
 import es.schsebastian.foodrats.feature.crew.presentation.picker.FakeSessionProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,18 +42,15 @@ class AcceptInviteViewModelTest {
         createdAt = Instant.fromEpochMilliseconds(0L),
         members = listOf(Member(aid("uid-owner"), Instant.fromEpochMilliseconds(0L))),
     )
+
     private fun viewModel(
         repo: FakeCrewRepository,
-        active: FakeActiveCrew = FakeActiveCrew(),
-        analytics: RecordingAnalyticsTracker = RecordingAnalyticsTracker(),
         rawCode: String = code.value,
     ) = AcceptInviteViewModel(
         code = rawCode,
         session = FakeSessionProvider(Session(me, null)),
         resolveCrew = ResolveCrewByCodeUseCase(repo),
-        joinCrew = JoinCrewByCodeUseCase(repo),
-        switchActive = SwitchActiveCrewUseCase(active),
-        analytics = analytics,
+        requestToJoin = RequestToJoinCrewUseCase(repo),
     )
 
     @Test fun resolves_preview_crew_on_init() = runTest {
@@ -96,45 +89,25 @@ class AcceptInviteViewModelTest {
         }
     }
 
-    @Test fun join_succeeds_switches_active_emits_effect_and_tracks_invite_link() = runTest {
+    @Test fun request_succeeds_marks_request_sent_no_join() = runTest {
         val repo = FakeCrewRepository(initial = listOf(crew)).apply {
-            nextJoin = Result.success(crew)
-        }
-        val active = FakeActiveCrew()
-        val analytics = RecordingAnalyticsTracker()
-        val vm = viewModel(repo, active, analytics)
-        vm.effects.test {
-            vm.onIntent(AcceptInviteIntent.Join)
-            assertEquals(AcceptInviteEffect.Joined(crew.id), awaitItem())
-            cancelAndIgnoreRemainingEvents()
-        }
-        assertEquals(crew.id, active.active.value)
-        assertTrue(
-            analytics.events.contains(
-                es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent.CrewJoined(
-                    crew.id,
-                    JoinMethod.INVITE_LINK,
-                ),
-            ),
-            "expected a join_group event tagged invite_link",
-        )
-    }
-
-    @Test fun join_full_crew_keeps_error_on_state_no_effect() = runTest {
-        val repo = FakeCrewRepository(initial = listOf(crew)).apply {
-            nextJoin = Result.failure(CrewError.Membership.Full)
+            nextRequestToJoin = Result.success(Unit)
         }
         val vm = viewModel(repo)
         vm.onIntent(AcceptInviteIntent.Join)
-        assertEquals(CrewError.Membership.Full, vm.state.value.error)
+        assertTrue(vm.state.value.requestSent)
+        assertEquals(null, vm.state.value.error)
+        // The requester is NOT added as a member — approval is required.
+        assertTrue(crew.members.none { it.accountId == me })
     }
 
-    @Test fun join_already_member_keeps_error_on_state() = runTest {
+    @Test fun already_member_keeps_error_on_state() = runTest {
         val repo = FakeCrewRepository(initial = listOf(crew)).apply {
-            nextJoin = Result.failure(CrewError.Membership.AlreadyMember)
+            nextRequestToJoin = Result.failure(CrewError.Membership.AlreadyMember)
         }
         val vm = viewModel(repo)
         vm.onIntent(AcceptInviteIntent.Join)
         assertEquals(CrewError.Membership.AlreadyMember, vm.state.value.error)
+        assertTrue(!vm.state.value.requestSent)
     }
 }

@@ -48,6 +48,19 @@ private class FakeCommentFirestore(
         docs.value = docs.value + dto.copy(id = dto.id ?: "doc-${nextId++}")
     }
 
+    override suspend fun update(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: String,
+        text: String,
+        editedAtEpochMs: Long,
+    ) {
+        failWith?.let { throw it }
+        docs.value = docs.value.map { dto ->
+            if (dto.id == commentId) dto.copy(text = text, editedAtEpochMs = editedAtEpochMs) else dto
+        }
+    }
+
     override suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String) {
         failWith?.let { throw it }
         lastDeletedId = commentId
@@ -189,6 +202,64 @@ class FirebaseCommentRepositoryTest {
     // CommentError.Write.Blank / TooLong are deliberately NOT exercised here: they are produced by
     // CommentText.of pre-validation (in MealDetailViewModel), never mapped from a Firestore fault.
     // The repository only ever receives an already-valid CommentText, so it cannot return them.
+
+    // --- edit ------------------------------------------------------------------------------------
+
+    @Test fun edit_updates_text_and_stamps_edited_at() = runTest {
+        val fake = FakeCommentFirestore()
+        fake.docs.value = listOf(
+            CommentDto(id = "c1", authorId = "uid-author", text = "old", createdAtEpochMs = 1L),
+        )
+        val repo = repository(fake)
+
+        val r = repo.edit(crewId, mealId, MealCommentId("c1"), text)
+        assertTrue(r is Result.Ok)
+        val updated = fake.docs.value.single()
+        assertEquals("hola crew", updated.text)
+        assertEquals("uid-author", updated.authorId) // author untouched
+        assertEquals(1L, updated.createdAtEpochMs)    // createdAt untouched
+        assertEquals(Instant.parse("2026-06-14T12:00:00Z").toEpochMilliseconds(), updated.editedAtEpochMs)
+    }
+
+    @Test fun edit_without_auth_returns_not_author_and_writes_nothing() = runTest {
+        val fake = FakeCommentFirestore()
+        fake.docs.value = listOf(
+            CommentDto(id = "c1", authorId = "uid-author", text = "old", createdAtEpochMs = 1L),
+        )
+        val repo = repository(fake, FakeAuthorIdentity(uid = null))
+
+        val r = repo.edit(crewId, mealId, MealCommentId("c1"), text)
+        assertTrue(r is Result.Err)
+        assertEquals(CommentError.Edit.NotAuthor, (r as Result.Err).error)
+        assertEquals("old", fake.docs.value.single().text) // unchanged
+    }
+
+    @Test fun edit_permission_denied_maps_to_not_author() = runTest {
+        val fake = FakeCommentFirestore(failWith = RuntimeException("PERMISSION_DENIED: nope"))
+        val repo = repository(fake)
+
+        val r = repo.edit(crewId, mealId, MealCommentId("c1"), text)
+        assertTrue(r is Result.Err)
+        assertEquals(CommentError.Edit.NotAuthor, (r as Result.Err).error)
+    }
+
+    @Test fun edit_not_found_maps_to_not_found() = runTest {
+        val fake = FakeCommentFirestore(failWith = RuntimeException("not-found: no such comment"))
+        val repo = repository(fake)
+
+        val r = repo.edit(crewId, mealId, MealCommentId("c1"), text)
+        assertTrue(r is Result.Err)
+        assertEquals(CommentError.Edit.NotFound, (r as Result.Err).error)
+    }
+
+    @Test fun edit_other_fault_maps_to_unavailable() = runTest {
+        val fake = FakeCommentFirestore(failWith = RuntimeException("network unreachable"))
+        val repo = repository(fake)
+
+        val r = repo.edit(crewId, mealId, MealCommentId("c1"), text)
+        assertTrue(r is Result.Err)
+        assertEquals(CommentError.Edit.Unavailable, (r as Result.Err).error)
+    }
 
     // --- delete ----------------------------------------------------------------------------------
 

@@ -46,6 +46,11 @@ sealed interface CrewError {
         data object MemberNotFound : RemoveMember  // the target is not a member of this crew
     }
 
+    sealed interface Transfer : CrewError {
+        data object NotOwner : Transfer            // only the crew owner may transfer ownership
+        data object TargetNotMember : Transfer     // can only hand ownership to a current member
+    }
+
     sealed interface Banner : CrewError {
         data object UploadFailed : Banner          // storage write failed (network / permission)
         data object DeleteFailed : Banner          // storage delete failed (network / permission)

@@ -30,6 +30,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
@@ -181,6 +182,7 @@ class MealDetailModerationTest {
                 FakeCrewMembership(),
             ),
             deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(null),
             storyShareController = RecordingStoryShareController(),
             reportPort = reportPort,
@@ -379,6 +381,7 @@ class MealDetailModerationTest {
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(null),
             storyShareController = RecordingStoryShareController(),
             textModeration = moderation,
@@ -435,6 +438,7 @@ class MealDetailModerationTest {
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
             deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(null),
             storyShareController = RecordingStoryShareController(),
             textModeration = moderation,

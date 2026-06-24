@@ -28,6 +28,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -862,6 +864,7 @@ private fun CommentsSection(
                     color = MaterialTheme.colorScheme.error,
                 )
             else -> state.commentRows.forEach { c ->
+                val editing = state.editingCommentId == c.id
                 StructuralCommentRow(
                     displayName = c.displayName,
                     avatarUrl = c.avatarUrl,
@@ -869,11 +872,21 @@ private fun CommentsSection(
                     relative = c.relative,
                     loading = c.loading,
                     isDeleted = c.isDeleted,
+                    isEdited = c.isEdited,
                     canDelete = c.canDelete,
                     onDelete = { onRequestDeleteComment(c.id) },
+                    canEdit = c.canEdit,
+                    onEdit = { onIntent(MealDetailIntent.StartEditComment(c.id)) },
                     canModerate = c.canModerate,
                     onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Comment(c.id))) },
                     onBlock = { onRequestBlockCommentAuthor(c.authorId) },
+                    editing = editing,
+                    editInput = state.commentEditInput,
+                    isSavingEdit = state.isEditingComment,
+                    editError = if (editing) state.commentEditError?.let { resolve(it.toStringKey()) } else null,
+                    onEditInputChange = { onIntent(MealDetailIntent.EditCommentInputChanged(it)) },
+                    onEditSave = { onIntent(MealDetailIntent.SubmitEditComment) },
+                    onEditCancel = { onIntent(MealDetailIntent.CancelEditComment) },
                 )
             }
         }
@@ -896,11 +909,21 @@ private fun StructuralCommentRow(
     relative: RelativeTimestamp,
     loading: Boolean,
     isDeleted: Boolean,
+    isEdited: Boolean,
     canDelete: Boolean,
     onDelete: () -> Unit,
+    canEdit: Boolean,
+    onEdit: () -> Unit,
     canModerate: Boolean,
     onReport: () -> Unit,
     onBlock: () -> Unit,
+    editing: Boolean,
+    editInput: String,
+    isSavingEdit: Boolean,
+    editError: String?,
+    onEditInputChange: (String) -> Unit,
+    onEditSave: () -> Unit,
+    onEditCancel: () -> Unit,
 ) {
     val nameLabel = when {
         isDeleted -> resolve(FeedStringKey.DeletedAuthor)
@@ -912,6 +935,7 @@ private fun StructuralCommentRow(
         loading   -> "·"
         else      -> displayName.ifBlank { "?" }
     }
+    var menuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -932,40 +956,104 @@ private fun StructuralCommentRow(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                FrText(text = nameLabel, style = StructuralType.titleMd, color = StructuralColors.foreground)
+                FrText(
+                    text = nameLabel,
+                    style = StructuralType.titleMd,
+                    color = StructuralColors.foreground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
                     FrText(
                         text = resolve(relative.key, relative.amount),
                         style = StructuralType.microMono,
                         color = StructuralColors.foreground.copy(alpha = 0.6f),
                     )
-                    if (canModerate) {
-                        FrGlassCircleButton(
-                            icon = FrIcons.Flag,
-                            onClick = onReport,
-                            contentDescription = resolve(FeedStringKey.ReportCommentCta),
-                            size = 30.dp,
-                        )
-                        FrGlassCircleButton(
-                            icon = FrIcons.Block,
-                            onClick = onBlock,
-                            contentDescription = resolve(FeedStringKey.BlockUserCta),
-                            size = 30.dp,
+                    if (isEdited) {
+                        FrText(
+                            text = resolve(FeedStringKey.CommentEdited),
+                            style = StructuralType.microMono,
+                            color = StructuralColors.foreground.copy(alpha = 0.5f),
                         )
                     }
-                    if (canDelete) {
-                        FrGlassCircleButton(
-                            icon = FrIcons.Delete,
-                            onClick = onDelete,
-                            contentDescription = resolve(FeedStringKey.DeleteCommentCta),
-                            size = 30.dp,
-                            danger = true,
-                        )
+                    // The overflow menu is suppressed while this row is in edit mode.
+                    if (!editing && (canModerate || canDelete || canEdit)) {
+                        Box {
+                            FrGlassCircleButton(
+                                icon = FrIcons.MoreVert,
+                                onClick = { menuExpanded = true },
+                                contentDescription = resolve(FeedStringKey.OverflowMenuCd),
+                                size = 30.dp,
+                            )
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                if (canEdit) {
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.EditCommentCta)) },
+                                        onClick = { menuExpanded = false; onEdit() },
+                                        leadingIcon = { FrIcon(FrIcons.Edit, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    )
+                                }
+                                if (canModerate) {
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.ReportCommentCta)) },
+                                        onClick = { menuExpanded = false; onReport() },
+                                        leadingIcon = { FrIcon(FrIcons.Flag, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.BlockUserCta)) },
+                                        onClick = { menuExpanded = false; onBlock() },
+                                        leadingIcon = { FrIcon(FrIcons.Block, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    )
+                                }
+                                if (canDelete) {
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.DeleteCommentCta), color = MaterialTheme.colorScheme.error) },
+                                        onClick = { menuExpanded = false; onDelete() },
+                                        leadingIcon = { FrIcon(FrIcons.Delete, tint = MaterialTheme.colorScheme.error) },
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
             Spacer(Modifier.height(Spacing.xs))
-            FrText(text = text, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.92f))
+            if (editing) {
+                FrUnderlineField(
+                    value = editInput,
+                    onValueChange = onEditInputChange,
+                    placeholder = resolve(FeedStringKey.CommentsInputPlaceholder),
+                    singleLine = false,
+                    enabled = !isSavingEdit,
+                )
+                if (editError != null) {
+                    Spacer(Modifier.height(Spacing.xs))
+                    FrText(text = editError, style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                }
+                Spacer(Modifier.height(Spacing.sm))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    FrGlassButton(
+                        label = resolve(FeedStringKey.DeleteCancelCta),
+                        onClick = onEditCancel,
+                        tone = FrButtonTone.Ghost,
+                        enabled = !isSavingEdit,
+                        compact = true,
+                    )
+                    FrGlassButton(
+                        label = resolve(FeedStringKey.EditCommentSaveCta),
+                        onClick = onEditSave,
+                        tone = FrButtonTone.Primary,
+                        enabled = !isSavingEdit && editInput.isNotBlank(),
+                        compact = true,
+                    )
+                }
+            } else {
+                FrText(text = text, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.92f))
+            }
         }
     }
 }

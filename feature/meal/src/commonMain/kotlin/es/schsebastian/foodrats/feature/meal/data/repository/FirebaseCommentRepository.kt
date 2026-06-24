@@ -84,6 +84,33 @@ internal class FirebaseCommentRepository(
         }
     }
 
+    override suspend fun edit(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: MealCommentId,
+        text: CommentText,
+    ): Result<Unit, CommentError.Edit> = withContext(dispatchers.io) {
+        authorIdentity.current()?.uid
+            ?: return@withContext Result.failure(CommentError.Edit.NotAuthor)
+        runCatching {
+            ds.update(
+                crewId, mealId, commentId.value,
+                text = text.value,
+                editedAtEpochMs = clock.now().toEpochMilliseconds(),
+            )
+            Result.success(Unit) as Result<Unit, CommentError.Edit>
+        }.getOrElse { t ->
+            val mapped = when (t.toFirebaseFault()) {
+                // The rule denies a non-author edit → permission denied.
+                FirebaseFault.PermissionDenied,
+                FirebaseFault.Unauthenticated -> CommentError.Edit.NotAuthor
+                FirebaseFault.NotFound -> CommentError.Edit.NotFound
+                else -> CommentError.Edit.Unavailable
+            }
+            Result.failure(mapped)
+        }
+    }
+
     override suspend fun delete(
         crewId: CrewId,
         mealId: MealId,

@@ -8,11 +8,25 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
+import es.schsebastian.foodrats.feature.crew.domain.model.JoinRequest
 
 data class CrewSettingsState(
     val crew: Crew? = null,
     val isOwner: Boolean = false,
     val myAccountId: AccountId? = null,
+    /** Pending join requests for the owner to approve/decline (empty for non-owners). */
+    val pendingRequests: List<JoinRequest> = emptyList(),
+    /** Requests whose approve/decline is in flight — the row shows a spinner while present here. */
+    val processingRequestIds: Set<AccountId> = emptySet(),
+    /** The member being confirmed for an ownership transfer (drives the confirm dialog). */
+    val transferTarget: AccountId? = null,
+    /** True while a transfer-ownership write is in flight. */
+    val isTransferring: Boolean = false,
+    /**
+     * The successor the owner picked in the leave dialog (`null` = automatic, longest-tenured). Only
+     * meaningful when an OWNER with other members leaves.
+     */
+    val selectedSuccessor: AccountId? = null,
     val editingCrewName: String = "",
     val isSavingCrewName: Boolean = false,
     val isLeaving: Boolean = false,
@@ -100,6 +114,24 @@ sealed interface CrewSettingsIntent : MviIntent {
     data object ConfirmDelete : CrewSettingsIntent
     data object CancelDelete : CrewSettingsIntent
     data class RemoveMemberConfirmed(val accountId: AccountId) : CrewSettingsIntent
+
+    /** Owner picked a successor in the leave dialog (`null` = automatic / longest-tenured). */
+    data class SelectSuccessor(val accountId: AccountId?) : CrewSettingsIntent
+
+    // ── Join requests (owner-only) ──────────────────────────────────────────────────────────────
+    /** Owner approves the request from [accountId] — adds them to the crew. */
+    data class ApproveRequest(val accountId: AccountId) : CrewSettingsIntent
+    /** Owner declines (deletes) the request from [accountId]. */
+    data class DeclineRequest(val accountId: AccountId) : CrewSettingsIntent
+
+    // ── Transfer ownership (owner-only) ─────────────────────────────────────────────────────────
+    /** Owner tapped "Make owner" on [accountId] — opens the confirmation dialog. */
+    data class RequestTransfer(val accountId: AccountId) : CrewSettingsIntent
+    /** Owner confirmed the ownership transfer. */
+    data object ConfirmTransfer : CrewSettingsIntent
+    /** Owner dismissed the transfer dialog without confirming. */
+    data object CancelTransfer : CrewSettingsIntent
+
     data object DismissError : CrewSettingsIntent
 
     /** Owner is editing the tagline text field. */
@@ -154,4 +186,13 @@ sealed interface CrewSettingsEffect : MviEffect {
      * which the screen substitutes the localized deleted-user fallback) — i18n stays in the UI layer.
      */
     data class MemberRemoved(val displayName: String?) : CrewSettingsEffect
+
+    /** A join request was approved — the screen confirms with the new member's [displayName]. */
+    data class MemberApproved(val displayName: String?) : CrewSettingsEffect
+
+    /** A join request was declined — the screen shows a brief confirmation. */
+    data object RequestDeclined : CrewSettingsEffect
+
+    /** Ownership was transferred — the screen confirms with the new owner's [displayName]. */
+    data class OwnershipTransferred(val displayName: String?) : CrewSettingsEffect
 }

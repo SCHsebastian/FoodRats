@@ -23,8 +23,11 @@ class FakeCrewDataSource : CrewDataSource {
     var createResult: CrewDto? = null
     var createThrows: Throwable? = null
 
-    var joinResult: CrewDto? = null
-    var joinThrows: Throwable? = null
+    var requestToJoinThrows: Throwable? = null
+
+    var approveThrows: Throwable? = null
+    var declineResult: Result<Unit, CrewError> = Result.success(Unit)
+    var transferResult: Result<Unit, CrewError> = Result.success(Unit)
 
     var leaveThrows: Throwable? = null
 
@@ -32,6 +35,7 @@ class FakeCrewDataSource : CrewDataSource {
 
     var observeMyCrewsFlow: Flow<List<CrewDto>> = flowOf(emptyList())
     var observeCrewFlow: Flow<CrewDto?> = flowOf(null)
+    var observeJoinRequestsFlow: Flow<List<JoinRequestDto>> = flowOf(emptyList())
 
     /** Single-shot read used by rename/delete; null = NotFound. */
     var fetchOnceResult: Crew? = null
@@ -54,8 +58,11 @@ class FakeCrewDataSource : CrewDataSource {
 
     // ---- call captures ----
     var lastCreate: CreateCall? = null
-    var lastJoin: JoinCall? = null
-    var lastLeave: Pair<CrewId, AccountId>? = null
+    var lastRequestToJoin: Triple<CrewCode, AccountId, Long>? = null
+    var lastApprove: Triple<CrewId, AccountId, Long>? = null
+    var lastDecline: Pair<CrewId, AccountId>? = null
+    var lastTransfer: Pair<CrewId, AccountId>? = null
+    var lastLeave: Triple<CrewId, AccountId, AccountId?>? = null
     var lastRemoveMember: Pair<CrewId, AccountId>? = null
     var lastFetchOnce: CrewId? = null
     var lastRename: Pair<CrewId, String>? = null
@@ -67,7 +74,6 @@ class FakeCrewDataSource : CrewDataSource {
     var lastSetScoreStyle: Pair<CrewId, String>? = null
 
     data class CreateCall(val name: String, val founder: AccountId, val nowMs: Long)
-    data class JoinCall(val code: CrewCode, val joiner: AccountId, val nowMs: Long)
 
     override suspend fun createCrew(
         name: String,
@@ -79,18 +85,30 @@ class FakeCrewDataSource : CrewDataSource {
         return createResult ?: error("createResult not stubbed")
     }
 
-    override suspend fun joinByCode(
-        code: CrewCode,
-        joiner: AccountId,
-        nowMs: Long,
-    ): CrewDto {
-        lastJoin = JoinCall(code, joiner, nowMs)
-        joinThrows?.let { throw it }
-        return joinResult ?: error("joinResult not stubbed")
+    override suspend fun requestToJoin(code: CrewCode, requester: AccountId, nowMs: Long) {
+        lastRequestToJoin = Triple(code, requester, nowMs)
+        requestToJoinThrows?.let { throw it }
     }
 
-    override suspend fun leave(crewId: CrewId, leaver: AccountId) {
-        lastLeave = crewId to leaver
+    override fun observeJoinRequests(crewId: CrewId): Flow<List<JoinRequestDto>> = observeJoinRequestsFlow
+
+    override suspend fun approveJoinRequest(crewId: CrewId, requester: AccountId, nowMs: Long) {
+        lastApprove = Triple(crewId, requester, nowMs)
+        approveThrows?.let { throw it }
+    }
+
+    override suspend fun declineJoinRequest(crewId: CrewId, requester: AccountId): Result<Unit, CrewError> {
+        lastDecline = crewId to requester
+        return declineResult
+    }
+
+    override suspend fun transferOwnership(crewId: CrewId, newOwner: AccountId): Result<Unit, CrewError> {
+        lastTransfer = crewId to newOwner
+        return transferResult
+    }
+
+    override suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId?) {
+        lastLeave = Triple(crewId, leaver, successor)
         leaveThrows?.let { throw it }
     }
 
