@@ -14,6 +14,14 @@ import { createHash } from "node:crypto";
 //               manual review only — an account takedown is always a human decision.
 // Below threshold, the report is logged for the manual review queue and nothing is removed.
 //
+// Child-safety escalation: a report whose `reason === "child_safety"` (CHILD_SAFETY_REASON)
+// ESCALATES IMMEDIATELY — it bypasses the multi-reporter threshold and takes the target down on
+// the FIRST report, then writes a HIGH-PRIORITY `moderationActions` audit entry (escalated:true,
+// priority:"high", reason:"child_safety") so a human can triage it at once. It reuses the SAME
+// takedown path (claim-create → content removal → markActioned → completed) and the SAME
+// deterministic doc id, so it stays idempotent: duplicate child-safety reports for one target do
+// not double-write. The threshold config is left untouched — escalation is an OR on top of it.
+//
 // Idempotency (two levels):
 //   1. Report-level: doc ids are deterministic (`${reporterUid}|${targetKey}`) so there is
 //      exactly one report doc per reporter per target. The distinct-reporter count == doc count,
@@ -54,6 +62,14 @@ import { createHash } from "node:crypto";
 /** Distinct reporters required before a target is auto-removed. Exported so the test pins it. */
 export const THRESHOLD = 3;
 
+/**
+ * The reason value the client writes for a Child-safety report. A report carrying this reason
+ * ESCALATES IMMEDIATELY: it takes the target down on the FIRST report (no multi-reporter
+ * threshold) and writes a HIGH-PRIORITY `moderationActions` audit entry for human triage.
+ * Exported so the test pins it.
+ */
+export const CHILD_SAFETY_REASON = "child_safety";
+
 /** Maximum value a MODERATION_REPORT_THRESHOLD override may take (values above are clamped). */
 const MAX_THRESHOLD = 50;
 
@@ -92,6 +108,13 @@ export interface ReportDoc {
   mealId?: string;
   commentId?: string;
   accountId?: string;
+  /**
+   * Why the content was reported. One of the client-side reasons
+   * (`spam` | `harassment` | `hate` | `sexual` | `violence` | `other`) PLUS the special
+   * `child_safety` reason, which ESCALATES IMMEDIATELY (see `CHILD_SAFETY_REASON`): a single
+   * such report bypasses the multi-reporter threshold and takes the target down at once.
+   */
+  reason?: string;
 }
 
 export interface ReportOutcome {
@@ -145,6 +168,21 @@ export interface ModerationActionDoc {
    * `null` when `completed === false` (incomplete claim / account flag-only).
    */
   removedAtEpochMs: number | null;
+  /**
+   * `true` ONLY for a Child-safety escalation (a single `child_safety` report that bypassed the
+   * multi-reporter threshold). Absent on threshold-driven takedowns. Lets a human triage queue
+   * filter for the cases that must be reviewed immediately.
+   */
+  escalated?: true;
+  /**
+   * Triage priority. `"high"` ONLY for a Child-safety escalation; absent on the normal path.
+   */
+  priority?: "high";
+  /**
+   * The escalating report reason (`"child_safety"`) when `escalated === true`; absent otherwise.
+   * Distinct from `reasonHistogram` (which aggregates ALL open reports' reasons).
+   */
+  reason?: string;
 }
 
 /**
@@ -247,9 +285,13 @@ export async function processReport(report: ReportDoc, deps: ReportDeps): Promis
   }
 
   const threshold = resolvedThreshold();
+  // Child-safety reports ESCALATE IMMEDIATELY: a single such report takes the target down at
+  // once, bypassing the multi-reporter threshold. The threshold config is left untouched for the
+  // normal path — escalation is an OR on top of it, never a change to `resolvedThreshold()`.
+  const escalate = report.reason === CHILD_SAFETY_REASON;
   const distinct = await deps.countDistinctReporters(report.targetKey);
   const distinctReporters = distinct.size;
-  const thresholdReached = distinctReporters >= threshold;
+  const thresholdReached = escalate || distinctReporters >= threshold;
 
   if (!thresholdReached) {
     const outcome: ReportOutcome = {
@@ -296,6 +338,9 @@ export async function processReport(report: ReportDoc, deps: ReportDeps): Promis
       createdAtEpochMs: Date.now(),
       completed: false,
       removedAtEpochMs: null,
+      // High-priority triage tags — present ONLY for a Child-safety escalation. The normal
+      // (threshold-driven) path leaves these absent so its audit-doc shape is unchanged.
+      ...(escalate ? { escalated: true as const, priority: "high" as const, reason: CHILD_SAFETY_REASON } : {}),
     };
     await deps.writeAuditDoc(auditId, auditDoc);
     // We won the create-lock. Fall through to content removal.
@@ -401,6 +446,8 @@ function auditLog(outcome: ReportOutcome, report: ReportDoc, threshold: number):
     thresholdReached: outcome.thresholdReached,
     action: outcome.action,
     reporterId: report.reporterId,
+    reason: report.reason ?? null,
+    escalated: report.reason === CHILD_SAFETY_REASON,
     crewId: report.crewId ?? null,
     mealId: report.mealId ?? null,
     commentId: report.commentId ?? null,
@@ -538,6 +585,7 @@ export const onReportCreated = onDocumentCreated(
       mealId: data.mealId,
       commentId: data.commentId,
       accountId: data.accountId,
+      reason: data.reason,
     };
 
     await processReport(report, firestoreDeps());

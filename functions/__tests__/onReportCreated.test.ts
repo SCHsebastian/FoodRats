@@ -4,6 +4,7 @@ import {
   moderationActionId,
   reconstructTargetKey,
   THRESHOLD,
+  CHILD_SAFETY_REASON,
   type ModerationActionDoc,
   type ReportDeps,
   type ReportDoc,
@@ -340,6 +341,127 @@ describe("processReport — account path is flag-only", () => {
     expect(r.removedMeals).toEqual([]);
     expect(r.removedComments).toEqual([]);
     expect(r.actioned).toEqual([ACCOUNT_KEY]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Child-safety escalation — a SINGLE report takes the target down immediately
+// (bypassing the multi-reporter threshold) and writes a HIGH-PRIORITY audit doc.
+// ---------------------------------------------------------------------------
+
+const childSafetyMealReport = (reporterId: string): ReportDoc => ({
+  ...mealReport(reporterId),
+  reason: CHILD_SAFETY_REASON,
+});
+
+const childSafetyCommentReport = (reporterId: string): ReportDoc => ({
+  ...commentReport(reporterId),
+  reason: CHILD_SAFETY_REASON,
+});
+
+const childSafetyAccountReport = (reporterId: string): ReportDoc => ({
+  ...accountReport(reporterId),
+  reason: CHILD_SAFETY_REASON,
+});
+
+describe("processReport — child_safety escalates on the FIRST report", () => {
+  it("CHILD_SAFETY_REASON is 'child_safety'", () => {
+    expect(CHILD_SAFETY_REASON).toBe("child_safety");
+  });
+
+  it("a SINGLE child_safety meal report removes the meal immediately AND writes a high-priority audit doc", async () => {
+    // ONE distinct reporter — far below THRESHOLD (3). A normal report here would NOT remove.
+    const r = recorder(new Set(["u1"]), { reasons: [CHILD_SAFETY_REASON], authorId: "alice" });
+    const outcome = await processReport(childSafetyMealReport("u1"), r.deps);
+
+    // Hidden immediately despite being below the multi-reporter threshold.
+    expect(outcome.thresholdReached).toBe(true);
+    expect(outcome.action).toBe("removed_meal");
+    expect(outcome.distinctReporters).toBe(1);
+    expect(r.removedMeals).toEqual([{ crewId: CREW, mealId: MEAL }]);
+    expect(r.removedMeals).toHaveLength(1);
+    expect(r.actioned).toEqual([MEAL_KEY]);
+
+    // High-priority audit entry for human triage.
+    const doc = r.auditDocs.get(moderationActionId(MEAL_KEY))!;
+    expect(doc).toBeDefined();
+    expect(doc.escalated).toBe(true);
+    expect(doc.priority).toBe("high");
+    expect(doc.reason).toBe(CHILD_SAFETY_REASON);
+    expect(doc.targetKey).toBe(MEAL_KEY);
+    expect(doc.targetType).toBe("meal");
+    expect(doc.crewId).toBe(CREW);
+    expect(typeof doc.createdAtEpochMs).toBe("number");
+
+    // Claim is flipped to completed after the takedown.
+    const update = r.auditDocUpdates.get(moderationActionId(MEAL_KEY));
+    expect(update?.completed).toBe(true);
+    expect(typeof update?.removedAtEpochMs).toBe("number");
+  });
+
+  it("a SINGLE NON-child_safety meal report still does NOT remove (threshold unchanged)", async () => {
+    // Same single reporter, but reason = "spam" → ordinary path → below threshold, nothing removed.
+    const r = recorder(new Set(["u1"]), { reasons: ["spam"], authorId: "alice" });
+    const outcome = await processReport(
+      { ...mealReport("u1"), reason: "spam" },
+      r.deps,
+    );
+
+    expect(outcome.thresholdReached).toBe(false);
+    expect(outcome.action).toBe("below_threshold");
+    expect(r.removedMeals).toEqual([]);
+    expect(r.actioned).toEqual([]);
+    expect(r.auditDocs.size).toBe(0);
+  });
+
+  it("a SINGLE child_safety comment report removes the comment immediately with a high-priority audit doc", async () => {
+    const r = recorder(new Set(["u1"]), { reasons: [CHILD_SAFETY_REASON] });
+    const outcome = await processReport(childSafetyCommentReport("u1"), r.deps);
+
+    expect(outcome.thresholdReached).toBe(true);
+    expect(outcome.action).toBe("removed_comment");
+    expect(r.removedComments).toEqual([{ crewId: CREW, mealId: MEAL, commentId: COMMENT }]);
+    expect(r.removedMeals).toEqual([]);
+    expect(r.actioned).toEqual([COMMENT_KEY]);
+
+    const doc = r.auditDocs.get(moderationActionId(COMMENT_KEY))!;
+    expect(doc.escalated).toBe(true);
+    expect(doc.priority).toBe("high");
+    expect(doc.reason).toBe(CHILD_SAFETY_REASON);
+  });
+
+  it("a SINGLE child_safety account report flags immediately (no auto-removal) with a high-priority audit doc", async () => {
+    // Accounts are never auto-disabled (always a human decision), but the escalation still
+    // fires immediately and writes the high-priority audit entry for urgent triage.
+    const r = recorder(new Set(["u1"]), { reasons: [CHILD_SAFETY_REASON], authorId: null });
+    const outcome = await processReport(childSafetyAccountReport("u1"), r.deps);
+
+    expect(outcome.thresholdReached).toBe(true);
+    expect(outcome.action).toBe("flagged_account");
+    expect(r.removedMeals).toEqual([]);
+    expect(r.removedComments).toEqual([]);
+    expect(r.actioned).toEqual([ACCOUNT_KEY]);
+
+    const doc = r.auditDocs.get(moderationActionId(ACCOUNT_KEY))!;
+    expect(doc.escalated).toBe(true);
+    expect(doc.priority).toBe("high");
+    expect(doc.reason).toBe(CHILD_SAFETY_REASON);
+    expect(doc.authorId).toBeNull();
+  });
+
+  it("a duplicate child_safety report for an already-actioned target does NOT double-write (idempotent)", async () => {
+    // Re-fire of the same target whose claim doc is already completed → short-circuit, no new write.
+    const auditId = moderationActionId(MEAL_KEY);
+    const r = recorder(new Set(["u1"]), {
+      reasons: [CHILD_SAFETY_REASON],
+      completedAuditIds: new Set([auditId]),
+    });
+    const outcome = await processReport(childSafetyMealReport("u1"), r.deps);
+
+    expect(outcome.alreadyActioned).toBe(true);
+    expect(r.removedMeals).toHaveLength(0);
+    expect(r.auditDocs.size).toBe(0);
+    expect(r.actioned).toHaveLength(0);
   });
 });
 

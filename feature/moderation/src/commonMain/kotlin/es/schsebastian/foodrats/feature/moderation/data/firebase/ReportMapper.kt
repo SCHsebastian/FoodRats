@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.moderation.ReportTarget
 
 /** Wire discriminator for the `reason` field; the leaves map 1:1 to the security-rule whitelist (§8.2). */
 internal fun ReportReason.toWire(): String = when (this) {
+    ReportReason.ChildSafety -> "child_safety"
     ReportReason.Spam -> "spam"
     ReportReason.Harassment -> "harassment"
     ReportReason.Hate -> "hate"

@@ -172,6 +172,16 @@ describe("reports create — F4 field whitelist + target pinning", () => {
       setDoc(doc(db, `reports/${docId("bob", MEAL_KEY)}`), mealReport("bob", { reason: "bogus" })),
     );
   });
+
+  it("ALLOWS the child_safety reason", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, `reports/${docId("bob", MEAL_KEY)}`),
+        mealReport("bob", { reason: "child_safety" }),
+      ),
+    );
+  });
 });
 
 describe("reports create — F3 doc-id binding", () => {

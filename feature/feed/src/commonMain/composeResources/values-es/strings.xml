@@ -102,6 +102,7 @@
     <string name="feed_report_error_already_reported">Ya has reportado esto.</string>
     <string name="feed_report_error_unavailable">No se pudo enviar tu reporte. Intenta de nuevo.</string>
     <string name="feed_block_error_unavailable">No se pudo bloquear a este usuario. Intenta de nuevo.</string>
+    <string name="feed_report_reason_child_safety">Seguridad infantil</string>
     <string name="feed_report_reason_spam">Spam o estafa</string>
     <string name="feed_report_reason_harassment">Acoso o intimidación</string>
     <string name="feed_report_reason_hate">Discurso de odio</string>

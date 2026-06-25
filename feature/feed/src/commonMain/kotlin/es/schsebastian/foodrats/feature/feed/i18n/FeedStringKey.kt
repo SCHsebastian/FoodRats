@@ -28,6 +28,7 @@ import foodrats.feature.feed.generated.resources.feed_report_submit_comment
 import foodrats.feature.feed.generated.resources.feed_report_error_already_reported
 import foodrats.feature.feed.generated.resources.feed_report_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_block_error_unavailable
+import foodrats.feature.feed.generated.resources.feed_report_reason_child_safety
 import foodrats.feature.feed.generated.resources.feed_report_reason_spam
 import foodrats.feature.feed.generated.resources.feed_report_reason_harassment
 import foodrats.feature.feed.generated.resources.feed_report_reason_hate
@@ -226,6 +227,7 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     ReportErrorUnavailable(Res.string.feed_report_error_unavailable),
     BlockErrorUnavailable(Res.string.feed_block_error_unavailable),
     // Report-reason labels for the FrReportSheet.
+    ReportReasonChildSafety(Res.string.feed_report_reason_child_safety),
     ReportReasonSpam(Res.string.feed_report_reason_spam),
     ReportReasonHarassment(Res.string.feed_report_reason_harassment),
     ReportReasonHate(Res.string.feed_report_reason_hate),

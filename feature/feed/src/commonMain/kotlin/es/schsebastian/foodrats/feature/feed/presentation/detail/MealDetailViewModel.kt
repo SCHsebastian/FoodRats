@@ -390,6 +390,7 @@ class MealDetailViewModel(
 
     /** Maps the presentation reason option to the domain [ReportReason]. */
     private fun FrReportReasonOption.toReason(): ReportReason = when (this) {
+        FrReportReasonOption.CHILD_SAFETY -> ReportReason.ChildSafety
         FrReportReasonOption.SPAM       -> ReportReason.Spam
         FrReportReasonOption.HARASSMENT -> ReportReason.Harassment
         FrReportReasonOption.HATE       -> ReportReason.Hate
