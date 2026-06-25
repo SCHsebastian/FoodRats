@@ -3,6 +3,11 @@ agp = "9.0.1"
 android-compileSdk = "36"
 android-minSdk = "30"
 android-targetSdk = "36"
+# Pinned NDK for reproducible release builds. The app compiles NO native code of its own,
+# but AGP needs an NDK toolchain to extract native debug symbols (release.ndk.debugSymbolLevel)
+# from the prebuilt .so we ship — MediaPipe tasks-vision JNI + SQLDelight. Stable r28 LTS line;
+# bump deliberately and keep in lockstep with the version on the CI runners.
+android-ndk = "28.2.13676358"
 # SQLDelight 2.3.2 is the FIRST release compatible with AGP 9.0's new androidLibrary {} DSL (#6140).
 # Do NOT downgrade. (Offline-first P3 — local read source-of-truth.)
 sqldelight = "2.3.2"
