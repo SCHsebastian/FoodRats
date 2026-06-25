@@ -122,6 +122,15 @@ jobs:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         run: printf '%s' "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/iosApp/GoogleService-Info.plist
 
+      - name: Install CocoaPods (MealAiVision / MediaPipe)
+        # iosApp/Pods is gitignored; the committed iosApp.xcworkspace references it,
+        # so the pods must be resolved before gym archives. Uses the runner's
+        # Homebrew CocoaPods (Podfile.lock is committed → deterministic resolve).
+        run: |
+          set -euo pipefail
+          export PATH="/opt/homebrew/bin:$PATH"
+          pod install --project-directory=iosApp
+
       - name: Build & upload to TestFlight
         # ASC API key (.p8) + match creds come from the local, untracked signing
         # env (~/.config/foodrats/signing.env), same as the Android jobs — nothing

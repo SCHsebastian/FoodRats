@@ -126,18 +126,49 @@ platform :ios do
 
   def build_ios
     profile = "match AppStore es.schsebastian.foodrats"
+    # Scope manual signing to the app target ONLY. Passing CODE_SIGN_IDENTITY /
+    # PROVISIONING_PROFILE_SPECIFIER as global xcargs leaks them onto the Swift
+    # Package Manager dependency targets (leveldb, AppAuth, GoogleUtilities,
+    # GoogleSignIn, …) which "do not support provisioning profiles" and fail the
+    # archive (exit 65). update_code_signing_settings writes the signing config
+    # into the app target only; the SPM targets keep their default (no profile).
+    # App target: full manual signing with the App Store provisioning profile.
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "iosApp/iosApp.xcodeproj",
+      targets: ["iosApp"],
+      team_id: "2AH7L26L78",
+      code_sign_identity: "Apple Distribution",
+      profile_name: profile,
+      bundle_identifier: "es.schsebastian.foodrats",
+    )
+    # Embedded MealAiVision dynamic framework: distribution IDENTITY only. A framework
+    # takes no provisioning profile (so no profile_name here). Without an explicit
+    # identity it archives unsigned and the app's embed step rejects it
+    # ("MealAiVision isn't code signed but requires entitlements"). Scoping this to the
+    # framework target — instead of a global CODE_SIGN_IDENTITY xcarg — keeps the
+    # identity off the SPM resource bundles (nanopb_nanopb.bundle,
+    # GoogleUtilities_*-Reachability.bundle), which otherwise fail codesign with
+    # errSecInternalComponent.
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "iosApp/iosApp.xcodeproj",
+      targets: ["MealAiVision"],
+      team_id: "2AH7L26L78",
+      code_sign_identity: "Apple Distribution",
+    )
     build_app(
-      project: "iosApp/iosApp.xcodeproj",
+      workspace: "iosApp/iosApp.xcworkspace",
       scheme: "iosApp",
       export_method: "app-store",
       output_directory: "build/ios",
       xcargs: [
+        # Version only. NO global signing xcargs: a global CODE_SIGN_IDENTITY /
+        # PROVISIONING_PROFILE_SPECIFIER leaks onto the SPM packages and their resource
+        # bundles, which reject profiles / fail to sign. Signing is set per user-project
+        # target by the two update_code_signing_settings calls above.
         "MARKETING_VERSION=#{ENV.fetch('VERSION_NAME')}",
         "CURRENT_PROJECT_VERSION=#{ENV.fetch('VERSION_CODE')}",
-        "CODE_SIGN_STYLE=Manual",
-        "DEVELOPMENT_TEAM=2AH7L26L78",
-        "CODE_SIGN_IDENTITY=Apple\\ Distribution",
-        "PROVISIONING_PROFILE_SPECIFIER=#{profile.gsub(' ', '\\ ')}",
       ].join(" "),
       export_options: {
         provisioningProfiles: {
