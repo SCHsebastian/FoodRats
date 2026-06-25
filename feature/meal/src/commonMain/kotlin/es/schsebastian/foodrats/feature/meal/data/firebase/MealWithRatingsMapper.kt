@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.data.firebase
 
+import es.schsebastian.foodrats.core.domain.account.Bio
 import es.schsebastian.foodrats.core.domain.meal.MealRating
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
@@ -10,11 +11,14 @@ import kotlin.time.Instant
 
 /**
  * Minimal projection of a crew member used to resolve rater display names without
- * pulling the full `MemberDto` (which lives in `:feature:crew`).
+ * pulling the full `MemberDto` (which lives in `:feature:crew`). Extended in U5b to
+ * carry [bio] and [badgeId] so the feed author row can display identity signals.
  */
 data class CrewMemberLookup(
     val displayName: String,
     val avatarUrl: String?,
+    val bio: Bio? = null,
+    val badgeId: String? = null,
 )
 
 /**
@@ -38,6 +42,8 @@ fun MealDto.toMealWithRatings(
             author = baseMeal.author.copy(
                 displayName = live.displayName,
                 avatarUrl = live.avatarUrl,
+                bio = live.bio,
+                badgeId = live.badgeId,
             ),
         )
     } else {
@@ -53,6 +59,7 @@ fun MealDto.toMealWithRatings(
             raterAvatarUrl = member?.avatarUrl,
             score = score,
             ratedAt = Instant.fromEpochMilliseconds(entry.atMs),
+            edited = entry.edited,
         )
     }
     return Result.success(MealWithRatings(meal, ratings))

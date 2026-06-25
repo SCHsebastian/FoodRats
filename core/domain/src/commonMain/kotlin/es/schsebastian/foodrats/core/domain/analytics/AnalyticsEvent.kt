@@ -64,6 +64,24 @@ sealed interface AnalyticsEvent {
         override val params = mapOf("crew_id" to text(crewId.value))
     }
 
+    /** The owner renamed a crew. Id only — the crew NAME is free text (PII) and is never sent. */
+    data class CrewRenamed(val crewId: CrewId) : AnalyticsEvent {
+        override val name = "crew_renamed"
+        override val params = mapOf("crew_id" to text(crewId.value))
+    }
+
+    /** Crew-lifecycle churn signal, the inverse of [CrewCreated]. Distinct from [CrewLeft]. */
+    data class CrewDeleted(val crewId: CrewId) : AnalyticsEvent {
+        override val name = "crew_deleted"
+        override val params = mapOf("crew_id" to text(crewId.value))
+    }
+
+    /** Multi-crew engagement — the active crew switched. Destination crew id only. */
+    data class CrewSwitched(val crewId: CrewId) : AnalyticsEvent {
+        override val name = "crew_switched"
+        override val params = mapOf("crew_id" to text(crewId.value))
+    }
+
     /**
      * The crew owner removed a member. Fired in the ViewModel AFTER the remove `Result` resolves
      * `Ok`. Carries only the crew id — never the removed member's account id or any identity, so the
@@ -169,7 +187,8 @@ sealed interface AnalyticsEvent {
 
     /** Publish enqueued (Result Ok). Multi-crew → [audienceCrewCount], no single crew_id. */
     data class MealPublished(
-        val slot: MealSlot,
+        // Null when the author tagged no slot — emitted as "none" (slot is optional now).
+        val slot: MealSlot?,
         val ingredientCount: Int,
         val hasDescription: Boolean,
         val audienceCrewCount: Int,
@@ -177,7 +196,7 @@ sealed interface AnalyticsEvent {
     ) : AnalyticsEvent {
         override val name = "meal_published"
         override val params = mapOf(
-            "meal_slot" to text(slot.key()),
+            "meal_slot" to text(slot?.key() ?: "none"),
             "ingredient_count" to count(ingredientCount),
             "has_description" to flag(hasDescription),
             "audience_crew_count" to count(audienceCrewCount),
@@ -333,6 +352,19 @@ sealed interface AnalyticsEvent {
         override val params = mapOf("screen_name" to text(screen.wire))
     }
 
+    /**
+     * A navigation transition occurred. Fired on every back-stack change alongside [ScreenViewed],
+     * capturing the previous and current screens. Omitted on the very first screen (no [from]).
+     * Both values are derived from the `Route` type — never free text or PII.
+     */
+    data class ScreenMoved(val from: ScreenName, val to: ScreenName) : AnalyticsEvent {
+        override val name = "screen_moved"
+        override val params = mapOf(
+            "from_screen" to text(from.wire),
+            "to_screen" to text(to.wire),
+        )
+    }
+
     // ───────────────────────────── account ─────────────────────────────
 
     /**
@@ -343,6 +375,25 @@ sealed interface AnalyticsEvent {
     data object AccountDeleted : AnalyticsEvent {
         override val name = "account_deleted"
         override val params = emptyMap<String, AnalyticsValue>()
+    }
+
+    // ───────────────────────────── settings ─────────────────────────────
+
+    /**
+     * A user-changeable persisted preference was changed. Generic over the [AppSetting] dimension so
+     * one leaf covers all five toggles. [enabled] is carried only for boolean toggles (notifications,
+     * blind-voting); theme/language/reminders omit the target VALUE on purpose (the question is
+     * did-they-change-it, not to-what — a locale tag risks reading as locale PII).
+     */
+    data class SettingChanged(
+        val setting: AppSetting,
+        val enabled: Boolean? = null,
+    ) : AnalyticsEvent {
+        override val name = "setting_changed"
+        override val params = buildMap {
+            put("setting", text(setting.wire))
+            if (enabled != null) put("enabled", flag(enabled))
+        }
     }
 
     // ───────────────────────────── consent ─────────────────────────────

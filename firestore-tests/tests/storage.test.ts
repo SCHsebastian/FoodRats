@@ -15,6 +15,7 @@ const STORAGE_RULES = readFileSync(resolve(here, "..", "..", "storage.rules"), "
 
 const PLATE = "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg";
 const AVATAR = "avatars/alice.jpg";
+const BANNER = "crew_banners/c1/banner.jpg";
 
 let env: RulesTestEnvironment;
 
@@ -59,5 +60,11 @@ describe("storage.rules — direct reads are denied (#15)", () => {
     await seed(PLATE);
     const storage = env.unauthenticatedContext().storage();
     await assertFails(getBytes(ref(storage, PLATE)));
+  });
+
+  it("denies an authenticated member reading a crew banner object directly (C9)", async () => {
+    await seed(BANNER);
+    const storage = env.authenticatedContext("alice").storage();
+    await assertFails(getBytes(ref(storage, BANNER)));
   });
 });

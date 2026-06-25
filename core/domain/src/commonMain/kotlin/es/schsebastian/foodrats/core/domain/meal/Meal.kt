@@ -10,7 +10,8 @@ data class Meal(
     val author: MealAuthor,
     val crewId: CrewId,
     val day: MealDay,
-    val slot: MealSlot,
+    /** Optional "meal moment" label — `null` when the author didn't tag one (slot is no longer required). */
+    val slot: MealSlot?,
     /**
      * Signed URL of the FULL plate image (used by the detail screen). At the data layer this
      * transiently carries the Storage PATH until the feed enrichment resolves it to a signed URL.

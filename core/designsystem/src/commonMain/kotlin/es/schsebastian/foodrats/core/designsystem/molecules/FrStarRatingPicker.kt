@@ -16,6 +16,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
+import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
@@ -23,9 +24,9 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
- * Tap-to-rate 1..5 stars. Renders actual star glyphs — the previous version showed digits
- * because `material-icons-extended` has no KMP-iOS publication; `Icons.Outlined.StarBorder`
- * and `Icons.Filled.Star` are both in `material-icons-core`.
+ * Tap-to-rate 1..5 stars / emoji / numeric — controlled by [style] (C8). Renders actual star
+ * glyphs for [FrScoreStyle.Stars], emoji characters for [FrScoreStyle.Emoji], and digit chips
+ * for [FrScoreStyle.Numeric]. The underlying numeric range (1..5) is always 1..5.
  *
  * Filled stars use [LocalFrSemanticColors.current.celebration] (honey/citrus tone) per
  * Apple/Letterboxd convention — single-tint star ratings, not a danger→success gradient.
@@ -44,6 +45,8 @@ fun FrStarRatingPicker(
     modifier: Modifier = Modifier,
     value: Int = 0,
     enabled: Boolean = true,
+    /** Score vocabulary to render (C8). Defaults to [FrScoreStyle.Stars] for pre-C8 crews. */
+    style: FrScoreStyle = FrScoreStyle.Stars,
     starLabel: (Int) -> String = { it.toString() },
     groupContentDescription: String? = null,
 ) {
@@ -75,11 +78,24 @@ fun FrStarRatingPicker(
                     .semantics { contentDescription = label },
                 contentAlignment = Alignment.Center,
             ) {
-                FrIcon(
-                    image = Icons.Filled.Star,
-                    tint = if (selected) filled else empty,
-                    modifier = Modifier.size(Sizes.starIcon),
-                )
+                when (style) {
+                    FrScoreStyle.Stars -> FrIcon(
+                        image = Icons.Filled.Star,
+                        tint = if (selected) filled else empty,
+                        modifier = Modifier.size(Sizes.starIcon),
+                    )
+                    FrScoreStyle.Emoji -> FrText(
+                        text = scoreToEmoji(i),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = if (selected) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    )
+                    FrScoreStyle.Numeric -> FrText(
+                        text = "$i",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (selected) filled else empty,
+                    )
+                }
             }
         }
     }

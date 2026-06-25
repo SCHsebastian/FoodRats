@@ -7,6 +7,9 @@ enum class CatalogGroup(val label: String, val order: Int) {
     ATOMS("Atoms", 1),
     MOLECULES("Molecules", 2),
     TEMPLATES("Templates", 3),
+
+    /** Opt-in "Structural" variant — zero-chrome / frosted strata / bento / media floor. Dark-first. */
+    STRUCTURAL("Structural", 4),
 }
 
 data class CatalogEntry(

@@ -19,8 +19,9 @@ class StartMealDraftUseCase(
 ) {
     /**
      * Starts a fresh draft for [authorId], seeded with [audienceCrewIds] as the
-     * publish audience (the composer defaults this to all the author's crews and the
-     * user may narrow it before publishing).
+     * publish audience (the composer defaults this to the active crew the user
+     * launched from, falling back to a saved default / all crews, and the user may
+     * change it before publishing).
      */
     suspend operator fun invoke(
         authorId: AccountId,

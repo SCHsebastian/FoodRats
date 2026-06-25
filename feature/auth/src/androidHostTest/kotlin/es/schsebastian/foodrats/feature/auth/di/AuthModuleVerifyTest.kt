@@ -5,9 +5,14 @@ import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.storage.FirebaseStorage
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
+import es.schsebastian.foodrats.core.domain.preferences.EulaPort
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
@@ -51,6 +56,13 @@ class AuthModuleVerifyTest {
                 NotificationPermissionPort::class,
                 AnalyticsPort::class,
                 ConsentPort::class,
+                AiPreferencePort::class,
+                AccentPalettePort::class,
+                EulaPort::class,
+                // Offline-first profile-text writes: the two Update use cases now take these
+                // (bound in core data/outbox modules, not authModule).
+                ConnectivityPort::class,
+                OutboxPort::class,
             ),
         )
     }

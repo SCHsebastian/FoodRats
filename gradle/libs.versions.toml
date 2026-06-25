@@ -3,6 +3,14 @@ agp = "9.0.1"
 android-compileSdk = "36"
 android-minSdk = "30"
 android-targetSdk = "36"
+# Pinned NDK for reproducible release builds. The app compiles NO native code of its own,
+# but AGP needs an NDK toolchain to extract native debug symbols (release.ndk.debugSymbolLevel)
+# from the prebuilt .so we ship — MediaPipe tasks-vision JNI + SQLDelight. Stable r28 LTS line;
+# bump deliberately and keep in lockstep with the version on the CI runners.
+android-ndk = "28.2.13676358"
+# SQLDelight 2.3.2 is the FIRST release compatible with AGP 9.0's new androidLibrary {} DSL (#6140).
+# Do NOT downgrade. (Offline-first P3 — local read source-of-truth.)
+sqldelight = "2.3.2"
 androidx-activity = "1.13.0"
 androidx-appcompat = "1.7.1"
 androidx-core = "1.18.0"
@@ -78,6 +86,7 @@ compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.re
 compose-foundation = { module = "org.jetbrains.compose.foundation:foundation", version.ref = "composeMultiplatform" }
 compose-material3 = { module = "org.jetbrains.compose.material3:material3", version.ref = "material3" }
 compose-ui = { module = "org.jetbrains.compose.ui:ui", version.ref = "composeMultiplatform" }
+compose-ui-backhandler = { module = "org.jetbrains.compose.ui:ui-backhandler", version.ref = "composeMultiplatform" }
 compose-components-resources = { module = "org.jetbrains.compose.components:components-resources", version.ref = "composeMultiplatform" }
 compose-uiToolingPreview = { module = "org.jetbrains.compose.ui:ui-tooling-preview", version.ref = "composeMultiplatform" }
 # material-icons-core: pinned to 1.6.2 — this is the last published KMP version.
@@ -135,6 +144,12 @@ google-id                               = { module = "com.google.android.librari
 nav-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navCompose" }
 
 turbine                = { module = "app.cash.turbine:turbine",          version.ref = "turbine" }
+# SQLDelight (offline-first P3) — local DB. android/native drivers per target; jvm driver for host tests.
+sqldelight-runtime          = { module = "app.cash.sqldelight:runtime",                version.ref = "sqldelight" }
+sqldelight-coroutines-ext   = { module = "app.cash.sqldelight:coroutines-extensions",  version.ref = "sqldelight" }
+sqldelight-android-driver   = { module = "app.cash.sqldelight:android-driver",         version.ref = "sqldelight" }
+sqldelight-native-driver    = { module = "app.cash.sqldelight:native-driver",          version.ref = "sqldelight" }
+sqldelight-jvm-driver       = { module = "app.cash.sqldelight:sqlite-driver",          version.ref = "sqldelight" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core",  version.ref = "kotest" }
 konsist                = { module = "com.lemonappdev:konsist",           version.ref = "konsist" }
 okio                   = { module = "com.squareup.okio:okio",            version.ref = "okio" }
@@ -197,3 +212,4 @@ firebaseCrashlytics            = { id = "com.google.firebase.crashlytics",      
 # generation into :androidApp and consumes the result into the release build (roadmap §5.3).
 androidTest                    = { id = "com.android.test",                              version.ref = "agp" }
 androidxBaselineprofile        = { id = "androidx.baselineprofile",                      version.ref = "androidxBaselineprofile" }
+sqldelight                     = { id = "app.cash.sqldelight",                           version.ref = "sqldelight" }

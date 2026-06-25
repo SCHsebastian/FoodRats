@@ -2,11 +2,15 @@ package es.schsebastian.foodrats.feature.feed.di
 
 import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
+import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
@@ -14,7 +18,9 @@ import es.schsebastian.foodrats.core.domain.meal.MealRatingPort
 import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
+import es.schsebastian.foodrats.core.domain.meal.OptimisticMealWritePort
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import kotlinx.datetime.TimeZone
@@ -43,19 +49,33 @@ class FeedModuleVerifyTest {
                 CrewBlindVotingPort::class,
                 SessionProvider::class,
                 AccountReadPort::class,
+                // UGC compliance §3/§4/§5 — feed reads/filters blocked authors, reports + blocks
+                // from meal detail, and screens comments with the on-device text filter. All three
+                // ports are bound by :feature:moderation in the shared aggregator.
+                BlockedAccountsPort::class,
+                es.schsebastian.foodrats.core.domain.moderation.ReportPort::class,
+                es.schsebastian.foodrats.core.domain.moderation.TextModerationPort::class,
+                // LocalePort backs the named("moderationLanguageTag") Flow<String> the comment filter reads.
+                es.schsebastian.foodrats.core.domain.preferences.LocalePort::class,
                 CrewOwnerPort::class,
                 MealReadPort::class,
                 MealRatingPort::class,
+                OptimisticMealWritePort::class,
                 MealReactionPort::class,
                 MealDeletePort::class,
                 MealCommentPort::class,
                 MealUploadProgressPort::class,
                 QueuedUploadActionsPort::class,
+                FeedSyncStatusPort::class,
                 IngredientReadPort::class,
                 Clock::class,
                 TimeZone::class,
                 StoryShareController::class,
                 AnalyticsPort::class,
+                ConnectivityPort::class,
+                OutboxPort::class,
+                // C6 — welcome banner port bound by :feature:crew in the shared aggregator.
+                CrewWelcomePort::class,
             ),
         )
     }

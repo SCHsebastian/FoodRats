@@ -8,8 +8,17 @@
     <string name="auth_signin_highlight_rate">Score your crew's cooking</string>
     <string name="auth_signin_highlight_feed">Keep the streak alive</string>
     <string name="auth_signin_footer">No public feed. Just your crew.</string>
+    <!-- UGC-compliance agreement line below the sign-in buttons; the two link labels are tappable. -->
+    <string name="auth_signin_agreement_prefix">By continuing, you accept the </string>
+    <string name="auth_signin_agreement_eula_link">Terms (EULA)</string>
+    <string name="auth_signin_agreement_connector"> and the </string>
+    <string name="auth_signin_agreement_guidelines_link">Community Guidelines</string>
     <string name="auth_field_email">Email</string>
     <string name="auth_field_password">Password</string>
+    <string name="auth_field_confirm_password">Confirm password</string>
+    <!-- Accessibility labels for the password reveal toggle (eye icon). -->
+    <string name="auth_show_password">Show password</string>
+    <string name="auth_hide_password">Hide password</string>
     <string name="auth_mode_signin_cta">Sign in</string>
     <string name="auth_mode_signup_cta">Create account</string>
     <string name="auth_toggle_to_signup">No account? Sign up</string>
@@ -28,6 +37,7 @@
     <string name="auth_error_password_too_short">Password must be at least 6 characters.</string>
     <string name="auth_error_email_in_use">That email is already taken.</string>
     <string name="auth_error_wrong_credentials">Wrong email or password.</string>
+    <string name="auth_error_password_mismatch">Passwords don't match.</string>
     <string name="auth_profile_title">Settings</string>
     <string name="auth_profile_back_cta">Back</string>
     <string name="auth_profile_identity_section">General</string>
@@ -39,15 +49,37 @@
     <string name="auth_profile_save">Save</string>
     <string name="auth_profile_change_avatar_cta">Tap to change avatar</string>
     <string name="auth_profile_avatar_uploading">Uploading…</string>
+    <string name="auth_profile_remove_avatar_cta">Remove avatar</string>
+    <string name="auth_profile_remove_avatar_removing">Removing…</string>
+    <string name="auth_profile_remove_avatar_confirm_title">Remove avatar?</string>
+    <string name="auth_profile_remove_avatar_confirm_body">Your avatar will be deleted and replaced with your initials.</string>
+    <string name="auth_profile_remove_avatar_confirm_cta">Remove</string>
+    <string name="auth_profile_remove_avatar_cancel">Cancel</string>
+    <string name="auth_profile_remove_avatar_error">Couldn't remove your avatar. Try again.</string>
     <string name="auth_profile_account_section">Account</string>
     <string name="auth_profile_achievements_section">Badges</string>
     <string name="auth_profile_achievements_row">Badges</string>
     <string name="auth_profile_achievements_subtitle">See your earned and locked achievements</string>
+    <!-- Profile badge — earned tier labels rendered next to the display name. -->
+    <string name="auth_profile_badge_first">First Plate</string>
+    <string name="auth_profile_badge_ten">10 Plates</string>
+    <string name="auth_profile_badge_fifty">50 Plates</string>
+    <string name="auth_profile_badge_hundred">100 Plates</string>
+    <!-- Profile "Safety" section (UGC compliance §5) — opens the blocked-users list. -->
+    <string name="auth_profile_safety_section">Safety</string>
+    <string name="auth_profile_blocked_users_row">Blocked users</string>
+    <string name="auth_profile_blocked_users_subtitle">Manage the people you've blocked</string>
+    <!-- Profile "Legal" section (UGC compliance §6) — opens the embedded EULA / Community Guidelines. -->
+    <string name="auth_profile_legal_section">Legal</string>
+    <string name="auth_profile_legal_eula_row">Terms (EULA)</string>
+    <string name="auth_profile_legal_guidelines_row">Community Guidelines</string>
     <string name="auth_profile_sign_out_cta">Sign out</string>
     <string name="auth_profile_sign_out_failed">Couldn't sign out. Try again.</string>
     <string name="auth_profile_display_name_blank">Display name can't be empty.</string>
     <string name="auth_profile_display_name_too_long">Display name is too long (max 40).</string>
     <string name="auth_profile_backend_unavailable">Network unavailable. Try again.</string>
+    <string name="auth_profile_offline">You\'re offline. We\'ll save this when you\'re back online.</string>
+    <string name="auth_profile_session_expired">Your session expired. Please sign in again.</string>
     <string name="auth_profile_avatar_empty_bytes">Couldn't read the selected image. Try another one.</string>
 
     <string name="auth_profile_theme_row">Theme</string>
@@ -80,6 +112,16 @@
     <string name="auth_profile_reminders_remove_cta">Remove reminder</string>
     <string name="auth_profile_reminders_persist_failed">Couldn't save your reminders. Try again.</string>
 
+    <string name="auth_profile_bio_label">Personal bio</string>
+    <string name="auth_profile_bio_placeholder">Home cook from Barcelona · 100 chars max</string>
+    <string name="auth_profile_bio_save">Save bio</string>
+    <string name="auth_profile_bio_too_long">Bio is too long (max 100 characters).</string>
+
+    <string name="auth_profile_ai_row">AI suggestions</string>
+    <string name="auth_profile_ai_subtitle_on">Your plate photos are analyzed on your device to suggest ingredients.</string>
+    <string name="auth_profile_ai_subtitle_off">AI is off — add ingredients yourself.</string>
+    <string name="auth_profile_ai_persist_failed">Couldn't save your AI preference. Try again.</string>
+
     <string name="auth_profile_analytics_row">Share anonymous usage data</string>
     <string name="auth_profile_analytics_subtitle_on">On — helping improve FoodRats. No personal content is ever collected, and you can turn this off at any time.</string>
     <string name="auth_profile_analytics_subtitle_off">Off — no usage analytics are collected. Turn this on to help improve FoodRats; no personal content is ever collected.</string>
@@ -111,4 +153,14 @@
     <string name="auth_delete_account_error_phrase">The confirmation phrase didn't match. Type it exactly.</string>
     <string name="auth_delete_account_error_backend">Couldn't reach the deletion service. Try again.</string>
     <string name="auth_delete_account_error_ownership">Couldn't reassign your crew's owner. Please try again.</string>
+
+    <!-- Accent-colour picker (U6) -->
+    <string name="auth_profile_accent_row">Accent colour</string>
+    <string name="auth_profile_accent_picker_title">Choose your accent</string>
+    <string name="auth_profile_accent_option_ember">Ember (default)</string>
+    <string name="auth_profile_accent_option_moss">Moss</string>
+    <string name="auth_profile_accent_option_rust">Rust</string>
+    <string name="auth_profile_accent_option_steel">Steel</string>
+    <string name="auth_profile_accent_option_berry">Berry</string>
+    <string name="auth_profile_accent_persist_failed">Couldn't save your accent. Try again.</string>
 </resources>

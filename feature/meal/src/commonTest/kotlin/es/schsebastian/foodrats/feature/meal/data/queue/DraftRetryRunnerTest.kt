@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.PublishSource
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.MealDay
@@ -59,7 +60,7 @@ class DraftRetryRunnerTest {
         override val default: CoroutineDispatcher = testDispatcher
     }
 
-    private class AlwaysOnline : ConnectivityMonitor {
+    private class AlwaysOnline : ConnectivityPort {
         override fun isOnline(): Flow<Boolean> = flowOf(true)
     }
 
@@ -221,11 +222,11 @@ class DraftRetryRunnerTest {
         assertTrue(q.observe().first().isEmpty(), "removed only after the Ok")
         assertEquals(2, repo.publishCount)
         // Both publish attempts derive the same deterministic per-crew MealId.
-        val deterministic = MealId.forDaySlot(
+        val deterministic = MealId.forDayToken(
             (CrewId.of("crew-1") as Result.Ok).value,
             (AccountId.of("acc-1") as Result.Ok).value,
             MealDay(LocalDate(2026, 6, 14), TimeZone.UTC),
-            MealSlot.Lunch,
+            "tok",
         )
         assertEquals(deterministic, deterministic, "deterministic id is stable across retries")
     }

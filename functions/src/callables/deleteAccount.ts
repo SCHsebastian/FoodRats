@@ -116,6 +116,8 @@ export interface DeletionDeps {
   recursiveDelete: (path: string) => Promise<void>;
   /** Storage blob delete; ignoreNotFound. */
   deleteBlob: (path: string) => Promise<void>;
+  /** Storage delete of every object under `prefix`; tolerate not-found / empty (idempotent). */
+  deleteBlobPrefix: (prefix: string) => Promise<void>;
   /** Txn: delete ratings[uid] on `mealPath` + recompute ratingSum/voterCount. */
   removeRating: (mealPath: string, uid: string) => Promise<void>;
   /** Applies the §6 plan (delete crew + code, or reassign owner + drop uid). */
@@ -159,8 +161,12 @@ export async function deleteAccountCore(
       throw new HttpsError("aborted", "Could not reassign crew ownership.");
     }
   }
-  // 6+7+8: identity doc (+ private + devices), avatar blob, top-level devices.
+  // 6+7+8: identity doc (+ private + devices), avatar blobs, top-level devices.
   await deps.recursiveDelete(`accounts/${uid}`);
+  // The live avatar path is content-versioned (`avatars/{uid}/{token}.jpg`, the token rotates per
+  // image), so sweep the whole `avatars/{uid}/` prefix; then best-effort the legacy fixed
+  // `avatars/{uid}.jpg` for accounts that pre-date the versioned layout.
+  await deps.deleteBlobPrefix(`avatars/${uid}/`);
   await deps.deleteBlob(`avatars/${uid}.jpg`);
   await deps.recursiveDelete(`devices/${uid}`);
 
@@ -239,6 +245,12 @@ export const deleteAccount = onCall(
 
       deleteBlob: async (p) => {
         await getStorage().bucket().file(p).delete({ ignoreNotFound: true });
+      },
+
+      deleteBlobPrefix: async (prefix) => {
+        // Sweeps every object under the prefix (e.g. all `avatars/{uid}/{token}.jpg` versions).
+        // deleteFiles is a no-op over an empty prefix, so an idempotent re-run is safe.
+        await getStorage().bucket().deleteFiles({ prefix });
       },
 
       removeRating: async (mealPath, uid) => {

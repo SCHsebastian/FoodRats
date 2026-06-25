@@ -36,11 +36,19 @@ data class ExportReady(
 )
 
 sealed interface DataExportError {
+    sealed interface Session : DataExportError {
+        /**
+         * The caller's session could not be authenticated server-side (`unauthenticated`). Distinct
+         * from [Backend.Unavailable] so the UI routes the user to re-auth rather than offering an
+         * endless "retry" against a dead session.
+         */
+        data object Unauthenticated : Session
+    }
+
     sealed interface Backend : DataExportError {
         /**
-         * The export could not be assembled/signed/uploaded (server `internal`), or the caller's
-         * session could not be authenticated (server `unauthenticated` — shouldn't happen behind
-         * the auth gate). Nothing was destroyed, so the user can retry.
+         * The export could not be assembled/signed/uploaded (server `internal`). Nothing was
+         * destroyed, so the user can retry.
          */
         data object Unavailable : Backend
     }

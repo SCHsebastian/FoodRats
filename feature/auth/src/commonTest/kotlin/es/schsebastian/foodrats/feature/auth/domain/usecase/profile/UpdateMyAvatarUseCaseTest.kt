@@ -39,13 +39,14 @@ class UpdateMyAvatarUseCaseTest {
     }
 
     @Test
-    fun success_returns_url() = runTest {
-        val acc = FakeAccountWritePort().also { it.nextAvatarUrl = "https://example.test/avatar.jpg" }
+    fun success_uploads_and_returns_unit() = runTest {
+        val acc = FakeAccountWritePort()
         val uc = UpdateMyAvatarUseCase(acc, FixedSessionProvider(session))
 
         val r = uc.invoke(ByteArray(100) { 1 })
         assertTrue(r is Result.Ok)
-        assertEquals("https://example.test/avatar.jpg", r.value)
+        assertEquals(1, acc.avatarUploads.size)
+        assertEquals(accountId, acc.avatarUploads[0].first)
     }
 
     @Test

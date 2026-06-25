@@ -1,22 +1,28 @@
 package es.schsebastian.foodrats.feature.crew.data.repository
 
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
+import es.schsebastian.foodrats.feature.crew.data.firebase.toDto
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
+import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyRequestedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotFoundException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotMemberException
 import es.schsebastian.foodrats.feature.crew.data.firebase.toDomain
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
+import es.schsebastian.foodrats.feature.crew.domain.model.JoinRequest
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -29,6 +35,11 @@ internal class FirebaseCrewRepository(
     private val dispatchers: DispatcherProvider,
     private val errorMapper: CrewErrorMapper,
     private val clock: Clock,
+    // Offline-first read source-of-truth (P3b §P3b-T7): the crew picker observes this local
+    // SQLDelight store; the CrewSyncEngine keeps it fresh off the Firestore listener.
+    private val local: CrewLocalStore,
+    // C9 — crew banner Storage adapter (upload/delete). Null in tests that don't exercise banner.
+    private val bannerStorage: CrewBannerStorageDataSource? = null,
 ) : CrewRepository {
 
     override suspend fun create(
@@ -51,27 +62,87 @@ internal class FirebaseCrewRepository(
         )
     }
 
-    override suspend fun joinByCode(
+    override suspend fun requestToJoinByCode(
         code: CrewCode,
-        joiner: AccountId,
-    ): Result<Crew, CrewError> = withContext(dispatchers.io) {
-        runCatching {
-            dataSource.joinByCode(code, joiner, clock.now().toEpochMilliseconds())
-                .toDomain()
-        }.fold(
-            onSuccess = { it },
+        requester: AccountId,
+    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
+        runCatching { dataSource.requestToJoin(code, requester, clock.now().toEpochMilliseconds()) }.fold(
+            onSuccess = { Result.success(Unit) },
             onFailure = { t ->
                 Result.failure(
                     when (t) {
-                        CodeUnknownException   -> CrewError.Invite.CodeUnknown
-                        NotFoundException      -> CrewError.Membership.NotFound
-                        FullException          -> CrewError.Membership.Full
-                        AlreadyMemberException -> CrewError.Membership.AlreadyMember
-                        else                   -> errorMapper.map(t)
+                        CodeUnknownException      -> CrewError.Invite.CodeUnknown
+                        NotFoundException         -> CrewError.Membership.NotFound
+                        AlreadyMemberException    -> CrewError.Membership.AlreadyMember
+                        AlreadyRequestedException -> CrewError.Invite.AlreadyRequested
+                        else                      -> errorMapper.map(t)
                     },
                 )
             },
         )
+    }
+
+    override fun observeJoinRequests(crewId: CrewId): Flow<Result<List<JoinRequest>, CrewError>> =
+        dataSource.observeJoinRequests(crewId)
+            .map<List<es.schsebastian.foodrats.feature.crew.data.firebase.JoinRequestDto>, Result<List<JoinRequest>, CrewError>> { dtos ->
+                Result.success(dtos.mapNotNull { it.toDomain() })
+            }
+            .catch { t -> emit(Result.failure(errorMapper.map(t))) }
+            .flowOn(dispatchers.io)
+
+    override suspend fun approveJoinRequest(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return runCatching {
+            dataSource.approveJoinRequest(crewId, requester, clock.now().toEpochMilliseconds())
+        }.fold(
+            onSuccess = { Result.success(Unit) },
+            onFailure = { t ->
+                Result.failure(
+                    when (t) {
+                        NotFoundException -> CrewError.Membership.NotFound
+                        FullException     -> CrewError.Membership.Full
+                        else              -> errorMapper.map(t)
+                    },
+                )
+            },
+        )
+    }
+
+    override suspend fun declineJoinRequest(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.declineJoinRequest(crewId, requester)
+    }
+
+    override suspend fun cancelJoinRequest(
+        crewId: CrewId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> =
+        // No owner/fetchOnce gate here: the requester deletes their OWN request doc, which the
+        // Firestore rule permits. The datasource op is the same single-doc delete as decline.
+        dataSource.declineJoinRequest(crewId, requester)
+
+    override suspend fun transferOwnership(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        newOwner: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Transfer.NotOwner)
+        // A self-transfer is a silent no-op (re-writing ownerId to the same value "succeeds"); reject
+        // it explicitly so the UI can say "you're already the owner" instead of showing a fake success.
+        if (newOwner == requestedBy) return Result.failure(CrewError.Transfer.CannotTransferToSelf)
+        if (crew.members.none { it.accountId == newOwner }) return Result.failure(CrewError.Transfer.TargetNotMember)
+        return dataSource.transferOwnership(crewId, newOwner)
     }
 
     override suspend fun findByCode(code: CrewCode): Result<Crew, CrewError> =
@@ -90,9 +161,9 @@ internal class FirebaseCrewRepository(
             )
         }
 
-    override suspend fun leave(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> =
+    override suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId?): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
-            runCatching { dataSource.leave(crewId, leaver) }.fold(
+            runCatching { dataSource.leave(crewId, leaver, successor) }.fold(
                 onSuccess = { Result.success(Unit) },
                 onFailure = { t ->
                     Result.failure(
@@ -106,8 +177,14 @@ internal class FirebaseCrewRepository(
             )
         }
 
+    // Offline-first read source-of-truth (P3b §P3b-T7): the crew picker reads the local SQLDelight
+    // store (CrewLocalStore.observeMyCrews) — NOT Firestore. The CrewSyncEngine is the only consumer
+    // of the Firestore crew-list listener and mirrors each snapshot in; this stream reads it back.
+    // Rebuilt DTOs go through the SAME CrewMapper.toDomain so the offline list is identical to the
+    // online one. The `.catch` is defensive — the local read shouldn't throw, but a benign-empty
+    // failure keeps the picker rendering.
     override fun observeMyCrews(accountId: AccountId): Flow<Result<List<Crew>, CrewError>> =
-        dataSource.observeMyCrews(accountId)
+        local.observeMyCrews()
             .map<List<es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto>, Result<List<Crew>, CrewError>> { dtos ->
                 Result.success(dtos.mapNotNull { (it.toDomain() as? Result.Ok)?.value })
             }
@@ -145,6 +222,57 @@ internal class FirebaseCrewRepository(
         return dataSource.setBlindVoting(crewId, enabled)
     }
 
+    override suspend fun setTagline(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        tagline: String?,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setTagline(crewId, tagline)
+    }
+
+    override suspend fun setWelcomeMessage(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        message: String?,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setWelcomeMessage(crewId, message)
+    }
+
+    override suspend fun setWeeklyChallenge(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        challenge: String?,
+        setAtMillis: Long?,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setWeeklyChallenge(crewId, challenge, setAtMillis)
+    }
+
+    override suspend fun setScoreStyle(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        style: CrewScoreStyle,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setScoreStyle(crewId, style.toDto())
+    }
+
+    override suspend fun setBannerFocalY(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        focalY: Float,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        return dataSource.setBannerFocalY(crewId, focalY.coerceIn(0f, 1f))
+    }
+
     override suspend fun removeMember(
         crewId: CrewId,
         requestedBy: AccountId,
@@ -169,5 +297,56 @@ internal class FirebaseCrewRepository(
                 )
             },
         )
+    }
+
+    // C9 — crew banner ————————————————————————————————————————————————————————————————————————————
+
+    // NOTE: no repo-level `withContext(dispatchers.io)` here. `setBannerPath`/`clearBannerPath`
+    // already own their IO boundary in the datasource (like every other settings write), so wrapping
+    // them again would NEST `withContext(io)` inside `withContext(io)`. The Storage upload/delete —
+    // which do NOT own a boundary — get their own `withContext(io)` individually. Sequential
+    // boundaries (fetchOnce → storage → datasource), never nested, matching `renameCrew` et al.
+    override suspend fun setBanner(
+        crewId: CrewId,
+        requestedBy: AccountId,
+        bytes: ByteArray,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        val storage = bannerStorage ?: return Result.failure(CrewError.Banner.UploadFailed)
+        val path = runCatching { withContext(dispatchers.io) { storage.upload(crewId, bytes) } }
+            .getOrElse { return Result.failure(CrewError.Banner.UploadFailed) }
+        return when (val written = dataSource.setBannerPath(crewId, path)) {
+            is Result.Ok -> written
+            is Result.Err -> {
+                // The object landed but the Firestore pointer write was rejected (e.g. a rules
+                // denial). Best-effort orphan cleanup, then surface the REAL cause rather than
+                // masking every post-upload failure as the generic Banner.UploadFailed.
+                runCatching { withContext(dispatchers.io) { storage.delete(crewId) } }
+                written
+            }
+        }
+    }
+
+    override suspend fun removeBanner(
+        crewId: CrewId,
+        requestedBy: AccountId,
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        val storage = bannerStorage ?: return Result.failure(CrewError.Banner.DeleteFailed)
+        // Clear the Firestore pointer FIRST — it is the source of truth for "is there a banner". A
+        // transient Storage delete error must NOT strand a dangling pointer (the old order deleted
+        // Storage first, so a non-NOT_FOUND Storage error left `bannerPath` pointing at an object the
+        // owner tried to remove, with no retry path). Then best-effort delete the now-orphaned object
+        // (NOT_FOUND-tolerant; a leftover Storage object is harmless).
+        return when (val cleared = dataSource.clearBannerPath(crewId)) {
+            is Result.Ok -> {
+                runCatching { withContext(dispatchers.io) { storage.delete(crewId) } }
+                cleared
+            }
+            // Surface the real cause (permission / unknown) instead of the generic DeleteFailed.
+            is Result.Err -> cleared
+        }
     }
 }

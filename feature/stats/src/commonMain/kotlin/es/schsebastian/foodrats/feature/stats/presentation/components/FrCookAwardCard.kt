@@ -15,12 +15,16 @@ import androidx.compose.ui.draw.clip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
+import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberCount
+import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 
 enum class CookAwardVariant { BestCook, MostProlific }
@@ -30,6 +34,7 @@ enum class CookAwardVariant { BestCook, MostProlific }
 fun FrCookAwardCard(
     award: MemberAverage,
     variant: CookAwardVariant = CookAwardVariant.BestCook,
+    scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
     modifier: Modifier = Modifier,
 ) {
     val semantic = LocalFrSemanticColors.current
@@ -68,12 +73,16 @@ fun FrCookAwardCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = onBackground,
             )
+            // C8b — render the average in the crew's chosen score style.
+            val avgStr = formatOneDecimal(award.averageScore.toFloat())
+            val avgRoundedInt = kotlin.math.round(award.averageScore).toInt().coerceIn(1, 5)
+            val metricText = when (scoreStyle) {
+                FrScoreStyle.Stars   -> resolve(StatsStringKey.BestCookMetricFormat, avgStr, award.postCount)
+                FrScoreStyle.Emoji   -> resolve(StatsStringKey.BestCookMetricFormatGlyphFree, scoreToEmoji(avgRoundedInt), award.postCount)
+                FrScoreStyle.Numeric -> resolve(StatsStringKey.BestCookMetricFormatGlyphFree, avgStr, award.postCount)
+            }
             FrText(
-                text = resolve(
-                    StatsStringKey.BestCookMetricFormat,
-                    formatOneDecimal(award.averageScore.toFloat()),
-                    award.postCount,
-                ),
+                text = metricText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = onBackground.copy(alpha = 0.9f),
             )
@@ -122,7 +131,7 @@ fun FrCookAwardCard(
                 color = onBackground,
             )
             FrText(
-                text = resolve(StatsStringKey.MostProlificMetricFormat, award.mealCount),
+                text = resolvePlural(StatsPluralKey.MostProlificMetric, award.mealCount),
                 style = MaterialTheme.typography.bodyMedium,
                 color = onBackground.copy(alpha = 0.9f),
             )

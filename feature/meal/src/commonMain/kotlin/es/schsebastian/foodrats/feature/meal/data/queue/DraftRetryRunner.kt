@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.analytics.PublishSource
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadQueueSnapshot
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
@@ -32,7 +33,7 @@ import kotlinx.coroutines.sync.withLock
  *
  * Pure-Kotlin orchestration shared by both platforms — the platform pieces are
  * the durable wakeup (Android WorkManager `NetworkType.CONNECTED`; iOS next
- * foreground) and the [ConnectivityMonitor]. The runner itself only decides
+ * foreground) and the [ConnectivityPort]. The runner itself only decides
  * *what* to publish and *when to give up*, using the pure [DraftRetryPolicy] and
  * [DraftQueueTransitions].
  *
@@ -57,7 +58,7 @@ import kotlinx.coroutines.sync.withLock
 class DraftRetryRunner(
     private val queue: DraftQueuePort,
     private val publish: MealRepository,
-    private val connectivity: ConnectivityMonitor,
+    private val connectivity: ConnectivityPort,
     private val policy: DraftRetryPolicy = DraftRetryPolicy(),
     // The durable queue is the single publish executor (the coordinator no longer publishes
     // directly), so the true publish outcome is emitted HERE — `meal_published` on success,
@@ -163,10 +164,9 @@ class DraftRetryRunner(
      * funnel-conversion + publishing-depth event. No PII — slot + counts only.
      */
     private fun trackPublished(draft: MealDraft) {
-        val slot = draft.slot ?: return
         analytics.track(
             AnalyticsEvent.MealPublished(
-                slot = slot,
+                slot = draft.slot,
                 ingredientCount = draft.ingredients.size,
                 hasDescription = draft.description.value.isNotBlank(),
                 audienceCrewCount = draft.audienceCrewIds.size,

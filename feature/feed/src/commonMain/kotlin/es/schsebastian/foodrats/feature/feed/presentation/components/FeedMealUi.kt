@@ -17,20 +17,41 @@ data class RaterVoteUi(
 
 /** Presentation mirror of [MealSlot] so the row never imports a domain type. */
 enum class MealSlotUi {
-    Breakfast, Lunch, Dinner;
+    Breakfast, Brunch, Lunch, Snack, Merienda, Dinner;
 
     fun labelKey(): FeedStringKey = when (this) {
         Breakfast -> FeedStringKey.SlotBreakfast
+        Brunch -> FeedStringKey.SlotBrunch
         Lunch -> FeedStringKey.SlotLunch
+        Snack -> FeedStringKey.SlotSnack
+        Merienda -> FeedStringKey.SlotMerienda
         Dinner -> FeedStringKey.SlotDinner
     }
 }
 
 private fun MealSlot.toUi(): MealSlotUi = when (this) {
     MealSlot.Breakfast -> MealSlotUi.Breakfast
+    MealSlot.Brunch -> MealSlotUi.Brunch
     MealSlot.Lunch -> MealSlotUi.Lunch
+    MealSlot.Snack -> MealSlotUi.Snack
+    MealSlot.Merienda -> MealSlotUi.Merienda
     MealSlot.Dinner -> MealSlotUi.Dinner
 }
+
+/**
+ * The full-plate Storage object path — the stable Coil cache key. Mirrors the server-owned layout
+ * (`MealDto.from`: `crews/{crewId}/meals/{mealId}.jpg`). Used only as a cache key, never to fetch.
+ */
+private fun platePathOf(crewId: String, mealId: String): String =
+    "crews/$crewId/meals/$mealId.jpg"
+
+/**
+ * The server-thumbnail Storage object path — the stable cache key for [FeedMealUi.thumbnailUrl].
+ * Mirrors the pipeline layout documented on `MealDto.thumbnailPath`
+ * (`crews/{crewId}/meals/{mealId}_thumb.jpg`).
+ */
+private fun thumbPathOf(crewId: String, mealId: String): String =
+    "crews/$crewId/meals/${mealId}_thumb.jpg"
 
 data class FeedMealUi(
     val mealId: String,
@@ -46,13 +67,28 @@ data class FeedMealUi(
      */
     val thumbnailUrl: String = "",
     /**
+     * STABLE Coil disk/memory cache key for the full plate, derived from the Storage object PATH
+     * (`crews/{crewId}/meals/{mealId}.jpg`) — NOT the signed URL. Signed URLs rotate per read
+     * (V4 TTL), so keying Coil on the URL makes every re-mint a cache miss and the plate vanishes
+     * offline. Keying on the immutable path lets cached bytes survive URL rotation. Blank only when
+     * the meal has no plate path (then callers fall back to default URL keying). (offline P1-T3)
+     */
+    val plateCacheKey: String = "",
+    /**
+     * STABLE Coil cache key for the server thumbnail, derived from its Storage object PATH
+     * (`crews/{crewId}/meals/{mealId}_thumb.jpg`). Same rationale as [plateCacheKey]. The feed card
+     * keys on [feedImageCacheKey], which mirrors [feedImageUrl]'s thumbnail→plate fallback.
+     */
+    val thumbCacheKey: String = "",
+    /**
      * Base64 ThumbHash (the instant blur placeholder), or null until the server pipeline writes it.
      * Decoded to a placeholder bitmap in the row/detail composables.
      */
     val thumbHash: String? = null,
     val dishName: String,
     val description: String,
-    val slot: MealSlotUi,
+    /** Optional "meal moment" label — `null` when the author tagged none (slot is optional). */
+    val slot: MealSlotUi?,
     val publishedAtEpochMs: Long,
     /** Local hour-of-day (0..23) the meal was published, in the feed's zone. */
     val publishedHour: Int,
@@ -64,6 +100,17 @@ data class FeedMealUi(
     val votes: List<RaterVoteUi>,
     val viewerRating: Int?,
     val canRate: Boolean,
+    /**
+     * `true` when the viewer has already used their single allowed vote change on this meal — the
+     * "Your vote" tile is then permanently locked (no change affordance). Mirrors [MealRating.edited].
+     */
+    val viewerRatingEdited: Boolean = false,
+    /**
+     * `true` when the viewer may still CHANGE their already-cast vote (voted, not yet edited, the
+     * rating window is open, not the author). The one allowed change is gated behind a confirmation
+     * in the detail UI. Mutually exclusive with [canRate] (which is the first-vote affordance).
+     */
+    val canChangeVote: Boolean = false,
     val latitude: Double? = null,
     val longitude: Double? = null,
     /** Resolved, localized ingredient display names. Empty unless resolved by the caller. */
@@ -75,6 +122,18 @@ data class FeedMealUi(
      * resolved in the row (i18n stays in the composable, like [slot]).
      */
     val authorMasked: Boolean = false,
+    /**
+     * Author's personal bio — surfaced in the U5b identity-display pass.
+     * Null when the author hasn't set a bio, or when [authorMasked] is true (see [toFeedUi]).
+     * Callers must gate display on `!authorMasked` (the row does this already).
+     */
+    val authorBio: String? = null,
+    /**
+     * Server-assigned achievement badge id (e.g. "first", "ten", "fifty", "hundred").
+     * Null when the author has no badge, or when [authorMasked] is true (see [toFeedUi]).
+     * Callers must gate display on `!authorMasked` (the row does this already).
+     */
+    val authorBadgeId: String? = null,
     /**
      * Reactions (the daily-emote react) on this meal. [reactionCount] is the badge number and
      * [viewerReacted] highlights the react button as toggled-on. The displayed glyph is [dayEmote]
@@ -95,6 +154,28 @@ data class FeedMealUi(
      */
     val feedImageUrl: String
         get() = thumbnailUrl.ifBlank { photoUrl }
+
+    /**
+     * The STABLE cache key paired with [feedImageUrl]: the thumbnail's key when a thumbnail URL is
+     * present, otherwise the plate's key — mirroring [feedImageUrl]'s fallback so the key always
+     * matches the bytes actually loaded. Blank when neither path is known (default URL keying).
+     */
+    val feedImageCacheKey: String
+        get() = if (thumbnailUrl.isNotBlank()) thumbCacheKey else plateCacheKey
+
+    /**
+     * The URL the structural FEED BENTO tiles should load. Unlike the tiny 76dp [feedImageUrl]
+     * thumbnail (sized for the legacy compact row), the bento tiles render large — the hero spans the
+     * full screen width at 230dp — so a 512px server thumbnail looks soft Crop-scaled up to fill them.
+     * The bento therefore loads the FULL plate ([photoUrl]) for crisp tiles, falling back to the
+     * thumbnail only when no plate URL is known yet (the few-seconds pre-upload window).
+     */
+    val bentoImageUrl: String
+        get() = photoUrl.ifBlank { feedImageUrl }
+
+    /** STABLE cache key paired with [bentoImageUrl] (plate path key, mirroring the URL fallback). */
+    val bentoImageCacheKey: String
+        get() = if (photoUrl.isNotBlank()) plateCacheKey else feedImageCacheKey
 }
 
 /**
@@ -150,10 +231,16 @@ fun MealWithRatings.toFeedUi(
         authorAvatarUrl = meal.author.avatarUrl,
         photoUrl = meal.photoUrl,
         thumbnailUrl = meal.thumbnailUrl,
+        // Stable, URL-independent cache keys derived from the immutable Storage object paths the
+        // server resolves these URLs from. Path layout is owned server-side (see MealDto.from /
+        // MealDto.thumbnailPath) and is deterministic from the crew + meal ids, so we reconstruct
+        // it here without leaking the path into the domain Meal. (offline P1-T3)
+        plateCacheKey = platePathOf(meal.crewId.value, meal.id.value),
+        thumbCacheKey = thumbPathOf(meal.crewId.value, meal.id.value),
         thumbHash = meal.thumbHash,
         dishName = meal.dish.value,
         description = meal.description.value,
-        slot = meal.slot.toUi(),
+        slot = meal.slot?.toUi(),
         publishedAtEpochMs = meal.publishedAt.toEpochMilliseconds(),
         publishedHour = publishedLocal.hour,
         publishedMinute = publishedLocal.minute,
@@ -165,9 +252,16 @@ fun MealWithRatings.toFeedUi(
             .map { RaterVoteUi(it.raterDisplayName, it.raterAvatarUrl, it.score.value) },
         viewerRating = viewer?.score?.value,
         canRate = !isAuthor && viewer == null && windowOpen,
+        viewerRatingEdited = viewer?.edited == true,
+        // The one allowed change: voted, not yet edited, window still open, not the author.
+        canChangeVote = !isAuthor && viewer != null && !viewer.edited && windowOpen,
         latitude = meal.coordinates?.latitude,
         longitude = meal.coordinates?.longitude,
         ingredients = ingredientNames,
         authorMasked = authorMasked,
+        // Bio and badge are identity signals — suppress them under blind voting exactly like the
+        // author name/avatar. They are never null when unmasked if the author has them set.
+        authorBio = if (authorMasked) null else meal.author.bio?.value,
+        authorBadgeId = if (authorMasked) null else meal.author.badgeId,
     )
 }

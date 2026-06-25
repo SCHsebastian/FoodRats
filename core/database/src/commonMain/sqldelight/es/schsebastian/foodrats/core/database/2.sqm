@@ -1,0 +1,14 @@
+-- Migration v2 -> v3 (offline-first crew-settings extension). Adds three nullable payload columns
+-- to the `outbox` table so the C-series crew-settings commands (SetCrewTagline /
+-- SetCrewWelcomeMessage / SetCrewWeeklyChallenge / SetCrewScoreStyle / SetCrewBannerFocalY) can be
+-- flattened alongside the original eight. An EXISTING (v2) install gets these columns added with
+-- NULLs (no prior command uses them); a fresh install runs Schema.create() at v3 and gets them from
+-- Outbox.sq directly. Keep these ALTERs byte-consistent with Outbox.sq's CREATE TABLE.
+--
+-- (verifyMigrations is off pre-launch — see core/database/build.gradle.kts — so there is no
+-- committed schema dump to cross-check; this file exists so an upgraded dev/CI install isn't left
+-- querying columns that don't exist, mirroring the 1.sqm rationale.)
+
+ALTER TABLE outbox ADD COLUMN focalY REAL;
+ALTER TABLE outbox ADD COLUMN setAtMillis INTEGER;
+ALTER TABLE outbox ADD COLUMN styleKey TEXT;

@@ -26,11 +26,14 @@
 | `sign_in_failed` | live | Sign-in/up `Result` Err | `method`, `error_leaf` | `SignInViewModel.emitFromResult` |
 | `crew_created` | live | Create-crew Ok | `crew_id` | `CrewPickerViewModel.doCreate` |
 | `join_group` | live | Join-by-code Ok | `group_id`, `join_method` | `CrewPickerViewModel.doJoin` |
-| `crew_left` | proposed | Leave-crew Ok | `crew_id` | `CrewSettingsViewModel` (wire next) |
-| `share` | proposed | Invite code shared | `content_type=crew_invite`, `item_id` | crew invite share (wire next) |
-| `meal_capture_started` | proposed | Camera/gallery capture begins | `capture_source` | `CaptureMealViewModel` (wire next) |
+| `crew_left` | live | Leave-crew Ok | `crew_id` | `CrewSettingsViewModel.doLeave` |
+| `crew_renamed` | live | Rename-crew Ok (owner) | `crew_id` | `CrewSettingsViewModel.doSaveCrewName` |
+| `crew_deleted` | live | Delete-crew Ok (owner) | `crew_id` | `CrewSettingsViewModel.doDelete` |
+| `crew_switched` | live | Active crew switched | `crew_id` | `CrewPickerViewModel.PickCrew` |
+| `share` | live | Invite link shared | `content_type=crew_invite`, `item_id` | `CrewSettingsViewModel.ShareLinkTapped` |
+| `meal_capture_started` | live | Capture-screen draft started (`startDraft` Ok) | `capture_source=unknown` | `CaptureMealViewModel.Start` |
 | `plate_classified` | live | On-device classification Ok (classifier ran) | `detected_count`, `classify_latency_ms`, `classifier_version` | `ComposePlateViewModel.onPhotoCaptured` |
-| `ingredients_confirmed` | proposed | Ingredient picker confirmed | `detected_count`, `confirmed_count` | `SelectIngredientsViewModel` (wire next) |
+| `ingredients_confirmed` | live | Ingredient picker confirmed | `detected_count`, `confirmed_count` | `SelectIngredientsViewModel.ConfirmAndExit` |
 | `meal_composer_opened` | live | Composer screen opened | — | `ComposePlateViewModel.init` |
 | `meal_published` | live | Publish upload `Result` Ok (true outcome) | `meal_slot`, `ingredient_count`, `has_description`, `audience_crew_count`, `publish_source` | `BackgroundMealUploadCoordinator.doUpload` |
 | `meal_publish_failed` | live | Publish upload `Result` Err | `error_leaf` | `BackgroundMealUploadCoordinator.doUpload` |
@@ -38,9 +41,9 @@
 | `select_content` | live | Meal detail opened | `content_type=meal`, `item_id` | `MealDetailViewModel.init` |
 | `post_score` | live | Rate-meal Ok (feed or detail) | `score`, `meal_id` | `FeedViewModel.rate` / `MealDetailViewModel.rate` |
 | `comment_posted` | live | Post-comment Ok | `meal_id` | `MealDetailViewModel.postComment` |
-| `feed_day_viewed` | proposed | A feed day loads | `meal_count`, `day_offset` | `FeedViewModel` (wire next; guard noise) |
-| `streak_viewed` | proposed | Stats streak tab shown | — | `StatsViewModel` (wire next) |
-| `leaderboard_viewed` | proposed | Stats leaderboard tab shown | — | `StatsViewModel` (wire next) |
+| `feed_day_viewed` | live | A feed day loads | `meal_count`, `day_offset` | `FeedViewModel` (once per distinct loaded day; deduped via `lastTrackedFeedDay`) |
+| `streak_viewed` | live | Stats opened (default Week / streak surface) — once per VM lifetime | — | `StatsViewModel.init` |
+| `leaderboard_viewed` | live | First open of a leaderboard tab (Month/Historic) per VM lifetime | — | `StatsViewModel.handle(SelectTab)` |
 | `achievement_unlocked` | live | An achievement's unlock timestamp persisted (Ok) | `achievement_id` | `AchievementsViewModel.persistAndCelebrate` |
 | `digest_story_opened` | live | Weekly-recap story first ready | `digest_source`, `scene_count` | `WeeklyStoryViewModel` (shared) |
 | `digest_story_scene_viewed` | live | A recap scene becomes visible | `scene_kind`, `scene_index` | `WeeklyStoryViewModel` (shared) |
@@ -50,6 +53,7 @@
 | `notif_permission_granted` | live | OS permission granted | — | `NotificationPermissionViewModel` |
 | `notif_permission_denied` | live | OS permission denied | — | `NotificationPermissionViewModel` |
 | `screen_view` | live | Every nav destination change (root + tab NavHosts) | `screen_name` | `NavGraph.TrackScreenViews` |
+| `setting_changed` | partial | A user-changeable persisted preference changed | `setting`, `enabled` (boolean toggles only) | `CrewSettingsViewModel.doToggleBlindVoting` (blind_voting); other settings wire next |
 | `consent_granted` | proposed | After analytics consent recorded | `consent_version` | consent UI (wire next) |
 
 ## User properties

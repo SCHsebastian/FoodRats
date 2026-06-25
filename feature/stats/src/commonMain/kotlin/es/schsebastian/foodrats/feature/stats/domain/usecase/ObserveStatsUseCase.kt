@@ -1,6 +1,11 @@
 package es.schsebastian.foodrats.feature.stats.domain.usecase
 
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
+import es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.cuisine.Cuisine
 import es.schsebastian.foodrats.core.domain.cuisine.CuisinePassport
 import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
@@ -49,8 +54,12 @@ class ObserveStatsUseCase(
     private val mealRead: MealReadPort,
     private val ingredientRead: IngredientReadPort,
     private val cuisineRead: CuisineReadPort,
+    private val blockedAccounts: BlockedAccountsPort,
     private val clock: Clock,
     private val zone: TimeZone,
+    // C8b — active crew's Score vocabulary so the stats leaderboard cards render Stars/Emoji/Numeric.
+    // DEFAULTED so all existing use-case tests stay green without constructor changes.
+    private val welcomePort: CrewWelcomePort = NoopStatsWelcomePort,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(
@@ -88,11 +97,21 @@ class ObserveStatsUseCase(
                             }
                         val catalog: Flow<Map<IngredientSlug, Ingredient>> = ingredientRead.observeCatalog()
                         val cuisineCatalog: Flow<Map<CuisineSlug, Cuisine>> = cuisineRead.observeCatalog()
-                        combine(current, historic, catalog, cuisineCatalog) { c, h, cat, cuisines ->
-                            when (c) {
+                        // UGC compliance §5 — blocked authors are excluded from every ranking. The set
+                        // is combined in so a new block re-emits and recomputes the leaderboards.
+                        val blocked: Flow<Set<AccountId>> = blockedAccounts.observeBlocked(sess.accountId)
+                        // C8b — Score style: re-subscribes on crew switch; defaults Stars when absent.
+                        val scoreStyle: Flow<CrewScoreStyle> = welcomePort.observeScoreStyle(crewId)
+                        // Chain the 6th flow via a nested combine so we stay on the typed 5-arity
+                        // overloads (the vararg overload works but needs unchecked casts).
+                        val baseFlow = combine(current, historic, catalog, cuisineCatalog, blocked) { c, h, cat, cuisines, blockedSet ->
+                            Quintuple(c, h, cat, cuisines, blockedSet)
+                        }
+                        combine(baseFlow, scoreStyle) { q, style ->
+                            when (val c = q.a) {
                                 is Result.Err -> Result.failure(c.error.toStatsError())
                                 is Result.Ok  -> Result.success(
-                                    compose(c.value, h, today, sess.accountId, cat, cuisines),
+                                    compose(c.value, q.b, today, sess.accountId, q.c, q.d, q.e, style),
                                 )
                             }
                         }
@@ -101,14 +120,20 @@ class ObserveStatsUseCase(
             }
 
     private fun compose(
-        currentMeals: List<MealWithRatings>,
+        currentMealsRaw: List<MealWithRatings>,
         historic: HistoricResult,
         today: LocalDate,
         accountId: AccountId,
         ingredientCatalog: Map<IngredientSlug, Ingredient>,
         cuisineCatalog: Map<CuisineSlug, Cuisine>,
+        blocked: Set<AccountId>,
+        scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
     ): StatsSnapshot {
+        // UGC compliance §5 — drop blocked authors' meals BEFORE any ranking is computed so they
+        // never appear in streaks / leaderboards / collections.
+        val currentMeals = currentMealsRaw.filterNot { it.meal.author.accountId in blocked }
         val historicMeals: List<MealWithRatings>? = (historic as? HistoricResult.Ok)?.meals
+            ?.filterNot { it.meal.author.accountId in blocked }
         val historicError: StatsError? = (historic as? HistoricResult.Err)?.error
         val nameFor = ingredientNameResolver(ingredientCatalog)
         val weekFrom = startOfIsoWeek(today)
@@ -149,9 +174,13 @@ class ObserveStatsUseCase(
             historicError = historicError,
             cuisinePassport = cuisinePassport,
             ingredientBingo = ingredientBingo,
+            scoreStyle = scoreStyle,
         )
     }
 }
+
+/** Local 5-tuple carrier used to chain a 6th flow without the unchecked-cast vararg overload. */
+private data class Quintuple<A, B, C, D, E>(val a: A, val b: B, val c: C, val d: D, val e: E)
 
 /**
  * Outcome of the Historic-tab 365-day read, threaded through the combine so a failure is surfaced
@@ -169,4 +198,18 @@ private fun MealReadError.toStatsError() = when (this) {
     MealReadError.Unauthorized -> StatsError.Read.Unauthorized
     MealReadError.CrewNotFound -> StatsError.Read.CrewNotFound
     MealReadError.Unavailable  -> StatsError.Read.Unavailable
+}
+
+/**
+ * No-op [CrewWelcomePort] default for [ObserveStatsUseCase] — always emits [CrewScoreStyle.Stars]
+ * so existing use-case tests stay green without constructor changes (C8b).
+ */
+private object NoopStatsWelcomePort : CrewWelcomePort {
+    override fun observeWelcomeMessage(crewId: CrewId): Flow<String?> = flowOf(null)
+    override fun isWelcomeDismissed(crewId: CrewId): Flow<Boolean> = flowOf(false)
+    override suspend fun dismissWelcome(crewId: CrewId) = Unit
+    override fun observeWeeklyChallenge(crewId: CrewId): Flow<WeeklyChallengeSnapshot?> = flowOf(null)
+    override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
+    override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
+    override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
 }

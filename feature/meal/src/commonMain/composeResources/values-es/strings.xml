@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="meal_compose_eyebrow">Plato nuevo</string>
     <string name="meal_compose_title">Compón tu plato</string>
+    <string name="meal_compose_slot_label">Momento</string>
     <string name="meal_compose_dish_label">Plato</string>
+    <string name="meal_compose_description_label">Descripción</string>
     <string name="meal_publish_title">Revisa y publica</string>
 
     <string name="meal_ingredients_classifying">Analizando ingredientes…</string>
@@ -9,12 +12,14 @@
     <string name="meal_classifier_load_failed">Detección de ingredientes no disponible</string>
     <string name="meal_ingredients_row_add">Añadir ingredientes</string>
     <string name="meal_ingredients_row_summary">%1$d ingredientes</string>
+    <string name="meal_description_moderation_warning">Esta descripción puede incumplir las normas de la comunidad. Por favor, corrígela para publicar.</string>
+    <string name="meal_dish_moderation_warning">El nombre del plato puede incumplir las normas de la comunidad. Por favor, corrígelo para publicar.</string>
 
     <string name="meal_compose_audience_label">Compartir con</string>
-    <string name="meal_compose_audience_all">Todos los grupos</string>
+    <string name="meal_compose_audience_all">Todas las cuadrillas</string>
 
-    <string name="meal_error_already_posted">Ya has publicado una comida hoy.</string>
-    <string name="meal_error_no_crew_selected">Elige al menos un grupo para compartir.</string>
+    <string name="meal_error_already_posted">Has alcanzado tus 10 comidas de hoy en esta cuadrilla.</string>
+    <string name="meal_error_no_crew_selected">Elige al menos una cuadrilla para compartir.</string>
     <string name="meal_error_not_today">Solo puedes publicar el borrador del día.</string>
     <string name="meal_error_publish_unavailable">No se ha podido publicar. Inténtalo otra vez.</string>
     <string name="meal_error_photo_upload_failed">No se ha podido subir la foto. Inténtalo otra vez.</string>
@@ -26,13 +31,22 @@
     <string name="meal_error_validation_too_many_ingredients">Demasiados ingredientes (máx. 30).</string>
     <string name="meal_compose_description_placeholder">¿Qué comiste? (opcional)</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
-    <string name="meal_error_read_unauthorized">No tienes acceso a este grupo.</string>
-    <string name="meal_error_read_crew_not_found">Grupo no encontrado.</string>
+    <string name="meal_compose_dish_counter">%1$d / %2$d</string>
+    <string name="meal_compose_counter_a11y">%1$d de %2$d caracteres usados</string>
+    <string name="meal_compose_photo_description">Tu foto de la comida</string>
+    <string name="meal_error_read_unauthorized">No tienes acceso a esta cuadrilla.</string>
+    <string name="meal_error_read_crew_not_found">Cuadrilla no encontrada.</string>
     <string name="meal_error_read_not_found">Comida no encontrada.</string>
     <string name="meal_slot_breakfast">Desayuno</string>
+    <string name="meal_slot_brunch">Brunch</string>
     <string name="meal_slot_lunch">Almuerzo</string>
+    <string name="meal_slot_snack">Snack</string>
+    <string name="meal_slot_merienda">Merienda</string>
     <string name="meal_slot_dinner">Cena</string>
-    <string name="meal_publish_no_slot">Elige una franja (Desayuno, Almuerzo o Cena) antes de publicar.</string>
+    <string name="meal_compose_slot_optional">Opcional</string>
+    <string name="meal_publish_no_slot">Elige un momento del día antes de publicar.</string>
+
+    <string name="meal_compose_all_slots_taken">Ya has compartido 10 comidas hoy — vuelve mañana.</string>
 
     <string name="meal_compose_add_location">Marca dónde comiste</string>
     <string name="meal_compose_locating">Localizándote…</string>
@@ -44,11 +58,11 @@
     <string name="meal_error_location_timeout">No se ha podido obtener tu ubicación a tiempo. Inténtalo otra vez.</string>
 
     <string name="meal_publish_confirm_title">¿Publicar esta comida?</string>
-    <string name="meal_publish_confirm_message">Tu foto y los detalles se compartirán con los grupos que elijas. La subida se hace en segundo plano — puedes seguir usando la app.</string>
+    <string name="meal_publish_confirm_message">Tu foto y los detalles se compartirán con las cuadrillas que elijas. La subida se hace en segundo plano — puedes seguir usando la app.</string>
     <string name="meal_publish_confirm_cta">Publicar</string>
 
     <string name="meal_capture_session_error">No se ha podido cargar tu sesión. Inténtalo otra vez.</string>
-    <string name="meal_capture_no_crews">Únete o crea un grupo antes de publicar una comida.</string>
+    <string name="meal_capture_no_crews">Únete o crea una cuadrilla antes de publicar una comida.</string>
     <string name="meal_capture_draft_failed">No se ha podido iniciar tu comida. Inténtalo otra vez.</string>
     <string name="meal_capture_photo_failed">No se ha podido guardar tu foto. Inténtalo otra vez.</string>
 </resources>

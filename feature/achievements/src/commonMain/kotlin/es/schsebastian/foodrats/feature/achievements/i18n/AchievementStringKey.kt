@@ -2,11 +2,14 @@ package es.schsebastian.foodrats.feature.achievements.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.achievements.generated.resources.Res
+import foodrats.feature.achievements.generated.resources.achievements_back_cta
 import foodrats.feature.achievements.generated.resources.achievements_best_cook_desc
 import foodrats.feature.achievements.generated.resources.achievements_best_cook_title
 import foodrats.feature.achievements.generated.resources.achievements_celebration_ack
 import foodrats.feature.achievements.generated.resources.achievements_celebration_title
 import foodrats.feature.achievements.generated.resources.achievements_detail_close_cta
+import foodrats.feature.achievements.generated.resources.achievements_detail_how_earned_label
+import foodrats.feature.achievements.generated.resources.achievements_detail_how_to_earn_label
 import foodrats.feature.achievements.generated.resources.achievements_detail_locked_label
 import foodrats.feature.achievements.generated.resources.achievements_earned_on_format
 import foodrats.feature.achievements.generated.resources.achievements_earned_section_title
@@ -65,7 +68,10 @@ enum class AchievementStringKey(override val resourceId: StringResource) : Strin
     CelebrationTitle(Res.string.achievements_celebration_title),
     CelebrationAck(Res.string.achievements_celebration_ack),
     DetailLockedLabel(Res.string.achievements_detail_locked_label),
+    DetailHowEarnedLabel(Res.string.achievements_detail_how_earned_label),
+    DetailHowToEarnLabel(Res.string.achievements_detail_how_to_earn_label),
     DetailCloseCta(Res.string.achievements_detail_close_cta),
+    BackCta(Res.string.achievements_back_cta),
     EmptySubtext(Res.string.achievements_empty_subtext),
 
     // first_plate

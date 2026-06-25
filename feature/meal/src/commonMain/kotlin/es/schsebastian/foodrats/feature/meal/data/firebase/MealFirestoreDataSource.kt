@@ -2,7 +2,6 @@ package es.schsebastian.foodrats.feature.meal.data.firebase
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.meal.MealDay
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlinx.coroutines.flow.Flow
@@ -45,29 +44,12 @@ internal class MealFirestoreDataSource(private val firestore: FirebaseFirestore)
             .snapshots
             .map { snap -> snap.documents.map { it.data<MealDto>() } }
 
-    /** Returns true if a meal document exists for the given crew/author/day/slot combination. */
-    override suspend fun mealExists(
+    /** The ids of every meal this author published in the crew on [dayKey]. One Firestore read. */
+    override suspend fun existingMealIds(
         crewId: CrewId,
         authorId: AccountId,
         dayKey: String,
-        slot: MealSlot,
-    ): Boolean {
-        val docId = "${crewId.value}_${authorId.value}_${dayKey}_${slot.key()}"
-        return firestore
-            .collection("crews")
-            .document(crewId.value)
-            .collection("meals")
-            .document(docId)
-            .get()
-            .exists
-    }
-
-    /** Returns the set of slots already taken for the given crew/author/day. One Firestore round-trip. */
-    override suspend fun takenSlots(
-        crewId: CrewId,
-        authorId: AccountId,
-        dayKey: String,
-    ): Set<MealSlot> {
+    ): Set<String> {
         val snaps = firestore.collection("crews").document(crewId.value).collection("meals")
             .where {
                 ("authorId" equalTo authorId.value) and
@@ -75,10 +57,7 @@ internal class MealFirestoreDataSource(private val firestore: FirebaseFirestore)
             }
             .get()
             .documents
-        return snaps.mapNotNull { doc ->
-            val slotKey = runCatching { doc.data<MealDto>().slot }.getOrNull() ?: return@mapNotNull null
-            MealSlot.entries.firstOrNull { it.key() == slotKey }
-        }.toSet()
+        return snaps.map { it.id }.toSet()
     }
 
     /** Deletes a meal document. Subcollections (comments, ratings) are swept by the
@@ -101,11 +80,14 @@ internal class MealFirestoreDataSource(private val firestore: FirebaseFirestore)
      *  - `RateOutcome.Ok` on success
      *  - `RateOutcome.MealNotFound` if the meal document doesn't exist
      *  - `RateOutcome.SelfRating` if the rater is the meal's author
-     *  - `RateOutcome.AlreadyRated` if the rater has already voted on this meal
+     *  - `RateOutcome.AlreadyRated` if the rater has already used their single vote CHANGE
      *
-     * Voting-window enforcement and authorization are handled by Firestore security
-     * rules; the transaction here covers the read-modify-write cycle for the ratings
-     * map plus its denormalized `ratingSum` / `voterCount` aggregates.
+     * A rater may overwrite their score exactly ONCE: a first vote writes `edited = false`, the
+     * one allowed change overwrites it with `edited = true`, and any further attempt (entry already
+     * `edited`) returns `AlreadyRated`. Voting-window enforcement and authorization are handled by
+     * Firestore security rules; the transaction here covers the read-modify-write cycle for the
+     * ratings map plus its denormalized `ratingSum` / `voterCount` aggregates (recomputed from the
+     * resulting map, so a change adjusts the sum by the score delta correctly).
      */
     override suspend fun rateMeal(
         crewId: CrewId,
@@ -121,8 +103,20 @@ internal class MealFirestoreDataSource(private val firestore: FirebaseFirestore)
             if (!snap.exists) return@runTransaction MealFirestore.RateOutcome.MealNotFound
             val dto = snap.data<MealDto>()
             if (raterUid == dto.authorId) return@runTransaction MealFirestore.RateOutcome.SelfRating
-            if (dto.ratings.containsKey(raterUid)) return@runTransaction MealFirestore.RateOutcome.AlreadyRated
-            val newRatings = dto.ratings + (raterUid to RatingEntryDto(score = score, atMs = nowEpochMs))
+            val existing = dto.ratings[raterUid]
+            // One change max: a fresh vote (no entry) or the single allowed change (existing entry
+            // not yet edited) is accepted; once `edited` is set, the entry is final.
+            if (existing != null && existing.edited) return@runTransaction MealFirestore.RateOutcome.AlreadyRated
+            // Idempotent re-rate: a replayed command (or a "change" to the identical score) is a
+            // no-op — return Ok WITHOUT writing so it never consumes the one allowed change. This
+            // keeps an outbox retry of the first vote from flipping `edited` to true behind the
+            // user's back.
+            if (existing != null && existing.score == score) return@runTransaction MealFirestore.RateOutcome.Ok
+            val newRatings = dto.ratings + (raterUid to RatingEntryDto(
+                score = score,
+                atMs = nowEpochMs,
+                edited = existing != null,
+            ))
             val newSum = newRatings.values.sumOf { it.score }
             update(ref, mapOf(
                 "ratings" to newRatings,

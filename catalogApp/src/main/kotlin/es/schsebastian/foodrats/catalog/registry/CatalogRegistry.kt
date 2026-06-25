@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.catalog.registry
 import es.schsebastian.foodrats.catalog.stories.atomStories
 import es.schsebastian.foodrats.catalog.stories.foundationStories
 import es.schsebastian.foodrats.catalog.stories.moleculeStories
+import es.schsebastian.foodrats.catalog.stories.structuralStories
 import es.schsebastian.foodrats.catalog.stories.templateStories
 
 /**
@@ -20,6 +21,7 @@ object CatalogRegistry {
         addAll(atomStories())
         addAll(moleculeStories())
         addAll(templateStories())
+        addAll(structuralStories())
     }
 
     fun byId(id: String): CatalogEntry? = entries.firstOrNull { it.id == id }

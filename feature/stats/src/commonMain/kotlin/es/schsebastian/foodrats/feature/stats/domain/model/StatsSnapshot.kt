@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.stats.domain.model
 
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.cuisine.CuisinePassport
 import es.schsebastian.foodrats.core.domain.meal.IngredientBingo
 import es.schsebastian.foodrats.feature.stats.domain.error.StatsError
@@ -28,4 +29,11 @@ data class StatsSnapshot(
      * catalog has emitted (renders nothing then).
      */
     val ingredientBingo: IngredientBingo? = null,
+    /**
+     * The active crew's chosen Score display vocabulary (C8b). Defaults to [CrewScoreStyle.Stars]
+     * for pre-C8 crews (no stored field) so the leaderboard renders identically to before C8b when
+     * no style has been set. Plumbed from [CrewWelcomePort.observeScoreStyle] via
+     * [ObserveStatsUseCase] — presentation maps it to [FrScoreStyle] when reducing into [StatsState].
+     */
+    val scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
 )

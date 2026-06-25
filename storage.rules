@@ -2,21 +2,24 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Avatars — one image per account, addressed by uid. Owner-only writes.
+    // Avatars — one folder per account, keyed by uid. The object name within is content-versioned
+    // (`avatars/{uid}/{token}.jpg`) so a re-upload changes the path and the change surfaces live
+    // (the old fixed `avatars/{uid}.jpg` stayed stale until an app restart). Owner-only writes:
+    // the uid is its own path segment, so we match it directly instead of parsing a filename.
     //
     // Direct reads are DENIED (#15): a download-token URL bypasses these rules entirely
     // (anyone with the `?token=…` string can fetch). Clients no longer mint tokens — they
     // store the object path and read via short-lived, membership-checked V4 signed URLs
     // from the `mintPlateUrls` callable, which sign with the service account and so are not
     // subject to these read rules.
-    match /avatars/{filename} {
+    match /avatars/{uid}/{filename} {
       allow read: if false;
       allow write: if request.auth != null
-                   && filename == request.auth.uid + ".jpg"
+                   && uid == request.auth.uid
                    && request.resource.size < 1 * 1024 * 1024
                    && request.resource.contentType.matches('image/jpe?g');
       allow delete: if request.auth != null
-                    && filename == request.auth.uid + ".jpg";
+                    && uid == request.auth.uid;
     }
 
     // Meal plate photos. Path is `crews/{crewId}/meals/{mealId}.jpg`, with
@@ -49,6 +52,28 @@ service firebase.storage {
       allow delete: if request.auth != null
                     && filename.matches(crewId + '_' + request.auth.uid + '_.*\\.jpg')
                     && !filename.matches('.*_thumb\\.jpg');
+    }
+
+    // Crew banner images (C9). Path: `crew_banners/{crewId}/banner.jpg` — one image per crew.
+    // Only the crew OWNER may upload or delete. The banner object's path does NOT embed the
+    // owner uid (unlike avatars/plates, which encode the uid in the filename), so we MUST read
+    // the crew doc's `ownerId` cross-service to authorize the write/delete. The client-side
+    // owner check in FirebaseCrewRepository is convenience only — this rule is the real gate.
+    //
+    // Direct reads are DENIED (same rationale as plate photos and avatars above): banner URLs
+    // are short-lived V4 signed URLs minted by `mintPlateUrls` after a crew-membership check.
+    match /crew_banners/{crewId}/{filename} {
+      function isCrewOwner() {
+        return request.auth != null
+               && firestore.get(/databases/(default)/documents/crews/$(crewId)).data.ownerId == request.auth.uid;
+      }
+      allow read: if false;
+      allow write: if isCrewOwner()
+                   && filename == "banner.jpg"
+                   && request.resource.size < 2 * 1024 * 1024
+                   && request.resource.contentType.matches('image/jpe?g');
+      allow delete: if isCrewOwner()
+                    && filename == "banner.jpg";
     }
 
     // GDPR data-export archives (Art. 20). Written ONLY by the `exportMyData` callable via the

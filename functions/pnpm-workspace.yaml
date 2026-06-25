@@ -1,3 +1,11 @@
 allowBuilds:
   esbuild: true
   protobufjs: true
+
+overrides:
+  vite: '>=6.4.3'
+  esbuild: '>=0.28.1'
+  protobufjs: ^7.6.3
+  form-data: '>=2.5.6'
+  js-yaml: ^4.2.0
+  uuid: '>=11.1.1'

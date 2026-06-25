@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.meal.data.repository
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
+import app.cash.turbine.test
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
@@ -31,10 +32,17 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
+import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
+import es.schsebastian.foodrats.core.domain.meal.MealReadError
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.feature.meal.data.local.LocalMeal
+import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
+import es.schsebastian.foodrats.feature.meal.data.test.FakeAccountReadPort
 import es.schsebastian.foodrats.feature.meal.data.test.FakeImageUrlPort
 import es.schsebastian.foodrats.feature.meal.data.test.FakeMealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.test.FakeMealFirestore
+import es.schsebastian.foodrats.feature.meal.data.test.FakeMealLocalStore
 import es.schsebastian.foodrats.feature.meal.data.test.FakePlateStorage
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
@@ -65,7 +73,10 @@ class FirebaseMealRepositoryTest {
     private val account = (AccountId.of("acc-1") as Result.Ok).value
     private val dish = (DishName.of("Pizza") as Result.Ok).value
     private val today = MealDay(LocalDate(2026, 5, 18), zone)
-    private val mealId = (MealId.of("crew-1_acc-1_2026-05-18_lunch") as Result.Ok).value
+    // The publish path keys the doc id by a stable hash of the plate bytes (the draft below uses
+    // byteArrayOf(1,2,3)); compute it the same way so the expected ids track the production formula.
+    private val token = byteArrayOf(1, 2, 3).contentHashCode().toUInt().toString(16)
+    private val mealId = (MealId.of("crew-1_acc-1_2026-05-18_$token") as Result.Ok).value
 
     private fun slug(raw: String): IngredientSlug = IngredientSlug.of(raw).getOrNull()!!
 
@@ -103,6 +114,9 @@ class FirebaseMealRepositoryTest {
     private fun repository(
         fixture: Fixture,
         cuisineRead: CuisineReadPort = FakeCuisineReadPort(),
+        local: MealLocalStore = FakeMealLocalStore(),
+        accountRead: AccountReadPort = noAccounts,
+        imageUrls: ImageUrlPort = FakeImageUrlPort(),
     ): FirebaseMealRepository {
         val testDispatcher = UnconfinedTestDispatcher()
         val dispatchers = object : DispatcherProvider {
@@ -114,13 +128,14 @@ class FirebaseMealRepositoryTest {
             firestore = fixture.firestore,
             storage = fixture.storage,
             drafts = MealDraftLocalStore(AppPreferences(FakeDataStore())),
+            local = local,
             dispatchers = dispatchers,
             errorMapper = MealErrorMapper(NoopCrashReporter),
             clock = FixedClock(Instant.parse("2026-05-18T12:00:00Z")),
             authorIdentity = fixture.identity,
             zone = zone,
-            accountRead = noAccounts,
-            imageUrls = FakeImageUrlPort(),
+            accountRead = accountRead,
+            imageUrls = imageUrls,
             cuisineRead = cuisineRead,
         )
     }
@@ -276,7 +291,7 @@ class FirebaseMealRepositoryTest {
         val f = Fixture().apply {
             firestore.writeFault = RuntimeException("PERMISSION_DENIED: create rule !exists rejected the duplicate")
             // The doc is absent at the pre-check but present once the write is rejected (the race).
-            firestore.existingSlotsAfterWriteFault = setOf(MealSlot.Lunch)
+            firestore.existingIdsAfterWriteFault = setOf(mealId.value)
         }
         val repo = repository(f)
 
@@ -312,19 +327,19 @@ class FirebaseMealRepositoryTest {
         assertEquals(0, f.firestore.writes.size)
     }
 
-    /** No slot selected short-circuits after the photo check, before upload/write. */
-    @Test fun publish_without_slot_returns_no_slot_selected() = runTest {
+    /** Slot is optional: a draft with no slot publishes, persisting an empty slot string. */
+    @Test fun publish_without_slot_succeeds_and_persists_empty_slot() = runTest {
         val f = Fixture()
         val repo = repository(f)
 
         val result = repo.publish(draft(slot = null))
 
-        assertEquals(Result.failure(MealError.Publish.NoSlotSelected), result)
-        assertEquals(0, f.firestore.writes.size)
+        assertTrue(result is Result.Ok)
+        assertEquals("", f.firestore.writes.single().dto.slot)
     }
 
     /** The happy path stamps the author identity + plate PATH onto the DTO and writes under
-     *  the deterministic day/slot doc id. */
+     *  the deterministic token doc id. */
     @Test fun publish_writes_author_identity_and_deterministic_doc_id() = runTest {
         val f = Fixture().apply {
             identity.author = MealAuthorIdentity.Author("acc-1", "Chef Ada", "https://fake/ada.png")
@@ -356,18 +371,19 @@ class FirebaseMealRepositoryTest {
         assertEquals(2, f.storage.uploads.size)
         assertEquals(setOf(crew.value, crew2.value), f.firestore.writes.map { it.dto.crewId }.toSet())
         assertEquals(setOf(crew, crew2), f.storage.uploads.map { it.crewId }.toSet())
-        // Per-crew deterministic doc ids.
+        // Per-crew deterministic token doc ids.
         assertEquals(
-            setOf("crew-1_acc-1_2026-05-18_lunch", "crew-2_acc-1_2026-05-18_lunch"),
+            setOf("crew-1_acc-1_2026-05-18_$token", "crew-2_acc-1_2026-05-18_$token"),
             f.firestore.writes.map { it.docId }.toSet(),
         )
     }
 
-    /** When the slot is already taken in every selected crew, nothing is written and the result
-     *  is AlreadyPostedToday (the audience-aware "no crew left to receive it" rule). */
-    @Test fun publish_returns_already_posted_when_slot_taken_in_all_selected_crews() = runTest {
+    /** When every selected crew is already at the per-crew daily cap, nothing is written and the
+     *  result is AlreadyPostedToday (the audience-aware "no crew left to receive it" rule). */
+    @Test fun publish_returns_already_posted_when_all_selected_crews_at_daily_cap() = runTest {
         val crew2 = (CrewId.of("crew-2") as Result.Ok).value
-        val f = Fixture().apply { firestore.existingSlots = setOf(MealSlot.Lunch) }
+        // 10 existing ids (the cap) for the (crew, day) — the fake reports this for every crew.
+        val f = Fixture().apply { firestore.existingIds = (1..10).map { "crew-1_acc-1_2026-05-18_id$it" }.toSet() }
         val repo = repository(f)
 
         val result = repo.publish(draft().copy(audienceCrewIds = setOf(crew, crew2)))
@@ -598,20 +614,20 @@ class FirebaseMealRepositoryTest {
         assertEquals(Result.failure(MealDeleteError.Unavailable), result)
     }
 
-    /** Author "delete my post": removes the (day, slot) plate from every crew, at each crew's
-     *  own deterministic doc id. */
+    /** Author "delete my post": removes the plate (identified by its shared token) from every
+     *  crew, reconstructing each crew's own deterministic doc id from that token. */
     @Test fun deleteFromAllCrews_deletes_each_crews_deterministic_doc() = runTest {
         val crew2 = (CrewId.of("crew-2") as Result.Ok).value
         val f = Fixture()
         val repo = repository(f)
 
-        val result = repo.deleteFromAllCrews(setOf(crew, crew2), account, today, MealSlot.Lunch)
+        val result = repo.deleteFromAllCrews(setOf(crew, crew2), account, today, "tok1")
 
         assertEquals(Result.success(Unit), result)
         assertEquals(
             setOf(
-                crew to "crew-1_acc-1_2026-05-18_lunch",
-                crew2 to "crew-2_acc-1_2026-05-18_lunch",
+                crew to "crew-1_acc-1_2026-05-18_tok1",
+                crew2 to "crew-2_acc-1_2026-05-18_tok1",
             ),
             f.firestore.deleteCalls.toSet(),
         )
@@ -622,8 +638,177 @@ class FirebaseMealRepositoryTest {
         val f = Fixture().apply { firestore.deleteFault = RuntimeException("UNAVAILABLE: network down") }
         val repo = repository(f)
 
-        val result = repo.deleteFromAllCrews(setOf(crew), account, today, MealSlot.Lunch)
+        val result = repo.deleteFromAllCrews(setOf(crew), account, today, "tok1")
 
         assertEquals(Result.failure(MealDeleteError.Unavailable), result)
+    }
+
+    // ---------------------------------------------------------------------------------
+    // Read-path inversion (offline-first P3a-T4): observeFeed/observeRange source the enriched
+    // per-crew stream from the LOCAL store (MealLocalStore), not Firestore. The enrichment —
+    // signed URLs via ImageUrlPort + live identity via AccountReadPort → toMealWithRatings — must
+    // be byte-for-byte the same as before. These tests seed a fake local store and assert the
+    // exact enrichment, plus that the feed never reads Firestore.observeForRange.
+    // ---------------------------------------------------------------------------------
+
+    private fun localMeal(
+        mealId: String,
+        dayKey: String,
+        authorId: String = "acc-1",
+        platePath: String? = "crews/crew-1/meals/$mealId.jpg",
+        thumbnailPath: String? = "crews/crew-1/thumbs/$mealId.jpg",
+        ratings: List<es.schsebastian.foodrats.feature.meal.data.local.LocalRating> = emptyList(),
+        publishedAtEpochMs: Long = 100L,
+    ) = LocalMeal(
+        mealId = mealId,
+        crewId = "crew-1",
+        authorId = authorId,
+        authorName = "Baked Name",
+        dayKey = dayKey,
+        slot = "lunch",
+        platePath = platePath,
+        thumbnailPath = thumbnailPath,
+        thumbHash = null,
+        dishName = "Pizza",
+        description = "",
+        latitude = null,
+        longitude = null,
+        publishedAtEpochMs = publishedAtEpochMs,
+        ratingSum = ratings.sumOf { it.score }.toLong(),
+        voterCount = ratings.size.toLong(),
+        ingredientsCsv = "",
+        classifierVersion = null,
+        cuisine = null,
+        kind = "solo",
+        pending = 0L,
+        idempotencyKey = null,
+        ratings = ratings,
+    )
+
+    private fun account(id: String, name: String, avatar: String? = null): Account = Account(
+        id = (AccountId.of(id) as Result.Ok).value,
+        handle = id,
+        displayName = name,
+        email = null,
+        avatarUrl = avatar,
+    )
+
+    /** observeFeed reads the local store, filters to the requested day, and mints signed plate +
+     *  thumbnail URLs from the stored PATHS (never persisting URLs). */
+    @Test fun observeFeed_enriches_local_rows_with_signed_urls_filtered_by_day() = runTest {
+        val f = Fixture()
+        val local = FakeMealLocalStore(
+            listOf(
+                localMeal("m1", dayKey = "2026-05-18"),
+                // A different day must be filtered out by observeFeed's dayKey predicate.
+                localMeal("m2", dayKey = "2026-05-17"),
+            ),
+        )
+        val repo = repository(f, local = local, imageUrls = FakeImageUrlPort())
+
+        repo.observeFeed(crew, today).test {
+            val result = expectMostRecentItem()
+            assertTrue(result is Result.Ok)
+            val meals = result.value
+            assertEquals(listOf("m1"), meals.map { it.meal.id.value })
+            // PATH → signed URL minted at read time (the store holds only the path).
+            assertEquals("signed://crews/crew-1/meals/m1.jpg", meals.single().meal.photoUrl)
+            assertEquals("signed://crews/crew-1/thumbs/m1.jpg", meals.single().meal.thumbnailUrl)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // The feed never touched Firestore.observeForRange — the sync engine is its only consumer.
+        assertEquals(0, f.firestore.writes.size)
+    }
+
+    /** Live identity overrides the row's baked `authorName`: a rename in the accounts doc shows in
+     *  the feed without a republish (the enrichment resolves AccountReadPort.observeMany, not the
+     *  denormalized snapshot). */
+    @Test fun observeFeed_resolves_live_author_identity_over_baked_name() = runTest {
+        val f = Fixture()
+        val accounts = FakeAccountReadPort().apply {
+            set((AccountId.of("acc-1") as Result.Ok).value, account("acc-1", "Renamed Chef", "https://live/ada.png"))
+        }
+        val local = FakeMealLocalStore(listOf(localMeal("m1", dayKey = "2026-05-18")))
+        val repo = repository(f, local = local, accountRead = accounts)
+
+        repo.observeFeed(crew, today).test {
+            val result = expectMostRecentItem()
+            assertTrue(result is Result.Ok)
+            val meal = result.value.single().meal
+            // Live identity wins over the stored "Baked Name".
+            assertEquals("Renamed Chef", meal.author.displayName)
+            assertEquals("https://live/ada.png", meal.author.avatarUrl)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** observeRange over the in-window 30-day range filters the enriched local stream inclusively. */
+    @Test fun observeRange_enriches_and_filters_inclusive_range() = runTest {
+        val f = Fixture()
+        val local = FakeMealLocalStore(
+            listOf(
+                localMeal("in-lo", dayKey = "2026-04-19"),  // window lower bound (today-29)
+                localMeal("in-hi", dayKey = "2026-05-18"),  // today
+                localMeal("out", dayKey = "2026-04-18"),    // before the requested range
+            ),
+        )
+        val repo = repository(f, local = local)
+        val from = MealDay(LocalDate(2026, 4, 19), zone)
+
+        repo.observeRange(crew, from, today).test {
+            val result = expectMostRecentItem()
+            assertTrue(result is Result.Ok)
+            assertEquals(
+                setOf("2026-04-19", "2026-05-18"),
+                result.value.map { it.meal.day.toKey() }.toSet(),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /** 365-day stats range (extends BEFORE the memoized 30-day window) reads the local store DIRECTLY
+     *  and surfaces the full retained history — not the silent 30-day cap. */
+    @Test fun observeRange_beyond_window_reads_local_directly_for_full_history() = runTest {
+        val f = Fixture()
+        val local = FakeMealLocalStore(
+            listOf(
+                // 200 days back — far outside the 30-day sync window, retained locally for stats.
+                localMeal("historic", dayKey = "2025-10-30"),
+                localMeal("recent", dayKey = "2026-05-18"),
+            ),
+        )
+        val repo = repository(f, local = local)
+        val from = MealDay(LocalDate(2025, 5, 18), zone) // today - 365d
+
+        repo.observeRange(crew, from, today).test {
+            val result = expectMostRecentItem()
+            assertTrue(result is Result.Ok)
+            // Both the historic AND recent rows are visible — stats see beyond the 30-day window.
+            assertEquals(
+                setOf("2025-10-30", "2026-05-18"),
+                result.value.map { it.meal.day.toKey() }.toSet(),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
+        // The non-memoized direct read requested exactly the asked-for 365-day range.
+        assertTrue(local.rangeCalls.any { it.second == "2025-05-18" && it.third == "2026-05-18" })
+    }
+
+    /** A local-read throw degrades to a benign EMPTY feed (the signed-out / PERMISSION_DENIED
+     *  contract), not a failure — downstream renders an empty state. */
+    @Test fun observeFeed_benign_empty_on_local_read_throw() = runTest {
+        val f = Fixture()
+        val throwingLocal = object : MealLocalStore() {
+            override fun observeRange(crewId: String, fromKey: String, toKey: String): Flow<List<LocalMeal>> =
+                kotlinx.coroutines.flow.flow { throw RuntimeException("PERMISSION_DENIED: token revoked") }
+        }
+        val repo = repository(f, local = throwingLocal)
+
+        repo.observeFeed(crew, today).test {
+            val result = expectMostRecentItem()
+            assertTrue(result is Result.Ok)
+            assertEquals(emptyList<MealWithRatings>(), result.value)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

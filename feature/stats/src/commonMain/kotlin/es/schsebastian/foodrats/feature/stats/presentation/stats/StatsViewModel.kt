@@ -3,10 +3,12 @@ package es.schsebastian.foodrats.feature.stats.presentation.stats
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.data.share.StoryShareOutcome
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.templates.ShareCardFormat
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -41,7 +43,13 @@ class StatsViewModel(
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<StatsState, StatsIntent, StatsEffect>(StatsState()) {
 
+    /** Leaderboard tabs (Month/Historic) already announced this VM lifetime; gates duplicate fires. */
+    private val leaderboardTabsViewed = mutableSetOf<Tab>()
+
     init {
+        // The streak hero is the landing surface (default Week tab) — one view per VM lifetime.
+        analytics.track(AnalyticsEvent.StreakViewed)
+
         uploadProgress.status
             .map { it is MealUploadStatus.Uploading }
             .distinctUntilChanged()
@@ -72,6 +80,9 @@ class StatsViewModel(
                                 r.value.historic == null &&
                                 !historicFailed,
                             isRefreshing = false,
+                            // C8b — map the domain score style to the presentation enum so all
+                            // leaderboard cards can read it from state without importing :core:domain.
+                            scoreStyle = r.value.scoreStyle.toFrScoreStyle(),
                         )
                     }
                     is Result.Err -> update { it.copy(error = r.error, isRefreshing = false) }
@@ -81,11 +92,17 @@ class StatsViewModel(
     }
 
     override suspend fun handle(intent: StatsIntent) = when (intent) {
-        is StatsIntent.SelectTab -> update {
-            it.copy(
-                selectedTab = intent.tab,
-                historicLoading = intent.tab == Tab.Historic && it.snapshot?.historic == null,
-            )
+        is StatsIntent.SelectTab -> {
+            // Leaderboard surfaces (Month/Historic) — first open of each tab per VM lifetime.
+            if (intent.tab != Tab.Week && leaderboardTabsViewed.add(intent.tab)) {
+                analytics.track(AnalyticsEvent.LeaderboardViewed)
+            }
+            update {
+                it.copy(
+                    selectedTab = intent.tab,
+                    historicLoading = intent.tab == Tab.Historic && it.snapshot?.historic == null,
+                )
+            }
         }
         StatsIntent.Refresh      -> update { it.copy(isRefreshing = true, epoch = it.epoch + 1) }
         StatsIntent.DismissError -> update { it.copy(error = null, historicError = null) }
@@ -142,4 +159,14 @@ class StatsViewModel(
         StoryShareOutcome.OpenedFallbackSheet -> ShareOutcomeUi.OpenedSheet
         StoryShareOutcome.Failed              -> ShareOutcomeUi.Failed
     }
+}
+
+/**
+ * C8b — maps the domain [CrewScoreStyle] to the presentation [FrScoreStyle] (the same arms that
+ * [FeedViewModel.observeScoreStyle] and [MealDetailViewModel.scoreStyleFlow] use).
+ */
+private fun CrewScoreStyle.toFrScoreStyle(): FrScoreStyle = when (this) {
+    CrewScoreStyle.Stars   -> FrScoreStyle.Stars
+    CrewScoreStyle.Emoji   -> FrScoreStyle.Emoji
+    CrewScoreStyle.Numeric -> FrScoreStyle.Numeric
 }

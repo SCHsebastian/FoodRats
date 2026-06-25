@@ -6,9 +6,13 @@ import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.analytics.isAnalyticsGranted
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
@@ -27,11 +31,15 @@ import es.schsebastian.foodrats.core.domain.notifications.NotificationPermission
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAccentPaletteUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.RemoveMyAvatarUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -49,6 +57,17 @@ data class ProfileState(
     val saveDisplayNameError: StringKey? = null,
     val isUploadingAvatar: Boolean = false,
     val uploadAvatarError: StringKey? = null,
+    val isRemovingAvatar: Boolean = false,
+    val removeAvatarConfirmOpen: Boolean = false,
+    val removeAvatarError: StringKey? = null,
+
+    // Bio — single-field editor in GeneralSection. editingBio is seeded from account.bio on
+    // first emission (mirrors editingDisplayName) and never overwritten by subsequent live
+    // emissions while the user is editing.
+    val editingBio: String = "",
+    val isSavingBio: Boolean = false,
+    val saveBioError: StringKey? = null,
+
     val isSigningOut: Boolean = false,
     val signOutError: StringKey? = null,
 
@@ -61,6 +80,15 @@ data class ProfileState(
     val localeError: StringKey? = null,
     val notificationsEnabled: Boolean = true,
     val notificationsError: StringKey? = null,
+
+    // AI opt-out — reflects AiPreferencePort.enabled (single source of truth).
+    val aiEnabled: Boolean = true,
+    val aiError: StringKey? = null,
+
+    // Accent palette — reflects AccentPalettePort.palette (single source of truth).
+    val accentPalette: AccentPalette = AccentPalette.Ember,
+    val accentPickerOpen: Boolean = false,
+    val accentError: StringKey? = null,
 
     // Meal reminders — the user-configurable daily nudge times (max 3). The hour picker
     // edits/adds a slot; [reminderEditingIndex] is null when adding, else the slot being edited.
@@ -90,7 +118,15 @@ data class ProfileState(
 sealed interface ProfileIntent : MviIntent {
     data class DisplayNameChanged(val value: String) : ProfileIntent
     data object SaveDisplayName : ProfileIntent
+    data class BioChanged(val value: String) : ProfileIntent
+    data object SaveBio : ProfileIntent
     data class AvatarPicked(val bytes: ByteArray) : ProfileIntent
+    /** User tapped "Remove avatar" — open the confirmation dialog. */
+    data object RemoveAvatarRequested : ProfileIntent
+    /** User confirmed the removal in the dialog. */
+    data object RemoveAvatarConfirmed : ProfileIntent
+    /** User dismissed the removal confirmation dialog without confirming. */
+    data object RemoveAvatarDismissed : ProfileIntent
     data object SignOut : ProfileIntent
 
     data object ThemePickerOpen : ProfileIntent
@@ -103,6 +139,12 @@ sealed interface ProfileIntent : MviIntent {
 
     data class NotificationsToggled(val enabled: Boolean) : ProfileIntent
     data object OpenNotificationSystemSettings : ProfileIntent
+
+    data class AiToggled(val enabled: Boolean) : ProfileIntent
+
+    data object AccentPickerOpen : ProfileIntent
+    data object AccentPickerDismiss : ProfileIntent
+    data class AccentSelected(val palette: AccentPalette) : ProfileIntent
 
     /** Open the hour picker to edit the reminder at [index]. */
     data class ReminderEditOpen(val index: Int) : ProfileIntent
@@ -142,15 +184,21 @@ class ProfileViewModel(
     themePort: ThemeModePort,
     localePort: LocalePort,
     notificationsPort: NotificationsPreferencePort,
+    aiPreferencePort: AiPreferencePort,
+    accentPalettePort: AccentPalettePort,
     mealRemindersPort: MealReminderSchedulePort,
     private val updateDisplayName: UpdateMyDisplayNameUseCase,
+    private val updateBio: UpdateMyBioUseCase,
     private val updateAvatar: UpdateMyAvatarUseCase,
+    private val removeAvatar: RemoveMyAvatarUseCase,
     private val signOut: SignOutPort,
     private val setThemeMode: SetThemeModeUseCase,
     private val setLocale: SetLocaleUseCase,
     private val setMealReminders: SetMealRemindersUseCase,
     private val setNotificationsEnabled: SetNotificationsEnabledUseCase,
     private val enableNotifications: EnableNotificationsUseCase,
+    private val setAiEnabled: SetAiEnabledUseCase,
+    private val setAccentPalette: SetAccentPaletteUseCase,
     private val notificationPermission: NotificationPermissionPort,
     private val deleteMyAccount: DeleteMyAccountUseCase,
     private val exportMyData: ExportMyDataUseCase,
@@ -169,8 +217,10 @@ class ProfileViewModel(
                     update { prev ->
                         prev.copy(
                             account = account,
-                            // Seed the field on first emission; never overwrite an in-progress edit.
+                            // Seed display name on first emission; never overwrite an in-progress edit.
                             editingDisplayName = if (prev.editingDisplayName.isBlank()) account.displayName else prev.editingDisplayName,
+                            // Seed bio on first emission (null bio → empty string = no bio set).
+                            editingBio = if (prev.editingBio.isBlank()) (account.bio?.value ?: "") else prev.editingBio,
                         )
                     }
                 }
@@ -185,6 +235,18 @@ class ProfileViewModel(
         viewModelScope.launch {
             notificationsPort.enabled.onEach { on ->
                 update { it.copy(notificationsEnabled = on) }
+            }.collect {}
+        }
+        viewModelScope.launch {
+            // Single source of truth: the AI opt-out state is driven by the persisted port value.
+            aiPreferencePort.enabled.onEach { on ->
+                update { it.copy(aiEnabled = on) }
+            }.collect {}
+        }
+        viewModelScope.launch {
+            // Single source of truth: the accent palette is driven by the persisted port value.
+            accentPalettePort.palette.onEach { p ->
+                update { it.copy(accentPalette = p) }
             }.collect {}
         }
         viewModelScope.launch {
@@ -211,7 +273,18 @@ class ProfileViewModel(
                 update { it.copy(editingDisplayName = intent.value, saveDisplayNameError = null) }
 
             ProfileIntent.SaveDisplayName -> doSaveDisplayName()
+
+            is ProfileIntent.BioChanged ->
+                update { it.copy(editingBio = intent.value, saveBioError = null) }
+
+            ProfileIntent.SaveBio -> doSaveBio()
+
             is ProfileIntent.AvatarPicked -> doUploadAvatar(intent.bytes)
+            ProfileIntent.RemoveAvatarRequested ->
+                update { it.copy(removeAvatarConfirmOpen = true, removeAvatarError = null) }
+            ProfileIntent.RemoveAvatarConfirmed -> doRemoveAvatar()
+            ProfileIntent.RemoveAvatarDismissed ->
+                update { it.copy(removeAvatarConfirmOpen = false) }
             ProfileIntent.SignOut -> doSignOut()
 
             ProfileIntent.ThemePickerOpen ->
@@ -228,6 +301,14 @@ class ProfileViewModel(
 
             is ProfileIntent.NotificationsToggled -> doSetNotifications(intent.enabled)
             ProfileIntent.OpenNotificationSystemSettings -> notificationPermission.openSystemSettings()
+
+            is ProfileIntent.AiToggled -> doSetAi(intent.enabled)
+
+            ProfileIntent.AccentPickerOpen ->
+                update { it.copy(accentPickerOpen = true, accentError = null) }
+            ProfileIntent.AccentPickerDismiss ->
+                update { it.copy(accentPickerOpen = false) }
+            is ProfileIntent.AccentSelected -> doSetAccent(intent.palette)
 
             is ProfileIntent.ReminderEditOpen ->
                 update { it.copy(reminderPickerOpen = true, reminderEditingIndex = intent.index, reminderError = null) }
@@ -278,6 +359,18 @@ class ProfileViewModel(
         }
     }
 
+    private suspend fun doSaveBio() {
+        val raw = currentState.editingBio
+        update { it.copy(isSavingBio = true, saveBioError = null) }
+        val r = updateBio(raw)
+        update {
+            when (r) {
+                is Result.Ok -> it.copy(isSavingBio = false, saveBioError = null)
+                is Result.Err -> it.copy(isSavingBio = false, saveBioError = r.error.toStringKey())
+            }
+        }
+    }
+
     private suspend fun doSaveDisplayName() {
         val name = currentState.editingDisplayName
         update { it.copy(isSavingDisplayName = true, saveDisplayNameError = null) }
@@ -301,6 +394,18 @@ class ProfileViewModel(
         }
     }
 
+    private suspend fun doRemoveAvatar() {
+        // Close the confirm dialog immediately; show progress in the avatar area.
+        update { it.copy(removeAvatarConfirmOpen = false, isRemovingAvatar = true, removeAvatarError = null) }
+        val r = removeAvatar()
+        update {
+            when (r) {
+                is Result.Ok -> it.copy(isRemovingAvatar = false, removeAvatarError = null)
+                is Result.Err -> it.copy(isRemovingAvatar = false, removeAvatarError = r.error.toStringKey())
+            }
+        }
+    }
+
     private suspend fun doSignOut() {
         update { it.copy(isSigningOut = true, signOutError = null) }
         val r = signOut.signOut()
@@ -314,14 +419,20 @@ class ProfileViewModel(
 
     private suspend fun doSetTheme(mode: ThemeMode) {
         when (val r = setThemeMode(mode)) {
-            is Result.Ok -> update { it.copy(themePickerOpen = false, themeError = null) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.THEME))
+                update { it.copy(themePickerOpen = false, themeError = null) }
+            }
             is Result.Err -> update { it.copy(themePickerOpen = false, themeError = r.error.toStringKey()) }
         }
     }
 
     private suspend fun doSetLocale(locale: AppLocale) {
         when (val r = setLocale(locale)) {
-            is Result.Ok -> update { it.copy(localePickerOpen = false, localeError = null) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.LANGUAGE))
+                update { it.copy(localePickerOpen = false, localeError = null) }
+            }
             is Result.Err -> update { it.copy(localePickerOpen = false, localeError = r.error.toStringKey()) }
         }
     }
@@ -333,7 +444,8 @@ class ProfileViewModel(
         update { it.copy(notificationsEnabled = enabled, notificationsError = null) }
         val r = if (enabled) enableNotifications() else setNotificationsEnabled(false)
         when (r) {
-            is Result.Ok  -> Unit
+            is Result.Ok  ->
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.NOTIFICATIONS, enabled = enabled))
             is Result.Err -> update {
                 it.copy(
                     // Roll the switch back to its pre-toggle position so the UI matches what
@@ -347,6 +459,29 @@ class ProfileViewModel(
         }
     }
 
+    private suspend fun doSetAi(enabled: Boolean) {
+        // Optimistic: update state immediately, revert on error (mirrors doSetTheme).
+        // The persisted-port collector is the single source of truth on success; on error we roll
+        // back manually because the collector won't fire (the write failed).
+        val prev = currentState.aiEnabled
+        update { it.copy(aiEnabled = enabled, aiError = null) }
+        when (val r = setAiEnabled(enabled)) {
+            is Result.Ok -> Unit
+            is Result.Err -> update { it.copy(aiEnabled = prev, aiError = r.error.toStringKey()) }
+        }
+    }
+
+    private suspend fun doSetAccent(palette: AccentPalette) {
+        // Optimistic: close the picker and update state immediately; roll back on error.
+        // The persisted-port collector is the single source of truth on success.
+        val prev = currentState.accentPalette
+        update { it.copy(accentPickerOpen = false, accentPalette = palette, accentError = null) }
+        when (val r = setAccentPalette(palette)) {
+            is Result.Ok -> Unit
+            is Result.Err -> update { it.copy(accentPalette = prev, accentError = r.error.toStringKey()) }
+        }
+    }
+
     private suspend fun doApplyReminderHour(hour: Int) {
         val newTime = LocalTime(hour = hour, minute = 0)
         val current = currentState.reminderTimes
@@ -355,12 +490,9 @@ class ProfileViewModel(
             null -> current + newTime
             else -> current.toMutableList().also { if (editingIndex in it.indices) it[editingIndex] = newTime }
         }
-        val normalized = updated
-            .distinct()
-            .sortedWith(compareBy({ it.hour }, { it.minute }))
-            .take(MealReminderSchedulePort.MAX_REMINDERS)
         update { it.copy(reminderPickerOpen = false, reminderEditingIndex = null) }
-        doSetReminders(normalized)
+        // De-dupe / sort / cap is the use case's job now (it owns the port contract); pass intent.
+        doSetReminders(updated)
     }
 
     private suspend fun doRemoveReminder(index: Int) {
@@ -369,8 +501,13 @@ class ProfileViewModel(
     }
 
     private suspend fun doSetReminders(times: List<LocalTime>) {
+        // Shared by add/edit (doApplyReminderHour) and remove (doRemoveReminder); the single Ok-branch
+        // emission covers every reminder change. No target VALUE on the event — only that it changed.
         when (val r = setMealReminders(times)) {
-            is Result.Ok -> update { it.copy(reminderError = null) }
+            is Result.Ok -> {
+                analytics.track(AnalyticsEvent.SettingChanged(AppSetting.MEAL_REMINDERS))
+                update { it.copy(reminderError = null) }
+            }
             is Result.Err -> update { it.copy(reminderError = r.error.toStringKey()) }
         }
     }

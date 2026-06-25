@@ -25,6 +25,8 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
 import es.schsebastian.foodrats.core.designsystem.molecules.FrLabeledTextField
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportSheet
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreBadge
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScorePicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSegmented
@@ -36,6 +38,7 @@ import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSection
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSectionTone
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
+import es.schsebastian.foodrats.core.designsystem.molecules.FrProfileBadge
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -56,6 +59,8 @@ internal fun moleculeStories(): List<CatalogEntry> = listOf(
     CatalogEntry("molecule.settings-picker",  CatalogGroup.MOLECULES, "FrSettingsPicker",  "Bottom-sheet radio picker (id/label options)") { SettingsPickerStory() },
     CatalogEntry("molecule.segmented",        CatalogGroup.MOLECULES, "FrSegmented",       "Single-select segmented pill row") { SegmentedStory() },
     CatalogEntry("molecule.votebars",         CatalogGroup.MOLECULES, "FrVoteBars",        "Vote-distribution histogram (scores 1..10)") { VoteBarsStory() },
+    CatalogEntry("molecule.reportsheet",      CatalogGroup.MOLECULES, "FrReportSheet",     "Bottom-sheet reason picker for reporting content/users") { ReportSheetStory() },
+    CatalogEntry("molecule.profilebadge",    CatalogGroup.MOLECULES, "FrProfileBadge",    "Compact achievement-badge chip (first/ten/fifty/hundred plates)") { ProfileBadgeStory() },
 )
 
 @Composable
@@ -411,6 +416,33 @@ private fun SettingsRowStory() {
 }
 
 @Composable
+private fun ReportSheetStory() {
+    var open by remember { mutableStateOf(false) }
+    val labels = mapOf(
+        FrReportReasonOption.SPAM to "Spam or scam",
+        FrReportReasonOption.HARASSMENT to "Harassment or bullying",
+        FrReportReasonOption.HATE to "Hate speech",
+        FrReportReasonOption.SEXUAL to "Sexual content",
+        FrReportReasonOption.VIOLENCE to "Violence",
+        FrReportReasonOption.OTHER to "Something else",
+    )
+    CatalogScene(label = "Bottom-sheet reason picker") {
+        FrButton(label = "Open report sheet", onClick = { open = true })
+        if (open) {
+            FrReportSheet(
+                title = "Report this meal",
+                reasonLabels = labels,
+                submitLabel = "Submit report",
+                cancelLabel = "Cancel",
+                submitting = false,
+                onSubmit = { open = false },
+                onDismiss = { open = false },
+            )
+        }
+    }
+}
+
+@Composable
 private fun SettingsPickerStory() {
     var open by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf("system") }
@@ -442,6 +474,23 @@ private fun ComposerHeroCardStory() {
             FrComposerHeroCard(contentKey = "demo", modifier = Modifier.width(280.dp)) {
                 FrAvatarWithName(initials = "FR", name = "Demo plate")
             }
+        }
+    }
+}
+
+@Composable
+private fun ProfileBadgeStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "All four tiers") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FrProfileBadge(badgeId = "first",   label = "First Plate")
+                FrProfileBadge(badgeId = "ten",     label = "10 Plates")
+                FrProfileBadge(badgeId = "fifty",   label = "50 Plates")
+                FrProfileBadge(badgeId = "hundred", label = "100 Plates")
+            }
+        }
+        CatalogScene(label = "Unknown tier (forwards-compatible fallback)") {
+            FrProfileBadge(badgeId = "future_tier", label = "Future Badge")
         }
     }
 }

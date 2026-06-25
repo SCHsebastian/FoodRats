@@ -2,6 +2,8 @@ package es.schsebastian.foodrats.feature.meal.presentation.compose
 
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.location.Coordinates
@@ -10,6 +12,8 @@ import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.ClassifierError
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishLabel
+import es.schsebastian.foodrats.core.domain.meal.DishName
+import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.core.domain.meal.Ingredient
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
@@ -31,6 +35,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -72,10 +77,11 @@ class ComposePlateViewModelTest {
         classifyResult: (ByteArray) -> Result<List<DishLabel>, ClassifierError>,
         dishMap: Map<String, List<String>> = mapOf("pizza" to listOf("tomato", "cheese")),
         mealAiEnabled: Boolean = true,
+        crews: List<CrewId> = listOf(crew),
     ): ComposePlateViewModel = ComposePlateViewModel(
         updateDraft = UpdateMealDraftUseCase(repo),
         repository = repo,
-        crewMembership = FakeCrewMembership(crew),
+        crewMembership = FakeCrewMembership(crews),
         uploadCoordinator = object : MealUploadCoordinator { override fun enqueueDraftUpload() {} },
         locationProvider = object : LocationProvider {
             override suspend fun current(): Result<Coordinates, LocationError> =
@@ -85,6 +91,10 @@ class ComposePlateViewModelTest {
             FakeClassifier(classifyResult),
             FakeIngredients(dishMap),
             FakeFeatureFlags(mealAiEnabled),
+            object : AiPreferencePort {
+                override val enabled: Flow<Boolean> = flowOf(true)
+                override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> = Result.success(Unit)
+            },
         ),
         clock = clock,
         zone = zone,
@@ -149,6 +159,51 @@ class ComposePlateViewModelTest {
         }
     }
 
+    @Test fun dish_too_long_blocks_continue_and_shows_too_long_message() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onIntent(ComposePlateIntent.DishChanged("x".repeat(DishName.MAX_LEN + 1)))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertTrue(st.dishTooLong)
+            // The RIGHT message: "Keep the dish name short." (TooLong), not the blank "Tell us what you ate."
+            assertEquals(MealError.Validation.TooLong, st.error)
+            assertFalse(st.canContinue, "an over-length dish must block Continue")
+        }
+    }
+
+    @Test fun valid_dish_clears_too_long_message() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onIntent(ComposePlateIntent.DishChanged("x".repeat(DishName.MAX_LEN + 1)))
+        vm.onIntent(ComposePlateIntent.DishChanged("Pizza"))
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertFalse(st.dishTooLong)
+            assertEquals(null, st.error)
+            assertTrue(st.canContinue, "a valid dish + photo + crew should allow Continue")
+        }
+    }
+
+    @Test fun over_length_dish_on_confirm_maps_to_too_long_not_blank() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate")) }
+        val vm = vmWith(repo, classifyResult = { Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onIntent(ComposePlateIntent.DishChanged("x".repeat(DishName.MAX_LEN + 1)))
+        vm.onIntent(ComposePlateIntent.RequestConfirm)
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            // The submit path (persistDraft → DishName.of) must distinguish too-long from blank.
+            assertEquals(MealError.Validation.TooLong, st.error)
+            assertFalse(st.showConfirm, "a too-long dish must not open the publish confirm dialog")
+        }
+    }
+
     @Test fun re_capture_overwrites_manual_edits() = runTest {
         val repo = FakeMealRepository().apply { saveDraft(draftWithPhoto("plate-1")) }
         val vm = vmWith(
@@ -177,9 +232,43 @@ class ComposePlateViewModelTest {
         }
     }
 
-    private class FakeCrewMembership(private val crew: CrewId) : CrewMembershipPort {
+    @Test fun seeded_audience_subset_is_not_clobbered_to_all_crews() = runTest {
+        // Regression: the composer is opened with the draft pre-seeded to ONE crew (the active
+        // crew the user launched from), while they belong to three. loadCrewsAndCounts must keep
+        // that subset, not reconcile it up to "all crews" — the bug was reading the transient empty
+        // initial selection (observeDraft vs observeMyCrews race) and defaulting to all.
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val crew3 = (CrewId.of("crew-3") as Result.Ok).value
+        val seeded = draftWithPhoto("plate").copy(audienceCrewIds = setOf(crew))
+        val repo = FakeMealRepository().apply { saveDraft(seeded) }
+        val vm = vmWith(repo, classifyResult = { Result.failure(ClassifierError.Run.InferenceFailed) }, crews = listOf(crew, crew2, crew3))
+
+        vm.state.test {
+            assertEquals(setOf(crew), expectMostRecentItem().selectedCrewIds)
+        }
+        // And the persisted draft audience stays the single seeded crew.
+        assertEquals(setOf(crew), repo.observeDraft().first()!!.audienceCrewIds)
+    }
+
+    @Test fun seeded_audience_drops_a_left_crew_but_keeps_the_rest() = runTest {
+        // The reconcile still does its job: a seeded crew the user is no longer a member of is
+        // dropped from the audience (here crew3 is gone), without inflating to all crews.
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val crew3 = (CrewId.of("crew-3") as Result.Ok).value
+        val seeded = draftWithPhoto("plate").copy(audienceCrewIds = setOf(crew, crew3))
+        val repo = FakeMealRepository().apply { saveDraft(seeded) }
+        val vm = vmWith(repo, classifyResult = { Result.failure(ClassifierError.Run.InferenceFailed) }, crews = listOf(crew, crew2))
+
+        vm.state.test {
+            assertEquals(setOf(crew), expectMostRecentItem().selectedCrewIds)
+        }
+        assertEquals(setOf(crew), repo.observeDraft().first()!!.audienceCrewIds)
+    }
+
+    private class FakeCrewMembership(private val crews: List<CrewId>) : CrewMembershipPort {
+        constructor(crew: CrewId) : this(listOf(crew))
         override fun observeMyCrews(accountId: AccountId): Flow<List<CrewSummary>> =
-            MutableStateFlow(listOf(CrewSummary(crew, "Crew ${crew.value}")))
+            MutableStateFlow(crews.map { CrewSummary(it, "Crew ${it.value}") })
     }
 
     private class FakeClassifier(

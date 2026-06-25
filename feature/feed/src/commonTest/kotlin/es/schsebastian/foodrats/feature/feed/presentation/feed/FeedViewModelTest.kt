@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.feed.presentation.feed
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.account.BlockError
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -8,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
+import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealReaction
@@ -32,13 +35,25 @@ import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
+import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
+import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
+import es.schsebastian.foodrats.core.domain.meal.Score
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntry
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryStatus
+import es.schsebastian.foodrats.core.domain.outbox.OutboxError
+import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
@@ -52,6 +67,8 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class FixedClockTest(private val instant: Instant) : Clock {
@@ -119,12 +136,60 @@ class FakeUploadProgressPort(
     override val queue = MutableStateFlow(queue)
 }
 
+/**
+ * [OutboxPort] that returns a scripted list of [OutboxEntry] from [observePending] and
+ * records [remove] calls. Used in the C3 dismiss test to verify that
+ * [FeedViewModel.dismissSyncOutbox] clears optimistic pending before removing entries.
+ */
+class TerminalEntryOutboxPort(private val entries: List<OutboxEntry>) : OutboxPort {
+    val removed = mutableListOf<OutboxEntryId>()
+    override fun observePending() = MutableStateFlow(entries)
+    override suspend fun enqueue(cmd: PendingCommand): Result<OutboxEntry, OutboxError> =
+        Result.failure(OutboxError.PersistenceUnavailable)
+    override suspend fun markUploading(id: OutboxEntryId): Result<Boolean, OutboxError> = Result.success(true)
+    override suspend fun markFailed(id: OutboxEntryId, errorKey: String, retryable: Boolean): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun updateStatus(id: OutboxEntryId, status: OutboxEntryStatus): Result<Unit, OutboxError> = Result.success(Unit)
+    override suspend fun remove(id: OutboxEntryId): Result<Unit, OutboxError> { removed += id; return Result.success(Unit) }
+    override suspend fun requeue(id: OutboxEntryId): Result<Unit, OutboxError> = Result.success(Unit)
+}
+
+/**
+ * Scriptable [BlockedAccountsPort] for [FeedViewModel]'s `blockedAccounts` constructor slot.
+ * Distinct from [es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort] which
+ * is used inside [ObserveFeedUseCase] for filtering. This one records block calls and allows scripting
+ * the result so the feed block-error path can be asserted.
+ */
+class FakeFeedBlockedAccountsPort(
+    var nextBlockResult: Result<Unit, BlockError> = Result.success(Unit),
+) : BlockedAccountsPort {
+    val blockCalls = mutableListOf<Pair<AccountId, AccountId>>()
+    override fun observeBlocked(owner: AccountId): Flow<Set<AccountId>> = flowOf(emptySet())
+    override suspend fun block(owner: AccountId, target: AccountId): Result<Unit, BlockError> {
+        blockCalls += owner to target
+        return nextBlockResult
+    }
+    override suspend fun unblock(owner: AccountId, target: AccountId): Result<Unit, BlockError> =
+        Result.success(Unit)
+}
+
 /** Records retry/dismiss calls so the queue-action intents can be asserted. */
 class FakeQueuedUploadActionsPort : QueuedUploadActionsPort {
     var retryCount = 0
     var dismissCount = 0
     override suspend fun retryFailed() { retryCount++ }
     override suspend fun dismissFailed() { dismissCount++ }
+}
+
+/**
+ * Controllable [FeedSyncStatusPort] (P4-T2): the test drives the per-crew last-synced stamp via
+ * [emit] and records [refresh] calls so the Refresh intent can be asserted.
+ */
+class FakeFeedSyncStatusPort(initial: Instant? = null) : FeedSyncStatusPort {
+    private val flow = MutableStateFlow(initial)
+    val refreshedCrews = mutableListOf<String>()
+    fun emit(stamp: Instant?) { flow.value = stamp }
+    override fun lastSyncedAt(crewId: CrewId): Flow<Instant?> = flow
+    override suspend fun refresh(crewId: CrewId) { refreshedCrews += crewId.value }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -172,9 +237,16 @@ class FeedViewModelTest {
         sessionProvider: SessionProvider = session,
         uploadProgress: MealUploadProgressPort = idleUploadProgress,
         queuedActions: QueuedUploadActionsPort = FakeQueuedUploadActionsPort(),
+        connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
+        outbox: OutboxPort = RecordingOutboxPort(),
+        syncStatus: FakeFeedSyncStatusPort = FakeFeedSyncStatusPort(),
+        optimistic: RecordingOptimisticMealWritePort = RecordingOptimisticMealWritePort(),
+        blockedAccounts: es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort =
+            es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort(),
+        feedBlockedAccounts: BlockedAccountsPort = FakeFeedBlockedAccountsPort(),
     ) = FeedViewModel(
-        observeFeed = ObserveFeedUseCase(active, port),
-        rateMeal = RateMealUseCase(ratingPort),
+        observeFeed = ObserveFeedUseCase(active, port, sessionProvider, blockedAccounts),
+        rateMeal = RateMealUseCase(ratingPort, connectivity, outbox, optimistic),
         activeCrew = active,
         session = sessionProvider,
         clock = clock,
@@ -183,7 +255,12 @@ class FeedViewModelTest {
         blindVoting = blindVoting,
         reactions = reactionPort,
         queuedUploadActions = queuedActions,
+        connectivity = connectivity,
+        outbox = outbox,
+        syncStatus = syncStatus,
+        optimistic = optimistic,
         analytics = analytics,
+        blockedAccounts = feedBlockedAccounts,
     )
 
     @Test fun initial_state_today_with_meals() = runTest {
@@ -346,8 +423,8 @@ class FeedViewModelTest {
         assertEquals("m-1", reactionPort.toggleCalls.first().mealId)
         assertEquals("daily_glyph", reactionPort.toggleCalls.first().kind)
         assertEquals(
-            listOf<AnalyticsEvent>(AnalyticsEvent.MealReacted((MealId.of("m-1") as Result.Ok).value, "daily_glyph")),
-            analytics.events.toList(),
+            listOf(AnalyticsEvent.MealReacted((MealId.of("m-1") as Result.Ok).value, "daily_glyph")),
+            analytics.events.filterIsInstance<AnalyticsEvent.MealReacted>(),
         )
     }
 
@@ -378,21 +455,67 @@ class FeedViewModelTest {
             assertEquals(false, meal.viewerReacted)
             cancelAndIgnoreRemainingEvents()
         }
-        assertTrue(analytics.events.isEmpty()) // Removed never tracks (CHARTER rule 9)
+        // Removed never tracks a reaction (CHARTER rule 9); FeedDayViewed from the initial load is unrelated.
+        assertTrue(analytics.events.none { it is AnalyticsEvent.MealReacted })
     }
 
-    @Test fun react_failure_populates_reactError() = runTest {
+    @Test fun react_failure_with_offline_falls_back_to_outbox() = runTest {
+        // A connectivity-class failure of the direct toggle parks the command instead of erroring.
         val reactionPort = FakeMealReactionPort().apply {
             nextToggle = Result.failure(ReactionError.Toggle.Offline)
         }
-        val vm = buildVm(reactionPort = reactionPort)
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(reactionPort = reactionPort, outbox = outbox)
+        runCurrent()
+        vm.onIntent(FeedIntent.ReactMeal("m-1"))
+        runCurrent()
+        assertEquals(null, vm.state.value.reactError, "connectivity failure is parked, not surfaced")
+        assertEquals(1, outbox.enqueued.size)
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.ToggleReaction)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals(true, cmd.desiredPresent) // viewer had not reacted -> target present
+    }
+
+    // --- offline-first write fallback (P2 §0.5 T7) ------------------------------
+
+    @Test fun react_offline_enqueues_toggle_with_target_and_skips_direct_port() = runTest {
+        val reactionPort = FakeMealReactionPort()
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(
+            reactionPort = reactionPort,
+            outbox = outbox,
+            connectivity = FakeConnectivityPort(online = false),
+        )
         vm.state.test {
             skipItems(1)
             vm.onIntent(FeedIntent.ReactMeal("m-1"))
-            val s = expectMostRecentItem()
-            assertEquals(ReactionError.Toggle.Offline, s.reactError)
+            runCurrent()
             cancelAndIgnoreRemainingEvents()
         }
+        assertTrue(reactionPort.toggleCalls.isEmpty(), "offline must not hit the direct port")
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.ToggleReaction)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals("daily_glyph", cmd.reactionKindKey)
+        assertEquals(true, cmd.desiredPresent)
+    }
+
+    @Test fun rate_offline_enqueues_and_skips_direct_port() = runTest {
+        val ratingPort = FakeMealRatingPort()
+        val outbox = RecordingOutboxPort()
+        val vm = buildVm(
+            ratingPort = ratingPort,
+            outbox = outbox,
+            connectivity = FakeConnectivityPort(online = false),
+        )
+        vm.onIntent(FeedIntent.RateMeal("m-1", 4))
+        runCurrent()
+        assertTrue(ratingPort.calls.isEmpty(), "offline must not hit the direct rating port")
+        val cmd = outbox.enqueued.single()
+        assertTrue(cmd is PendingCommand.RateMeal)
+        assertEquals("m-1", cmd.mealId.value)
+        assertEquals(4, cmd.score.value)
     }
 
     // --- Offline-first publish queue indicator (roadmap §5.2) ------------------
@@ -451,6 +574,144 @@ class FeedViewModelTest {
         assertEquals(0, actions.retryCount)
     }
 
+    // --- feed_day_viewed analytics (once per distinct loaded day) ---------------
+
+    @Test fun feed_day_viewed_fires_once_on_initial_load() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(analytics = analytics)
+        vm.state.test {
+            var s = awaitItem()
+            if (s.isLoading) s = awaitItem()
+            assertEquals(1, s.meals.size)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0)),
+            analytics.events.toList(),
+        )
+    }
+
+    @Test fun feed_day_viewed_fires_per_prev_and_next_navigation() = runTest {
+        val active = FakeActiveCrewProvider(initial = crew)
+        val yesterday = "2026-05-15"
+        val port = FakeMealReadPort(perDay = mapOf(
+            (crew to "2026-05-16") to listOf(sampleMealWithRatings),
+            (crew to yesterday) to emptyList(),
+        ))
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(active = active, port = port, analytics = analytics)
+        runCurrent()
+        vm.onIntent(FeedIntent.PrevDay) // -> yesterday (offset 1, 0 meals)
+        runCurrent()
+        vm.onIntent(FeedIntent.NextDay) // -> back to today (offset 0, 1 meal)
+        runCurrent()
+        assertEquals(
+            listOf<AnalyticsEvent>(
+                AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0),
+                AnalyticsEvent.FeedDayViewed(mealCount = 0, dayOffset = 1),
+                AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0),
+            ),
+            analytics.events.toList(),
+        )
+    }
+
+    @Test fun feed_day_viewed_does_not_refire_on_rate_re_emission() = runTest {
+        val ratingPort = FakeMealRatingPort()
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildVm(ratingPort = ratingPort, analytics = analytics)
+        runCurrent()
+        // A rate re-runs the feed Ok branch for the SAME day — must not re-fire feed_day_viewed.
+        vm.onIntent(FeedIntent.RateMeal("m-1", 4))
+        runCurrent()
+        assertEquals(
+            listOf<AnalyticsEvent>(
+                AnalyticsEvent.FeedDayViewed(mealCount = 1, dayOffset = 0),
+                AnalyticsEvent.MealRated((MealId.of("m-1") as Result.Ok).value, 4),
+            ),
+            analytics.events.toList(),
+        )
+    }
+
+    // --- feed freshness + pull-to-refresh (offline-first P4-T2) -----------------
+
+    @Test fun last_synced_stamp_maps_to_relative_in_state() = runTest {
+        // The clock is fixed at 12:00:00Z; a stamp 5 minutes earlier resolves to "5 min ago".
+        val syncStatus = FakeFeedSyncStatusPort(
+            initial = Instant.parse("2026-05-16T11:55:00Z"),
+        )
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(FeedStringKey.CommentsRelativeMinutes, s.syncedRelative?.key)
+            assertEquals(5, s.syncedRelative?.amount)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun no_sync_yet_keeps_synced_relative_null() = runTest {
+        val vm = buildVm(syncStatus = FakeFeedSyncStatusPort(initial = null))
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(null, s.syncedRelative)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun fresh_stamp_clears_the_refreshing_spinner() = runTest {
+        val syncStatus = FakeFeedSyncStatusPort(initial = null)
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.onIntent(FeedIntent.Refresh)
+        runCurrent()
+        assertTrue(vm.state.value.isRefreshing, "refresh kicks the spinner on")
+        // A fresh stamp arriving (the re-pull's snapshot) drops the spinner.
+        syncStatus.emit(Instant.parse("2026-05-16T12:00:00Z"))
+        runCurrent()
+        assertEquals(false, vm.state.value.isRefreshing)
+    }
+
+    @Test fun refresh_intent_calls_the_port_with_active_crew() = runTest {
+        val syncStatus = FakeFeedSyncStatusPort()
+        val vm = buildVm(syncStatus = syncStatus)
+        vm.onIntent(FeedIntent.Refresh)
+        runCurrent()
+        assertEquals(listOf("c-1"), syncStatus.refreshedCrews)
+    }
+
+    // ─── C3: dismiss outbox clears optimistic pending for RateMeal ──────────────
+
+    /**
+     * [FeedIntent.DismissSyncOutbox] must call [OptimisticMealWritePort.clearPending] for each
+     * terminally-failed [PendingCommand.RateMeal] entry before removing it. This covers the
+     * user-dismiss rollback path (the runner's [OutboxCommandHandler.onTerminal] only fires
+     * on runner-detected terminal transitions, not on user dismissal).
+     */
+    @Test fun dismiss_outbox_clears_optimistic_pending_for_rate_meal_entries() = runTest {
+        val crew = (CrewId.of("c-1") as Result.Ok).value
+        val meal = (MealId.of("m-1") as Result.Ok).value
+        val rater = (AccountId.of("u-viewer") as Result.Ok).value
+        val score = (Score.of(4) as Result.Ok).value
+        val cmd = PendingCommand.RateMeal(crew, meal, rater, score)
+        val terminalEntry = OutboxEntry(
+            id = OutboxEntryId("e-1"),
+            command = cmd,
+            status = OutboxEntryStatus.Failed(errorKey = "meal.error.rateUnauthorized", retryable = false),
+            attemptCount = 5,
+            createdAt = Instant.fromEpochMilliseconds(0L),
+        )
+        // A controllable outbox that returns the terminal entry from observePending().
+        val controllableOutbox = TerminalEntryOutboxPort(listOf(terminalEntry))
+        val optimistic = RecordingOptimisticMealWritePort()
+        val vm = buildVm(outbox = controllableOutbox, optimistic = optimistic)
+
+        vm.onIntent(FeedIntent.DismissSyncOutbox)
+        runCurrent()
+
+        assertEquals(
+            listOf(cmd.idempotencyKey), optimistic.cleared,
+            "dismissSyncOutbox must clearPending for each terminal RateMeal entry",
+        )
+    }
+
     @Test fun published_queued_draft_is_not_double_rendered() = runTest {
         // Idempotency reconcile: a queued draft that actually published shares the
         // deterministic MealId with its eventual feed row, so the read port could
@@ -469,5 +730,54 @@ class FeedViewModelTest {
             assertEquals("m-1", s.meals.single().mealId)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // ─── Feed block author (UGC compliance §5) ──────────────────────────────────
+
+    @Test fun block_feed_author_success_sets_feedBlockSuccess_and_no_error() = runTest {
+        val blockPort = FakeFeedBlockedAccountsPort(nextBlockResult = Result.success(Unit))
+        val vm = buildVm(feedBlockedAccounts = blockPort)
+        runCurrent()
+        vm.onIntent(FeedIntent.BlockFeedAuthor("u-1"))
+        runCurrent()
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertTrue(s.feedBlockSuccess)
+            assertNull(s.feedBlockError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun block_feed_author_failure_surfaces_feedBlockError() = runTest {
+        val blockPort = FakeFeedBlockedAccountsPort(
+            nextBlockResult = Result.failure(BlockError.Write.Unavailable),
+        )
+        val vm = buildVm(feedBlockedAccounts = blockPort)
+        runCurrent()
+        vm.onIntent(FeedIntent.BlockFeedAuthor("u-1"))
+        runCurrent()
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertNotNull(s.feedBlockError, "a failed feed block must surface feedBlockError")
+            assertEquals(BlockError.Write.Unavailable, s.feedBlockError)
+            assertEquals(false, s.feedBlockSuccess)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun dismiss_feed_block_error_clears_the_error() = runTest {
+        val blockPort = FakeFeedBlockedAccountsPort(
+            nextBlockResult = Result.failure(BlockError.Write.Unavailable),
+        )
+        val vm = buildVm(feedBlockedAccounts = blockPort)
+        runCurrent()
+        vm.onIntent(FeedIntent.BlockFeedAuthor("u-1"))
+        runCurrent()
+        // Error is set…
+        assertNotNull(vm.state.value.feedBlockError)
+        // …dismiss clears it.
+        vm.onIntent(FeedIntent.DismissFeedBlockError)
+        runCurrent()
+        assertNull(vm.state.value.feedBlockError)
     }
 }

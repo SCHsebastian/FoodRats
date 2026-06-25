@@ -4,7 +4,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -23,6 +22,6 @@ class FakeMealDeletePort : MealDeletePort {
         crewIds: Set<CrewId>,
         authorId: AccountId,
         day: MealDay,
-        slot: MealSlot,
+        token: String,
     ): Result<Unit, MealDeleteError> = nextResult
 }

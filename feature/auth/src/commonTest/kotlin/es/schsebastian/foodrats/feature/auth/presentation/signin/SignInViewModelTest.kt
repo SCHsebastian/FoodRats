@@ -27,6 +27,8 @@ import kotlin.test.assertNull
 private object NoopTokenRegistrationPort : TokenRegistrationPort {
     override suspend fun registerCurrentDeviceToken(): Result<Unit, TokenRegistrationError> =
         Result.success(Unit)
+    override suspend fun deregisterCurrentDeviceToken(): Result<Unit, TokenRegistrationError> =
+        Result.success(Unit)
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -106,14 +108,14 @@ class SignInViewModelTest {
             emailSignInResult = Result.success(sampleSession),
         )
         val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
-        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats.app"))
+        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats-de4ec.web.app"))
         vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
         vm.effects.test {
             vm.onIntent(SignInIntent.SubmitEmail)
             assertEquals(SignInEffect.SignedIn, awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
-        assertEquals("rat@foodrats.app", repo.lastEmail)
+        assertEquals("rat@foodrats-de4ec.web.app", repo.lastEmail)
         assertEquals("signIn", repo.lastMode)
     }
 
@@ -127,6 +129,7 @@ class SignInViewModelTest {
         assertEquals(SignInMode.SignUp, vm.state.value.mode)
         vm.onIntent(SignInIntent.UpdateEmail("new@rat.com"))
         vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.onIntent(SignInIntent.UpdateConfirmPassword("supersecret"))
         vm.effects.test {
             vm.onIntent(SignInIntent.SubmitEmail)
             assertEquals(SignInEffect.SignedIn, awaitItem())
@@ -166,6 +169,7 @@ class SignInViewModelTest {
         vm.onIntent(SignInIntent.ToggleMode)
         vm.onIntent(SignInIntent.UpdateEmail("new@rat.com"))
         vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.onIntent(SignInIntent.UpdateConfirmPassword("supersecret"))
         vm.onIntent(SignInIntent.SubmitEmail)
         assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.SignedUp(AuthMethod.EMAIL)), analytics.events.toList())
     }
@@ -212,13 +216,92 @@ class SignInViewModelTest {
         assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.LoggedIn(AuthMethod.APPLE)), analytics.events.toList())
     }
 
+    @Test fun signup_password_mismatch_blocks_submit() = runTest {
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            emailSignUpResult = Result.success(sampleSession),
+        )
+        val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
+        vm.onIntent(SignInIntent.ToggleMode)
+        vm.onIntent(SignInIntent.UpdateEmail("new@rat.com"))
+        vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.onIntent(SignInIntent.UpdateConfirmPassword("different"))
+        vm.onIntent(SignInIntent.SubmitEmail)
+        assertEquals(AuthError.EmailPassword.PasswordMismatch, vm.state.value.confirmPasswordError)
+        assertNull(vm.state.value.passwordError)
+        // Sign-up must not have been attempted.
+        assertNull(repo.lastEmail)
+    }
+
+    @Test fun signup_matching_confirm_allows_submit() = runTest {
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            emailSignUpResult = Result.success(sampleSession),
+        )
+        val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
+        vm.onIntent(SignInIntent.ToggleMode)
+        vm.onIntent(SignInIntent.UpdateEmail("new@rat.com"))
+        vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.onIntent(SignInIntent.UpdateConfirmPassword("supersecret"))
+        vm.effects.test {
+            vm.onIntent(SignInIntent.SubmitEmail)
+            assertEquals(SignInEffect.SignedIn, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertNull(vm.state.value.confirmPasswordError)
+        assertEquals("signUp", repo.lastMode)
+    }
+
+    @Test fun signin_ignores_confirm_password() = runTest {
+        // SignIn mode has no confirm field — a stale confirm value must never block login.
+        val repo = FakeAuthRepository(
+            signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
+            emailSignInResult = Result.success(sampleSession),
+        )
+        val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
+        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats-de4ec.web.app"))
+        vm.onIntent(SignInIntent.UpdatePassword("supersecret"))
+        vm.onIntent(SignInIntent.UpdateConfirmPassword("does-not-matter"))
+        vm.effects.test {
+            vm.onIntent(SignInIntent.SubmitEmail)
+            assertEquals(SignInEffect.SignedIn, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertNull(vm.state.value.confirmPasswordError)
+        assertEquals("signIn", repo.lastMode)
+    }
+
+    @Test fun toggle_password_visibility_flips_flags_independently() = runTest {
+        val vm = SignInViewModel(FakeAuthRepository(Result.success(sampleSession)), NoopTokenRegistrationPort)
+        assertEquals(false, vm.state.value.showPassword)
+        vm.onIntent(SignInIntent.TogglePasswordVisibility)
+        assertEquals(true, vm.state.value.showPassword)
+        assertEquals(false, vm.state.value.showConfirmPassword)
+        vm.onIntent(SignInIntent.ToggleConfirmPasswordVisibility)
+        assertEquals(true, vm.state.value.showConfirmPassword)
+        assertEquals(true, vm.state.value.showPassword)
+        vm.onIntent(SignInIntent.TogglePasswordVisibility)
+        assertEquals(false, vm.state.value.showPassword)
+    }
+
+    @Test fun toggle_mode_clears_confirm_password() = runTest {
+        val vm = SignInViewModel(FakeAuthRepository(Result.success(sampleSession)), NoopTokenRegistrationPort)
+        vm.onIntent(SignInIntent.ToggleMode)
+        vm.onIntent(SignInIntent.UpdateConfirmPassword("typed-something"))
+        vm.onIntent(SignInIntent.ToggleConfirmPasswordVisibility)
+        vm.onIntent(SignInIntent.ToggleMode) // back to SignIn
+        assertEquals("", vm.state.value.confirmPassword)
+        assertNull(vm.state.value.confirmPasswordError)
+        assertEquals(false, vm.state.value.showConfirmPassword)
+    }
+
     @Test fun wrong_credentials_maps_to_passwordError() = runTest {
         val repo = FakeAuthRepository(
             signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),
             emailSignInResult = Result.failure(AuthError.EmailPassword.WrongCredentials),
         )
         val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
-        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats.app"))
+        vm.onIntent(SignInIntent.UpdateEmail("rat@foodrats-de4ec.web.app"))
         vm.onIntent(SignInIntent.UpdatePassword("wrongpass"))
         vm.onIntent(SignInIntent.SubmitEmail)
         assertEquals(AuthError.EmailPassword.WrongCredentials, vm.state.value.passwordError)

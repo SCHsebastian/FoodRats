@@ -44,4 +44,6 @@ class AuthErrorToStringKeyTest {
         assertEquals(AuthStringKey.ErrorEmailInUse, AuthError.EmailPassword.EmailAlreadyInUse.toStringKey())
     @Test fun wrongCredentials_maps_to_wrongCredentials_string() =
         assertEquals(AuthStringKey.ErrorWrongCredentials, AuthError.EmailPassword.WrongCredentials.toStringKey())
+    @Test fun passwordMismatch_maps_to_passwordMismatch_string() =
+        assertEquals(AuthStringKey.ErrorPasswordMismatch, AuthError.EmailPassword.PasswordMismatch.toStringKey())
 }

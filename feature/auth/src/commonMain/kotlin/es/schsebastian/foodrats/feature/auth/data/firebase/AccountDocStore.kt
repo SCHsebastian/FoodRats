@@ -1,7 +1,9 @@
 package es.schsebastian.foodrats.feature.auth.data.firebase
 
 import dev.gitlive.firebase.firestore.FirebaseFirestore
+import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
+import kotlinx.coroutines.withContext
 
 interface AccountDocStore {
     suspend fun read(uid: String): AccountDto?
@@ -10,13 +12,16 @@ interface AccountDocStore {
 
 class FirestoreAccountDocStore(
     private val firestore: FirebaseFirestore,
+    private val dispatchers: DispatcherProvider,
 ) : AccountDocStore {
-    override suspend fun read(uid: String): AccountDto? {
+    // Each public method owns its IO boundary (CLAUDE.md rule) so the contract is self-protecting:
+    // a future caller that forgets to wrap can't run Firestore I/O on the caller's dispatcher.
+    override suspend fun read(uid: String): AccountDto? = withContext(dispatchers.io) {
         val snap = firestore.collection("accounts").document(uid).get()
-        return if (snap.exists) snap.data<AccountDto>() else null
+        if (snap.exists) snap.data<AccountDto>() else null
     }
 
-    override suspend fun upsert(uid: String, dto: AccountDto) {
+    override suspend fun upsert(uid: String, dto: AccountDto): Unit = withContext(dispatchers.io) {
         firestore.collection("accounts").document(uid).set(dto, merge = true)
     }
 }

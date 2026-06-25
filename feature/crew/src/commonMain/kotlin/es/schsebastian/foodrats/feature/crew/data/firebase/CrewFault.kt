@@ -19,23 +19,35 @@ internal sealed interface CrewFault {
     data object Network : CrewFault
     /** NOT_FOUND — the target crew document does not exist. */
     data object NotFound : CrewFault
-    /** Anything we cannot confidently bucket. */
-    data object Unavailable : CrewFault
+    /**
+     * A transient backend failure that retrying CAN fix — Firestore transaction contention
+     * (ABORTED / "too much contention"), DEADLINE_EXCEEDED, RESOURCE_EXHAUSTED, or a transient
+     * INTERNAL. Distinct from [Network] only for clarity; both map to a retryable domain error.
+     */
+    data object Transient : CrewFault
+    /**
+     * A failure we cannot confidently classify as transient. Mapped to a TERMINAL domain error so
+     * the outbox can't loop on it forever — the prior catch-all bucketed these into the retryable
+     * `Unavailable`, which retried a genuinely-hopeless error indefinitely.
+     */
+    data object Unknown : CrewFault
 }
 
 /**
  * The single seam that turns a raw backend throwable into a typed [CrewFault].
  *
  * This is the *only* substring-matching site in the crew data layer. Order preserves the
- * original mapper's precedence: permission is checked before the generic connectivity
- * bucket, and not-found before the final catch-all.
+ * original mapper's precedence: permission is checked before the generic connectivity bucket,
+ * not-found before the transient bucket, and the transient codes before the final catch-all.
  */
 internal fun Throwable.toCrewFault(): CrewFault {
     val m = message.orEmpty().lowercase()
     return when {
-        "permission" in m || "permission_denied" in m -> CrewFault.PermissionDenied
+        "permission" in m -> CrewFault.PermissionDenied
         "network" in m || "unavailable" in m -> CrewFault.Network
         "not found" in m || "no document" in m -> CrewFault.NotFound
-        else -> CrewFault.Unavailable
+        "aborted" in m || "too much contention" in m || "deadline" in m ||
+            "resource-exhausted" in m || "resource_exhausted" in m -> CrewFault.Transient
+        else -> CrewFault.Unknown
     }
 }

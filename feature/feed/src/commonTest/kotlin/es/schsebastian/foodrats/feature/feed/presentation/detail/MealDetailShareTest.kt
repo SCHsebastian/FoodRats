@@ -19,12 +19,16 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
+import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
@@ -79,12 +83,16 @@ class MealDetailShareTest {
         val commentPort = FakeMealCommentPort()
         val active = FakeActiveCrewProvider(initial = crew)
         val session = FakeSessionProvider(Session(viewerId, crew))
+        val connectivity = FakeConnectivityPort(online = true)
+        val outbox = RecordingOutboxPort()
         return MealDetailViewModel(
             mealId = "meal-1",
             dayIso = "2026-05-20",
-            observeFeed = ObserveFeedUseCase(active, readPort),
-            rateMeal = RateMealUseCase(FakeMealRatingPort()),
+            observeFeed = ObserveFeedUseCase(active, readPort, session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
+            connectivity = connectivity,
+            outbox = outbox,
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
@@ -94,7 +102,8 @@ class MealDetailShareTest {
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
-            deleteComment = DeleteCommentUseCase(commentPort),
+            deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(),
             storyShareController = share,
             analytics = analytics,

@@ -10,7 +10,7 @@ class DeepLinkParserTest {
     fun https_meal_link_maps_to_meal_detail() {
         assertEquals(
             Route.MealDetail(mealId = "abc123", dayIso = "2026-05-26"),
-            parseDeepLink("https://foodrats.app/meal/abc123/2026-05-26"),
+            parseDeepLink("https://foodrats-de4ec.web.app/meal/abc123/2026-05-26"),
         )
     }
 
@@ -26,7 +26,7 @@ class DeepLinkParserTest {
     fun https_crew_link_maps_to_crew_settings() {
         assertEquals(
             Route.CrewSettings(crewId = "crew-7"),
-            parseDeepLink("https://foodrats.app/crew/crew-7"),
+            parseDeepLink("https://foodrats-de4ec.web.app/crew/crew-7"),
         )
     }
 
@@ -42,7 +42,7 @@ class DeepLinkParserTest {
     fun https_digest_link_maps_to_weekly_story() {
         assertEquals(
             Route.WeeklyStory(weekStart = "2026-06-08", fromNotification = true),
-            parseDeepLink("https://foodrats.app/digest/2026-06-08"),
+            parseDeepLink("https://foodrats-de4ec.web.app/digest/2026-06-08"),
         )
     }
 
@@ -56,14 +56,14 @@ class DeepLinkParserTest {
 
     @Test
     fun digest_link_missing_week_returns_null() {
-        assertNull(parseDeepLink("https://foodrats.app/digest"))
+        assertNull(parseDeepLink("https://foodrats-de4ec.web.app/digest"))
     }
 
     @Test
     fun https_invite_link_maps_to_invite_preview() {
         assertEquals(
             Route.InvitePreview(code = "AB2K9P"),
-            parseDeepLink("https://foodrats.app/invite/AB2K9P"),
+            parseDeepLink("https://foodrats-de4ec.web.app/invite/AB2K9P"),
         )
     }
 
@@ -77,7 +77,7 @@ class DeepLinkParserTest {
 
     @Test
     fun invite_link_missing_code_returns_null() {
-        assertNull(parseDeepLink("https://foodrats.app/invite"))
+        assertNull(parseDeepLink("https://foodrats-de4ec.web.app/invite"))
     }
 
     @Test
@@ -93,23 +93,23 @@ class DeepLinkParserTest {
     fun query_and_fragment_are_ignored() {
         assertEquals(
             Route.CrewSettings(crewId = "crew-7"),
-            parseDeepLink("https://foodrats.app/crew/crew-7?ref=push#top"),
+            parseDeepLink("https://foodrats-de4ec.web.app/crew/crew-7?ref=push#top"),
         )
     }
 
     @Test
     fun unknown_path_returns_null() {
-        assertNull(parseDeepLink("https://foodrats.app/settings/profile"))
+        assertNull(parseDeepLink("https://foodrats-de4ec.web.app/settings/profile"))
     }
 
     @Test
     fun meal_link_missing_day_returns_null() {
-        assertNull(parseDeepLink("https://foodrats.app/meal/abc123"))
+        assertNull(parseDeepLink("https://foodrats-de4ec.web.app/meal/abc123"))
     }
 
     @Test
     fun root_link_returns_null() {
-        assertNull(parseDeepLink("https://foodrats.app/"))
+        assertNull(parseDeepLink("https://foodrats-de4ec.web.app/"))
     }
 
     @Test

@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
+import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyRequestedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto
@@ -16,12 +17,15 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
 import es.schsebastian.foodrats.feature.crew.data.firebase.MemberDto
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotFoundException
 import es.schsebastian.foodrats.feature.crew.data.firebase.NotMemberException
+import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -45,7 +49,13 @@ class FirebaseCrewRepositoryTest {
     private val clock = FixedClock(Instant.fromEpochMilliseconds(nowMs))
     private val ds = FakeCrewDataSource()
 
-    private fun repo() = FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock)
+    // Offline-first read source-of-truth (P3b §P3b-T7): the repository's observeMyCrews now reads
+    // this local store, NOT the datasource. The fake overrides only the read; the picker tests seed
+    // it with rebuilt DTOs (mapped through the SAME CrewDto.toDomain as the live path).
+    private val localStore = FakeCrewLocalStore()
+
+    private fun repo() =
+        FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock, localStore)
 
     private fun aid(raw: String): AccountId = (AccountId.of(raw) as Result.Ok).value
     private fun cid(raw: String): CrewId = (CrewId.of(raw) as Result.Ok).value
@@ -110,10 +120,10 @@ class FirebaseCrewRepositoryTest {
     }
 
     @Test
-    fun create_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
+    fun create_classifies_unknown_throwable_as_Backend_Unknown() = runTest {
         ds.createThrows = RuntimeException("boom")
         val r = repo().create("Test Crew", aid("owner"))
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Backend.Unknown), r)
     }
 
     @Test
@@ -124,60 +134,134 @@ class FirebaseCrewRepositoryTest {
         assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
     }
 
-    // ---------------- joinByCode ----------------
+    // ---------------- requestToJoinByCode ----------------
 
     @Test
-    fun joinByCode_maps_datasource_dto_to_domain() = runTest {
-        ds.joinResult = validDto.copy(
-            memberIds = listOf("owner", "joiner"),
-            members = mapOf(
-                "owner" to MemberDto(joinedAtEpochMs = nowMs),
-                "joiner" to MemberDto(joinedAtEpochMs = nowMs),
-            ),
-        )
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
-        assertIs<Result.Ok<Crew>>(r)
-        assertEquals(2, r.value.members.size)
-        assertEquals(code("ABCD23"), ds.lastJoin?.code)
+    fun requestToJoinByCode_success_forwards_args() = runTest {
+        val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(code("ABCD23"), ds.lastRequestToJoin?.first)
+        assertEquals(aid("joiner"), ds.lastRequestToJoin?.second)
     }
 
     @Test
-    fun joinByCode_classifies_CodeUnknown_as_Invite_CodeUnknown() = runTest {
-        ds.joinThrows = CodeUnknownException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
+    fun requestToJoinByCode_classifies_CodeUnknown_as_Invite_CodeUnknown() = runTest {
+        ds.requestToJoinThrows = CodeUnknownException
+        val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Invite.CodeUnknown), r)
     }
 
     @Test
-    fun joinByCode_classifies_NotFound_as_Membership_NotFound() = runTest {
-        ds.joinThrows = NotFoundException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
+    fun requestToJoinByCode_classifies_NotFound_as_Membership_NotFound() = runTest {
+        ds.requestToJoinThrows = NotFoundException
+        val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Membership.NotFound), r)
     }
 
     @Test
-    fun joinByCode_classifies_Full_as_Membership_Full() = runTest {
-        // The authoritative cap is enforced atomically inside the Firestore transaction; the
-        // datasource surfaces it as FullException. The repository must classify it as Membership.Full.
-        // (The in-memory cap itself is covered by CrewTest / CrewSizeTest, and the transactional
-        // cap by the firestore emulator harness — not unit-testable through this fake.)
-        ds.joinThrows = FullException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
-        assertEquals(Result.failure(CrewError.Membership.Full), r)
-    }
-
-    @Test
-    fun joinByCode_classifies_AlreadyMember_as_Membership_AlreadyMember() = runTest {
-        ds.joinThrows = AlreadyMemberException
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
+    fun requestToJoinByCode_classifies_AlreadyMember_as_Membership_AlreadyMember() = runTest {
+        ds.requestToJoinThrows = AlreadyMemberException
+        val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Membership.AlreadyMember), r)
     }
 
     @Test
-    fun joinByCode_classifies_network_throwable_as_Backend_Network() = runTest {
-        ds.joinThrows = RuntimeException("network unavailable")
-        val r = repo().joinByCode(code("ABCD23"), aid("joiner"))
+    fun requestToJoinByCode_classifies_AlreadyRequested_as_Invite_AlreadyRequested() = runTest {
+        ds.requestToJoinThrows = AlreadyRequestedException
+        val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
+        assertEquals(Result.failure(CrewError.Invite.AlreadyRequested), r)
+    }
+
+    @Test
+    fun requestToJoinByCode_classifies_network_throwable_as_Backend_Network() = runTest {
+        ds.requestToJoinThrows = RuntimeException("network unavailable")
+        val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Backend.Network), r)
+    }
+
+    // ---------------- approve / decline join requests ----------------
+
+    @Test
+    fun approveJoinRequest_owner_fetches_then_forwards() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "member")
+        val r = repo().approveJoinRequest(cid("c-1"), aid("owner"), aid("req"))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(aid("req"), ds.lastApprove?.second)
+    }
+
+    @Test
+    fun approveJoinRequest_non_owner_returns_NotOwner_without_writing() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "intruder")
+        val r = repo().approveJoinRequest(cid("c-1"), aid("intruder"), aid("req"))
+        assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertNull(ds.lastApprove)
+    }
+
+    @Test
+    fun approveJoinRequest_classifies_Full_as_Membership_Full() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        ds.approveThrows = FullException
+        val r = repo().approveJoinRequest(cid("c-1"), aid("owner"), aid("req"))
+        assertEquals(Result.failure(CrewError.Membership.Full), r)
+    }
+
+    @Test
+    fun declineJoinRequest_owner_forwards() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        val r = repo().declineJoinRequest(cid("c-1"), aid("owner"), aid("req"))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(cid("c-1") to aid("req"), ds.lastDecline)
+    }
+
+    @Test
+    fun declineJoinRequest_non_owner_returns_NotOwner_without_writing() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "intruder")
+        val r = repo().declineJoinRequest(cid("c-1"), aid("intruder"), aid("req"))
+        assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertNull(ds.lastDecline)
+    }
+
+    // ---------------- transferOwnership ----------------
+
+    @Test
+    fun transferOwnership_owner_to_member_forwards() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "bob")
+        val r = repo().transferOwnership(cid("c-1"), aid("owner"), aid("bob"))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(cid("c-1") to aid("bob"), ds.lastTransfer)
+    }
+
+    @Test
+    fun transferOwnership_non_owner_returns_Transfer_NotOwner() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "bob")
+        val r = repo().transferOwnership(cid("c-1"), aid("bob"), aid("bob"))
+        assertEquals(Result.failure(CrewError.Transfer.NotOwner), r)
+        assertNull(ds.lastTransfer)
+    }
+
+    @Test
+    fun transferOwnership_target_not_member_returns_Transfer_TargetNotMember() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "bob")
+        val r = repo().transferOwnership(cid("c-1"), aid("owner"), aid("stranger"))
+        assertEquals(Result.failure(CrewError.Transfer.TargetNotMember), r)
+        assertNull(ds.lastTransfer)
+    }
+
+    @Test
+    fun transferOwnership_to_self_returns_CannotTransferToSelf_without_writing() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "bob")
+        val r = repo().transferOwnership(cid("c-1"), aid("owner"), aid("owner"))
+        assertEquals(Result.failure(CrewError.Transfer.CannotTransferToSelf), r)
+        assertNull(ds.lastTransfer)
+    }
+
+    @Test
+    fun cancelJoinRequest_deletes_requesters_own_request_without_owner_gate() = runTest {
+        // No fetchOnce / owner read — the requester deletes their own request doc directly.
+        val r = repo().cancelJoinRequest(cid("c-1"), aid("joiner"))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(cid("c-1") to aid("joiner"), ds.lastDecline)
+        assertNull(ds.lastFetchOnce)
     }
 
     // ---------------- leave ----------------
@@ -186,7 +270,7 @@ class FirebaseCrewRepositoryTest {
     fun leave_returns_success_and_forwards_args() = runTest {
         val r = repo().leave(cid("c-1"), aid("owner"))
         assertEquals(Result.success(Unit), r)
-        assertEquals(cid("c-1") to aid("owner"), ds.lastLeave)
+        assertEquals(Triple(cid("c-1"), aid("owner"), null), ds.lastLeave)
     }
 
     @Test
@@ -204,10 +288,10 @@ class FirebaseCrewRepositoryTest {
     }
 
     @Test
-    fun leave_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
+    fun leave_classifies_unknown_throwable_as_Backend_Unknown() = runTest {
         ds.leaveThrows = RuntimeException("boom")
         val r = repo().leave(cid("c-1"), aid("owner"))
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Backend.Unknown), r)
     }
 
     // ---------------- removeMember ----------------
@@ -278,11 +362,11 @@ class FirebaseCrewRepositoryTest {
     }
 
     @Test
-    fun removeMember_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
+    fun removeMember_classifies_unknown_throwable_as_Backend_Unknown() = runTest {
         ds.fetchOnceResult = crewWithMembers("owner", "victim")
         ds.removeMemberThrows = RuntimeException("boom")
         val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Backend.Unknown), r)
     }
 
     // ---------------- renameCrew ----------------
@@ -378,11 +462,12 @@ class FirebaseCrewRepositoryTest {
         }
     }
 
-    // ---------------- observeMyCrews ----------------
+    // ---------------- observeMyCrews (reads the local SQLDelight store, P3b-T7) ----------------
 
     @Test
     fun observeMyCrews_maps_dtos_and_drops_unmappable_entries() = runTest {
-        ds.observeMyCrewsFlow = flowOf(listOf(validDto, validDto.copy(id = null)))
+        // The local store is the read source-of-truth now; seed it with one valid + one malformed DTO.
+        localStore.emit(listOf(validDto, validDto.copy(id = null)))
         repo().observeMyCrews(aid("owner")).test {
             val r = awaitItem()
             assertIs<Result.Ok<List<Crew>>>(r)
@@ -395,7 +480,7 @@ class FirebaseCrewRepositoryTest {
 
     @Test
     fun observeMyCrews_emits_empty_list_when_none() = runTest {
-        ds.observeMyCrewsFlow = flowOf(emptyList())
+        localStore.emit(emptyList())
         repo().observeMyCrews(aid("owner")).test {
             val r = awaitItem()
             assertIs<Result.Ok<List<Crew>>>(r)
@@ -403,4 +488,33 @@ class FirebaseCrewRepositoryTest {
             awaitComplete()
         }
     }
+
+    @Test
+    fun observeMyCrews_reads_local_store_not_the_datasource() = runTest {
+        // Offline: the live datasource never emits (the CrewSyncEngine, not the repository, owns
+        // the listener). The picker still renders from the local store, mapped through the SAME
+        // toDomain so the offline list is identical to the online one.
+        ds.observeMyCrewsFlow = emptyFlow()
+        localStore.emit(listOf(validDto))
+        repo().observeMyCrews(aid("owner")).test {
+            val r = awaitItem()
+            assertIs<Result.Ok<List<Crew>>>(r)
+            assertEquals(1, r.value.size)
+            assertEquals(cid("c-1"), r.value.first().id)
+            awaitComplete()
+        }
+    }
+}
+
+/**
+ * Override-only [CrewLocalStore] test double: feature:crew commonTest has no cross-platform
+ * SQLDelight driver, so the JVM-backed store is exercised in androidHostTest. Here the repository's
+ * read-path mapping is unit-tested against canned [CrewDto]s.
+ */
+private class FakeCrewLocalStore : CrewLocalStore() {
+    private var current: List<CrewDto> = emptyList()
+    fun emit(dtos: List<CrewDto>) { current = dtos }
+    // A completing single-emission flow (like the SQLDelight read's first snapshot), so the
+    // repository tests can `awaitItem()` then `awaitComplete()` without racing virtual time.
+    override fun observeMyCrews(): Flow<List<CrewDto>> = flowOf(current)
 }

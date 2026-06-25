@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="moderation_blocked_title">Usuarios bloqueados</string>
+    <string name="moderation_blocked_back_cta">Atrás</string>
+    <string name="moderation_blocked_section_label">Seguridad</string>
+    <string name="moderation_blocked_empty_headline">No has bloqueado a nadie</string>
+    <string name="moderation_blocked_empty_subtext">Las personas que bloquees no aparecerán en tu feed, tus estadísticas ni los comentarios.</string>
+    <string name="moderation_blocked_unblock_cta">Desbloquear</string>
+    <string name="moderation_blocked_member_deleted">Usuario eliminado</string>
+
+    <!-- Success feedback -->
+    <string name="moderation_unblock_success">Usuario desbloqueado correctamente.</string>
+
+    <!-- BlockError -->
+    <string name="moderation_error_block_self">No puedes bloquearte a ti mismo.</string>
+    <string name="moderation_error_block_unavailable">No se pudo actualizar tu lista de bloqueos. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="moderation_error_block_read_unavailable">No se pudo cargar tu lista de bloqueos. Revisa tu conexión e inténtalo de nuevo.</string>
+
+    <!-- ReportError -->
+    <string name="moderation_error_report_not_signed_in">Inicia sesión para reportar contenido.</string>
+    <string name="moderation_error_report_self">No puedes reportar tu propio contenido.</string>
+    <string name="moderation_error_report_already">Ya has reportado esto.</string>
+    <string name="moderation_error_report_unavailable">No se pudo enviar tu reporte. Revisa tu conexión e inténtalo de nuevo.</string>
+</resources>

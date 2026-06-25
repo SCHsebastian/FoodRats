@@ -48,6 +48,24 @@ object Keys {
     val DraftQueueJson       = StoreKey(stringPreferencesKey("draft_queue_json"))
     val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
 
+    /**
+     * The durable write outbox (offline-first P2): a JSON array of queued
+     * rate / comment / reaction / crew-admin mutations (each with its
+     * lifecycle status + attempt count), so a process death or airplane-mode
+     * session never loses a user mutation. Coexists with — and is distinct from
+     * — [DraftQueueJson] (the meal-publish queue, which is untouched). Owned by
+     * `:core:data`'s `OutboxLocalStore`.
+     */
+    val OutboxJson           = StoreKey(stringPreferencesKey("outbox_json"))
+
+    /**
+     * The EULA / Community-Guidelines version the user accepted at the login-screen gate (UGC
+     * compliance §6). Absent = never accepted → the gate requires acceptance before sign-in. NOT
+     * cleared on sign-out (a EULA is accepted by the human/device, not the account). Owned by
+     * `EulaRepository`.
+     */
+    val EulaAcceptedVersion       = StoreKey(intPreferencesKey("eula_accepted_version"))
+
     // ── Analytics consent (GDPR/CCPA opt-in). Absence of [AnalyticsConsentState] = "Unknown"
     //    (no decision yet → analytics is a hard no-op). See ConsentRepository / ConsentGatedAnalytics.
     /** `"granted"` | `"denied"`; absent = no decision recorded yet. */
@@ -56,4 +74,42 @@ object Keys {
     val AnalyticsConsentVersion   = StoreKey(intPreferencesKey("analytics_consent_version"))
     /** Epoch millis of the decision. */
     val AnalyticsConsentDecidedAt = StoreKey(longPreferencesKey("analytics_consent_decided_at"))
+
+    /**
+     * Per-crew last-synced epoch-millis, serialised as a pipe-delimited string:
+     * `"crewId1=epochMs1|crewId2=epochMs2"`. Empty string = nothing synced yet.
+     * Persisted so "synced X ago" survives process death when the local feed cache is present.
+     * Owned by [es.schsebastian.foodrats.feature.meal.data.sync.MealSyncEngine].
+     */
+    val MealSyncTimestamps = StoreKey(stringPreferencesKey("meal_sync_timestamps"))
+
+    /**
+     * Whether on-device AI features (plate-photo analysis → ingredient suggestions) are enabled.
+     * Absent = enabled (opt-out default: user must actively disable; AI is on by default).
+     * Owned by [es.schsebastian.foodrats.core.data.preferences.AiPreferenceRepository].
+     */
+    val AiUsageEnabled = StoreKey(booleanPreferencesKey("ai_usage_enabled"))
+
+    /**
+     * Serialised name of the user's chosen [es.schsebastian.foodrats.core.domain.preferences.AccentPalette]
+     * enum entry, e.g. `"Ember"`. Absent = not set yet → callers default to [AccentPalette.Ember].
+     * Owned by [es.schsebastian.foodrats.core.data.preferences.AccentPaletteRepository].
+     */
+    val AccentPalette = StoreKey(stringPreferencesKey("accent_palette"))
+
+    /**
+     * Pipe-delimited set of Crew ID strings representing the user's most recently chosen
+     * publish audience, e.g. `"crewId1|crewId2"`. Absent = no saved preference → callers
+     * default to all the user's current crews. Owned by
+     * [es.schsebastian.foodrats.core.data.preferences.DefaultAudienceRepository].
+     */
+    val DefaultAudienceCrewIds = StoreKey(stringPreferencesKey("default_audience_crew_ids"))
+
+    /**
+     * Pipe-delimited set of Crew IDs whose welcome message banner has been dismissed by the user,
+     * e.g. `"crewId1|crewId2"`. Absent = no dismissals yet → the welcome banner is shown for every
+     * crew that has a non-null `welcomeMessage`. Owned by
+     * [es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository].
+     */
+    val DismissedWelcomes = StoreKey(stringPreferencesKey("dismissed_welcomes"))
 }

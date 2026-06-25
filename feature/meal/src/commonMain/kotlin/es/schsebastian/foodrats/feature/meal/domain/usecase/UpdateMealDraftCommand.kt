@@ -12,7 +12,8 @@ sealed interface UpdateMealDraftCommand {
     data class SetPhoto(val plate: Plate) : UpdateMealDraftCommand
     data class SetDish(val dish: DishName) : UpdateMealDraftCommand
     data class SetDescription(val description: Description) : UpdateMealDraftCommand
-    data class SetSlot(val slot: MealSlot) : UpdateMealDraftCommand
+    /** `null` clears the slot — it's an optional label, not required to publish. */
+    data class SetSlot(val slot: MealSlot?) : UpdateMealDraftCommand
     /** Pass `null` to clear an attached coordinate pair. */
     data class SetCoordinates(val coordinates: Coordinates?) : UpdateMealDraftCommand
 

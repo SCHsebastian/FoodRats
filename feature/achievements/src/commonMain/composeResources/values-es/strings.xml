@@ -10,7 +10,10 @@
     <string name="achievements_celebration_title">¡Nueva insignia!</string>
     <string name="achievements_celebration_ack">¡Genial!</string>
     <string name="achievements_detail_locked_label">Bloqueada</string>
+    <string name="achievements_detail_how_earned_label">Cómo la conseguiste</string>
+    <string name="achievements_detail_how_to_earn_label">Cómo conseguirla</string>
     <string name="achievements_detail_close_cta">Cerrar</string>
+    <string name="achievements_back_cta">Atrás</string>
     <string name="achievements_empty_subtext">Publica comidas para empezar a ganar insignias.</string>
 
     <!-- first_plate -->

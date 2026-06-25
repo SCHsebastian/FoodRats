@@ -14,11 +14,10 @@ object DeepLinks {
 
     /**
      * The LIVE Universal/App-Links host: the Firebase Hosting domain that actually serves the web
-     * pages + association files today (`.well-known/apple-app-site-association`, `assetlinks.json`,
-     * the `/invite` landing — all deployed from `website/`). The vanity domain `foodrats.app` is
-     * NOT used yet: it hosts nothing, so it can't verify. Switch this to `foodrats.app` (and re-add
-     * it to the manifest/entitlements) only once it's mapped as a Firebase Hosting custom domain
-     * serving the same `.well-known` files — see docs/store-release/PUBLICATION.md.
+     * pages + association files (`.well-known/apple-app-site-association`, `assetlinks.json`,
+     * the `/invite` landing — all deployed from `website/`). This is the only host the app links
+     * against; the manifest/entitlements must list exactly this domain — see
+     * docs/store-release/PUBLICATION.md.
      */
     const val WEB_HOST = "foodrats-de4ec.web.app"
     const val APP_SCHEME = "foodrats"
@@ -75,7 +74,7 @@ fun parseDeepLink(uriString: String): Route? {
 
 /**
  * Extracts the path segments of a URI string, dropping scheme, authority, query and fragment.
- * `https://foodrats.app/meal/m1/d?x=1#y` and `foodrats://app/meal/m1/d` both yield `[meal, m1, d]`.
+ * `https://foodrats-de4ec.web.app/meal/m1/d?x=1#y` and `foodrats://app/meal/m1/d` both yield `[meal, m1, d]`.
  */
 private fun pathSegmentsOf(uriString: String): List<String> {
     val withoutQueryOrFragment = uriString.substringBefore('#').substringBefore('?')

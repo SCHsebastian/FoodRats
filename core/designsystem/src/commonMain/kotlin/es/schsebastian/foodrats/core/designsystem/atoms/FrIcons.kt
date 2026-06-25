@@ -293,6 +293,54 @@ private val WarningVector: ImageVector = materialIcon(name = "Filled.Warning") {
     }
 }
 
+// Vendored Flag glyph (report action) — material-icons-core has no Filled.Flag.
+private val FlagVector: ImageVector = materialIcon(name = "Filled.Flag") {
+    materialPath {
+        moveTo(14.4f, 6f)
+        lineToRelative(-0.24f, -1.2f)
+        curveToRelative(-0.09f, -0.46f, -0.5f, -0.8f, -0.98f, -0.8f)
+        horizontalLineTo(6f)
+        curveToRelative(-0.55f, 0f, -1f, 0.45f, -1f, 1f)
+        verticalLineToRelative(15f)
+        curveToRelative(0f, 0.55f, 0.45f, 1f, 1f, 1f)
+        reflectiveCurveToRelative(1f, -0.45f, 1f, -1f)
+        verticalLineToRelative(-6f)
+        horizontalLineToRelative(5.6f)
+        lineToRelative(0.24f, 1.2f)
+        curveToRelative(0.09f, 0.47f, 0.5f, 0.8f, 0.98f, 0.8f)
+        horizontalLineTo(19f)
+        curveToRelative(0.55f, 0f, 1f, -0.45f, 1f, -1f)
+        verticalLineTo(7f)
+        curveToRelative(0f, -0.55f, -0.45f, -1f, -1f, -1f)
+        horizontalLineToRelative(-4.6f)
+        close()
+    }
+}
+
+// Vendored Block (no-entry) glyph — material-icons-core has no Filled.Block.
+private val BlockVector: ImageVector = materialIcon(name = "Filled.Block") {
+    materialPath(pathFillType = PathFillType.EvenOdd) {
+        moveTo(12f, 2f)
+        curveTo(6.48f, 2f, 2f, 6.48f, 2f, 12f)
+        reflectiveCurveToRelative(4.48f, 10f, 10f, 10f)
+        reflectiveCurveToRelative(10f, -4.48f, 10f, -10f)
+        reflectiveCurveTo(17.52f, 2f, 12f, 2f)
+        close()
+        moveTo(4f, 12f)
+        curveToRelative(0f, -4.42f, 3.58f, -8f, 8f, -8f)
+        curveToRelative(1.85f, 0f, 3.55f, 0.63f, 4.9f, 1.69f)
+        lineTo(5.69f, 16.9f)
+        curveTo(4.63f, 15.55f, 4f, 13.85f, 4f, 12f)
+        close()
+        moveTo(12f, 20f)
+        curveToRelative(-1.85f, 0f, -3.55f, -0.63f, -4.9f, -1.69f)
+        lineTo(18.31f, 7.1f)
+        curveTo(19.37f, 8.45f, 20f, 10.15f, 20f, 12f)
+        curveToRelative(0f, 4.42f, -3.58f, 8f, -8f, 8f)
+        close()
+    }
+}
+
 // Vendored Delete (trash can) glyph — material-icons-core has no Filled.Delete.
 private val DeleteVector: ImageVector = materialIcon(name = "Filled.Delete") {
     materialPath {
@@ -313,6 +361,27 @@ private val DeleteVector: ImageVector = materialIcon(name = "Filled.Delete") {
         verticalLineToRelative(2f)
         horizontalLineToRelative(14f)
         verticalLineTo(4f)
+        close()
+    }
+}
+
+// Vendored Edit glyph — material-icons-core has no Filled.Edit. Standard MD "edit" pencil.
+private val EditVector: ImageVector = materialIcon(name = "Filled.Edit") {
+    materialPath {
+        moveTo(3f, 17.25f)
+        verticalLineTo(21f)
+        horizontalLineToRelative(3.75f)
+        lineTo(17.81f, 9.94f)
+        lineToRelative(-3.75f, -3.75f)
+        lineTo(3f, 17.25f)
+        close()
+        moveTo(20.71f, 7.04f)
+        curveToRelative(0.39f, -0.39f, 0.39f, -1.02f, 0f, -1.41f)
+        lineToRelative(-2.34f, -2.34f)
+        curveToRelative(-0.39f, -0.39f, -1.02f, -0.39f, -1.41f, 0f)
+        lineToRelative(-1.83f, 1.83f)
+        lineToRelative(3.75f, 3.75f)
+        lineToRelative(1.83f, -1.83f)
         close()
     }
 }
@@ -702,6 +771,31 @@ private val ChefHatVector: ImageVector = materialIcon(name = "Filled.ChefHat") {
     }
 }
 
+// MoreVert — three-dot vertical overflow menu trigger (vendored from material-icons-extended,
+// §build-conventions: iOS has no material-icons-extended publication in CMP 1.11.0).
+private val MoreVertVector: ImageVector = materialIcon(name = "Filled.MoreVert") {
+    materialPath {
+        moveTo(12f, 8f)
+        curveToRelative(1.1f, 0f, 2f, -0.9f, 2f, -2f)
+        reflectiveCurveToRelative(-0.9f, -2f, -2f, -2f)
+        reflectiveCurveToRelative(-2f, 0.9f, -2f, 2f)
+        reflectiveCurveToRelative(0.9f, 2f, 2f, 2f)
+        close()
+        moveTo(12f, 10f)
+        curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+        reflectiveCurveToRelative(0.9f, 2f, 2f, 2f)
+        reflectiveCurveToRelative(2f, -0.9f, 2f, -2f)
+        reflectiveCurveToRelative(-0.9f, -2f, -2f, -2f)
+        close()
+        moveTo(12f, 16f)
+        curveToRelative(-1.1f, 0f, -2f, 0.9f, -2f, 2f)
+        reflectiveCurveToRelative(0.9f, 2f, 2f, 2f)
+        reflectiveCurveToRelative(2f, -0.9f, 2f, -2f)
+        reflectiveCurveToRelative(-0.9f, -2f, -2f, -2f)
+        close()
+    }
+}
+
 // Public (globe) — forward-hook cuisine/globe achievement.
 private val PublicVector: ImageVector = materialIcon(name = "Filled.Public") {
     materialPath(pathFillType = PathFillType.EvenOdd) {
@@ -730,6 +824,52 @@ private val PublicVector: ImageVector = materialIcon(name = "Filled.Public") {
     }
 }
 
+// Locally-defined Visibility / VisibilityOff vectors. material-icons-extended (which ships the real
+// `Icons.Filled.Visibility` / `Icons.Filled.VisibilityOff`) has no KMP-compatible iOS artifact, so we
+// replicate the standard Material "visibility" glyph here. The eye is an EvenOdd donut — outer almond
+// (fill), iris (cut to a hole), pupil (fill again) — which renders the familiar open eye independent of
+// sub-path winding. VisibilityOff reuses that donut and overlays a diagonal strike drawn as a SEPARATE
+// `materialPath` parallelogram, so the slash unions cleanly over the eye with no winding/EvenOdd interplay.
+private fun eyeAlmondDonut(builder: androidx.compose.ui.graphics.vector.PathBuilder) = with(builder) {
+    // Outer eye almond.
+    moveTo(12f, 4.5f)
+    curveTo(7f, 4.5f, 2.73f, 7.61f, 1f, 12f)
+    curveToRelative(1.73f, 4.39f, 6f, 7.5f, 11f, 7.5f)
+    reflectiveCurveToRelative(9.27f, -3.11f, 11f, -7.5f)
+    curveTo(21.27f, 7.61f, 17f, 4.5f, 12f, 4.5f)
+    close()
+    // Iris ring (EvenOdd turns this into a hole).
+    moveTo(12f, 17f)
+    curveToRelative(-2.76f, 0f, -5f, -2.24f, -5f, -5f)
+    reflectiveCurveToRelative(2.24f, -5f, 5f, -5f)
+    reflectiveCurveToRelative(5f, 2.24f, 5f, 5f)
+    reflectiveCurveToRelative(-2.24f, 5f, -5f, 5f)
+    close()
+    // Pupil (filled again by the EvenOdd rule).
+    moveTo(12f, 9f)
+    curveToRelative(-1.66f, 0f, -3f, 1.34f, -3f, 3f)
+    reflectiveCurveToRelative(1.34f, 3f, 3f, 3f)
+    reflectiveCurveToRelative(3f, -1.34f, 3f, -3f)
+    reflectiveCurveToRelative(-1.34f, -3f, -3f, -3f)
+    close()
+}
+
+private val VisibilityVector: ImageVector = materialIcon(name = "Filled.Visibility") {
+    materialPath(pathFillType = PathFillType.EvenOdd) { eyeAlmondDonut(this) }
+}
+
+private val VisibilityOffVector: ImageVector = materialIcon(name = "Filled.VisibilityOff") {
+    materialPath(pathFillType = PathFillType.EvenOdd) { eyeAlmondDonut(this) }
+    // Diagonal strike (top-left → bottom-right), a thin parallelogram drawn as its own fill.
+    materialPath {
+        moveTo(2f, 4.27f)
+        lineTo(3.27f, 3f)
+        lineTo(21f, 20.73f)
+        lineTo(19.73f, 22f)
+        close()
+    }
+}
+
 object FrIcons {
     val Back: ImageVector          = Icons.Filled.ArrowBack
     val Camera: ImageVector        = PhotoCameraVector
@@ -748,7 +888,10 @@ object FrIcons {
     val Comment: ImageVector       = CommentVector
     val Group: ImageVector         = GroupVector
     val Warning: ImageVector       = WarningVector
+    val Flag: ImageVector          = FlagVector
+    val Block: ImageVector         = BlockVector
     val Delete: ImageVector        = DeleteVector
+    val Edit: ImageVector          = EditVector
     // Profile / settings rows.
     val Person: ImageVector        = PersonVector
     val Theme: ImageVector         = DarkModeVector
@@ -768,6 +911,11 @@ object FrIcons {
     val Moon: ImageVector          = MoonVector
     val Public: ImageVector        = PublicVector
     val ChefHat: ImageVector       = ChefHatVector
+    /** Three-dot vertical overflow icon (vendored from material-icons-extended, §build-conventions). */
+    val MoreVert: ImageVector      = MoreVertVector
+    // Password reveal toggle: open eye = value visible, slashed eye = value masked.
+    val Visibility: ImageVector    = VisibilityVector
+    val VisibilityOff: ImageVector = VisibilityOffVector
 }
 
 @FrPreview

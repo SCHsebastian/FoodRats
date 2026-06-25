@@ -32,6 +32,12 @@
     <string name="stats_summary_total_plates_label">Plates</string>
     <string name="stats_summary_avg_per_day_label">Per day</string>
 
+    <!-- Structural eyebrows / units -->
+    <string name="stats_your_stats_eyebrow">Your stats</string>
+    <string name="stats_your_streak_eyebrow">Your streak</string>
+    <string name="stats_streak_days_unit">days</string>
+    <string name="stats_awards_eyebrow">Awards</string>
+
     <!-- Plate photo (accessibility content description) -->
     <string name="stats_plate_photo_format">Photo of %1$s</string>
 
@@ -51,19 +57,32 @@
     <string name="stats_cooks_section_title">Cooks</string>
     <string name="stats_best_cook_title">Top cook</string>
     <string name="stats_best_cook_metric_format">%1$s ★ avg · %2$d plates</string>
+    <!-- C8b — glyph-free: %1$s = pre-rendered score (emoji or number), %2$d = plate count. -->
+    <string name="stats_best_cook_metric_format_glyph_free">%1$s avg · %2$d plates</string>
     <string name="stats_most_prolific_title">Most prolific</string>
-    <string name="stats_most_prolific_metric_format">%1$d plates</string>
+    <plurals name="stats_most_prolific_metric_format">
+        <item quantity="one">%1$d plate</item>
+        <item quantity="other">%1$d plates</item>
+    </plurals>
 
     <!-- Roast -->
     <string name="stats_roast_section_title">Roast</string>
     <string name="stats_most_criticized_title">Most criticized</string>
     <string name="stats_most_criticized_metric_format">%1$s ★ avg · ouch</string>
+    <!-- C8b — glyph-free: %1$s = pre-rendered score (emoji or number). -->
+    <string name="stats_most_criticized_metric_format_glyph_free">%1$s avg · ouch</string>
 
     <!-- Ingredients -->
     <string name="stats_most_used_ingredient_title">Most used ingredient</string>
-    <string name="stats_most_used_ingredient_metric_format">%1$s · %2$d meals</string>
+    <plurals name="stats_most_used_ingredient_metric_format">
+        <item quantity="one">%1$s · %2$d meal</item>
+        <item quantity="other">%1$s · %2$d meals</item>
+    </plurals>
     <string name="stats_top_ingredient_by_member_title">Signature ingredient by cook</string>
-    <string name="stats_member_top_ingredient_format">%1$s · %2$d</string>
+    <plurals name="stats_member_top_ingredient_metric_format">
+        <item quantity="one">%1$s · %2$d meal</item>
+        <item quantity="other">%1$s · %2$d meals</item>
+    </plurals>
 
     <!-- Threshold hint -->
     <string name="stats_cook_award_needs_more_singular">%1$d more plate to qualify</string>
@@ -118,4 +137,7 @@
     <string name="stats_share_award">Share</string>
     <!-- On-card score pill for the shared award (avg ★ · count). -->
     <string name="stats_share_score_format">%1$s ★ · %2$d</string>
+
+    <!-- Retry the stats load from the full-screen error state. -->
+    <string name="stats_retry">Try again</string>
 </resources>

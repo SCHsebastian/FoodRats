@@ -1,10 +1,14 @@
 package es.schsebastian.foodrats.feature.crew.domain.model
 
+import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import kotlin.time.Instant
+import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
+import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
+import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
 
 /**
  * The Crew aggregate root. The invariant this context exists to protect is the
@@ -29,6 +33,55 @@ data class Crew(
      * flag through [es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort].
      */
     val blindVoting: Boolean = false,
+    /**
+     * Optional owner-set tagline — a short blurb displayed on the crew card and join screen
+     * ("only home-cooked", "no Scores after midnight"). `null` means no tagline is set.
+     * Managed by [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewTaglineUseCase].
+     * Capped at [CrewTagline.MAX_LEN] = 120 chars.
+     */
+    val tagline: CrewTagline? = null,
+    /**
+     * Optional owner-set onboarding message shown as a dismissible banner to new joiners the first
+     * time they open the crew feed. `null` means no message is set.
+     * Managed by [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWelcomeMessageUseCase].
+     * Capped at [WelcomeMessage.MAX_LEN] = 200 chars.
+     */
+    val welcomeMessage: WelcomeMessage? = null,
+    /**
+     * Optional owner-set weekly theme pinned to the crew feed header — e.g. "Taco Tuesday",
+     * "Soup week". `null` means no challenge is set. Auto-expires 7 days after [weeklyChallengeSetAt]
+     * (client-side check in the feed). Managed by
+     * [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewWeeklyChallengeUseCase].
+     * Capped at [WeeklyChallenge.MAX_LEN] = 80 chars.
+     */
+    val weeklyChallenge: WeeklyChallenge? = null,
+    /**
+     * The instant when [weeklyChallenge] was last set. Used by the feed for the 7-day expiry
+     * check. `null` when no challenge is set.
+     */
+    val weeklyChallengeSetAt: Instant? = null,
+    /**
+     * The crew's chosen Score vocabulary (C8). Defaults to [CrewScoreStyle.Stars] so pre-C8 crews
+     * behave exactly as before. Owner-settable via
+     * [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewScoreStyleUseCase].
+     */
+    val scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
+    /**
+     * Optional Storage object path for the crew's hero/banner image (C9). `null` means no banner is
+     * set. Stored as a path (e.g. `crew_banners/{crewId}/banner.jpg`), resolved to a short-lived
+     * signed URL at read time via `ImageUrlPort` — same posture as `accounts/{uid}.avatarPath`.
+     * Owner-settable via [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase];
+     * clearable via [es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase].
+     */
+    val bannerPath: String? = null,
+    /**
+     * Vertical focal point for the banner crop (C9), in `0f..1f`: `0` shows the top of the image,
+     * `0.5` centers (default), `1` shows the bottom. Lets the owner pick what the fixed-height feed
+     * crop reveals (the image overflows vertically). Owner-settable via
+     * [es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase]. Defaults to
+     * `0.5f` so pre-reposition crews keep a centered crop.
+     */
+    val bannerFocalY: Float = 0.5f,
 ) {
     val size: Int get() = members.size
 
@@ -59,6 +112,13 @@ data class Crew(
             createdAt: Instant,
             members: List<Member>,
             blindVoting: Boolean = false,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting)
+            tagline: CrewTagline? = null,
+            welcomeMessage: WelcomeMessage? = null,
+            weeklyChallenge: WeeklyChallenge? = null,
+            weeklyChallengeSetAt: Instant? = null,
+            scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
+            bannerPath: String? = null,
+            bannerFocalY: Float = 0.5f,
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle, bannerPath, bannerFocalY)
     }
 }

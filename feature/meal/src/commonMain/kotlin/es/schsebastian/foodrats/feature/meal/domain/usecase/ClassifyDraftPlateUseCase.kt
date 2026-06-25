@@ -5,8 +5,10 @@ import es.schsebastian.foodrats.core.domain.meal.ClassifierError
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.flatMap
+import kotlinx.coroutines.flow.first
 
 /** The dish detected for a plate plus the default ingredient slugs it maps to. */
 data class DraftClassification(
@@ -24,18 +26,22 @@ data class DraftClassification(
  * on another feature (cross-feature ban; design spec §7.3/§9). The orchestration
  * mirrors `:feature:meal-ai`'s `ClassifyPlateUseCase`, which serves that module.
  *
- * Gated by [FeatureFlagPort.isMealAiEnabled] (remote kill-switch). When the flag is
- * off, the classifier is never invoked and the result is an empty [DraftClassification]
- * (no detections) — advisory, so it surfaces no error/banner; publishing is unaffected.
+ * Gated by two independent kill conditions:
+ * 1. [FeatureFlagPort.isMealAiEnabled] — remote kill-switch (operator-controlled).
+ * 2. [AiPreferencePort.enabled] — user opt-out (privacy toggle in Profile → Preferences).
+ * When either is off, the classifier is never invoked and the result is an empty
+ * [DraftClassification] (no detections) — advisory, so it surfaces no error/banner;
+ * publishing is unaffected.
  */
 class ClassifyDraftPlateUseCase(
     private val classifier: MealClassifierPort,
     private val ingredients: IngredientReadPort,
     private val featureFlags: FeatureFlagPort,
+    private val aiPreference: AiPreferencePort,
 ) {
     suspend operator fun invoke(jpeg: ByteArray): Result<DraftClassification, ClassifierError> {
         // Kill-switch: skip on-device inference entirely, yield no detections (no error).
-        if (!featureFlags.isMealAiEnabled()) return Result.Ok(DISABLED)
+        if (!featureFlags.isMealAiEnabled() || !aiPreference.enabled.first()) return Result.Ok(DISABLED)
         return classifier.classify(jpeg).flatMap { labels ->
             val top = labels.firstOrNull()
                 ?: return@flatMap Result.Err(ClassifierError.Run.LowConfidence)

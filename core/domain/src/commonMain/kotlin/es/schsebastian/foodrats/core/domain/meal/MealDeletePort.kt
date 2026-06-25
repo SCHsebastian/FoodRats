@@ -20,18 +20,18 @@ interface MealDeletePort {
     suspend fun delete(crewId: CrewId, mealId: MealId): Result<Unit, MealDeleteError>
 
     /**
-     * Removes the author's own (day, slot) plate from every crew in [crewIds] — the
-     * "delete my post" action. A plate published to several crews is one logical post
-     * fanned out to per-crew copies (each with its own image), so deleting it should
-     * clear it everywhere. Best-effort per crew: a crew with no copy is a no-op, and a
-     * per-crew failure does not abort the rest. The per-crew image blobs are reclaimed
-     * server-side by the `onMealDeleted` Cloud Function.
+     * Removes the author's own plate (identified by its [token] — the last `_`-segment of the
+     * [MealId], shared by every per-crew copy) from every crew in [crewIds] — the "delete my
+     * post" action. A plate published to several crews is one logical post fanned out to per-crew
+     * copies (each with its own image), so deleting it should clear it everywhere. Best-effort per
+     * crew: a crew with no copy is a no-op, and a per-crew failure does not abort the rest. The
+     * per-crew image blobs are reclaimed server-side by the `onMealDeleted` Cloud Function.
      */
     suspend fun deleteFromAllCrews(
         crewIds: Set<CrewId>,
         authorId: AccountId,
         day: MealDay,
-        slot: MealSlot,
+        token: String,
     ): Result<Unit, MealDeleteError>
 }
 

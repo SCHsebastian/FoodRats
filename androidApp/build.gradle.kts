@@ -34,6 +34,7 @@ kotlin {
 dependencies {
     implementation(projects.shared)
     implementation(projects.core.data)
+    implementation(projects.core.database)
     implementation(projects.core.designsystem)
     implementation(projects.core.domain)
     implementation(projects.core.i18n)
@@ -220,6 +221,10 @@ androidComponents {
 android {
     namespace = "es.schsebastian.foodrats"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
+    // The app builds no native code itself; this pins the toolchain AGP uses to extract
+    // native debug symbols from the prebuilt .so we bundle (MediaPipe JNI, SQLite) so
+    // release symbolication is reproducible. See release.ndk.debugSymbolLevel below.
+    ndkVersion = libs.versions.android.ndk.get()
 
     defaultConfig {
         applicationId = "es.schsebastian.foodrats"
@@ -227,8 +232,8 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         // Version is injected by CI via -PversionName / -PversionCode (see
         // scripts/ci/compute_version.sh). Locals fall back to the dev defaults.
-        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
-        versionName = (project.findProperty("versionName") as String?) ?: "1.0"
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 3
+        versionName = (project.findProperty("versionName") as String?) ?: "1.00.6"
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${project.findProperty("googleServerClientId") ?: ""}\"")
         buildConfigField("String", "MAPS_API_KEY", "\"${project.findProperty("googleMapsApiKey") ?: ""}\"")
     }
@@ -292,6 +297,20 @@ android {
             configure<CrashlyticsExtension> {
                 mappingFileUploadEnabled =
                     project.findProperty("crashlyticsMappingUpload") != "false"
+            }
+            ndk {
+                // Bundle FULL native debug symbols (function names + line numbers) into the
+                // AAB so Play Console and Crashlytics symbolicate native crashes from the
+                // prebuilt .so we ship — MediaPipe tasks-vision JNI and the SQLDelight SQLite
+                // driver — instead of leaving raw, unactionable hex addresses. Play strips the
+                // symbol file from delivered APKs, so there is zero on-device size cost; only
+                // the AAB carries it. Requires the pinned `ndkVersion` above for reproducibility.
+                debugSymbolLevel = "FULL"
+                // Deliberately NO abiFilters: the release artifact is an AAB and Play performs
+                // per-device ABI splitting, so every device gets only its own ABI. Filtering
+                // here would only DROP device coverage (e.g. x86_64 ChromeOS / emulators) for
+                // no delivered-size benefit. Add an APK-only split config if a sideloaded
+                // single-ABI APK is ever needed.
             }
         }
     }

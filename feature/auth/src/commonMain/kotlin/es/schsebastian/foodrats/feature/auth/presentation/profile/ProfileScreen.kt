@@ -1,40 +1,63 @@
 package es.schsebastian.foodrats.feature.auth.presentation.profile
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
-import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
+import coil3.compose.rememberAsyncImagePainter
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
-import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
-import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
-import es.schsebastian.foodrats.core.designsystem.molecules.FrAvatarPicker
-import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
-import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsDivider
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsPicker
-import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRow
-import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsRowTone
-import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSection
-import es.schsebastian.foodrats.core.designsystem.molecules.FrSettingsSectionTone
-import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.structural.FrAvatarRing
+import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassAvatar
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassCircleButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassToggle
+import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
+import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralChip
+import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralRow
+import es.schsebastian.foodrats.core.designsystem.structural.FrTileDepth
+import es.schsebastian.foodrats.core.designsystem.structural.FrUnderlineField
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.designsystem.theme.FrAccent
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
@@ -49,11 +72,22 @@ import kotlinx.datetime.LocalTime
 import kotlinx.io.readByteArray
 import org.koin.compose.viewmodel.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * Structural app-settings ("Profile"). A warm Iron & Ember [FrMediaFloor] under a zero-chrome scroll
+ * plane: a pushed-screen header (floating back + centred title), then olive-eyebrow sections, each a
+ * floating [FrGlassTile] of [FrStructuralRow]s with [FrGlassToggle]s / value+chevron trailing slots.
+ * Identity (avatar/name/bio) edits in-place via structural atoms; the danger zone recedes to a deep
+ * crimson-tinted tile. ALL ViewModel wiring (every intent, picker, dialog, the delete sub-screen, the
+ * avatar image-picker effect) is preserved — only the visual layer changed. The option pickers still
+ * use the matte [FrSettingsPicker] bottom sheet (those are their own screens to port).
+ */
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit,
     onOpenAchievements: () -> Unit = {},
+    onOpenEula: () -> Unit = {},
+    onOpenGuidelines: () -> Unit = {},
+    onOpenBlockedUsers: () -> Unit = {},
     vm: ProfileViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -80,10 +114,6 @@ fun ProfileScreen(
     }
 
     if (state.deleteScreenOpen) {
-        // Locale-correct confirmation phrase: resolve the SAME template the screen displays
-        // (en "DELETE %1$s" / es "BORRAR %1$s") so a Spanish user types "BORRAR <name>", not the
-        // English "DELETE <name>". Trim because the template leaves a trailing space when no
-        // account/name is loaded yet (the field is disabled in that case anyway).
         val displayName = state.account?.displayName?.trim().orEmpty()
         val expectedPhrase = resolve(AuthStringKey.DeleteAccountPhraseTemplate, displayName).trim()
         DeleteAccountScreen(
@@ -98,43 +128,48 @@ fun ProfileScreen(
         return
     }
 
-    FrScreenScaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = {
-                    FrText(
-                        text = resolve(AuthStringKey.ProfileTitle),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                },
-                navigationIcon = {
-                    FrIconButton(
-                        icon = FrIcons.Back,
-                        onClick = onBack,
-                        contentDescription = resolve(AuthStringKey.ProfileBackCta),
-                    )
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                ),
-            )
-        },
-    ) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize().padding(Spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+    Box(modifier = Modifier.fillMaxSize()) {
+        FrMediaFloor(brush = StructuralColors.stageFloor, blur = StructuralBlur.Soft, scrim = FrScrimStyle.Even)
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
+                .frSafeHorizontalPadding()
+                .frContentWidth(Breakpoints.formMax)
+                .padding(horizontal = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xl),
         ) {
-            item { GeneralSection(state, vm, onPickAvatar = {
-                picker.launchGallery(
-                    allowMultiple = false,
-                    mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
-                )
-            }) }
-            item { PreferencesSection(state, vm) }
-            item { AchievementsSection(onOpenAchievements) }
-            item { DataExportSection(state, vm) }
-            item { DangerZoneSection(state, vm) }
+            ProfileHeader(onBack = onBack)
+            GeneralSection(
+                state, vm,
+                onPickAvatar = {
+                    picker.launchGallery(
+                        allowMultiple = false,
+                        mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
+                    )
+                },
+            )
+            PreferencesSection(state, vm)
+            AchievementsSection(onOpenAchievements)
+            SafetySection(onOpenBlockedUsers)
+            LegalSection(onOpenEula = onOpenEula, onOpenGuidelines = onOpenGuidelines)
+            DataExportSection(state, vm)
+            DangerZoneSection(state, vm)
+            Spacer(Modifier.navigationBarsPadding().height(Spacing.xl))
         }
+    }
+
+    if (state.removeAvatarConfirmOpen) {
+        FrConfirmDialog(
+            title = resolve(AuthStringKey.ProfileRemoveAvatarConfirmTitle),
+            message = resolve(AuthStringKey.ProfileRemoveAvatarConfirmBody),
+            confirmLabel = resolve(AuthStringKey.ProfileRemoveAvatarConfirmCta),
+            dismissLabel = resolve(AuthStringKey.ProfileRemoveAvatarCancel),
+            onConfirm = { vm.onIntent(ProfileIntent.RemoveAvatarConfirmed) },
+            onDismiss = { vm.onIntent(ProfileIntent.RemoveAvatarDismissed) },
+            destructive = true,
+        )
     }
 
     if (state.themePickerOpen) {
@@ -143,9 +178,7 @@ fun ProfileScreen(
             options = themeOptions(),
             selectedId = state.themeMode.name,
             onDismiss = { vm.onIntent(ProfileIntent.ThemePickerDismiss) },
-            onSelect = { id ->
-                vm.onIntent(ProfileIntent.ThemeSelected(ThemeMode.valueOf(id)))
-            },
+            onSelect = { id -> vm.onIntent(ProfileIntent.ThemeSelected(ThemeMode.valueOf(id))) },
         )
     }
 
@@ -155,9 +188,7 @@ fun ProfileScreen(
             options = localeOptions(),
             selectedId = state.locale.name,
             onDismiss = { vm.onIntent(ProfileIntent.LocalePickerDismiss) },
-            onSelect = { id ->
-                vm.onIntent(ProfileIntent.LocaleSelected(AppLocale.valueOf(id)))
-            },
+            onSelect = { id -> vm.onIntent(ProfileIntent.LocaleSelected(AppLocale.valueOf(id))) },
         )
     }
 
@@ -173,224 +204,377 @@ fun ProfileScreen(
             onSelect = { id -> vm.onIntent(ProfileIntent.ReminderHourSelected(id.toInt())) },
         )
     }
+
+    if (state.accentPickerOpen) {
+        FrSettingsPicker(
+            title = resolve(AuthStringKey.ProfileAccentPickerTitle),
+            options = accentOptions(),
+            selectedId = state.accentPalette.name,
+            onDismiss = { vm.onIntent(ProfileIntent.AccentPickerDismiss) },
+            onSelect = { id -> vm.onIntent(ProfileIntent.AccentSelected(AccentPalette.valueOf(id))) },
+        )
+    }
 }
 
-/** 24-hour `HH:mm` label — pure/locale-neutral, used for both the row and the picker options. */
-private fun formatReminderTime(time: LocalTime): String {
-    val hh = time.hour.toString().padStart(2, '0')
-    val mm = time.minute.toString().padStart(2, '0')
-    return "$hh:$mm"
-}
-
-/** Picker options: every whole hour 00:00..23:00, id = the hour, label = `HH:00`. */
-private fun reminderHourOptions(): List<Pair<String, String>> =
-    (0..23).map { hour -> hour.toString() to formatReminderTime(LocalTime(hour = hour, minute = 0)) }
+// ----------------------------------------------------------------------------------------------
+// Header + structural section/row scaffolding
+// ----------------------------------------------------------------------------------------------
 
 @Composable
-private fun GeneralSection(
-    state: ProfileState,
-    vm: ProfileViewModel,
-    onPickAvatar: () -> Unit,
-) {
-    FrSettingsSection(title = resolve(AuthStringKey.ProfileIdentitySection)) {
-        val initials = state.account?.displayName?.take(2)?.uppercase().orEmpty().ifBlank { "?" }
-        FrAvatarPicker(
-            initials = initials,
-            avatarUrl = state.account?.avatarUrl,
-            onPickClick = onPickAvatar,
-            busy = state.isUploadingAvatar,
-            changeLabel = resolve(AuthStringKey.ProfileChangeAvatarCta),
-            uploadingLabel = resolve(AuthStringKey.ProfileAvatarUploading),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
+private fun ProfileHeader(onBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        FrGlassCircleButton(
+            icon = FrIcons.Back,
+            onClick = onBack,
+            contentDescription = resolve(AuthStringKey.ProfileBackCta),
         )
-        state.uploadAvatarError?.let {
-            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.height(Spacing.sm))
+        FrText(
+            text = resolve(AuthStringKey.ProfileTitle),
+            style = StructuralType.titleMd.copy(textAlign = TextAlign.Center),
+            color = StructuralColors.foreground,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.size(44.dp))
+    }
+}
+
+/** An olive (or danger) eyebrow over a floating glass tile of rows. */
+@Composable
+private fun StructuralSection(
+    eyebrow: String,
+    danger: Boolean = false,
+    subtitle: String? = null,
+    content: @Composable () -> Unit,
+) {
+    val semantic = LocalFrSemanticColors.current
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        FrEyebrow(text = eyebrow.uppercase(), color = if (danger) semantic.danger else androidx.compose.material3.MaterialTheme.colorScheme.primary)
+        if (subtitle != null) {
+            FrText(text = subtitle, style = StructuralType.micro, color = StructuralColors.foreground.copy(alpha = 0.7f))
         }
+        FrGlassTile(depth = if (danger) FrTileDepth.Deep else FrTileDepth.Default) { content() }
+    }
+}
 
-        FrSettingsDivider()
+/** A structural settings row: leading icon · title (+ optional subtitle) · trailing slot or chevron. */
+@Composable
+private fun SettingsRow(
+    title: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    topHairline: Boolean,
+    subtitle: String? = null,
+    enabled: Boolean = true,
+    danger: Boolean = false,
+    onClick: (() -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+) {
+    val semantic = LocalFrSemanticColors.current
+    val titleColor = if (danger) semantic.danger else StructuralColors.foreground.copy(alpha = if (enabled) 1f else 0.4f)
+    val iconColor = if (danger) semantic.danger else StructuralColors.foreground.copy(alpha = 0.7f)
+    val chevron: (@Composable () -> Unit)? = if (onClick != null) {
+        { FrIcon(image = FrIcons.ChevronRight, tint = StructuralColors.foreground.copy(alpha = 0.4f), modifier = Modifier.size(Sizes.iconSm)) }
+    } else {
+        null
+    }
+    FrStructuralRow(
+        showTopHairline = topHairline,
+        onClick = if (enabled) onClick else null,
+        leading = { FrIcon(image = icon, tint = iconColor, modifier = Modifier.size(Sizes.iconMd)) },
+        trailing = trailing ?: chevron,
+    ) {
+        FrText(text = title, style = StructuralType.titleMd, color = titleColor)
+        if (subtitle != null) {
+            FrText(text = subtitle, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.65f))
+        }
+    }
+}
 
-        // Display-name editor — laid out as a row containing the label, field and save button.
-        // Keeps the existing intent flow.
-        androidx.compose.foundation.layout.Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.md),
-            verticalArrangement = Arrangement.spacedBy(Spacing.sm),
-        ) {
-            FrText(
-                text = resolve(AuthStringKey.ProfileDisplayNameLabel),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            FrTextField(
-                value = state.editingDisplayName,
-                onValueChange = { vm.onIntent(ProfileIntent.DisplayNameChanged(it)) },
-                label = resolve(AuthStringKey.ProfileDisplayNameLabel),
-                enabled = !state.isSavingDisplayName,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            FrButton(
-                label = resolve(AuthStringKey.ProfileSave),
-                onClick = { vm.onIntent(ProfileIntent.SaveDisplayName) },
-                enabled = state.editingDisplayName.isNotBlank()
-                    && state.editingDisplayName != state.account?.displayName
-                    && !state.isSavingDisplayName,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            state.saveDisplayNameError?.let {
-                FrErrorBanner(text = resolve(it))
+@Composable
+private fun RowError(text: String) {
+    FrText(
+        text = text,
+        style = StructuralType.micro,
+        color = LocalFrSemanticColors.current.danger,
+        modifier = Modifier.fillMaxWidth().padding(top = Spacing.xs),
+    )
+}
+
+// ----------------------------------------------------------------------------------------------
+// Sections
+// ----------------------------------------------------------------------------------------------
+
+@Composable
+private fun GeneralSection(state: ProfileState, vm: ProfileViewModel, onPickAvatar: () -> Unit) {
+    val account = state.account
+    val identityLoading = account == null &&
+        state.uploadAvatarError == null &&
+        state.saveDisplayNameError == null
+    StructuralSection(eyebrow = resolve(AuthStringKey.ProfileIdentitySection)) {
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+            if (identityLoading) {
+                FrText(text = "…", style = StructuralType.titleLg, color = StructuralColors.foreground.copy(alpha = 0.5f))
+            } else {
+                // Identity header — avatar + name + badge + change button.
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                    FrGlassAvatar(
+                        initials = account?.displayName?.take(2)?.uppercase().orEmpty().ifBlank { "?" },
+                        image = account?.avatarUrl?.let { rememberAsyncImagePainter(it) },
+                        ring = FrAvatarRing.Moss,
+                        size = 56.dp,
+                    )
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                        FrText(text = account?.displayName.orEmpty(), style = StructuralType.titleLg, color = StructuralColors.foreground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        account?.email?.let { FrText(text = it, style = StructuralType.micro, color = StructuralColors.foreground.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        account?.badgeId?.let { FrStructuralChip(label = resolveBadgeLabel(it), compact = true) }
+                    }
+                    FrGlassCircleButton(
+                        icon = FrIcons.Camera,
+                        onClick = onPickAvatar,
+                        contentDescription = resolve(AuthStringKey.ProfileChangeAvatarCta),
+                        size = 40.dp,
+                    )
+                }
+                if (state.isUploadingAvatar || state.isRemovingAvatar) {
+                    FrText(
+                        text = resolve(if (state.isRemovingAvatar) AuthStringKey.ProfileAvatarRemoving else AuthStringKey.ProfileAvatarUploading),
+                        style = StructuralType.micro,
+                        color = StructuralColors.foreground.copy(alpha = 0.7f),
+                    )
+                } else if (account?.avatarUrl != null) {
+                    FrGlassButton(
+                        label = resolve(AuthStringKey.ProfileRemoveAvatarCta),
+                        onClick = { vm.onIntent(ProfileIntent.RemoveAvatarRequested) },
+                        tone = FrButtonTone.Ghost,
+                        compact = true,
+                    )
+                }
+                state.uploadAvatarError?.let { RowError(resolve(it)) }
+                state.removeAvatarError?.let { RowError(resolve(it)) }
+
+                // Display-name editor.
+                FrUnderlineField(
+                    value = state.editingDisplayName,
+                    onValueChange = { vm.onIntent(ProfileIntent.DisplayNameChanged(it)) },
+                    label = resolve(AuthStringKey.ProfileDisplayNameLabel),
+                    enabled = !state.isSavingDisplayName,
+                )
+                FrGlassButton(
+                    label = resolve(AuthStringKey.ProfileSave),
+                    onClick = { vm.onIntent(ProfileIntent.SaveDisplayName) },
+                    tone = FrButtonTone.Glass,
+                    enabled = state.editingDisplayName.isNotBlank() &&
+                        state.editingDisplayName != account?.displayName &&
+                        !state.isSavingDisplayName,
+                    compact = true,
+                )
+                state.saveDisplayNameError?.let { RowError(resolve(it)) }
+
+                // Bio editor.
+                FrUnderlineField(
+                    value = state.editingBio,
+                    onValueChange = { vm.onIntent(ProfileIntent.BioChanged(it)) },
+                    label = resolve(AuthStringKey.ProfileBioLabel),
+                    placeholder = resolve(AuthStringKey.ProfileBioPlaceholder),
+                    singleLine = false,
+                    enabled = !state.isSavingBio,
+                )
+                FrGlassButton(
+                    label = resolve(AuthStringKey.ProfileBioSave),
+                    onClick = { vm.onIntent(ProfileIntent.SaveBio) },
+                    tone = FrButtonTone.Glass,
+                    enabled = state.editingBio != (account?.bio?.value ?: "") && !state.isSavingBio,
+                    compact = true,
+                )
+                state.saveBioError?.let { RowError(resolve(it)) }
             }
-        }
-
-        state.account?.email?.let { email ->
-            FrSettingsDivider()
-            FrSettingsRow(
-                title = resolve(AuthStringKey.ProfileSignedInAsLabel),
-                subtitle = email,
-                icon = FrIcons.Person,
-            )
         }
     }
 }
 
 @Composable
 private fun PreferencesSection(state: ProfileState, vm: ProfileViewModel) {
-    FrSettingsSection(title = resolve(AuthStringKey.ProfilePreferencesSection)) {
+    StructuralSection(eyebrow = resolve(AuthStringKey.ProfilePreferencesSection)) {
         // Theme
-        FrSettingsRow(
+        SettingsRow(
             title = resolve(AuthStringKey.ProfileThemeRow),
             subtitle = resolveThemeLabel(state.themeMode),
             icon = FrIcons.Theme,
+            topHairline = false,
             onClick = { vm.onIntent(ProfileIntent.ThemePickerOpen) },
         )
-        state.themeError?.let {
-            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.height(Spacing.xs))
-        }
+        state.themeError?.let { RowError(resolve(it)) }
 
-        FrSettingsDivider()
-
-        // Language — iOS deep-links to its own page in the system Settings app,
-        // where the per-app language picker is the native UX. Android keeps the
-        // in-app radio picker because Compose Resources honors LocalAppLocale.
-        FrSettingsRow(
+        // Language
+        SettingsRow(
             title = resolve(AuthStringKey.ProfileLanguageRow),
             subtitle = resolveLocaleLabel(state.locale),
             icon = FrIcons.Language,
+            topHairline = true,
             onClick = {
                 if (opensSystemSettingsForLanguage) openAppLanguageSettings()
                 else vm.onIntent(ProfileIntent.LocalePickerOpen)
             },
         )
-        state.localeError?.let {
-            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.height(Spacing.xs))
-        }
-
-        FrSettingsDivider()
+        state.localeError?.let { RowError(resolve(it)) }
 
         // Notifications
-        FrSettingsRow(
+        SettingsRow(
             title = resolve(AuthStringKey.ProfileNotificationsRow),
-            subtitle = if (state.notificationsEnabled)
-                resolve(AuthStringKey.ProfileNotificationsSubtitleOn)
-            else
-                resolve(AuthStringKey.ProfileNotificationsSubtitleOff),
+            subtitle = if (state.notificationsEnabled) resolve(AuthStringKey.ProfileNotificationsSubtitleOn) else resolve(AuthStringKey.ProfileNotificationsSubtitleOff),
             icon = FrIcons.Notifications,
+            topHairline = true,
             trailing = {
-                FrSwitch(
+                FrGlassToggle(
                     checked = state.notificationsEnabled,
                     onCheckedChange = { vm.onIntent(ProfileIntent.NotificationsToggled(it)) },
+                    contentDescription = resolve(AuthStringKey.ProfileNotificationsRow),
                 )
             },
         )
         state.notificationsError?.let { errorKey ->
-            FrErrorBanner(text = resolve(errorKey), modifier = Modifier.padding(horizontal = Spacing.md))
+            RowError(resolve(errorKey))
             if (errorKey == AuthStringKey.ProfileNotificationsPermissionDeniedForever) {
-                FrButton(
+                FrGlassButton(
                     label = resolve(AuthStringKey.ProfileNotificationsOpenSystemSettingsCta),
                     onClick = { vm.onIntent(ProfileIntent.OpenNotificationSystemSettings) },
-                    variant = FrButtonVariant.Secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                    tone = FrButtonTone.Glass,
+                    compact = true,
                 )
             }
-            Spacer(Modifier.height(Spacing.xs))
         }
 
-        FrSettingsDivider()
-
-        // Meal reminders — up to 3 daily nudges at user-chosen hours. Tap a time to change it,
-        // the trash to remove it; "Add reminder" appears until the max is reached.
-        FrSettingsRow(
+        // Meal reminders
+        SettingsRow(
             title = resolve(AuthStringKey.ProfileRemindersRow),
             subtitle = resolve(AuthStringKey.ProfileRemindersSubtitle),
             icon = FrIcons.Notifications,
+            topHairline = true,
         )
         if (state.reminderTimes.isEmpty()) {
             FrText(
                 text = resolve(AuthStringKey.ProfileRemindersEmpty),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                style = StructuralType.body,
+                color = StructuralColors.foreground.copy(alpha = 0.6f),
+                modifier = Modifier.padding(start = Sizes.iconMd + Spacing.md),
             )
         } else {
             state.reminderTimes.forEachIndexed { index, time ->
-                FrSettingsRow(
-                    title = formatReminderTime(time),
-                    onClick = { vm.onIntent(ProfileIntent.ReminderEditOpen(index)) },
-                    trailing = {
-                        FrIconButton(
-                            icon = FrIcons.Delete,
-                            onClick = { vm.onIntent(ProfileIntent.ReminderRemove(index)) },
-                            contentDescription = resolve(AuthStringKey.ProfileRemindersRemoveCta),
-                        )
-                    },
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(start = Sizes.iconMd + Spacing.md, top = Spacing.xs),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    FrText(
+                        text = formatReminderTime(time),
+                        style = StructuralType.titleMd,
+                        color = StructuralColors.foreground,
+                        modifier = Modifier.weight(1f).padding(vertical = Spacing.xs)
+                            .clickable { vm.onIntent(ProfileIntent.ReminderEditOpen(index)) },
+                    )
+                    FrGlassCircleButton(
+                        icon = FrIcons.Delete,
+                        onClick = { vm.onIntent(ProfileIntent.ReminderRemove(index)) },
+                        contentDescription = resolve(AuthStringKey.ProfileRemindersRemoveCta),
+                        size = 32.dp,
+                        danger = true,
+                    )
+                }
             }
         }
         if (state.reminderTimes.size < MealReminderSchedulePort.MAX_REMINDERS) {
-            FrButton(
+            Spacer(Modifier.height(Spacing.xs))
+            FrGlassButton(
                 label = resolve(AuthStringKey.ProfileRemindersAddCta),
                 onClick = { vm.onIntent(ProfileIntent.ReminderAddOpen) },
-                variant = FrButtonVariant.Secondary,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                tone = FrButtonTone.Glass,
+                compact = true,
             )
         }
-        state.reminderError?.let {
-            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.height(Spacing.xs))
-        }
+        state.reminderError?.let { RowError(resolve(it)) }
 
-        FrSettingsDivider()
-
-        // Analytics consent — withdraw or re-grant at any time (GDPR Art. 7(3)). The switch
-        // mirrors ConsentPort.decision; flipping it writes grant()/revoke().
-        FrSettingsRow(
-            title = resolve(AuthStringKey.ProfileAnalyticsRow),
-            subtitle = if (state.analyticsConsentGranted)
-                resolve(AuthStringKey.ProfileAnalyticsSubtitleOn)
-            else
-                resolve(AuthStringKey.ProfileAnalyticsSubtitleOff),
+        // AI suggestions
+        SettingsRow(
+            title = resolve(AuthStringKey.ProfileAiRow),
+            subtitle = if (state.aiEnabled) resolve(AuthStringKey.ProfileAiSubtitleOn) else resolve(AuthStringKey.ProfileAiSubtitleOff),
             icon = FrIcons.Stats,
+            topHairline = true,
             trailing = {
-                FrSwitch(
-                    checked = state.analyticsConsentGranted,
-                    onCheckedChange = { vm.onIntent(ProfileIntent.AnalyticsConsentToggled(it)) },
-                )
+                FrGlassToggle(checked = state.aiEnabled, onCheckedChange = { vm.onIntent(ProfileIntent.AiToggled(it)) }, contentDescription = resolve(AuthStringKey.ProfileAiRow))
             },
         )
+        state.aiError?.let { RowError(resolve(it)) }
+
+        // Analytics consent
+        SettingsRow(
+            title = resolve(AuthStringKey.ProfileAnalyticsRow),
+            subtitle = if (state.analyticsConsentGranted) resolve(AuthStringKey.ProfileAnalyticsSubtitleOn) else resolve(AuthStringKey.ProfileAnalyticsSubtitleOff),
+            icon = FrIcons.Stats,
+            topHairline = true,
+            trailing = {
+                FrGlassToggle(checked = state.analyticsConsentGranted, onCheckedChange = { vm.onIntent(ProfileIntent.AnalyticsConsentToggled(it)) }, contentDescription = resolve(AuthStringKey.ProfileAnalyticsRow))
+            },
+        )
+
+        // Accent colour
+        SettingsRow(
+            title = resolve(AuthStringKey.ProfileAccentRow),
+            subtitle = resolveAccentLabel(state.accentPalette),
+            icon = FrIcons.Theme,
+            topHairline = true,
+            onClick = { vm.onIntent(ProfileIntent.AccentPickerOpen) },
+            trailing = {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    AccentSwatchDot(accent = state.accentPalette.toFrAccent())
+                    FrIcon(image = FrIcons.ChevronRight, tint = StructuralColors.foreground.copy(alpha = 0.4f), modifier = Modifier.size(Sizes.iconSm))
+                }
+            },
+        )
+        state.accentError?.let { RowError(resolve(it)) }
     }
 }
 
 @Composable
 private fun AchievementsSection(onOpenAchievements: () -> Unit) {
-    FrSettingsSection(title = resolve(AuthStringKey.ProfileAchievementsSection)) {
-        FrSettingsRow(
+    StructuralSection(eyebrow = resolve(AuthStringKey.ProfileAchievementsSection)) {
+        SettingsRow(
             title = resolve(AuthStringKey.ProfileAchievementsRow),
             subtitle = resolve(AuthStringKey.ProfileAchievementsSubtitle),
             icon = FrIcons.Trophy,
+            topHairline = false,
             onClick = onOpenAchievements,
+        )
+    }
+}
+
+@Composable
+private fun SafetySection(onOpenBlockedUsers: () -> Unit) {
+    StructuralSection(eyebrow = resolve(AuthStringKey.ProfileSafetySection)) {
+        SettingsRow(
+            title = resolve(AuthStringKey.ProfileBlockedUsersRow),
+            subtitle = resolve(AuthStringKey.ProfileBlockedUsersSubtitle),
+            icon = FrIcons.Block,
+            topHairline = false,
+            onClick = onOpenBlockedUsers,
+        )
+    }
+}
+
+@Composable
+private fun LegalSection(onOpenEula: () -> Unit, onOpenGuidelines: () -> Unit) {
+    StructuralSection(eyebrow = resolve(AuthStringKey.ProfileLegalSection)) {
+        SettingsRow(
+            title = resolve(AuthStringKey.ProfileLegalEulaRow),
+            icon = FrIcons.Public,
+            topHairline = false,
+            onClick = onOpenEula,
+        )
+        SettingsRow(
+            title = resolve(AuthStringKey.ProfileLegalGuidelinesRow),
+            icon = FrIcons.Public,
+            topHairline = true,
+            onClick = onOpenGuidelines,
         )
     }
 }
@@ -398,38 +582,32 @@ private fun AchievementsSection(onOpenAchievements: () -> Unit) {
 @Composable
 private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
     val uriHandler = LocalUriHandler.current
-    FrSettingsSection(title = resolve(AuthStringKey.ProfileAccountSection)) {
-        FrSettingsRow(
+    StructuralSection(eyebrow = resolve(AuthStringKey.ProfileAccountSection)) {
+        SettingsRow(
             title = resolve(AuthStringKey.ExportDataRow),
-            subtitle = if (state.isExportingData)
-                resolve(AuthStringKey.ExportDataInFlight)
-            else
-                resolve(AuthStringKey.ExportDataSubtitle),
+            subtitle = if (state.isExportingData) resolve(AuthStringKey.ExportDataInFlight) else resolve(AuthStringKey.ExportDataSubtitle),
             icon = FrIcons.Stats,
+            topHairline = false,
             enabled = !state.isExportingData,
             onClick = { vm.onIntent(ProfileIntent.ExportMyData) },
         )
-        state.exportError?.let {
-            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.height(Spacing.xs))
-        }
+        state.exportError?.let { RowError(resolve(it)) }
         state.exportDownloadUrl?.let { url ->
+            Spacer(Modifier.height(Spacing.sm))
             FrText(
                 text = resolve(AuthStringKey.ExportDataReadySubtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                style = StructuralType.body,
+                color = StructuralColors.foreground.copy(alpha = 0.7f),
             )
-            FrButton(
+            Spacer(Modifier.height(Spacing.xs))
+            FrGlassButton(
                 label = resolve(AuthStringKey.ExportDataReadyCta),
                 onClick = {
                     uriHandler.openUri(url)
                     vm.onIntent(ProfileIntent.DismissExportResult)
                 },
-                variant = FrButtonVariant.Secondary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                tone = FrButtonTone.Glass,
+                compact = true,
             )
         }
     }
@@ -437,32 +615,49 @@ private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
 
 @Composable
 private fun DangerZoneSection(state: ProfileState, vm: ProfileViewModel) {
-    FrSettingsSection(
-        title = resolve(AuthStringKey.ProfileDangerZoneSection),
+    StructuralSection(
+        eyebrow = resolve(AuthStringKey.ProfileDangerZoneSection),
         subtitle = resolve(AuthStringKey.ProfileDangerZoneSubtitle),
-        tone = FrSettingsSectionTone.Danger,
+        danger = true,
     ) {
-        FrSettingsRow(
+        SettingsRow(
             title = resolve(AuthStringKey.ProfileSignOutCta),
             icon = FrIcons.Logout,
+            topHairline = false,
             enabled = !state.isSigningOut,
+            danger = true,
             onClick = { vm.onIntent(ProfileIntent.SignOut) },
         )
-        state.signOutError?.let {
-            FrErrorBanner(text = resolve(it), modifier = Modifier.padding(horizontal = Spacing.md))
-            Spacer(Modifier.height(Spacing.xs))
-        }
-
-        FrSettingsDivider()
-
-        FrSettingsRow(
+        state.signOutError?.let { RowError(resolve(it)) }
+        SettingsRow(
             title = resolve(AuthStringKey.ProfileDeleteAccountRow),
             subtitle = resolve(AuthStringKey.ProfileDeleteAccountSubtitle),
             icon = FrIcons.Delete,
-            tone = FrSettingsRowTone.Danger,
+            topHairline = true,
+            danger = true,
             onClick = { vm.onIntent(ProfileIntent.OpenDeleteAccount) },
         )
     }
+}
+
+// ── Reminder + option helpers (unchanged) ─────────────────────────────────────────────────────────
+
+private fun formatReminderTime(time: LocalTime): String {
+    val hh = time.hour.toString().padStart(2, '0')
+    val mm = time.minute.toString().padStart(2, '0')
+    return "$hh:$mm"
+}
+
+private fun reminderHourOptions(): List<Pair<String, String>> =
+    (0..23).map { hour -> hour.toString() to formatReminderTime(LocalTime(hour = hour, minute = 0)) }
+
+@Composable
+private fun resolveBadgeLabel(badgeId: String): String = when (badgeId) {
+    "first"   -> resolve(AuthStringKey.ProfileBadgeFirst)
+    "ten"     -> resolve(AuthStringKey.ProfileBadgeTen)
+    "fifty"   -> resolve(AuthStringKey.ProfileBadgeFifty)
+    "hundred" -> resolve(AuthStringKey.ProfileBadgeHundred)
+    else      -> badgeId
 }
 
 @Composable
@@ -492,3 +687,38 @@ private fun localeOptions(): List<Pair<String, String>> = listOf(
     AppLocale.En.name to resolve(AuthStringKey.ProfileLanguageOptionEn),
     AppLocale.Es.name to resolve(AuthStringKey.ProfileLanguageOptionEs),
 )
+
+private fun AccentPalette.toFrAccent(): FrAccent = when (this) {
+    AccentPalette.Ember -> FrAccent.Ember
+    AccentPalette.Moss  -> FrAccent.Moss
+    AccentPalette.Rust  -> FrAccent.Rust
+    AccentPalette.Steel -> FrAccent.Steel
+    AccentPalette.Berry -> FrAccent.Berry
+}
+
+@Composable
+private fun resolveAccentLabel(palette: AccentPalette): String = when (palette) {
+    AccentPalette.Ember -> resolve(AuthStringKey.ProfileAccentOptionEmber)
+    AccentPalette.Moss  -> resolve(AuthStringKey.ProfileAccentOptionMoss)
+    AccentPalette.Rust  -> resolve(AuthStringKey.ProfileAccentOptionRust)
+    AccentPalette.Steel -> resolve(AuthStringKey.ProfileAccentOptionSteel)
+    AccentPalette.Berry -> resolve(AuthStringKey.ProfileAccentOptionBerry)
+}
+
+@Composable
+private fun accentOptions(): List<Pair<String, String>> = listOf(
+    AccentPalette.Ember.name to resolve(AuthStringKey.ProfileAccentOptionEmber),
+    AccentPalette.Moss.name  to resolve(AuthStringKey.ProfileAccentOptionMoss),
+    AccentPalette.Rust.name  to resolve(AuthStringKey.ProfileAccentOptionRust),
+    AccentPalette.Steel.name to resolve(AuthStringKey.ProfileAccentOptionSteel),
+    AccentPalette.Berry.name to resolve(AuthStringKey.ProfileAccentOptionBerry),
+)
+
+@Composable
+private fun AccentSwatchDot(accent: FrAccent, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(Sizes.iconMd)
+            .background(color = accent.swatch, shape = CircleShape),
+    )
+}

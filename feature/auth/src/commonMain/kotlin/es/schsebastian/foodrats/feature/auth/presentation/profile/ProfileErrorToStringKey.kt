@@ -11,9 +11,11 @@ import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Validation.DisplayNameBlank -> AuthStringKey.ProfileDisplayNameBlank
     ProfileError.Validation.DisplayNameTooLong -> AuthStringKey.ProfileDisplayNameTooLong
+    ProfileError.Validation.BioTooLong -> AuthStringKey.ProfileBioTooLong
     ProfileError.Validation.EmptyBytes -> AuthStringKey.ProfileAvatarEmptyBytes
     ProfileError.Backend.Unavailable -> AuthStringKey.ProfileBackendUnavailable
-    ProfileError.Session.SignedOut -> AuthStringKey.ProfileBackendUnavailable
+    ProfileError.Backend.Offline -> AuthStringKey.ProfileOffline
+    ProfileError.Session.SignedOut -> AuthStringKey.ProfileSessionExpired
     ProfileError.Theme.PersistFailed -> AuthStringKey.ProfileThemePersistFailed
     ProfileError.Locale.PersistFailed -> AuthStringKey.ProfileLanguagePersistFailed
     ProfileError.Notifications.PersistFailed -> AuthStringKey.ProfileNotificationsPersistFailed
@@ -24,4 +26,7 @@ internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Delete.Unavailable -> AuthStringKey.DeleteAccountErrorBackend
     ProfileError.Delete.OwnerReassignFailed -> AuthStringKey.DeleteAccountErrorOwnership
     ProfileError.Export.Unavailable -> AuthStringKey.ExportDataErrorBackend
+    ProfileError.Ai.PersistFailed -> AuthStringKey.ProfileAiPersistFailed
+    ProfileError.Avatar.RemoveFailed -> AuthStringKey.ProfileRemoveAvatarError
+    ProfileError.Accent.PersistFailed -> AuthStringKey.ProfileAccentPersistFailed
 }

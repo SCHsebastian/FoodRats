@@ -44,7 +44,9 @@ export type SignReadUrl = (path: string, expiresAtMs: number) => Promise<string>
 /**
  * Keeps only the paths the caller's crew is allowed to read:
  *  - plate photos under this crew: `crews/{crewId}/meals/*.jpg`
- *  - avatars of accounts that are members of this crew: `avatars/{memberUid}.jpg`
+ *  - avatars of accounts that are members of this crew: content-versioned
+ *    `avatars/{memberUid}/{token}.jpg` (and the legacy fixed `avatars/{memberUid}.jpg`)
+ *  - the crew banner (C9): `crew_banners/{crewId}/banner.jpg`
  * Anything else is silently dropped (a stale/foreign path must not break a whole screen).
  */
 export function authorizedPaths(
@@ -54,15 +56,37 @@ export function authorizedPaths(
 ): string[] {
   const members = new Set(memberIds);
   const platePrefix = `crews/${crewId}/meals/`;
+  const bannerPath = `crew_banners/${crewId}/banner.jpg`;
   const seen = new Set<string>();
   const out: string[] = [];
   for (const p of paths) {
     if (seen.has(p)) continue;
     seen.add(p);
     const isPlate = p.startsWith(platePrefix) && p.endsWith(".jpg");
-    const avatar = /^avatars\/([^/]+)\.jpg$/.exec(p);
+    // uid is the first segment; an optional `/{token}` segment carries the content version.
+    const avatar = /^avatars\/([^/]+)(?:\/[^/]+)?\.jpg$/.exec(p);
     const isMemberAvatar = avatar !== null && members.has(avatar[1]);
-    if (isPlate || isMemberAvatar) out.push(p);
+    const isBanner = p === bannerPath;
+    if (isPlate || isMemberAvatar || isBanner) out.push(p);
+  }
+  return out;
+}
+
+/**
+ * Keeps only the caller's OWN avatar paths — the no-crew "self-avatar" request (a signed-in user
+ * with no active crew, e.g. just after sign-up or leaving a crew, still needs to resolve their own
+ * top-bar avatar). Matches the content-versioned `avatars/{uid}/{token}.jpg` and the legacy fixed
+ * `avatars/{uid}.jpg`, but only when `{uid}` is the caller. Everything else (plates, banners, other
+ * users' avatars) is dropped. Dedupes like [authorizedPaths].
+ */
+export function ownAvatarPaths(uid: string, paths: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of paths) {
+    if (seen.has(p)) continue;
+    seen.add(p);
+    const avatar = /^avatars\/([^/]+)(?:\/[^/]+)?\.jpg$/.exec(p);
+    if (avatar !== null && avatar[1] === uid) out.push(p);
   }
   return out;
 }
@@ -70,6 +94,9 @@ export function authorizedPaths(
 /**
  * The testable core: verify membership, authorize the requested paths, sign them.
  * Throws [HttpsError] for the auth/permission failures the callable surfaces verbatim.
+ *
+ * An empty/blank `crewId` is a "self-avatar only" request: it skips the crew lookup + membership
+ * check and authorizes only the caller's own avatar paths (see [ownAvatarPaths]).
  */
 export async function buildSignedUrls(
   deps: { readCrew: ReadCrew; sign: SignReadUrl; nowMs: number },
@@ -81,7 +108,15 @@ export async function buildSignedUrls(
   }
   const crewId = (request.crewId ?? "").trim();
   if (crewId === "") {
-    throw new HttpsError("invalid-argument", "crewId is required.");
+    // No active crew: authorize ONLY the caller's own avatar — no crew lookup, no membership check.
+    const expiresAtMs = deps.nowMs + URL_TTL_MS;
+    const allowed = ownAvatarPaths(uid, (request.paths ?? []).slice(0, MAX_PATHS));
+    const signed = await Promise.all(allowed.map((p) => deps.sign(p, expiresAtMs)));
+    const urls: Record<string, string> = {};
+    allowed.forEach((p, i) => {
+      urls[p] = signed[i];
+    });
+    return { expiresAtMs, urls };
   }
   const crew = await deps.readCrew(crewId);
   if (crew === null || !crew.memberIds.includes(uid)) {

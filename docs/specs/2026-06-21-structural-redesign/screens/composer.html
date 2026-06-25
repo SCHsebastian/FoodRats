@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Compose your plate</title>
+<link rel="stylesheet" href="../structural.css">
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <div class="media dish-tacos blur"></div>
+    <div class="media fill" style="background-image:url(https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?w=900&h=1600&fit=crop);filter:blur(46px) saturate(130%) brightness(.5);transform:scale(1.15)"></div>
+    <div class="scrim even"></div>
+
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <!-- floating compose chrome -->
+    <div class="rowx between center" style="position:absolute;z-index:5;top:52px;left:0;right:0;padding:8px 16px 0">
+      <button class="glass-btn"><span class="material-symbols-rounded ico-24">close</span></button>
+      <div class="col center"><span class="micro olive">new plate</span><span class="title-md white">Sat · dinner</span></div>
+      <button class="btn primary sm">Publish</button>
+    </div>
+
+    <div class="screen">
+      <div class="plane" style="padding-top:108px;gap:20px">
+
+        <!-- the captured plate -->
+        <div class="tile flush near hero" style="height:300px;border-radius:28px">
+          <div class="fill dish-tacos"></div>
+          <div class="fill photo" style="background-image:url(https://images.unsplash.com/photo-1599974579688-8dbdd335c77f?w=800&h=800&fit=crop)"></div>
+          <div class="rowx gap8" style="position:absolute;right:12px;bottom:12px;z-index:2">
+            <button class="glass-btn"><span class="material-symbols-rounded ico-20">restart_alt</span></button>
+            <button class="glass-btn danger"><span class="material-symbols-rounded ico-20">delete</span></button>
+          </div>
+          <span class="chip ember tiny" style="position:absolute;left:14px;top:14px;z-index:2"><span class="material-symbols-rounded">auto_awesome</span> AI detected</span>
+        </div>
+
+        <!-- AI-suggested ingredients (meal-ai feature) -->
+        <div class="col gap8">
+          <span class="micro olive">detected ingredients · tap to confirm</span>
+          <div class="rowx gap8 wrap">
+            <span class="chip sel">tortilla ✓</span>
+            <span class="chip sel">pork ✓</span>
+            <span class="chip sel">lime ✓</span>
+            <span class="chip glass">cilantro +</span>
+            <span class="chip glass">onion +</span>
+          </div>
+        </div>
+
+        <!-- slot -->
+        <div class="col gap8">
+          <span class="micro olive">slot</span>
+          <div class="rowx gap8 wrap">
+            <span class="chip glass">Breakfast</span>
+            <span class="chip glass">Lunch</span>
+            <span class="chip sel">Dinner</span>
+            <span class="chip glass">Snack</span>
+          </div>
+        </div>
+
+        <!-- dish -->
+        <div class="field focus">
+          <span class="lab">dish</span>
+          <input class="inp" value="Carnitas tacos" readonly>
+        </div>
+
+        <!-- description -->
+        <div class="field">
+          <span class="lab">description · 56 / 280</span>
+          <input class="inp" value="Crispy tortillas, lime, lots of cilantro." readonly style="font-size:16px;font-weight:500">
+        </div>
+
+        <!-- your score — oversized -->
+        <div class="col gap10">
+          <div class="rowx between center">
+            <span class="micro olive">your score</span>
+            <span class="rowx center gap4"><span class="metric sm olive">8</span><span class="micro mono">/ 10</span></span>
+          </div>
+          <div class="rowx gap6">
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">1</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">2</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">3</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">4</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">5</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">6</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">7</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:var(--fr-olive);color:#fff;font-size:13px">8</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:13px">9</span>
+            <span class="score" style="flex:1;height:34px;border-radius:12px;background:transparent;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.18);color:#fff;font-size:12px">10</span>
+          </div>
+        </div>
+
+        <!-- pin location -->
+        <div class="tile deep tap rowx center gap12">
+          <span class="rowx center" style="width:38px;height:38px;border-radius:11px;background:color-mix(in srgb,var(--fr-olive) 26%,transparent);flex:none"><span class="material-symbols-rounded ico-24 olive">place</span></span>
+          <div class="col grow"><span class="title-md white">Pin where you ate</span><span class="micro" style="text-transform:none;letter-spacing:0">Optional — shows on the map view</span></div>
+          <span class="material-symbols-rounded ico-24 dim">chevron_right</span>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

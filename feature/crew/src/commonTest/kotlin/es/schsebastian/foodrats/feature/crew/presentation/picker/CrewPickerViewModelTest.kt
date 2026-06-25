@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.crew.presentation.picker
 
 import app.cash.turbine.test
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -15,8 +17,8 @@ import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
-import es.schsebastian.foodrats.feature.crew.domain.usecase.JoinCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveMyCrewsUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.RequestToJoinCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,13 +63,18 @@ class CrewPickerViewModelTest {
         members = listOf(Member(me, Instant.fromEpochMilliseconds(0L))),
     )
 
-    private fun viewModel(repo: FakeCrewRepository, active: FakeActiveCrew = FakeActiveCrew()) =
+    private fun viewModel(
+        repo: FakeCrewRepository,
+        active: FakeActiveCrew = FakeActiveCrew(),
+        analytics: RecordingAnalyticsTracker = RecordingAnalyticsTracker(),
+    ) =
         CrewPickerViewModel(
             session = FakeSessionProvider(Session(me, null)),
             observeMyCrews = ObserveMyCrewsUseCase(repo),
             createCrew = CreateCrewUseCase(repo),
-            joinCrew = JoinCrewByCodeUseCase(repo),
+            requestToJoin = RequestToJoinCrewUseCase(repo),
             switchActive = SwitchActiveCrewUseCase(active),
+            analytics = analytics,
         )
 
     @Test fun load_emits_crews() = runTest {
@@ -83,16 +90,18 @@ class CrewPickerViewModelTest {
         }
     }
 
-    @Test fun pick_sets_active_and_emits_effect() = runTest {
+    @Test fun pick_sets_active_emits_effect_and_tracks_crew_switched() = runTest {
         val repo = FakeCrewRepository(initial = listOf(crewA))
         val active = FakeActiveCrew()
-        val vm = viewModel(repo, active)
+        val analytics = RecordingAnalyticsTracker()
+        val vm = viewModel(repo, active, analytics)
         vm.effects.test {
             vm.onIntent(CrewPickerIntent.PickCrew(crewA.id))
             assertEquals(CrewPickerEffect.CrewSelected(crewA.id), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
         assertEquals(crewA.id, active.active.value)
+        assertEquals(listOf<AnalyticsEvent>(AnalyticsEvent.CrewSwitched(crewA.id)), analytics.events.toList())
     }
 
     @Test fun submitCreate_with_blank_keeps_error_on_state() = runTest {

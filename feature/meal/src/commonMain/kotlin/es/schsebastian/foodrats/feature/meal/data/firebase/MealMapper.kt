@@ -32,7 +32,8 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
         ?: return Result.failure(MealError.Read.NotFound)
     val dish = DishName.of(dishName ?: "").getOrElse { return Result.failure(MealError.Read.NotFound) }
     val desc = Description.of(description).getOrElse { return Result.failure(MealError.Read.NotFound) }
-    val slot = MealSlot.fromKey(slot) ?: return Result.failure(MealError.Read.NotFound)
+    // Slot is optional: "" (no slot) or an unknown value reads back as null, never a read failure.
+    val slot = slot.takeIf { it.isNotBlank() }?.let { MealSlot.fromKey(it) }
     val coords = parseCoordinates(latitude, longitude)
     // Tolerant discriminator read (spec §6.2): "solo" → Solo; missing/unknown (incl. a future
     // "together" doc seen by a not-yet-updated client) collapses to Solo until the deferred
@@ -89,7 +90,7 @@ fun MealDto.Companion.from(meal: Meal): MealDto = MealDto(
     authorName = meal.author.displayName,
     crewId = meal.crewId.value,
     dayKey = meal.day.toKey(),
-    slot = meal.slot.key(),
+    slot = meal.slot?.key() ?: "",
     // Persist the deterministic plate PATH, derived from the ids — never `meal.photoUrl`,
     // which at this layer holds a (resolved, expiring) signed URL.
     platePath = "crews/${meal.crewId.value}/meals/${meal.id.value}.jpg",

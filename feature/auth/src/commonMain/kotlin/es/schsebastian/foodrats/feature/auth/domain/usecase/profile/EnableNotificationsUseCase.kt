@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.notifications.NotificationPermission
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionStatus
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.auth.domain.error.ProfileError
 import es.schsebastian.foodrats.feature.auth.domain.error.toProfileError
 
@@ -27,14 +28,24 @@ class EnableNotificationsUseCase(
             }
             NotificationPermissionStatus.Denied,
             NotificationPermissionStatus.NotYetRequested -> {
-                // Keep the pref off so the UI stays in sync with the OS state.
-                prefs.set(false)
+                syncPrefOff()
                 Result.failure(ProfileError.Notifications.PermissionDenied)
             }
             NotificationPermissionStatus.DeniedForever -> {
-                prefs.set(false)
+                syncPrefOff()
                 Result.failure(ProfileError.Notifications.PermissionDeniedForever)
             }
+        }
+    }
+
+    /**
+     * Keep the stored opt-in off so the UI toggle stays in sync with the denied OS permission. The
+     * permission error is the user-facing outcome we return, but a failed persist must NOT be
+     * silently dropped (it would leave a stale "on" toggle) — log it so it's observable.
+     */
+    private suspend fun syncPrefOff() {
+        if (prefs.set(false) is Result.Err) {
+            FrLog.w("Notifications") { "EnableNotifications: failed to persist pref=off after OS denial" }
         }
     }
 }

@@ -22,8 +22,14 @@ internal interface CommentFirestore {
     /** Live list of every comment doc on a meal, oldest first. Re-emits on any add/delete. */
     fun observe(crewId: CrewId, mealId: MealId): Flow<List<CommentDto>>
 
-    /** Appends a new comment doc (Firestore assigns the doc ID). */
+    /** Writes a new comment doc at the client-minted [CommentDto.id] (offline-replay idempotency). */
     suspend fun create(crewId: CrewId, mealId: MealId, dto: CommentDto)
+
+    /**
+     * Updates only the `text` + `editedAtEpochMs` fields of an existing comment doc (author edit).
+     * A partial update — `authorId`/`createdAtEpochMs` are left untouched (the Firestore rule pins them).
+     */
+    suspend fun update(crewId: CrewId, mealId: MealId, commentId: String, text: String, editedAtEpochMs: Long)
 
     /** Deletes the comment doc with the given ID. */
     suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String)

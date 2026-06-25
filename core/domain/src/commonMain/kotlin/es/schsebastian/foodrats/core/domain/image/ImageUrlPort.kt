@@ -22,4 +22,13 @@ interface ImageUrlPort {
      * An empty [paths] resolves to an empty map without a network call.
      */
     suspend fun resolve(crewId: CrewId, paths: List<String>): Result<Map<String, String>, ImageUrlError>
+
+    /**
+     * Resolves the signed-in caller's OWN avatar [path] (`avatars/{ownUid}/{token}.jpg`) WITHOUT an
+     * active crew. The server authorizes own-uid avatar paths on a crew-less request, so a user with
+     * no crew yet (just signed up, or left their only crew) can still see their own avatar — the
+     * crew-scoped [resolve] returns nothing in that window. Returns `null` when the path can't be
+     * resolved (unauthorized/unknown). Use ONLY for the caller's own avatar.
+     */
+    suspend fun resolveOwnAvatar(path: String): Result<String?, ImageUrlError>
 }

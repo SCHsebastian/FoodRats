@@ -27,36 +27,23 @@ import kotlin.time.Instant
 class FakeMealRepository : MealRepository {
     private val draftState = MutableStateFlow<MealDraft?>(null)
     var publishResultOverride: Result<Meal, MealError>? = null
+    var saveDraftResultOverride: Result<Unit, MealError>? = null
     val publishedDrafts = mutableListOf<MealDraft>()
     data class RateCall(val crewId: CrewId, val mealId: MealId, val raterId: AccountId, val score: Score)
     val rateCalls = mutableListOf<RateCall>()
     var rateResultOverride: Result<Unit, RateError>? = null
 
-    private val takenSlots = mutableMapOf<Triple<CrewId, MealDay, MealSlot>, Boolean>()
+    private val mealCounts = mutableMapOf<Pair<CrewId, MealDay>, Int>()
 
-    fun markSlotTaken(crewId: CrewId, day: MealDay, slot: MealSlot) {
-        takenSlots[Triple(crewId, day, slot)] = true
+    /** Seed how many meals the author already has in a crew on a day (drives the daily-cap gate). */
+    fun setMealCount(crewId: CrewId, day: MealDay, count: Int) {
+        mealCounts[crewId to day] = count
     }
 
-    override suspend fun hasMealForSlot(
-        crewId: CrewId, day: MealDay, slot: MealSlot,
-    ): Result<Boolean, MealError.Read> =
-        Result.success(takenSlots[Triple(crewId, day, slot)] == true)
-
-    override suspend fun takenSlotsFor(
-        crewId: CrewId, day: MealDay,
-    ): Result<Set<MealSlot>, MealError.Read> = Result.success(slotsTakenIn(crewId, day))
-
-    override suspend fun takenSlotsPerCrew(
+    override suspend fun mealCountsPerCrew(
         crewIds: Set<CrewId>, day: MealDay,
-    ): Result<Map<CrewId, Set<MealSlot>>, MealError.Read> =
-        Result.success(crewIds.associateWith { slotsTakenIn(it, day) })
-
-    private fun slotsTakenIn(crewId: CrewId, day: MealDay): Set<MealSlot> =
-        takenSlots.entries
-            .filter { (k, v) -> v && k.first == crewId && k.second == day }
-            .map { it.key.third }
-            .toSet()
+    ): Result<Map<CrewId, Int>, MealError.Read> =
+        Result.success(crewIds.associateWith { mealCounts[it to day] ?: 0 })
 
     override suspend fun publish(draft: MealDraft): Result<Meal, MealError> {
         publishedDrafts += draft
@@ -69,7 +56,7 @@ class FakeMealRepository : MealRepository {
                 author = MealAuthor(draft.authorId, "Fake", null),
                 crewId = crewId,
                 day = draft.day,
-                slot = MealSlot.Lunch,
+                slot = draft.slot,
                 photoUrl = "fake://photo",
                 dish = draft.dish!!,
                 description = draft.description,
@@ -90,13 +77,14 @@ class FakeMealRepository : MealRepository {
         crewIds: Set<CrewId>,
         authorId: AccountId,
         day: MealDay,
-        slot: MealSlot,
+        token: String,
     ): Result<Unit, MealDeleteError> {
         deleteFromAllCrewsCalls += crewIds
-        crewIds.forEach { deleteCalls += it to MealId.forDaySlot(it, authorId, day, slot) }
+        crewIds.forEach { deleteCalls += it to MealId.forDayToken(it, authorId, day, token) }
         return deleteResultOverride ?: Result.success(Unit)
     }
     override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {
+        saveDraftResultOverride?.let { return it }
         draftState.value = draft; return Result.success(Unit)
     }
     override fun observeDraft(): Flow<MealDraft?> = draftState

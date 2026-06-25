@@ -20,6 +20,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealDeletePort
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import kotlinx.coroutines.flow.flowOf
@@ -31,9 +32,12 @@ import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
+import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
@@ -59,9 +63,17 @@ class FakeMealCommentPort : MealCommentPort {
     private val flow = MutableStateFlow<Result<List<MealComment>, CommentError.Read>>(
         Result.success(emptyList())
     )
+    /** Records every [edit] call (commentId → new text) and lets a test pin the result. */
+    val editCalls = mutableListOf<Pair<String, String>>()
+    var nextEdit: Result<Unit, CommentError.Edit> = Result.success(Unit)
+
     override fun observe(crewId: CrewId, mealId: MealId): Flow<Result<List<MealComment>, CommentError.Read>> = flow
-    override suspend fun post(crewId: CrewId, mealId: MealId, text: CommentText): Result<Unit, CommentError.Write> =
+    override suspend fun post(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Write> =
         Result.success(Unit)
+    override suspend fun edit(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Edit> {
+        editCalls += commentId.value to text.value
+        return nextEdit
+    }
     override suspend fun delete(crewId: CrewId, mealId: MealId, commentId: MealCommentId): Result<Unit, CommentError.Delete> =
         Result.success(Unit)
 
@@ -91,7 +103,7 @@ class FakeMealDeletePort : MealDeletePort {
         crewIds: Set<CrewId>,
         authorId: AccountId,
         day: MealDay,
-        slot: MealSlot,
+        token: String,
     ) = result
 }
 
@@ -129,12 +141,16 @@ class MealDetailCommentIdentityTest {
         val accountPort = FakeAccountReadPort()
         val active = FakeActiveCrewProvider(initial = crew)
         val session = FakeSessionProvider(Session(viewerId, crew))
+        val connectivity = FakeConnectivityPort(online = true)
+        val outbox = RecordingOutboxPort()
         val vm = MealDetailViewModel(
             mealId = "meal-1",
             dayIso = "2026-05-20",
-            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
-            rateMeal = RateMealUseCase(FakeMealRatingPort()),
+            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort(), session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
+            connectivity = connectivity,
+            outbox = outbox,
             accountReadPort = accountPort,
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
@@ -144,7 +160,8 @@ class MealDetailCommentIdentityTest {
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
-            deleteComment = DeleteCommentUseCase(commentPort),
+            deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(),
             storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
         )
@@ -245,12 +262,16 @@ class MealDetailCommentIdentityTest {
         val commentPort = FakeMealCommentPort()
         val active = FakeActiveCrewProvider(initial = crew)
         val session = FakeSessionProvider(Session(viewerId, crew))
+        val connectivity = FakeConnectivityPort(online = true)
+        val outbox = RecordingOutboxPort()
         val vm = MealDetailViewModel(
             mealId = "meal-1",
             dayIso = "2026-05-20",
-            observeFeed = ObserveFeedUseCase(active, readPort),
-            rateMeal = RateMealUseCase(FakeMealRatingPort()),
+            observeFeed = ObserveFeedUseCase(active, readPort, session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
+            connectivity = connectivity,
+            outbox = outbox,
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
@@ -260,7 +281,8 @@ class MealDetailCommentIdentityTest {
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
-            deleteComment = DeleteCommentUseCase(commentPort),
+            deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(),
             storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
         )
@@ -317,12 +339,16 @@ class MealDetailCommentIdentityTest {
         val active = FakeActiveCrewProvider(initial = crew)
         val session = FakeSessionProvider(Session(viewerId, crew))
         val ownerPort = MutableCrewOwnerPort(initial = null)
+        val connectivity = FakeConnectivityPort(online = true)
+        val outbox = RecordingOutboxPort()
         val vm = MealDetailViewModel(
             mealId = "meal-1",
             dayIso = "2026-05-20",
-            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort()),
-            rateMeal = RateMealUseCase(FakeMealRatingPort()),
+            observeFeed = ObserveFeedUseCase(active, FakeMealReadPort(), session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
+            connectivity = connectivity,
+            outbox = outbox,
             accountReadPort = accountPort,
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
@@ -332,7 +358,8 @@ class MealDetailCommentIdentityTest {
             zone = zone,
             deleteMeal = DeleteMealUseCase(FakeMealDeletePort()),
             deleteMyMeal = DeleteMyMealUseCase(FakeMealDeletePort(), FakeCrewMembership()),
-            deleteComment = DeleteCommentUseCase(commentPort),
+            deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = ownerPort,
             storyShareController = es.schsebastian.foodrats.core.data.share.RecordingStoryShareController(),
         )

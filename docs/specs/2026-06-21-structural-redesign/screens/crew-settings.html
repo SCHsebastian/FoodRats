@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FoodRats · Crew settings</title>
+<link rel="stylesheet" href="../structural.css">
+</head>
+<body>
+<div class="stage">
+  <div class="device" data-theme="dark">
+
+    <div class="media dish-mackerel blur-2"></div>
+    <div class="media fill" style="background-image:url(https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=900&h=1600&fit=crop);filter:blur(50px) saturate(120%) brightness(.42);transform:scale(1.2)"></div>
+    <div class="scrim even"></div>
+
+    <div class="statusrow">
+      <span>9:41</span>
+      <span class="sig"><span class="material-symbols-rounded">signal_cellular_alt</span><span class="material-symbols-rounded">wifi</span><span class="material-symbols-rounded">battery_full</span></span>
+    </div>
+
+    <div class="rowx between center" style="position:absolute;z-index:5;top:52px;left:0;right:0;padding:8px 16px 0">
+      <button class="glass-btn"><span class="material-symbols-rounded ico-24">arrow_back</span></button>
+      <div class="col center"><span class="micro olive">crew</span><span class="title-md white">Saturday Brunch</span></div>
+      <button class="glass-btn"><span class="material-symbols-rounded ico-24">more_horiz</span></button>
+    </div>
+
+    <div class="screen">
+      <div class="plane" style="padding-top:104px;gap:18px">
+
+        <!-- crew identity hero -->
+        <div class="tile near col center gap14" style="text-align:center;padding:24px 20px">
+          <img src="../assets/logo-crew.svg" width="78" height="68" alt="" style="filter:brightness(0) invert(1);opacity:.92">
+          <div class="col center gap4">
+            <span class="title-xl white" style="font-size:28px">Saturday Brunch</span>
+            <span class="micro-row bright" style="justify-content:center"><span>4 of 8 members</span><span class="sep"></span><span>since may 2024</span></span>
+          </div>
+          <div class="rowx gap10 full" style="margin-top:2px">
+            <button class="rowx center gap8 grow" style="height:46px;border-radius:14px;border:0;background:var(--fr-olive-container);color:var(--fr-on-olive-container);font-family:var(--fr-font-mono);font-size:16px;font-weight:700;letter-spacing:2px;cursor:pointer">RAT-4FK <span class="material-symbols-rounded ico-20">content_copy</span></button>
+            <button class="btn primary" style="height:46px"><span class="material-symbols-rounded ico-20">ios_share</span> Share</button>
+          </div>
+        </div>
+
+        <!-- blind voting -->
+        <div class="tile rowx between" style="align-items:flex-start;gap:14px">
+          <div class="col grow gap4">
+            <span class="title-md white">Hide who cooked until you vote</span>
+            <span class="body" style="font-size:13px">When on, a meal's author stays hidden until you've scored it — so nobody is swayed by who cooked.</span>
+          </div>
+          <span class="toggle" style="margin-top:2px"></span>
+        </div>
+
+        <!-- crew identity fields -->
+        <div class="tile col gap16">
+          <div class="field"><span class="lab">house rules</span><input class="inp" value="Solo comida casera" readonly style="font-size:16px;font-weight:600"></div>
+          <div class="field"><span class="lab">welcome message</span><input class="inp" value="Bienvenido al grupo" readonly style="font-size:16px;font-weight:600"></div>
+          <div class="field"><span class="lab">weekly challenge</span><input class="inp" value="Martes de tacos" readonly style="font-size:16px;font-weight:600"></div>
+        </div>
+
+        <!-- score style -->
+        <div class="tile deep tap rowx center gap12">
+          <span class="rowx center" style="width:36px;height:36px;border-radius:10px;background:color-mix(in srgb,var(--fr-celebration) 26%,transparent);flex:none"><span class="material-symbols-rounded ico-20 ember">star</span></span>
+          <div class="col grow"><span class="title-md white">How scores appear</span><span class="micro" style="text-transform:none;letter-spacing:0">Stars · ★ 8.1 avg</span></div>
+          <span class="material-symbols-rounded ico-24 dim">chevron_right</span>
+        </div>
+
+        <!-- crew banner -->
+        <div class="col gap8">
+          <span class="micro olive">crew banner</span>
+          <div class="tile flush hero" style="height:128px">
+            <div class="fill dish-mackerel"></div>
+            <div class="fill photo" style="background-image:url(https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=800&h=400&fit=crop)"></div>
+            <div class="photo-scrim even"></div>
+            <span class="layer micro white" style="opacity:.85;text-transform:none;letter-spacing:0">Drag up or down to choose what shows in the feed</span>
+          </div>
+          <div class="rowx gap8">
+            <button class="btn glass sm grow"><span class="material-symbols-rounded ico-20">image</span> Change photo</button>
+            <button class="btn ghost sm grow" style="color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)">Remove</button>
+          </div>
+        </div>
+
+        <!-- members -->
+        <div class="col gap8">
+          <div class="rowx between center"><span class="micro olive">members · 4 of 8</span><span class="micro" style="text-transform:none;letter-spacing:0">You're the owner</span></div>
+          <div class="tile">
+            <div class="row">
+              <span class="avatar s40 moss-ring" style="background:#4F6E2B">SC</span>
+              <div class="grow col"><span class="rowx center gap6"><span class="title-md white">Sebastián</span><span class="micro olive">you</span></span><span class="micro mono bright">owner · 7.4 ★ avg</span></div>
+              <span class="flame">🔥7</span>
+            </div>
+            <div class="row">
+              <span class="avatar s40 ember-ring" style="background:#B0561E">AN</span>
+              <div class="grow col"><span class="title-md white">Anika</span><span class="micro mono bright">member · 8.2 ★ avg</span></div>
+              <span class="flame">🔥5</span>
+              <button class="glass-btn" style="width:32px;height:32px;background:transparent;box-shadow:none"><span class="material-symbols-rounded ico-20 dim">more_horiz</span></button>
+            </div>
+            <div class="row">
+              <span class="avatar s40 rust-ring" style="background:#7A3826">RK</span>
+              <div class="grow col"><span class="title-md white">Reggie</span><span class="micro mono bright">member · 8.7 ★ avg</span></div>
+              <span class="flame">🔥12</span>
+              <button class="glass-btn" style="width:32px;height:32px;background:transparent;box-shadow:none"><span class="material-symbols-rounded ico-20 dim">more_horiz</span></button>
+            </div>
+            <div class="row">
+              <span class="avatar s40 moss-ring" style="background:#5C7A33">JU</span>
+              <div class="grow col"><span class="title-md white">June</span><span class="micro mono bright">member · 7.0 ★ avg</span></div>
+              <span class="flame">🔥2</span>
+              <button class="glass-btn" style="width:32px;height:32px;background:transparent;box-shadow:none"><span class="material-symbols-rounded ico-20 dim">more_horiz</span></button>
+            </div>
+          </div>
+        </div>
+
+        <!-- danger zone -->
+        <div class="col gap8">
+          <span class="micro danger">danger zone</span>
+          <div class="tile deep">
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 danger">logout</span>
+              <span class="title-md danger grow">Leave crew</span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+            <button class="row full" style="background:transparent;border:0;cursor:pointer;text-align:left">
+              <span class="material-symbols-rounded ico-24 danger">delete</span>
+              <span class="title-md danger grow">Delete crew</span>
+              <span class="material-symbols-rounded ico-20 dim">chevron_right</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

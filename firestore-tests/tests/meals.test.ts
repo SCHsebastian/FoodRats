@@ -74,6 +74,40 @@ describe("meals create — author + membership", () => {
   });
 });
 
+describe("meals create — optional slot + token id shape", () => {
+  it("publishes with NO slot (empty string)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    const id = mealId(CREW, "alice", DAY, "t1");
+    await assertSucceeds(setDoc(doc(db, `crews/${CREW}/meals/${id}`), validMeal({ id, slot: "" })));
+  });
+
+  it("publishes the new slots (brunch / snack / merienda)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    for (const slot of ["brunch", "snack", "merienda"]) {
+      const id = mealId(CREW, "alice", DAY, `tok-${slot}`);
+      await assertSucceeds(setDoc(doc(db, `crews/${CREW}/meals/${id}`), validMeal({ id, slot })));
+    }
+  });
+
+  it("REJECTS an unknown slot value", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    const id = mealId(CREW, "alice", DAY, "t2");
+    await assertFails(setDoc(doc(db, `crews/${CREW}/meals/${id}`), validMeal({ id, slot: "brinner" })));
+  });
+
+  it("REJECTS an id whose crew segment doesn't match the path crew", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    const id = mealId("other", "alice", DAY, "t3"); // split[0] != CREW
+    await assertFails(setDoc(doc(db, `crews/${CREW}/meals/${id}`), validMeal({ id })));
+  });
+
+  it("REJECTS a malformed id (wrong number of '_' parts)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    const id = `${CREW}_alice_${DAY}_a_b`; // 5 parts after split
+    await assertFails(setDoc(doc(db, `crews/${CREW}/meals/${id}`), validMeal({ id })));
+  });
+});
+
 describe("meals create — award-aggregate self-stuffing (the P1 fix)", () => {
   it("REJECTS create with ratingSum > 0", async () => {
     const db = env.authenticatedContext("alice").firestore();
@@ -137,6 +171,87 @@ describe("meals read + rating", () => {
     const db = env.authenticatedContext("alice").firestore();
     await assertFails(
       updateDoc(doc(db, PATH), { ratings: { alice: { score: 5 } }, ratingSum: 5, voterCount: 1 }),
+    );
+  });
+
+  it("a FIRST vote that already claims edited:true is rejected", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 5, edited: true } },
+        ratingSum: 5,
+        voterCount: 1,
+      }),
+    );
+  });
+});
+
+describe("meals — vote change (one edit)", () => {
+  // Seed a meal bob has already rated 3, NOT yet edited.
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), PATH),
+        validMeal({
+          ratings: { bob: { score: 3, atMs: Date.now(), edited: false } },
+          ratingSum: 3,
+          voterCount: 1,
+        }),
+      );
+    });
+  });
+
+  it("a voter can CHANGE their vote once (edited:false -> true)", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 5, atMs: Date.now(), edited: true } },
+        ratingSum: 5, // 3 - 3 + 5
+        voterCount: 1,
+      }),
+    );
+  });
+
+  it("a change that does NOT mark edited:true is rejected", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 5, atMs: Date.now(), edited: false } },
+        ratingSum: 5,
+        voterCount: 1,
+      }),
+    );
+  });
+
+  it("a change with an INCORRECT sum delta is rejected", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 5, atMs: Date.now(), edited: true } },
+        ratingSum: 8, // wrong: must be 5
+        voterCount: 1,
+      }),
+    );
+  });
+
+  it("a voter CANNOT change again once the entry is edited", async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(
+        doc(ctx.firestore(), PATH),
+        validMeal({
+          ratings: { bob: { score: 5, atMs: Date.now(), edited: true } },
+          ratingSum: 5,
+          voterCount: 1,
+        }),
+      );
+    });
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 2, atMs: Date.now(), edited: true } },
+        ratingSum: 2,
+        voterCount: 1,
+      }),
     );
   });
 });

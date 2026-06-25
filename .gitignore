@@ -53,6 +53,9 @@ iosApp/build-device/
 iosApp/build-cli/
 iosApp/build-sim/
 
+# Locally-built release bundle output (manual bundleRelease) — a large build artifact, never commit.
+androidApp/release/
+
 # Claude Code local state (settings, worktrees, transcripts).
 .claude/
 
@@ -69,3 +72,6 @@ build/ios/
 # Ruby / Bundler local install path.
 vendor/bundle/
 .bundle/
+
+# Local test-account credentials (never commit).
+test-accounts.md

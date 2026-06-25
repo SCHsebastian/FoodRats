@@ -16,6 +16,7 @@ function recordingDeps(overrides: Partial<DeletionDeps> = {}): {
   calls: string[];
   recursiveDeleted: string[];
   blobsDeleted: string[];
+  blobPrefixesDeleted: string[];
   ratingsRemoved: Array<{ path: string; uid: string }>;
   crewsHandled: string[];
   authDeleted: string[];
@@ -23,6 +24,7 @@ function recordingDeps(overrides: Partial<DeletionDeps> = {}): {
   const calls: string[] = [];
   const recursiveDeleted: string[] = [];
   const blobsDeleted: string[] = [];
+  const blobPrefixesDeleted: string[] = [];
   const ratingsRemoved: Array<{ path: string; uid: string }> = [];
   const crewsHandled: string[] = [];
   const authDeleted: string[] = [];
@@ -41,6 +43,10 @@ function recordingDeps(overrides: Partial<DeletionDeps> = {}): {
       calls.push(`deleteBlob:${p}`);
       blobsDeleted.push(p);
     },
+    deleteBlobPrefix: async (prefix) => {
+      calls.push(`deleteBlobPrefix:${prefix}`);
+      blobPrefixesDeleted.push(prefix);
+    },
     removeRating: async (path, uid) => {
       calls.push(`removeRating:${path}`);
       ratingsRemoved.push({ path, uid });
@@ -56,7 +62,16 @@ function recordingDeps(overrides: Partial<DeletionDeps> = {}): {
     ...overrides,
   };
 
-  return { deps, calls, recursiveDeleted, blobsDeleted, ratingsRemoved, crewsHandled, authDeleted };
+  return {
+    deps,
+    calls,
+    recursiveDeleted,
+    blobsDeleted,
+    blobPrefixesDeleted,
+    ratingsRemoved,
+    crewsHandled,
+    authDeleted,
+  };
 }
 
 async function codeOf(fn: () => Promise<unknown>): Promise<string | undefined> {
@@ -153,12 +168,30 @@ describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
     expect(r.ratingsRemoved).toEqual([{ path: "crews/c1/meals/voted1", uid: UID }]);
     // 5 crews
     expect(r.crewsHandled).toEqual(["c1", "c2"]);
-    // 6+7+8 identity, avatar, top-level devices
+    // 6+7+8 identity, avatar (versioned prefix sweep + legacy fallback), top-level devices
     expect(r.recursiveDeleted).toContain(`accounts/${UID}`);
+    expect(r.blobPrefixesDeleted).toContain(`avatars/${UID}/`);
     expect(r.blobsDeleted).toContain(`avatars/${UID}.jpg`);
     expect(r.recursiveDeleted).toContain(`devices/${UID}`);
     // 10 auth user
     expect(r.authDeleted).toEqual([UID]);
+  });
+
+  it("sweeps the content-versioned avatar prefix THEN the legacy fixed path (C1 — no orphaned blob)", async () => {
+    const r = fullDeps();
+    await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
+
+    // The live avatar lives at `avatars/{uid}/{token}.jpg`, so the whole prefix must be swept.
+    expect(r.blobPrefixesDeleted).toEqual([`avatars/${UID}/`]);
+    // The legacy single-object delete is still attempted (best-effort for un-migrated users).
+    expect(r.blobsDeleted).toContain(`avatars/${UID}.jpg`);
+    // Prefix sweep happens before the legacy fallback, and both before the Auth-user delete.
+    expect(r.calls.indexOf(`deleteBlobPrefix:avatars/${UID}/`)).toBeLessThan(
+      r.calls.indexOf(`deleteBlob:avatars/${UID}.jpg`),
+    );
+    expect(r.calls.indexOf(`deleteBlob:avatars/${UID}.jpg`)).toBeLessThan(
+      r.calls.indexOf(`deleteAuthUser:${UID}`),
+    );
   });
 
   it("deletes the Auth user exactly once and strictly LAST (after every data delete)", async () => {

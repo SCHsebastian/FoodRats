@@ -10,21 +10,28 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import es.schsebastian.foodrats.core.designsystem.structural.LocalStructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.structuralDarkColors
+import es.schsebastian.foodrats.core.designsystem.structural.structuralLightColors
 
 @Composable
 fun FoodRatsTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    accent: FrAccent = FrAccent.Ember,
     minotaur: Boolean = false,
     onMinotaurToggle: (Boolean) -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    val colors = if (darkTheme) FoodRatsDarkColors else FoodRatsLightColors
+    val baseColors = if (darkTheme) FoodRatsDarkColors else FoodRatsLightColors
+    val colors = baseColors.applyAccent(accent, darkTheme)
     val semantic = if (darkTheme) FoodRatsDarkSemanticColors else FoodRatsLightSemanticColors
+    val structural = if (darkTheme) structuralDarkColors() else structuralLightColors()
     val fontFamily = rememberFrFontFamily()
     val typography = rememberFoodRatsTypography(fontFamily)
     var minotaurOn by rememberSaveable(minotaur) { mutableStateOf(minotaur) }
     CompositionLocalProvider(
         LocalFrSemanticColors provides semantic,
+        LocalStructuralColors provides structural,
         LocalFrFontFamily provides fontFamily,
         LocalMinotaurMode provides minotaurOn,
     ) {

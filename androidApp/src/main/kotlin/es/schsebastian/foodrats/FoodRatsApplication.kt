@@ -20,6 +20,9 @@ import es.schsebastian.foodrats.core.data.share.StoryShareLauncherAndroid
 import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.data.config.RemoteConfigFeatureFlags
 import es.schsebastian.foodrats.core.data.di.analyticsAndroidModule
+import es.schsebastian.foodrats.core.data.di.connectivityAndroidModule
+import es.schsebastian.foodrats.core.data.di.outboxAndroidModule
+import es.schsebastian.foodrats.core.database.di.databaseAndroidModule
 import es.schsebastian.foodrats.core.data.telemetry.AndroidCrashReporter
 import es.schsebastian.foodrats.core.data.telemetry.CrashReporterLogSink
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
@@ -63,6 +66,9 @@ class FoodRatsApplication : Application() {
                     androidShareModule(),
                     androidAuthModule(),
                     androidCrashModule(),
+                    connectivityAndroidModule(context = this@FoodRatsApplication),
+                    outboxAndroidModule(context = this@FoodRatsApplication),
+                    databaseAndroidModule(context = this@FoodRatsApplication),
                     analyticsAndroidModule(context = this@FoodRatsApplication, debug = BuildConfig.DEBUG),
                     androidFeatureFlagsModule(),
                     androidLocationModule(),

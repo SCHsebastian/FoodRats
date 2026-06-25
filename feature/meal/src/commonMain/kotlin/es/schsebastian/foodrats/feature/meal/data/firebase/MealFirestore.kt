@@ -1,7 +1,6 @@
 package es.schsebastian.foodrats.feature.meal.data.firebase
 
 import es.schsebastian.foodrats.core.domain.meal.MealDay
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlinx.coroutines.flow.Flow
@@ -22,9 +21,12 @@ internal interface MealFirestore {
 
     fun observeForRange(crewId: CrewId, from: MealDay, to: MealDay): Flow<List<MealDto>>
 
-    suspend fun mealExists(crewId: CrewId, authorId: AccountId, dayKey: String, slot: MealSlot): Boolean
-
-    suspend fun takenSlots(crewId: CrewId, authorId: AccountId, dayKey: String): Set<MealSlot>
+    /**
+     * The ids of every meal this author has published in [crewId] on [dayKey]. Powers both the
+     * daily-cap count (`size`) and the idempotency check (membership test against the deterministic
+     * `MealId.forDayToken(...)`). One Firestore read.
+     */
+    suspend fun existingMealIds(crewId: CrewId, authorId: AccountId, dayKey: String): Set<String>
 
     suspend fun deleteMeal(crewId: CrewId, mealId: String)
 

@@ -18,7 +18,11 @@ internal class DeviceTokenRepositoryImpl(
     private val platformLabel: String,    // injected per platform via Koin: "android" / "ios"
 ) : DeviceTokenRepository {
 
-    override suspend fun upsert(accountId: AccountId, token: DeviceToken): Result<Unit, NotificationError.Token> =
+    override suspend fun upsert(
+        accountId: AccountId,
+        token: DeviceToken,
+        languageTag: String?,
+    ): Result<Unit, NotificationError.Token> =
         withContext(dispatchers.io) {
             runCatching {
                 dataSource.upsert(
@@ -27,9 +31,18 @@ internal class DeviceTokenRepositoryImpl(
                         token = token.value,
                         platform = platformLabel,
                         updatedAtEpochMs = clock.now().toEpochMilliseconds(),
+                        languageTag = languageTag,
                     ),
                 )
             }.fold(
+                onSuccess = { Result.success(Unit) },
+                onFailure = { Result.failure(NotificationError.Token.PersistFailed) },
+            )
+        }
+
+    override suspend fun delete(accountId: AccountId, token: DeviceToken): Result<Unit, NotificationError.Token> =
+        withContext(dispatchers.io) {
+            runCatching { dataSource.delete(accountId = accountId, token = token.value) }.fold(
                 onSuccess = { Result.success(Unit) },
                 onFailure = { Result.failure(NotificationError.Token.PersistFailed) },
             )

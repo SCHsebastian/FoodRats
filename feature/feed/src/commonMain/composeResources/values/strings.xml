@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="feed_title">Today</string>
+    <string name="feed_your_crew_eyebrow">Your crew</string>
+    <string name="feed_crew_settings_cd">Crew settings</string>
     <string name="feed_empty_headline">Nothing here yet</string>
     <string name="feed_empty_subtext">No one has posted a meal today.</string>
+    <string name="feed_empty_subtext_past">No one posted a meal that day.</string>
     <string name="feed_prev_day">Previous day</string>
     <string name="feed_next_day">Next day</string>
     <string name="feed_no_active_crew_headline">No crew selected</string>
@@ -13,24 +16,42 @@
     <string name="feed_error_crew_not_found">Crew not found.</string>
     <string name="feed_error_unavailable">Couldn't load the feed. Try again.</string>
     <string name="feed_yesterday">Yesterday</string>
-    <string name="feed_plates_count">%1$d plates</string>
+    <plurals name="feed_plates_count">
+        <item quantity="one">%1$d plate</item>
+        <item quantity="other">%1$d plates</item>
+    </plurals>
     <string name="feed_time_of_day">%1$s:%2$s</string>
-    <string name="feed_rating_summary_votes">%1$s ★ · %2$d votes</string>
+    <plurals name="feed_rating_summary_votes">
+        <item quantity="one">%1$s ★ · %2$d vote</item>
+        <item quantity="other">%1$s ★ · %2$d votes</item>
+    </plurals>
     <string name="feed_slot_breakfast">Breakfast</string>
+    <string name="feed_slot_brunch">Brunch</string>
     <string name="feed_slot_lunch">Lunch</string>
+    <string name="feed_slot_snack">Snack</string>
+    <string name="feed_slot_merienda">Afternoon Snack</string>
     <string name="feed_slot_dinner">Dinner</string>
     <string name="feed_no_votes_yet">No votes yet</string>
     <string name="feed_blind_author">Hidden until you rate</string>
     <string name="feed_reaction_cta">React</string>
     <string name="feed_reaction_count">%1$d</string>
-    <string name="feed_reactions_label">%1$d reactions</string>
+    <plurals name="feed_reactions_label">
+        <item quantity="one">%1$d reaction</item>
+        <item quantity="other">%1$d reactions</item>
+    </plurals>
     <string name="feed_reaction_error_offline">No internet connection. Try again when you're back online.</string>
     <string name="feed_reaction_error_unauthorized">You can't react to this meal</string>
     <string name="feed_reaction_error_meal_not_found">This meal is no longer here.</string>
     <string name="feed_reaction_error_unavailable">Couldn't react. Try again.</string>
     <string name="feed_average_heading">Average</string>
     <string name="feed_rate_this_meal">Rate this meal</string>
+    <string name="feed_change_vote_cta">Change my vote</string>
+    <string name="feed_change_vote_confirm_title">Change your vote?</string>
+    <string name="feed_change_vote_confirm_body">You can only change your vote once. After this, your vote is final.</string>
+    <string name="feed_change_vote_confirm_cta">Change vote</string>
     <string name="feed_your_vote">Your vote: %1$d ★</string>
+    <string name="feed_your_vote_locked">Your vote · locked</string>
+    <string name="feed_your_vote_glyph_free">Your vote: %1$s</string>
     <string name="feed_rating_summary">%1$s ★ · %2$d</string>
     <string name="feed_voter_score">%1$s: %2$d ★</string>
     <string name="feed_votes_heading">Votes</string>
@@ -41,6 +62,8 @@
     <string name="feed_location_map_cta">Open location in maps</string>
     <string name="feed_ingredients_heading">Ingredients</string>
     <string name="feed_ingredient_separator">,</string>
+    <!-- Overflow chip in the feed row's compact ingredient strip: "+3" beyond the first few shown. -->
+    <string name="feed_more_ingredients">+%1$d</string>
     <string name="feed_rate_error_cannot_rate_own_meal">You can't rate your own meal</string>
     <string name="feed_rate_error_already_rated">You've already voted</string>
     <string name="feed_rate_error_window_closed">Voting is closed</string>
@@ -62,6 +85,29 @@
     <string name="feed_comments_error_too_long">Max 500 characters</string>
     <string name="feed_comments_error_unavailable">Couldn't post. Try again.</string>
     <string name="feed_comments_error_unauthorized">You can't comment on this meal</string>
+    <string name="feed_comments_error_objectionable">That comment may break the community guidelines. Please rephrase it.</string>
+    <string name="feed_edit_comment_cta">Edit comment</string>
+    <string name="feed_edit_comment_save_cta">Save</string>
+    <string name="feed_comment_edited">(edited)</string>
+    <string name="feed_report_meal_cta">Report meal</string>
+    <string name="feed_report_user_cta">Report user</string>
+    <string name="feed_report_comment_cta">Report comment</string>
+    <string name="feed_block_author_cta">Block author</string>
+    <string name="feed_block_user_cta">Block user</string>
+    <string name="feed_block_confirm_title">Block this user?</string>
+    <string name="feed_block_confirm_body">You won't see their meals or comments. You can unblock them later from your profile.</string>
+    <string name="feed_block_confirm_cta">Block</string>
+    <string name="feed_report_success">Thanks — we'll review this within 24 hours.</string>
+    <string name="feed_block_success">User blocked. You won't see their content anymore.</string>
+    <string name="feed_report_error_already_reported">You've already reported this.</string>
+    <string name="feed_report_error_unavailable">Couldn't send your report. Try again.</string>
+    <string name="feed_block_error_unavailable">Couldn't block this user. Try again.</string>
+    <string name="feed_report_reason_spam">Spam or scam</string>
+    <string name="feed_report_reason_harassment">Harassment or bullying</string>
+    <string name="feed_report_reason_hate">Hate speech</string>
+    <string name="feed_report_reason_sexual">Sexual content</string>
+    <string name="feed_report_reason_violence">Violence or threats</string>
+    <string name="feed_report_reason_other">Something else</string>
     <string name="feed_deleted_author">Deleted user</string>
     <string name="feed_delete_meal_cta">Delete meal</string>
     <string name="feed_delete_meal_confirm_title">Delete this meal?</string>
@@ -80,4 +126,39 @@
     <string name="feed_queue_failed">%1$d failed to post</string>
     <string name="feed_queue_retry_cta">Retry</string>
     <string name="feed_queue_dismiss_cta">Dismiss</string>
+    <!-- Write-outbox sync indicator in the feed top bar (P2 §1 T8): rate/comment/reaction/crew-admin mutations parked while offline. -->
+    <string name="feed_sync_pending">%1$d waiting to sync</string>
+    <string name="feed_sync_failed">%1$d failed to sync</string>
+    <!-- Cached-feed freshness line (offline-first P4-T2). %1$s is a relative time like "just now" / "5 min ago". -->
+    <string name="feed_synced_ago">Synced %1$s</string>
+    <!-- Feed card overflow menu (UGC compliance §4/§5). -->
+    <string name="feed_overflow_menu_cd">More options</string>
+    <!-- Report-sheet submit labels per target type (UGC compliance §4 Item 5). -->
+    <string name="feed_report_submit_meal">Submit meal report</string>
+    <string name="feed_report_submit_user">Submit user report</string>
+    <string name="feed_report_submit_comment">Submit comment report</string>
+    <!-- C6 — pinned crew welcome banner dismiss button. -->
+    <string name="feed_welcome_dismiss">Got it</string>
+    <!-- C5 — weekly challenge chip label prefix in the feed header. -->
+    <string name="feed_weekly_challenge_label">This week: %1$s</string>
+    <!-- U5b — achievement badge labels rendered next to the author name on feed rows. -->
+    <string name="feed_badge_first">First Plate</string>
+    <string name="feed_badge_ten">10 Plates</string>
+    <string name="feed_badge_fifty">50 Plates</string>
+    <string name="feed_badge_hundred">100 Plates</string>
+    <!-- C8b — glyph-free score-summary caption used on meal-detail when scoreStyle ≠ Stars.
+         %1$s = pre-rendered score string (e.g. "3.5", "😋"); %2$d = vote count. -->
+    <plurals name="feed_score_summary_votes">
+        <item quantity="one">%1$s · %2$d vote</item>
+        <item quantity="other">%1$s · %2$d votes</item>
+    </plurals>
+    <!-- C8b — glyph-free voter-row score used when scoreStyle ≠ Stars. %1$s = pre-rendered value. -->
+    <string name="feed_voter_score_glyph_free">%1$s</string>
+    <!-- C9 — crew banner hero at the top of the feed. The content description doubles as the
+         tap-to-expand label; the close label is for the full-screen viewer's dismiss button. -->
+    <string name="feed_crew_banner_cd">Crew banner — tap to view full screen</string>
+    <string name="feed_crew_banner_close_cd">Close banner</string>
+    <string name="feed_meal_photo_open_cd">View full photo</string>
+    <string name="feed_meal_photo_cd">Meal photo — pinch or double-tap to zoom</string>
+    <string name="feed_meal_photo_close_cd">Close photo</string>
 </resources>

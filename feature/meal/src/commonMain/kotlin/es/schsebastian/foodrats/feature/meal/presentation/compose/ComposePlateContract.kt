@@ -13,11 +13,25 @@ import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 
 data class ComposePlateState(
     val dish: String = "",
+    /** True when the dish title exceeds `DishName.MAX_LEN`; gates `canContinue` and lights the counter. */
+    val dishTooLong: Boolean = false,
     val descriptionInput: String = "",
     val descriptionTooLong: Boolean = false,
+    /**
+     * UGC compliance §3 HARD-BLOCK: the on-device text filter flagged the description. Gates
+     * `canContinue`/publish — an objectionable description cannot be published.
+     */
+    val descriptionWarning: Boolean = false,
+    /**
+     * UGC compliance §3 HARD-BLOCK: the on-device text filter flagged the dish title. Gates
+     * `canContinue`/publish — an objectionable dish title cannot be published.
+     */
+    val dishWarning: Boolean = false,
     val error: MealError? = null,
-    val selectedSlot: MealSlot = MealSlot.Lunch,
-    val takenSlots: Set<MealSlot> = emptySet(),
+    /** Optional "meal moment" label — `null` means none chosen (the user may skip it). */
+    val selectedSlot: MealSlot? = null,
+    /** True when every selected crew is at the daily cap; gates `canContinue` and shows a banner. */
+    val dailyLimitReached: Boolean = false,
     val photoBytes: ByteArray? = null,
     val coordinates: Coordinates? = null,
     val locating: Boolean = false,
@@ -41,11 +55,14 @@ data class ComposePlateState(
         if (this === other) return true
         if (other !is ComposePlateState) return false
         return dish == other.dish &&
+            dishTooLong == other.dishTooLong &&
             descriptionInput == other.descriptionInput &&
             descriptionTooLong == other.descriptionTooLong &&
+            descriptionWarning == other.descriptionWarning &&
+            dishWarning == other.dishWarning &&
             error == other.error &&
             selectedSlot == other.selectedSlot &&
-            takenSlots == other.takenSlots &&
+            dailyLimitReached == other.dailyLimitReached &&
             coordinates == other.coordinates &&
             locating == other.locating &&
             showConfirm == other.showConfirm &&
@@ -61,11 +78,14 @@ data class ComposePlateState(
 
     override fun hashCode(): Int {
         var result = dish.hashCode()
+        result = 31 * result + dishTooLong.hashCode()
         result = 31 * result + descriptionInput.hashCode()
         result = 31 * result + descriptionTooLong.hashCode()
+        result = 31 * result + descriptionWarning.hashCode()
+        result = 31 * result + dishWarning.hashCode()
         result = 31 * result + (error?.hashCode() ?: 0)
-        result = 31 * result + selectedSlot.hashCode()
-        result = 31 * result + takenSlots.hashCode()
+        result = 31 * result + (selectedSlot?.hashCode() ?: 0)
+        result = 31 * result + dailyLimitReached.hashCode()
         result = 31 * result + (coordinates?.hashCode() ?: 0)
         result = 31 * result + locating.hashCode()
         result = 31 * result + showConfirm.hashCode()

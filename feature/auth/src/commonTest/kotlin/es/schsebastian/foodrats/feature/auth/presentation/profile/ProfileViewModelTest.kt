@@ -10,9 +10,15 @@ import es.schsebastian.foodrats.core.domain.account.DataExportPort
 import es.schsebastian.foodrats.core.domain.account.ExportReady
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.AppSetting
 import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
+import es.schsebastian.foodrats.core.domain.preferences.AccentPaletteError
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionStatus
@@ -30,18 +36,25 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
+import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.RemoveMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAccentPaletteUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetAiEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetLocaleUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetMealRemindersUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetNotificationsEnabledUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.SetThemeModeUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyAvatarUseCase
+import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import es.schsebastian.foodrats.feature.auth.testdoubles.FakeAccountWritePort
+import es.schsebastian.foodrats.feature.auth.testdoubles.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.auth.testdoubles.FixedSessionProvider
+import es.schsebastian.foodrats.feature.auth.testdoubles.RecordingOutboxPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -101,6 +114,40 @@ class ProfileViewModelTest {
         override val prompted: Flow<Boolean> = flowOf(true)
         override suspend fun set(enabled: Boolean): Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
         override suspend fun markPrompted(): Result<Unit, NotificationsPreferenceError> = Result.success(Unit)
+    }
+
+    /** In-memory [AiPreferencePort]: `set` updates the observed flow (single source of truth). */
+    private class FakeAiPreferencePort(initial: Boolean = true) : AiPreferencePort {
+        private val state = MutableStateFlow(initial)
+        override val enabled: Flow<Boolean> = state.asStateFlow()
+        override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> {
+            state.value = enabled
+            return Result.success(Unit)
+        }
+    }
+
+    /** [AiPreferencePort] whose `set` always fails — for asserting the error branch. */
+    private class FailingAiPreferencePort : AiPreferencePort {
+        override val enabled: Flow<Boolean> = flowOf(true)
+        override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> =
+            Result.failure(AiPreferenceError.Persist.Unavailable)
+    }
+
+    /** In-memory [AccentPalettePort]: `set` updates the observed flow (single source of truth). */
+    private class FakeAccentPalettePort(initial: AccentPalette = AccentPalette.Ember) : AccentPalettePort {
+        private val state = MutableStateFlow(initial)
+        override val palette: Flow<AccentPalette> = state.asStateFlow()
+        override suspend fun set(palette: AccentPalette): Result<Unit, AccentPaletteError> {
+            state.value = palette
+            return Result.success(Unit)
+        }
+    }
+
+    /** [AccentPalettePort] whose `set` always fails — for asserting the rollback branch. */
+    private class FailingAccentPalettePort : AccentPalettePort {
+        override val palette: Flow<AccentPalette> = flowOf(AccentPalette.Ember)
+        override suspend fun set(palette: AccentPalette): Result<Unit, AccentPaletteError> =
+            Result.failure(AccentPaletteError.Persist.Unavailable)
     }
 
     /** In-memory [MealReminderSchedulePort]: `set` updates the observed flow (single source of truth). */
@@ -182,6 +229,30 @@ class ProfileViewModelTest {
         }
     }
 
+    /** [ThemeModePort] whose `set` always fails — for asserting the error branch fires no event. */
+    private object FailingThemeModePort : ThemeModePort {
+        override val mode: Flow<ThemeMode> = flowOf(ThemeMode.System)
+        override suspend fun set(mode: ThemeMode): Result<Unit, ThemePreferenceError> =
+            Result.failure(ThemePreferenceError.Persist.Unavailable)
+    }
+
+    /** [LocalePort] whose `set` always fails. */
+    private object FailingLocalePort : LocalePort {
+        override val locale: Flow<AppLocale> = flowOf(AppLocale.System)
+        override suspend fun set(locale: AppLocale): Result<Unit, LocalePreferenceError> =
+            Result.failure(LocalePreferenceError.Persist.Unavailable)
+    }
+
+    /** [MealReminderSchedulePort] whose `set` always fails (the observed times never change). */
+    private class FailingMealReminderSchedulePort(
+        initial: List<LocalTime> = MealReminderSchedulePort.DEFAULT_TIMES,
+    ) : MealReminderSchedulePort {
+        private val state = MutableStateFlow(initial)
+        override val times: Flow<List<LocalTime>> = state.asStateFlow()
+        override suspend fun set(times: List<LocalTime>): Result<Unit, MealReminderPreferenceError> =
+            Result.failure(MealReminderPreferenceError.Persist.Unavailable)
+    }
+
     private fun buildViewModel(
         deletionResult: Result<Unit, AccountDeletionError>,
         analytics: RecordingAnalyticsTracker,
@@ -191,24 +262,34 @@ class ProfileViewModelTest {
             Result.success(ExportReady(downloadUrl = "https://example.test/x", expiresAtMs = 0L)),
         ),
         reminders: MealReminderSchedulePort = FakeMealReminderSchedulePort(),
+        themePort: ThemeModePort = NoopThemeModePort,
+        localePort: LocalePort = NoopLocalePort,
+        aiPreferencePort: AiPreferencePort = FakeAiPreferencePort(),
+        accentPalettePort: AccentPalettePort = FakeAccentPalettePort(),
+        writePort: FakeAccountWritePort = FakeAccountWritePort(),
     ): ProfileViewModel {
         val session = FixedSessionProvider(Session(accountId = accountId, activeCrewId = null))
-        val writePort = FakeAccountWritePort()
         return ProfileViewModel(
             accountRead = FakeAccountReadPort(account),
             session = session,
-            themePort = NoopThemeModePort,
-            localePort = NoopLocalePort,
+            themePort = themePort,
+            localePort = localePort,
             notificationsPort = NoopNotificationsPreferencePort,
+            aiPreferencePort = aiPreferencePort,
+            accentPalettePort = accentPalettePort,
             mealRemindersPort = reminders,
-            updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
+            updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session, FakeConnectivityPort(), RecordingOutboxPort()),
+            updateBio = UpdateMyBioUseCase(writePort, session, FakeConnectivityPort(), RecordingOutboxPort()),
             updateAvatar = UpdateMyAvatarUseCase(writePort, session),
+            removeAvatar = RemoveMyAvatarUseCase(writePort, session),
             signOut = signOut,
-            setThemeMode = SetThemeModeUseCase(NoopThemeModePort),
-            setLocale = SetLocaleUseCase(NoopLocalePort),
+            setThemeMode = SetThemeModeUseCase(themePort),
+            setLocale = SetLocaleUseCase(localePort),
             setMealReminders = SetMealRemindersUseCase(reminders),
             setNotificationsEnabled = SetNotificationsEnabledUseCase(NoopNotificationsPreferencePort),
             enableNotifications = EnableNotificationsUseCase(NoopNotificationPermissionPort, NoopNotificationsPreferencePort),
+            setAiEnabled = SetAiEnabledUseCase(aiPreferencePort),
+            setAccentPalette = SetAccentPaletteUseCase(accentPalettePort),
             notificationPermission = NoopNotificationPermissionPort,
             deleteMyAccount = DeleteMyAccountUseCase(session, FakeAccountDeletionPort(deletionResult)),
             exportMyData = ExportMyDataUseCase(exportPort),
@@ -481,5 +562,351 @@ class ProfileViewModelTest {
         }
 
         assertEquals(1, export.calls)
+    }
+
+    // ─────────────────────── setting_changed analytics ───────────────────────
+
+    @Test fun theme_change_ok_fires_setting_changed_theme() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(Result.success(Unit), analytics, RecordingSignOutPort())
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ThemeSelected(ThemeMode.Dark))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.THEME)),
+            analytics.events,
+        )
+    }
+
+    @Test fun theme_change_err_fires_nothing() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            themePort = FailingThemeModePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ThemeSelected(ThemeMode.Dark))
+            assertEquals(AuthStringKey.ProfileThemePersistFailed, expectMostRecentItem().themeError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test fun locale_change_ok_fires_setting_changed_language() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(Result.success(Unit), analytics, RecordingSignOutPort())
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.LocaleSelected(AppLocale.En))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.LANGUAGE)),
+            analytics.events,
+        )
+    }
+
+    @Test fun locale_change_err_fires_nothing() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            localePort = FailingLocalePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.LocaleSelected(AppLocale.En))
+            assertEquals(AuthStringKey.ProfileLanguagePersistFailed, expectMostRecentItem().localeError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    @Test fun notifications_toggle_ok_fires_setting_changed_with_enabled() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(Result.success(Unit), analytics, RecordingSignOutPort())
+
+        vm.state.test {
+            // Disable path persists the pref (no OS gate) and resolves Ok.
+            vm.onIntent(ProfileIntent.NotificationsToggled(false))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.NOTIFICATIONS, enabled = false)),
+            analytics.events,
+        )
+    }
+
+    @Test fun reminder_add_ok_fires_setting_changed_meal_reminders() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(14, 0))),
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderAddOpen)
+            vm.onIntent(ProfileIntent.ReminderHourSelected(8))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.MEAL_REMINDERS)),
+            analytics.events,
+        )
+    }
+
+    @Test fun reminder_remove_ok_fires_setting_changed_meal_reminders() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            reminders = FakeMealReminderSchedulePort(listOf(LocalTime(9, 0), LocalTime(18, 0))),
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderRemove(0))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        // doSetReminders is shared by add/edit and remove — the remove path emits MEAL_REMINDERS too.
+        assertEquals(
+            listOf<AnalyticsEvent>(AnalyticsEvent.SettingChanged(AppSetting.MEAL_REMINDERS)),
+            analytics.events,
+        )
+    }
+
+    @Test fun reminder_change_err_fires_nothing() = runTest {
+        val analytics = RecordingAnalyticsTracker()
+        val vm = buildViewModel(
+            Result.success(Unit), analytics, RecordingSignOutPort(),
+            reminders = FailingMealReminderSchedulePort(listOf(LocalTime(14, 0))),
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.ReminderAddOpen)
+            vm.onIntent(ProfileIntent.ReminderHourSelected(8))
+            assertEquals(AuthStringKey.ProfileRemindersPersistFailed, expectMostRecentItem().reminderError)
+            cancelAndIgnoreRemainingEvents()
+        }
+
+        assertTrue(analytics.events.isEmpty())
+    }
+
+    // ─────────────────────── AI opt-out toggle ───────────────────────
+
+    @Test fun ai_toggled_off_persists_and_reflects_in_state() = runTest {
+        val aiPort = FakeAiPreferencePort(initial = true)
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            aiPreferencePort = aiPort,
+        )
+
+        vm.state.test {
+            // Starts enabled (default).
+            assertTrue(expectMostRecentItem().aiEnabled)
+
+            vm.onIntent(ProfileIntent.AiToggled(false))
+
+            // State reflects the disabled toggle (persisted + collector fires).
+            val final = expectMostRecentItem()
+            assertFalse(final.aiEnabled)
+            assertNull(final.aiError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ─────────────────────── bio update ───────────────────────
+
+    @Test fun bio_change_updates_editing_field() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.BioChanged("Home cook"))
+            val state = expectMostRecentItem()
+            assertEquals("Home cook", state.editingBio)
+            assertNull(state.saveBioError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun bio_save_ok_clears_in_flight_and_no_error() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.BioChanged("Home cook, Barcelona"))
+            vm.onIntent(ProfileIntent.SaveBio)
+            val state = expectMostRecentItem()
+            assertFalse(state.isSavingBio)
+            assertNull(state.saveBioError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun bio_save_too_long_shows_error() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            // 101 characters — exceeds the 100-char cap
+            val tooLong = "a".repeat(101)
+            vm.onIntent(ProfileIntent.BioChanged(tooLong))
+            vm.onIntent(ProfileIntent.SaveBio)
+            val state = expectMostRecentItem()
+            assertFalse(state.isSavingBio)
+            assertEquals(AuthStringKey.ProfileBioTooLong, state.saveBioError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun ai_toggled_err_rolls_back_and_shows_error() = runTest {
+        val vm = buildViewModel(
+            Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            aiPreferencePort = FailingAiPreferencePort(),
+        )
+
+        vm.state.test {
+            // Starts enabled.
+            assertTrue(expectMostRecentItem().aiEnabled)
+
+            vm.onIntent(ProfileIntent.AiToggled(false))
+
+            val final = expectMostRecentItem()
+            // Rolled back to previous value.
+            assertTrue(final.aiEnabled)
+            assertEquals(AuthStringKey.ProfileAiPersistFailed, final.aiError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── remove avatar ────────────────────────────────────────────────────────
+
+    @Test fun remove_avatar_confirm_flow_removes_and_clears_state() = runTest {
+        val writePort = FakeAccountWritePort()
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+
+        vm.state.test {
+            // Confirm dialog opens on request.
+            vm.onIntent(ProfileIntent.RemoveAvatarRequested)
+            assertTrue(expectMostRecentItem().removeAvatarConfirmOpen)
+
+            // Confirm closes the dialog, sets in-flight, then clears on success.
+            vm.onIntent(ProfileIntent.RemoveAvatarConfirmed)
+            val final = expectMostRecentItem()
+            assertFalse(final.isRemovingAvatar)
+            assertFalse(final.removeAvatarConfirmOpen)
+            assertNull(final.removeAvatarError)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // The port was called exactly once with the correct accountId.
+        assertEquals(1, writePort.avatarRemovals.size)
+        assertEquals(accountId, writePort.avatarRemovals[0])
+    }
+
+    @Test fun remove_avatar_dismiss_closes_dialog_without_calling_port() = runTest {
+        val writePort = FakeAccountWritePort()
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.RemoveAvatarRequested)
+            assertTrue(expectMostRecentItem().removeAvatarConfirmOpen)
+
+            vm.onIntent(ProfileIntent.RemoveAvatarDismissed)
+            assertFalse(expectMostRecentItem().removeAvatarConfirmOpen)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // Port never called.
+        assertTrue(writePort.avatarRemovals.isEmpty())
+    }
+
+    @Test fun remove_avatar_failure_surfaces_error_key() = runTest {
+        val writePort = FakeAccountWritePort().also {
+            it.nextRemoveAvatarError = AccountWriteError.Backend.Unavailable
+        }
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+
+        vm.state.test {
+            vm.onIntent(ProfileIntent.RemoveAvatarRequested)
+            vm.onIntent(ProfileIntent.RemoveAvatarConfirmed)
+            val final = expectMostRecentItem()
+            assertFalse(final.isRemovingAvatar)
+            assertEquals(AuthStringKey.ProfileRemoveAvatarError, final.removeAvatarError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    // ── Accent palette tests ──────────────────────────────────────────────────────────────────────
+
+    @Test fun accent_picker_open_sets_flag() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentPickerOpen)
+            val s = expectMostRecentItem()
+            assertTrue(s.accentPickerOpen)
+            assertNull(s.accentError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun accent_picker_dismiss_clears_flag() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentPickerOpen)
+            vm.onIntent(ProfileIntent.AccentPickerDismiss)
+            val s = expectMostRecentItem()
+            assertFalse(s.accentPickerOpen)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun accent_selected_updates_state_and_closes_picker() = runTest {
+        val port = FakeAccentPalettePort(AccentPalette.Ember)
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            accentPalettePort = port)
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentPickerOpen)
+            vm.onIntent(ProfileIntent.AccentSelected(AccentPalette.Steel))
+            val s = expectMostRecentItem()
+            assertFalse(s.accentPickerOpen)
+            assertEquals(AccentPalette.Steel, s.accentPalette)
+            assertNull(s.accentError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun accent_persist_failure_rolls_back_and_surfaces_error() = runTest {
+        val failingPort = FailingAccentPalettePort()
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort(),
+            accentPalettePort = failingPort)
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AccentSelected(AccentPalette.Moss))
+            val s = expectMostRecentItem()
+            // rolled back to the initial Ember value
+            assertEquals(AccentPalette.Ember, s.accentPalette)
+            assertEquals(AuthStringKey.ProfileAccentPersistFailed, s.accentError)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

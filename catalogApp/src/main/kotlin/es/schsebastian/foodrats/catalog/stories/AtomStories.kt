@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,19 +37,17 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrChip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrCrownBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFilterChip
-import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameBadge
 import es.schsebastian.foodrats.core.designsystem.atoms.FrFlameIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrGlassPill
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
+import es.schsebastian.foodrats.core.designsystem.atoms.FrOfflineBanner
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
-import es.schsebastian.foodrats.core.designsystem.atoms.FrShutterButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSparkline
-import es.schsebastian.foodrats.core.designsystem.atoms.FrSpacer
 import es.schsebastian.foodrats.core.designsystem.atoms.FrStoryProgressBar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrStoryScaffold
 import es.schsebastian.foodrats.core.designsystem.atoms.FrSwitch
@@ -70,20 +69,18 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.icons",         CatalogGroup.ATOMS, "FrIcons",         "Project-wide ImageVector catalog (core-only set)") { IconsCatalogStory() },
     CatalogEntry("atom.iconbutton",    CatalogGroup.ATOMS, "FrIconButton",    "Icon-only button — back, settings, chevrons") { IconButtonStory() },
     CatalogEntry("atom.progress",      CatalogGroup.ATOMS, "FrProgressIndicator", "Default + tinted spinners") { ProgressStory() },
-    CatalogEntry("atom.shutter",       CatalogGroup.ATOMS, "FrShutterButton", "Capture-screen shutter — enabled & disabled") { ShutterStory() },
-    CatalogEntry("atom.spacer",        CatalogGroup.ATOMS, "FrSpacer",        "Spacing token visualization") { SpacerStory() },
     CatalogEntry("atom.text",          CatalogGroup.ATOMS, "FrText",          "Wraps Material Text with FrTextStyles") { TextStory() },
     CatalogEntry("atom.textfield",     CatalogGroup.ATOMS, "FrTextField",     "OutlinedTextField with error / disabled states") { TextFieldStory() },
     CatalogEntry("atom.crownbadge",    CatalogGroup.ATOMS, "FrCrownBadge",    "Circular crown badge — primary / tertiary tints") { CrownBadgeStory() },
     CatalogEntry("atom.flameicon",     CatalogGroup.ATOMS, "FrFlameIcon",     "Flame with urgency-driven pulse (0 → 1)") { FlameIconStory() },
     CatalogEntry("atom.shimmerbox",    CatalogGroup.ATOMS, "FrShimmerBox",    "Skeleton with horizontal shimmer sweep") { ShimmerBoxStory() },
     CatalogEntry("atom.uploadprogress", CatalogGroup.ATOMS, "FrUploadProgressBar", "Top-of-screen indeterminate bar that slides in while uploads run") { UploadProgressBarStory() },
-    CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — plate + ears at three sizes") { LogoStory() },
+    CatalogEntry("atom.offlinebanner", CatalogGroup.ATOMS, "FrOfflineBanner", "App-wide 'you're offline' notice (warning role) that slides in when connectivity drops") { OfflineBannerStory() },
+    CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — toque + cutlery + rat at three sizes") { LogoStory() },
     CatalogEntry("atom.card",          CatalogGroup.ATOMS, "FrCard",          "Rounded surface container — static or clickable with press lift") { CardStory() },
     CatalogEntry("atom.card.fur",      CatalogGroup.ATOMS, "FrCard (Minotaur)", "Hidden Minotaur mode — furry edge via LocalMinotaurMode") { MinotaurCardStory() },
     CatalogEntry("atom.sparkline",     CatalogGroup.ATOMS, "FrSparkline",     "Tiny inline trend chart for stat tiles") { SparklineStory() },
     CatalogEntry("atom.qrcode",        CatalogGroup.ATOMS, "FrQrCode",        "Pure-Kotlin QR encoder rendered on Canvas — shareable invite link") { QrCodeStory() },
-    CatalogEntry("atom.flamebadge",    CatalogGroup.ATOMS, "FrFlameBadge",    "🔥 streak pill on the streakHot semantic color") { FlameBadgeStory() },
     CatalogEntry("atom.glasspill",     CatalogGroup.ATOMS, "FrGlassPill",     "Translucent circular overlay for in-photo back / close") { GlassPillStory() },
     CatalogEntry("atom.switch",        CatalogGroup.ATOMS, "FrSwitch",        "Brand-colored toggle — on / off / disabled") { SwitchStory() },
     CatalogEntry("atom.badge",         CatalogGroup.ATOMS, "FrBadge",         "Achievement badge — earned (vivid) vs locked (dimmed + progress ring), tiers") { BadgeStory() },
@@ -399,7 +396,7 @@ private fun IconsCatalogStory() {
                             modifier = Modifier.size(64.dp),
                         ) {
                             FrIcon(image = icon, modifier = Modifier.size(Sizes.iconMd), contentDescription = label)
-                            FrSpacer(size = Spacing.xxs)
+                            Spacer(modifier = Modifier.size(Spacing.xxs))
                             FrText(text = label, style = MaterialTheme.typography.labelSmall)
                         }
                     }
@@ -435,41 +432,6 @@ private fun ProgressStory() {
                 modifier = Modifier.size(40.dp),
                 color = MaterialTheme.colorScheme.secondary,
             )
-        }
-    }
-}
-
-@Composable
-private fun ShutterStory() {
-    CatalogScene(label = "Shutter — enabled / disabled") {
-        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.lg)) {
-            FrShutterButton(onClick = {}, contentDescription = "Take photo")
-            FrShutterButton(onClick = {}, contentDescription = "Take photo", enabled = false)
-        }
-    }
-}
-
-@Composable
-private fun SpacerStory() {
-    val items = listOf(
-        "xxs" to Spacing.xxs,
-        "xs"  to Spacing.xs,
-        "sm"  to Spacing.sm,
-        "md"  to Spacing.md,
-        "lg"  to Spacing.lg,
-        "xl"  to Spacing.xl,
-        "xxl" to Spacing.xxl,
-    )
-    CatalogScene(label = "Heights — Spacing tokens") {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            items.forEach { (label, dp) ->
-                FrText(
-                    text = "Spacing.$label · $dp",
-                    style = MaterialTheme.typography.labelSmall,
-                )
-                FrSpacer(size = dp)
-                FrDivider()
-            }
         }
     }
 }
@@ -581,11 +543,36 @@ private fun UploadProgressBarStory() {
 }
 
 @Composable
+private fun OfflineBannerStory() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        CatalogScene(label = "Visible — offline (warning role)", padding = PaddingValues(0.dp)) {
+            FrOfflineBanner(
+                visible = true,
+                message = "You're offline — changes sync when you're back.",
+            )
+        }
+        CatalogScene(label = "Hidden (no banner drawn)") {
+            FrOfflineBanner(visible = false, message = "You're offline — changes sync when you're back.")
+        }
+        CatalogScene(label = "Toggle live") {
+            var offline by remember { mutableStateOf(true) }
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                FrOfflineBanner(
+                    visible = offline,
+                    message = "You're offline — changes sync when you're back.",
+                )
+                FrButton(label = if (offline) "Go online" else "Go offline", onClick = { offline = !offline })
+            }
+        }
+    }
+}
+
+@Composable
 private fun LogoStory() {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         CatalogScene(
             label = "Sizes — 48 / 96 / 144 dp",
-            description = "Canvas-drawn plate + three ears. Defaults are the brand palette (concrete plate, ember ears).",
+            description = "Canvas-drawn toque + crossed cutlery + ember rat. Defaults are the brand palette (concrete toque, ember face).",
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -596,11 +583,11 @@ private fun LogoStory() {
                 FrLogo(size = 144.dp)
             }
         }
-        CatalogScene(label = "Tinted — primary plate / onPrimary ears") {
+        CatalogScene(label = "Tinted — primary face / onPrimary inner ears") {
             FrLogo(
                 size = 96.dp,
-                plateColor = MaterialTheme.colorScheme.primary,
-                earColor = MaterialTheme.colorScheme.onPrimary,
+                faceColor = MaterialTheme.colorScheme.primary,
+                innerEarColor = MaterialTheme.colorScheme.onPrimary,
             )
         }
     }
@@ -667,28 +654,10 @@ private fun SparklineStory() {
 private fun QrCodeStory() {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         CatalogScene(label = "Invite link") {
-            FrQrCode(content = "https://foodrats.app/invite/AB2K9P", size = 200.dp)
+            FrQrCode(content = "https://foodrats-de4ec.web.app/invite/AB2K9P", size = 200.dp)
         }
         CatalogScene(label = "Smaller (140dp)") {
-            FrQrCode(content = "https://foodrats.app/invite/AB2K9P", size = 140.dp)
-        }
-    }
-}
-
-@Composable
-private fun FlameBadgeStory() {
-    CatalogScene(
-        label = "Streak lengths",
-        description = "Hidden entirely at 0 — the fourth pill below isn't drawn.",
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FrFlameBadge(days = 1)
-            FrFlameBadge(days = 7)
-            FrFlameBadge(days = 42)
-            FrFlameBadge(days = 0)
+            FrQrCode(content = "https://foodrats-de4ec.web.app/invite/AB2K9P", size = 140.dp)
         }
     }
 }

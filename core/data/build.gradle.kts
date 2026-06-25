@@ -31,6 +31,10 @@ kotlin {
     sourceSets {
         commonMain.dependencies {
             implementation(projects.core.domain)
+            // Outbox is now backed by the SQLDelight outbox table (P3b-T6). This brings the
+            // generated FoodRatsDatabase / outboxQueries + the coroutines flow extensions.
+            implementation(projects.core.database)
+            implementation(libs.sqldelight.coroutines.ext)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.serialization.json)
             implementation(libs.kotlinx.datetime)
@@ -64,12 +68,17 @@ kotlin {
                 implementation(libs.junit)
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.androidx.activity.compose)
+                // JVM in-memory SQLDelight driver for OutboxLocalStoreTest (P3b-T6) — the outbox
+                // store now wraps FoodRatsDatabase; the host test seeds a real in-memory table.
+                implementation(libs.sqldelight.jvm.driver)
             }
         }
         androidMain.dependencies {
             // PreferenceDataStoreFactory (JVM/Android) is provided by datastore-preferences artifact
             // Firebase BOM — pins versions for com.google.firebase:* pulled transitively by dev.gitlive.
             implementation(project.dependencies.platform(libs.firebase.bom))
+            // WorkManager — backs WorkManagerOutboxDrainScheduler + OutboxDrainWorker.
+            implementation(libs.androidx.work.runtime)
             // Crashlytics has no GitLive KMP binding — AndroidCrashReporter (androidMain) wraps the
             // native SDK directly. Version pinned by the BOM above.
             implementation(libs.firebase.crashlytics)

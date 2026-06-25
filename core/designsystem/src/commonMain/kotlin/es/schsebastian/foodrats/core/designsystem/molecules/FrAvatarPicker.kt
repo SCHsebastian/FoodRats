@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -22,7 +23,12 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
  * Avatar preview (initials fallback) + change-avatar button. Tapping either is the edit
- * affordance — the avatar circle is decorative and stays out of the a11y tree.
+ * affordance — the avatar circle carries [changeLabel] as its click label so TalkBack
+ * announces the action (WCAG 4.1.2 / 2.5.3) instead of focusing a silent click target.
+ *
+ * When [onRemoveClick] is non-null and an avatar is currently displayed ([avatarUrl] is
+ * non-blank), a secondary "remove" button renders beside the change button so the user can
+ * revert to initials. The remove button is hidden when no avatar is set (no-op UX).
  *
  * Takes only primitives so domain-aware callers (Profile, CrewSettings, …) can drive it.
  */
@@ -35,6 +41,8 @@ fun FrAvatarPicker(
     changeLabel: String,
     uploadingLabel: String,
     modifier: Modifier = Modifier,
+    onRemoveClick: (() -> Unit)? = null,
+    removeLabel: String = "",
 ) {
     Row(
         modifier = modifier,
@@ -46,7 +54,7 @@ fun FrAvatarPicker(
                 .size(Sizes.avatarLg)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.primaryContainer)
-                .clickable(enabled = !busy) { onPickClick() },
+                .clickable(enabled = !busy, onClickLabel = changeLabel) { onPickClick() },
             contentAlignment = Alignment.Center,
         ) {
             if (!avatarUrl.isNullOrBlank()) {
@@ -64,11 +72,24 @@ fun FrAvatarPicker(
                 )
             }
         }
-        FrButton(
-            label = if (busy) uploadingLabel else changeLabel,
-            onClick = onPickClick,
-            variant = FrButtonVariant.Secondary,
-            enabled = !busy,
-        )
+        Column(
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+        ) {
+            FrButton(
+                label = if (busy) uploadingLabel else changeLabel,
+                onClick = onPickClick,
+                variant = FrButtonVariant.Secondary,
+                enabled = !busy,
+            )
+            // Show remove only when an avatar is set and the callback is wired.
+            if (onRemoveClick != null && !avatarUrl.isNullOrBlank()) {
+                FrButton(
+                    label = removeLabel,
+                    onClick = onRemoveClick,
+                    variant = FrButtonVariant.Ghost,
+                    enabled = !busy,
+                )
+            }
+        }
     }
 }

@@ -31,6 +31,8 @@ sealed interface AuthError {
         data object EmailAlreadyInUse : EmailPassword
         /** Sign-in rejected (wrong password or unknown user). Deliberately ambiguous to avoid user-enumeration leaks. */
         data object WrongCredentials : EmailPassword
+        /** Sign-up confirm-password field doesn't match the password. Caught client-side before the network call. */
+        data object PasswordMismatch : EmailPassword
     }
     sealed interface Firebase : AuthError {
         data object NotSignedIn : Firebase

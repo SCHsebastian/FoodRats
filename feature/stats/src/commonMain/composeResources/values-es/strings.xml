@@ -2,6 +2,12 @@
 <resources>
     <string name="stats_title">Estadísticas</string>
 
+    <!-- Structural eyebrows / units -->
+    <string name="stats_your_stats_eyebrow">Tus estadísticas</string>
+    <string name="stats_your_streak_eyebrow">Tu racha</string>
+    <string name="stats_streak_days_unit">días</string>
+    <string name="stats_awards_eyebrow">Premios</string>
+
     <string name="stats_tab_week">Semana</string>
     <string name="stats_tab_month">Mes</string>
     <string name="stats_tab_historic">Histórico</string>
@@ -11,8 +17,8 @@
         <item quantity="other">%1$d días de racha</item>
     </plurals>
     <plurals name="stats_hero_crew_streak">
-        <item quantity="one">Crew: %1$d día</item>
-        <item quantity="other">Crew: %1$d días</item>
+        <item quantity="one">Cuadrilla: %1$d día</item>
+        <item quantity="other">Cuadrilla: %1$d días</item>
     </plurals>
     <plurals name="stats_hero_plates_today">
         <item quantity="one">%1$d plato hoy</item>
@@ -43,17 +49,30 @@
     <string name="stats_cooks_section_title">Cocineros</string>
     <string name="stats_best_cook_title">Mejor cocinero</string>
     <string name="stats_best_cook_metric_format">%1$s ★ media · %2$d platos</string>
+    <!-- C8b — sin glifo: %1$s = puntuación pre-renderizada (emoji o número), %2$d = platos. -->
+    <string name="stats_best_cook_metric_format_glyph_free">%1$s media · %2$d platos</string>
     <string name="stats_most_prolific_title">Más prolífico</string>
-    <string name="stats_most_prolific_metric_format">%1$d platos</string>
+    <plurals name="stats_most_prolific_metric_format">
+        <item quantity="one">%1$d plato</item>
+        <item quantity="other">%1$d platos</item>
+    </plurals>
 
     <string name="stats_roast_section_title">Roast</string>
     <string name="stats_most_criticized_title">El más criticado</string>
     <string name="stats_most_criticized_metric_format">%1$s ★ media · ay</string>
+    <!-- C8b — sin glifo: %1$s = puntuación pre-renderizada (emoji o número). -->
+    <string name="stats_most_criticized_metric_format_glyph_free">%1$s media · ay</string>
 
     <string name="stats_most_used_ingredient_title">Ingrediente más usado</string>
-    <string name="stats_most_used_ingredient_metric_format">%1$s · %2$d comidas</string>
+    <plurals name="stats_most_used_ingredient_metric_format">
+        <item quantity="one">%1$s · %2$d comida</item>
+        <item quantity="other">%1$s · %2$d comidas</item>
+    </plurals>
     <string name="stats_top_ingredient_by_member_title">Ingrediente estrella por cocinero</string>
-    <string name="stats_member_top_ingredient_format">%1$s · %2$d</string>
+    <plurals name="stats_member_top_ingredient_metric_format">
+        <item quantity="one">%1$s · %2$d comida</item>
+        <item quantity="other">%1$s · %2$d comidas</item>
+    </plurals>
 
     <string name="stats_cook_award_needs_more_singular">Falta %1$d plato para entrar</string>
     <string name="stats_cook_award_needs_more_plural">Faltan %1$d platos para entrar</string>
@@ -87,11 +106,11 @@
 
     <string name="stats_empty_headline">Sin estadísticas todavía</string>
     <string name="stats_empty_subtext">Sube una comida para empezar a sumar.</string>
-    <string name="stats_error_no_active_crew">Elige una crew para ver sus stats.</string>
+    <string name="stats_error_no_active_crew">Elige una cuadrilla para ver sus estadísticas.</string>
     <string name="stats_error_not_signed_in">Tienes que iniciar sesión.</string>
-    <string name="stats_error_unauthorized">No eres miembro de esta crew.</string>
-    <string name="stats_error_crew_not_found">Crew no encontrada.</string>
-    <string name="stats_error_unavailable">No se pudieron cargar las stats. Inténtalo otra vez.</string>
+    <string name="stats_error_unauthorized">No eres miembro de esta cuadrilla.</string>
+    <string name="stats_error_crew_not_found">Cuadrilla no encontrada.</string>
+    <string name="stats_error_unavailable">No se pudieron cargar las estadísticas. Inténtalo otra vez.</string>
 
     <!-- Entrada al resumen semanal en historias (roadmap §2.4) -->
     <string name="stats_weekly_recap_cta">Ver tu semana</string>
@@ -100,4 +119,7 @@
     <string name="stats_share_award">Compartir</string>
     <!-- Pastilla de puntuación en la tarjeta del premio compartido (media ★ · número). -->
     <string name="stats_share_score_format">%1$s ★ · %2$d</string>
+
+    <!-- Reintentar la carga de stats desde el estado de error a pantalla completa. -->
+    <string name="stats_retry">Inténtalo otra vez</string>
 </resources>

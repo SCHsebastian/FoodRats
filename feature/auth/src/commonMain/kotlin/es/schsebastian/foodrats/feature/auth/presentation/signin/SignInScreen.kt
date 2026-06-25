@@ -4,18 +4,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -26,28 +29,36 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButton
-import es.schsebastian.foodrats.core.designsystem.atoms.FrButtonVariant
-import es.schsebastian.foodrats.core.designsystem.atoms.FrDivider
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
-import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
-import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
-import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
+import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
+import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
+import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.structural.FrTileDepth
+import es.schsebastian.foodrats.core.designsystem.structural.FrUnderlineField
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
+import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
@@ -55,132 +66,156 @@ import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import es.schsebastian.foodrats.feature.auth.presentation.toStringKey
 import org.koin.compose.viewmodel.koinViewModel
 
+/**
+ * Structural sign-in. A warm Iron & Ember [FrMediaFloor] under a zero-chrome scroll plane: a brand
+ * hero (logo + oversized app name + tagline), an olive/ember/streak highlight array, then a single
+ * floating [FrGlassTile] holding the email/password [FrUnderlineField]s, the primary CTA, an or-rule,
+ * the Google/Apple glass buttons and the SignIn/SignUp toggle. Errors surface in a crimson structural
+ * banner; the UGC agreement line keeps both legal links tappable. ALL SignInViewModel wiring (every
+ * intent, the SignedIn effect, the appleComingSoon notice) is preserved — only the visual layer changed.
+ */
 @Composable
-fun SignInScreen(onSignedIn: () -> Unit, vm: SignInViewModel = koinViewModel()) {
+fun SignInScreen(
+    onSignedIn: () -> Unit,
+    // The two embedded legal docs (Route.Eula / Route.CommunityGuidelines) live in `shared`, so the
+    // navigation is threaded in as callbacks — :feature:auth never depends on :shared's Route.
+    onOpenEula: () -> Unit = {},
+    onOpenGuidelines: () -> Unit = {},
+    vm: SignInViewModel = koinViewModel(),
+) {
     val state by vm.state.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         vm.effects.collect { if (it is SignInEffect.SignedIn) onSignedIn() }
     }
-    FrScreenScaffold {
-        // Subtle ember + olive radial washes — the design-system "worked example" for
-        // landing/sign-in accents. Drawn on a fixed parent so they don't scroll with the form.
-        Box(modifier = Modifier.fillMaxSize().signInBackdrop()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = Spacing.xl, vertical = Spacing.xl),
-                horizontalAlignment = Alignment.CenterHorizontally,
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        FrMediaFloor(
+            brush = StructuralColors.fieldFloor,
+            blur = StructuralBlur.Heavy,
+            scrim = FrScrimStyle.Standard,
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .statusBarsPadding()
+                .frSafeHorizontalPadding()
+                .frContentWidth(Breakpoints.formMax)
+                .padding(horizontal = Spacing.lg),
+            horizontalAlignment = Alignment.Start,
+        ) {
+            Spacer(Modifier.height(Spacing.xl))
+
+            // Brand hero — logo, oversized app name, tagline.
+            FrLogo(size = 64.dp)
+            Spacer(Modifier.height(Spacing.md))
+            FrText(
+                text = resolve(AuthStringKey.SignInTitle),
+                style = StructuralType.titleXl,
+                color = StructuralColors.foreground,
+            )
+            Spacer(Modifier.height(Spacing.xs))
+            FrText(
+                text = resolve(AuthStringKey.SignInSubtitle),
+                style = StructuralType.body,
+                color = StructuralColors.foreground.copy(alpha = 0.8f),
+            )
+
+            Spacer(Modifier.height(Spacing.lg))
+            FeatureHighlights()
+
+            Spacer(Modifier.height(Spacing.lg))
+
+            // The single auth stratum — fields + CTAs.
+            FrGlassTile(
+                depth = FrTileDepth.Near,
+                contentPadding = PaddingValues(Spacing.lg),
             ) {
-                Spacer(Modifier.height(Spacing.xl))
-                HeroBadge()
-                Spacer(Modifier.height(Spacing.lg))
-                FrText(
-                    text = resolve(AuthStringKey.SignInTitle),
-                    style = MaterialTheme.typography.displaySmall,
-                )
-                Spacer(Modifier.height(Spacing.sm))
-                FrText(
-                    text = resolve(AuthStringKey.SignInSubtitle),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                Spacer(Modifier.height(Spacing.lg))
-                FeatureHighlights()
-
-                Spacer(Modifier.height(Spacing.lg))
                 EmailPasswordForm(state = state, onIntent = vm::onIntent)
 
                 Spacer(Modifier.height(Spacing.md))
                 OrDivider()
                 Spacer(Modifier.height(Spacing.md))
-                FrButton(
+
+                FrGlassButton(
                     label = resolve(AuthStringKey.ContinueWithGoogle),
                     onClick = { vm.onIntent(SignInIntent.ContinueWithGoogle) },
-                    variant = FrButtonVariant.Secondary,
+                    tone = FrButtonTone.Glass,
                     enabled = !state.isLoading,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                    leadingIcon = FrIcons.Person,
+                    fillWidth = true,
                 )
 
-                Spacer(Modifier.height(Spacing.sm))
-                FrButton(
-                    label = resolve(AuthStringKey.ContinueWithApple),
-                    onClick = { vm.onIntent(SignInIntent.ContinueWithApple) },
-                    variant = FrButtonVariant.Secondary,
-                    enabled = !state.isLoading,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
-                )
-                if (state.appleComingSoon) {
+                // Sign-in-with-Apple is only offered where it's actually implemented (iOS today).
+                // On Android the client is still a stub, so the button is hidden rather than shown
+                // as a dead "coming soon" — see platformSupportsAppleSignIn.
+                if (platformSupportsAppleSignIn) {
                     Spacer(Modifier.height(Spacing.sm))
-                    FrText(
-                        text = resolve(AuthStringKey.ErrorAppleComingSoon),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = LocalFrSemanticColors.current.info,
+                    FrGlassButton(
+                        label = resolve(AuthStringKey.ContinueWithApple),
+                        onClick = { vm.onIntent(SignInIntent.ContinueWithApple) },
+                        tone = FrButtonTone.Glass,
+                        enabled = !state.isLoading,
+                        fillWidth = true,
                     )
+                    if (state.appleComingSoon) {
+                        Spacer(Modifier.height(Spacing.sm))
+                        FrText(
+                            text = resolve(AuthStringKey.ErrorAppleComingSoon),
+                            style = StructuralType.micro,
+                            color = LocalFrSemanticColors.current.info,
+                        )
+                    }
                 }
 
-                Spacer(Modifier.height(Spacing.sm))
+                Spacer(Modifier.height(Spacing.md))
                 ToggleModeLink(state.mode, onClick = { vm.onIntent(SignInIntent.ToggleMode) })
-
-                state.error?.let { err ->
-                    Spacer(Modifier.height(Spacing.sm))
-                    FrErrorBanner(text = resolve(err.toStringKey()))
-                }
-
-                Spacer(Modifier.weight(1f, fill = false))
-                Spacer(Modifier.height(Spacing.lg))
-                FrText(
-                    text = resolve(AuthStringKey.Footer),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
             }
+
+            state.error?.let { err ->
+                Spacer(Modifier.height(Spacing.md))
+                DangerBanner(text = resolve(err.toStringKey()))
+            }
+
+            Spacer(Modifier.height(Spacing.lg))
+            AgreementLine(onOpenEula = onOpenEula, onOpenGuidelines = onOpenGuidelines)
+
+            Spacer(Modifier.height(Spacing.sm))
+            FrText(
+                text = resolve(AuthStringKey.Footer),
+                style = StructuralType.micro,
+                color = StructuralColors.foreground.copy(alpha = 0.55f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Spacer(Modifier.navigationBarsPadding().height(Spacing.xl))
         }
     }
 }
 
-/**
- * Two soft radial gradients — ember from the top-trailing corner, olive from the bottom-leading
- * corner, each at 8% opacity over the concrete surface. Density-independent: the gradients are
- * rebuilt against the actual draw size and painted behind content.
- */
+/** A crimson structural banner reusing the inline danger-tile pattern from Profile / CrewSettings. */
 @Composable
-private fun Modifier.signInBackdrop(): Modifier {
-    val ember = MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f)
-    val olive = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
-    return this.drawWithCache {
-        val emberWash = Brush.radialGradient(
-            colors = listOf(ember, Color.Transparent),
-            center = Offset(size.width, 0f),
-            radius = size.maxDimension * 0.7f,
-        )
-        val oliveWash = Brush.radialGradient(
-            colors = listOf(olive, Color.Transparent),
-            center = Offset(0f, size.height),
-            radius = size.maxDimension * 0.7f,
-        )
-        onDrawBehind {
-            drawRect(emberWash)
-            drawRect(oliveWash)
-        }
-    }
-}
-
-@Composable
-private fun HeroBadge() {
-    Box(
+private fun DangerBanner(text: String) {
+    val semantic = LocalFrSemanticColors.current
+    Row(
         modifier = Modifier
-            .size(96.dp)
-            .clip(RoundedCornerShape(Radius.xl))
-            .background(MaterialTheme.colorScheme.primary),
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(Radius.md))
+            .background(semantic.danger.copy(alpha = 0.16f))
+            .padding(Spacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         FrIcon(
-            image = FrIcons.Camera,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimary,
-            modifier = Modifier.size(48.dp),
+            image = FrIcons.Warning,
+            tint = semantic.danger,
+            modifier = Modifier.size(Sizes.iconMd),
+        )
+        FrText(
+            text = text,
+            style = StructuralType.body,
+            color = StructuralColors.foreground,
         )
     }
 }
@@ -189,16 +224,28 @@ private fun HeroBadge() {
 private fun FeatureHighlights() {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        HighlightRow(icon = FrIcons.Camera,        label = resolve(AuthStringKey.HighlightShare))
-        HighlightRow(icon = FrIcons.Stats,         label = resolve(AuthStringKey.HighlightRate))
-        HighlightRow(icon = FrIcons.Home,          label = resolve(AuthStringKey.HighlightFeed))
+        HighlightRow(
+            icon = FrIcons.Camera,
+            tint = MaterialTheme.colorScheme.primary,
+            label = resolve(AuthStringKey.HighlightShare),
+        )
+        HighlightRow(
+            icon = FrIcons.Star,
+            tint = LocalFrSemanticColors.current.celebration,
+            label = resolve(AuthStringKey.HighlightRate),
+        )
+        HighlightRow(
+            icon = FrIcons.Flame,
+            tint = LocalFrSemanticColors.current.streakHot,
+            label = resolve(AuthStringKey.HighlightFeed),
+        )
     }
 }
 
 @Composable
-private fun HighlightRow(icon: ImageVector, label: String) {
+private fun HighlightRow(icon: ImageVector, tint: Color, label: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -206,21 +253,17 @@ private fun HighlightRow(icon: ImageVector, label: String) {
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer),
+                .size(38.dp)
+                .clip(RoundedCornerShape(Radius.sm))
+                .background(tint.copy(alpha = 0.22f)),
             contentAlignment = Alignment.Center,
         ) {
-            FrIcon(
-                image = icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.size(20.dp),
-            )
+            FrIcon(image = icon, tint = tint, modifier = Modifier.size(20.dp))
         }
         FrText(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = StructuralType.titleMd,
+            color = StructuralColors.foreground,
         )
     }
 }
@@ -232,9 +275,9 @@ private fun EmailPasswordForm(
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        FrTextField(
+        FrUnderlineField(
             value = state.email,
             onValueChange = { onIntent(SignInIntent.UpdateEmail(it)) },
             label = resolve(AuthStringKey.FieldEmail),
@@ -243,38 +286,115 @@ private fun EmailPasswordForm(
                 imeAction = ImeAction.Next,
             ),
             isError = state.emailError != null,
-            supportingText = state.emailError?.let { resolve((it as AuthError).toStringKey()) },
             enabled = !state.isLoading,
-            modifier = Modifier.fillMaxWidth(),
         )
-        FrTextField(
+        state.emailError?.let {
+            FieldError(resolve((it as AuthError).toStringKey()))
+        }
+        val isSignUp = state.mode == SignInMode.SignUp
+        FrUnderlineField(
             value = state.password,
             onValueChange = { onIntent(SignInIntent.UpdatePassword(it)) },
             label = resolve(AuthStringKey.FieldPassword),
-            visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
+                // In sign-up the keyboard advances to the confirm field; in sign-in it's the last field.
+                imeAction = if (isSignUp) ImeAction.Next else ImeAction.Done,
             ),
+            // Show/hide drives the secure-input flag: masked (BasicSecureTextField) until the eye reveals it.
+            obfuscate = !state.showPassword,
             isError = state.passwordError != null,
-            supportingText = state.passwordError?.let { resolve((it as AuthError).toStringKey()) },
             enabled = !state.isLoading,
-            modifier = Modifier.fillMaxWidth(),
+            trailingIcon = {
+                PasswordVisibilityToggle(
+                    visible = state.showPassword,
+                    enabled = !state.isLoading,
+                    onToggle = { onIntent(SignInIntent.TogglePasswordVisibility) },
+                )
+            },
         )
+        state.passwordError?.let {
+            FieldError(resolve((it as AuthError).toStringKey()))
+        }
+
+        // Confirm-password — sign-up only. Must match the password above before the account is created.
+        if (isSignUp) {
+            FrUnderlineField(
+                value = state.confirmPassword,
+                onValueChange = { onIntent(SignInIntent.UpdateConfirmPassword(it)) },
+                label = resolve(AuthStringKey.FieldConfirmPassword),
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+                obfuscate = !state.showConfirmPassword,
+                isError = state.confirmPasswordError != null,
+                enabled = !state.isLoading,
+                trailingIcon = {
+                    PasswordVisibilityToggle(
+                        visible = state.showConfirmPassword,
+                        enabled = !state.isLoading,
+                        onToggle = { onIntent(SignInIntent.ToggleConfirmPasswordVisibility) },
+                    )
+                },
+            )
+            state.confirmPasswordError?.let {
+                FieldError(resolve((it as AuthError).toStringKey()))
+            }
+        }
 
         if (state.isLoading) {
-            Box(modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm), contentAlignment = Alignment.Center) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(top = Spacing.sm),
+                contentAlignment = Alignment.Center,
+            ) {
                 FrProgressIndicator()
             }
         } else {
             val ctaKey = if (state.mode == SignInMode.SignIn) AuthStringKey.ModeSignInCta else AuthStringKey.ModeSignUpCta
-            FrButton(
+            FrGlassButton(
                 label = resolve(ctaKey),
                 onClick = { onIntent(SignInIntent.SubmitEmail) },
-                variant = FrButtonVariant.Primary,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+                tone = FrButtonTone.Primary,
+                fillWidth = true,
             )
         }
+    }
+}
+
+@Composable
+private fun FieldError(text: String) {
+    FrText(
+        text = text,
+        style = StructuralType.micro,
+        color = LocalFrSemanticColors.current.danger,
+    )
+}
+
+/**
+ * The password reveal affordance pinned to the end of a [FrUnderlineField]: an open eye while the value
+ * is shown, a slashed eye while it's masked. The 48dp box is an accessible touch target; the icon's
+ * content description flips between "Show password" / "Hide password" so TalkBack announces the action.
+ */
+@Composable
+private fun PasswordVisibilityToggle(
+    visible: Boolean,
+    enabled: Boolean,
+    onToggle: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .size(48.dp)
+            .clip(RoundedCornerShape(Radius.sm))
+            .clickable(enabled = enabled, onClick = onToggle),
+        contentAlignment = Alignment.Center,
+    ) {
+        FrIcon(
+            image = if (visible) FrIcons.Visibility else FrIcons.VisibilityOff,
+            tint = StructuralColors.foreground.copy(alpha = 0.7f),
+            contentDescription = resolve(if (visible) AuthStringKey.HidePassword else AuthStringKey.ShowPassword),
+            modifier = Modifier.size(Sizes.iconMd),
+        )
     }
 }
 
@@ -284,20 +404,24 @@ private fun OrDivider() {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        FrDivider(
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.outlineVariant,
+        Box(
+            Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(StructuralColors.dividerSoft),
         )
-        Spacer(Modifier.width(Spacing.md))
+        Spacer(Modifier.width(Spacing.sm))
         FrText(
             text = resolve(AuthStringKey.OrDivider),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = StructuralType.micro,
+            color = StructuralColors.foreground.copy(alpha = 0.6f),
         )
-        Spacer(Modifier.width(Spacing.md))
-        FrDivider(
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.outlineVariant,
+        Spacer(Modifier.width(Spacing.sm))
+        Box(
+            Modifier
+                .weight(1f)
+                .height(1.dp)
+                .background(StructuralColors.dividerSoft),
         )
     }
 }
@@ -307,10 +431,45 @@ private fun ToggleModeLink(mode: SignInMode, onClick: () -> Unit) {
     val key = if (mode == SignInMode.SignIn) AuthStringKey.ToggleToSignUp else AuthStringKey.ToggleToSignIn
     FrText(
         text = resolve(key),
-        style = MaterialTheme.typography.labelLarge,
+        style = StructuralType.body.copy(textAlign = TextAlign.Center),
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier
-            .padding(Spacing.sm)
-            .clickable(onClick = onClick),
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(Spacing.xs),
     )
+}
+
+/**
+ * UGC-compliance agreement line (UGC compliance §6): "By continuing, you accept the Terms (EULA) and
+ * the Community Guidelines." Acceptance is implicit on a successful sign-in (the ViewModel records it);
+ * this line discloses that and links the two embedded docs. A [FlowRow] of segments keeps each link
+ * individually tappable while wrapping naturally — and every fragment, including the connector, is
+ * i18n-resolved so word order is locale-correct.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AgreementLine(onOpenEula: () -> Unit, onOpenGuidelines: () -> Unit) {
+    val mutedStyle = StructuralType.body.copy(fontSize = 12.sp, lineHeight = 1.5.em)
+    val mutedColor = StructuralColors.foreground.copy(alpha = 0.6f)
+    val linkColor = MaterialTheme.colorScheme.primary
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        FrText(text = resolve(AuthStringKey.SignInAgreementPrefix), style = mutedStyle, color = mutedColor)
+        FrText(
+            text = resolve(AuthStringKey.SignInAgreementEulaLink),
+            style = mutedStyle,
+            color = linkColor,
+            modifier = Modifier.clickable(onClick = onOpenEula),
+        )
+        FrText(text = resolve(AuthStringKey.SignInAgreementConnector), style = mutedStyle, color = mutedColor)
+        FrText(
+            text = resolve(AuthStringKey.SignInAgreementGuidelinesLink),
+            style = mutedStyle,
+            color = linkColor,
+            modifier = Modifier.clickable(onClick = onOpenGuidelines),
+        )
+    }
 }

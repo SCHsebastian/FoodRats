@@ -101,29 +101,28 @@ class PublishMealUseCaseTest {
     }
 
     @Test
-    fun publish_fails_with_AlreadyPostedToday_when_slot_already_taken() = runTest {
+    fun publish_fails_with_AlreadyPostedToday_when_crew_at_daily_cap() = runTest {
         val instant = Instant.parse("2026-05-18T12:00:00Z")
         val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
-        val draft = sampleDraft().copy(day = today, slot = MealSlot.Lunch)
+        val draft = sampleDraft().copy(day = today)
         val repo = FakeMealRepository().apply {
-            markSlotTaken(crew, today, MealSlot.Lunch)
+            // The only selected crew is already at the per-crew daily cap.
+            setMealCount(crew, today, 10)
         }
         val useCase = PublishMealUseCase(repo, FixedClock(instant), TimeZone.UTC)
 
         val result = useCase(draft)
 
         assertEquals(Result.failure(MealError.Publish.AlreadyPostedToday), result)
+        assertEquals(0, repo.publishedDrafts.size)
     }
 
     @Test
-    fun publish_succeeds_when_different_slot_is_taken() = runTest {
+    fun publish_succeeds_when_crew_is_under_the_daily_cap() = runTest {
         val instant = Instant.parse("2026-05-18T12:00:00Z")
         val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
-        val draft = sampleDraft().copy(day = today, slot = MealSlot.Lunch)
-        val repo = FakeMealRepository().apply {
-            markSlotTaken(crew, today, MealSlot.Breakfast)
-            publishResultOverride = Result.success(sampleMeal().copy(day = today, slot = MealSlot.Lunch))
-        }
+        val draft = sampleDraft().copy(day = today)
+        val repo = FakeMealRepository().apply { setMealCount(crew, today, 5) }
         val useCase = PublishMealUseCase(repo, FixedClock(instant), TimeZone.UTC)
 
         val result = useCase(draft)
@@ -132,15 +131,17 @@ class PublishMealUseCaseTest {
     }
 
     @Test
-    fun publish_fails_with_NoSlotSelected_when_slot_is_null() = runTest {
+    fun publishes_with_no_slot_selected_since_slot_is_optional() = runTest {
         val instant = Instant.parse("2026-05-18T12:00:00Z")
         val today = MealDay.today(FixedClock(instant), TimeZone.UTC)
         val draft = sampleDraft().copy(day = today, slot = null)
-        val useCase = PublishMealUseCase(FakeMealRepository(), FixedClock(instant), TimeZone.UTC)
+        val repo = FakeMealRepository()
+        val useCase = PublishMealUseCase(repo, FixedClock(instant), TimeZone.UTC)
 
         val result = useCase(draft)
 
-        assertEquals(Result.failure(MealError.Publish.NoSlotSelected), result)
+        assertTrue(result is Result.Ok)
+        assertEquals(null, repo.publishedDrafts.single().slot)
     }
 
     @Test

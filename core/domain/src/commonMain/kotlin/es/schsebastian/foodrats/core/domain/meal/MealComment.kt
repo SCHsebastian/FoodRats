@@ -15,4 +15,6 @@ data class MealComment(
     val authorId: AccountId,
     val text: CommentText,
     val createdAt: Instant,
+    /** When the author last edited the text; `null` for a never-edited comment. Drives the "edited" tag. */
+    val editedAt: Instant? = null,
 )

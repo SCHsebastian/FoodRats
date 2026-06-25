@@ -11,6 +11,12 @@ sealed interface RootStage {
     data object NeedsNotificationPermission : RootStage
     data object NeedsConsent : RootStage
     data object NeedsCrew : RootStage
+    /**
+     * The user has never accepted the current EULA version (or the version was bumped since their
+     * last acceptance). Gated AFTER [NeedsConsent] so consent is always the last analytics step;
+     * the EULA gate leads directly to [Ready] once accepted (UGC compliance §6 re-acceptance).
+     */
+    data object NeedsEulaGate : RootStage
     data object Ready : RootStage
 }
 
@@ -32,6 +38,13 @@ sealed interface RootNavEffect : MviEffect {
     /** Replace the whole back stack with [route] — stage transitions, sign-out, expiry. */
     data class NavigateTopLevel(val route: Route) : RootNavEffect
 
-    /** Land on the authenticated base ([Route.Main]) then push [route] — a deep link to a leaf. */
-    data class NavigateDeepLink(val route: Route) : RootNavEffect
+    /**
+     * Land on [base] then push [route] — a deep link to a leaf, so Back returns to [base].
+     *
+     * [base] is [Route.Main] for the usual case (the user is, or is about to be, in the
+     * authenticated content). It is [Route.CrewPicker] only for an invite tapped before the user
+     * has joined any crew: backing out of the invite must return to the picker, not an empty Feed a
+     * crewless user can't escape.
+     */
+    data class NavigateDeepLink(val route: Route, val base: Route = Route.Main) : RootNavEffect
 }

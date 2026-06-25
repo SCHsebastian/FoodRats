@@ -28,6 +28,8 @@ import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
+import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
@@ -40,9 +42,10 @@ import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 @Composable
 fun FrBestPlatePodium(
     award: MealAward,
+    scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
     modifier: Modifier = Modifier,
 ) {
-    val score by animateFloatAsState(
+    val scoreAnimated by animateFloatAsState(
         targetValue = award.score.toFloat(),
         animationSpec = tween(1200, easing = FastOutSlowInEasing),
         label = "best-plate-score",
@@ -104,8 +107,16 @@ fun FrBestPlatePodium(
                 .padding(Spacing.md),
             verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
         ) {
+            // C8b — render the best-plate score in the crew's chosen style.
+            val scoreStr = formatOneDecimal(scoreAnimated)
+            val scoreRoundedInt = kotlin.math.round(scoreAnimated).toInt().coerceIn(1, 5)
+            val scoreText = when (scoreStyle) {
+                FrScoreStyle.Stars   -> resolve(StatsStringKey.BestPlateScoreFormat, scoreStr)
+                FrScoreStyle.Emoji   -> scoreToEmoji(scoreRoundedInt)
+                FrScoreStyle.Numeric -> scoreStr
+            }
             FrText(
-                text = resolve(StatsStringKey.BestPlateScoreFormat, formatOneDecimal(score)),
+                text = scoreText,
                 color = semantic.onScrim,
                 style = FrTextStyles.statNumber,
             )

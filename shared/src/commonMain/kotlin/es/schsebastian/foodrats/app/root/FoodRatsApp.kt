@@ -2,7 +2,12 @@ package es.schsebastian.foodrats.app.root
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -13,19 +18,30 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.rememberNavController
 import es.schsebastian.foodrats.app.navigation.EventsEffect
 import es.schsebastian.foodrats.app.navigation.NavGraph
 import es.schsebastian.foodrats.app.navigation.Route
 import es.schsebastian.foodrats.app.navigation.navigateTopLevel
+import es.schsebastian.foodrats.app.connectivity.ConnectivityViewModel
+import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.app.locale.ProvideAppLocale
 import es.schsebastian.foodrats.app.notifications.InAppPushBanner
+import es.schsebastian.foodrats.core.designsystem.atoms.FrOfflineBanner
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
+import es.schsebastian.foodrats.core.designsystem.theme.FrAccent
+import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalette
+import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
 import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
+import es.schsebastian.foodrats.core.domain.session.SessionRevalidator
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.notifications.domain.bus.NotificationBus
 import org.koin.compose.koinInject
@@ -35,6 +51,20 @@ import org.koin.compose.viewmodel.koinViewModel
 fun FoodRatsApp() {
     val rootController = rememberNavController()
     val rootVm: RootNavViewModel = koinViewModel()
+
+    // Live session-expiry detection (A2): on every foreground, force a token refresh so a server-side
+    // disable/delete/revocation is discovered promptly. The revalidator signs out a revoked account,
+    // which nulls SessionProvider.current → root nav routes to SignIn. A valid session is a cheap
+    // no-op; transient failures are ignored (never sign a valid user out). Without this, revocation
+    // goes unnoticed until the next ~hourly token refresh or app restart.
+    val sessionRevalidator = koinInject<SessionRevalidator>()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(sessionRevalidator, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            sessionRevalidator.revalidate()
+        }
+    }
+
     EventsEffect(events = rootVm.effects) { eff ->
         FrLog.d(FrLog.Tags.RootNav) { "app: collected effect=$eff" }
         when (eff) {
@@ -57,20 +87,25 @@ fun FoodRatsApp() {
             }
             is RootNavEffect.NavigateDeepLink -> {
                 // Mirror the NavigateTopLevel guard. A deep-link tap that arrives mid-flow must NOT
-                // clobber the user's stack: if Main is already present we're in authenticated content,
-                // so just push the leaf on top of where they are. Only when Main is absent (cold start
-                // or a stashed link resumed at Ready) do we first establish the authenticated base so
-                // Back from the leaf lands on Feed. launchSingleTop avoids stacking duplicates when the
-                // same notification is tapped twice.
-                val alreadyInAuthedContent =
-                    rootController.currentBackStack.value.any { it.destination.hasRoute<Route.Main>() }
-                if (!alreadyInAuthedContent) {
-                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → establish Main base then push ${eff.route::class.simpleName}" }
-                    rootController.navigateTopLevel(Route.Main)
-                } else {
-                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → push ${eff.route::class.simpleName} (already in authenticated content)" }
+                // clobber the user's stack: if the base is already present we're in the right context,
+                // so just push the leaf on top of where they are. Only when the base is absent (cold
+                // start or a stashed link resumed) do we first establish it so Back from the leaf lands
+                // there. launchSingleTop avoids stacking duplicates when the same notification is tapped
+                // twice. The base is Main for the usual case, CrewPicker for a pre-crew invite (so Back
+                // returns to the picker, not an empty Feed — see RootNavViewModel.emitNeedsCrew).
+                val baseAlreadyInStack = rootController.currentBackStack.value.any { entry ->
+                    when (eff.base) {
+                        Route.CrewPicker -> entry.destination.hasRoute<Route.CrewPicker>()
+                        else             -> entry.destination.hasRoute<Route.Main>()
+                    }
                 }
-                if (eff.route != Route.Main) {
+                if (!baseAlreadyInStack) {
+                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → establish ${eff.base::class.simpleName} base then push ${eff.route::class.simpleName}" }
+                    rootController.navigateTopLevel(eff.base)
+                } else {
+                    FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → push ${eff.route::class.simpleName} (base already in stack)" }
+                }
+                if (eff.route != eff.base) {
                     rootController.navigate(eff.route) { launchSingleTop = true }
                 }
             }
@@ -106,12 +141,19 @@ fun FoodRatsApp() {
     val localePort = koinInject<LocalePort>()
     val appLocale by localePort.locale.collectAsState(initial = AppLocale.System)
     val appLanguageTag = appLocale.tag.ifBlank { null }
+    // Honor the user's stored theme choice. System follows the OS; Light/Dark are explicit overrides.
     val systemDark = isSystemInDarkTheme()
     val darkTheme = when (themeMode) {
         ThemeMode.System -> systemDark
         ThemeMode.Light -> false
         ThemeMode.Dark -> true
     }
+    // Accent palette — collect the user's stored choice and map to the design-system enum.
+    // The AccentPalette→FrAccent mapping lives here in :shared (presentation), not in
+    // :core:designsystem, to keep the design system domain-free.
+    val accentPort = koinInject<AccentPalettePort>()
+    val accentPalette by accentPort.palette.collectAsState(initial = AccentPalette.Ember)
+    val frAccent = accentPalette.toFrAccent()
 
     // Foreground/in-app push surface: the OS suppresses tray notifications while the app is
     // foregrounded, so an app-level snackbar is the only place a foreground push is shown. Lives
@@ -120,7 +162,13 @@ fun FoodRatsApp() {
     val notificationBus = koinInject<NotificationBus>()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    FoodRatsTheme(darkTheme = darkTheme) {
+    // App-wide offline banner (offline-first §P1-T2): one connectivity signal surfaced at the root so
+    // it overlays every screen. `visible = !isOnline` — hidden by default (assumes online until the
+    // port reports otherwise). Message is resolved here through SharedStringKey, not in the atom.
+    val connectivityVm: ConnectivityViewModel = koinViewModel()
+    val isOnline by connectivityVm.isOnline.collectAsState()
+
+    FoodRatsTheme(darkTheme = darkTheme, accent = frAccent) {
       // Re-keys the UI subtree on the chosen language so every resolve(...) re-resolves. The root
       // NavController is created above this block, so the back stack survives a language switch.
       ProvideAppLocale(languageTag = appLanguageTag) {
@@ -138,10 +186,44 @@ fun FoodRatsApp() {
             containerColor = MaterialTheme.colorScheme.background,
             snackbarHost = { SnackbarHost(snackbarHostState) },
         ) { _ ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                NavGraph(navController = rootController)
+            // Banner above the nav content so the offline notice shows on every screen. The NavGraph
+            // takes the remaining space (weight) and keeps owning its own bars/insets.
+            Column(modifier = Modifier.fillMaxSize()) {
+                // statusBarsPadding keeps the amber bar below the system status bar (it was
+                // overlapping the clock). When the banner is shown it occupies that top inset's
+                // vertical space, so we consume the status-bars inset for the NavGraph subtree below
+                // — otherwise each screen's own Scaffold would pad the status bar a second time and
+                // leave an empty gap under the banner. When online the banner is gone (0 height) and
+                // we consume nothing, so screens inset themselves normally.
+                FrOfflineBanner(
+                    visible = !isOnline,
+                    message = resolve(SharedStringKey.OfflineBanner),
+                    modifier = Modifier.statusBarsPadding(),
+                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .then(
+                            if (!isOnline) Modifier.consumeWindowInsets(WindowInsets.statusBars)
+                            else Modifier,
+                        ),
+                ) {
+                    NavGraph(navController = rootController)
+                }
             }
         }
       }
     }
+}
+
+/**
+ * Presentation-layer mapping from the domain [AccentPalette] enum to the design-system [FrAccent]
+ * enum. Lives in `:shared` (presentation) so `:core:designsystem` stays domain-free.
+ */
+private fun AccentPalette.toFrAccent(): FrAccent = when (this) {
+    AccentPalette.Ember -> FrAccent.Ember
+    AccentPalette.Moss  -> FrAccent.Moss
+    AccentPalette.Rust  -> FrAccent.Rust
+    AccentPalette.Steel -> FrAccent.Steel
+    AccentPalette.Berry -> FrAccent.Berry
 }

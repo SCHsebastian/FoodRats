@@ -14,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
+import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -24,6 +26,7 @@ import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 @Composable
 fun FrRoastCard(
     award: MemberAverage,
+    scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
     modifier: Modifier = Modifier,
 ) {
     val semantic = LocalFrSemanticColors.current
@@ -54,11 +57,16 @@ fun FrRoastCard(
                 style = MaterialTheme.typography.titleMedium,
                 color = semantic.onWarning,
             )
+            // C8b — render the average in the crew's chosen score style.
+            val avgStr = formatOneDecimal(award.averageScore.toFloat())
+            val avgRoundedInt = kotlin.math.round(award.averageScore).toInt().coerceIn(1, 5)
+            val metricText = when (scoreStyle) {
+                FrScoreStyle.Stars   -> resolve(StatsStringKey.MostCriticizedMetricFormat, avgStr)
+                FrScoreStyle.Emoji   -> resolve(StatsStringKey.MostCriticizedMetricFormatGlyphFree, scoreToEmoji(avgRoundedInt))
+                FrScoreStyle.Numeric -> resolve(StatsStringKey.MostCriticizedMetricFormatGlyphFree, avgStr)
+            }
             FrText(
-                text = resolve(
-                    StatsStringKey.MostCriticizedMetricFormat,
-                    formatOneDecimal(award.averageScore.toFloat()),
-                ),
+                text = metricText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = semantic.onWarning.copy(alpha = 0.9f),
             )

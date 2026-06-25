@@ -1,14 +1,11 @@
 package es.schsebastian.foodrats.feature.feed.presentation.detail
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.calculatePan
-import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,23 +14,28 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,54 +44,93 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
-import es.schsebastian.foodrats.core.designsystem.atoms.FrAvatar
-import es.schsebastian.foodrats.core.designsystem.atoms.FrChip
+import coil3.compose.rememberAsyncImagePainter
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
-import es.schsebastian.foodrats.core.designsystem.atoms.FrIconButton
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
-import es.schsebastian.foodrats.core.designsystem.atoms.FrTextField
-import es.schsebastian.foodrats.core.designsystem.atoms.FrGlassPill
-import es.schsebastian.foodrats.core.designsystem.atoms.FrCard
-import es.schsebastian.foodrats.core.designsystem.image.rememberThumbHashPainter
-import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
-import es.schsebastian.foodrats.core.designsystem.molecules.FrEmptyState
-import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
+import es.schsebastian.foodrats.core.designsystem.molecules.FrReportSheet
+import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.molecules.FrStarRatingPicker
 import es.schsebastian.foodrats.core.designsystem.molecules.FrVoteBars
-import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
-import es.schsebastian.foodrats.core.designsystem.theme.FrTextStyles
-import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
-import es.schsebastian.foodrats.core.designsystem.tokens.Motion
+import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
+import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
+import es.schsebastian.foodrats.core.designsystem.structural.FrAvatarRing
+import es.schsebastian.foodrats.core.designsystem.structural.FrBarTrack
+import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrChipTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
+import es.schsebastian.foodrats.core.designsystem.structural.FrFloorTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassAvatar
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassCircleButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
+import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
+import es.schsebastian.foodrats.core.designsystem.structural.FrMetric
+import es.schsebastian.foodrats.core.designsystem.structural.FrMetricSize
+import es.schsebastian.foodrats.core.designsystem.structural.FrMicroRow
+import es.schsebastian.foodrats.core.designsystem.structural.FrScoreDisc
+import es.schsebastian.foodrats.core.designsystem.structural.FrScoreTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralChip
+import es.schsebastian.foodrats.core.designsystem.structural.FrTileDepth
+import es.schsebastian.foodrats.core.designsystem.structural.FrUnderlineField
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
+import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
-import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
+import es.schsebastian.foodrats.core.i18n.resolvePlural
+import es.schsebastian.foodrats.feature.feed.i18n.FeedPluralKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
-import es.schsebastian.foodrats.feature.feed.presentation.components.FrCommentRow
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrLocationMap
+import es.schsebastian.foodrats.feature.feed.presentation.components.MealSlotUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.RaterVoteUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.RelativeTimestamp
+import es.schsebastian.foodrats.feature.feed.presentation.components.stablePlateRequest
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
-import kotlinx.coroutines.launch
+import kotlin.math.round
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
 
+/**
+ * Structural meal detail. The plate IS the floor — a sharp, fixed, edge-to-edge [FrMediaFloor] that the
+ * zero-chrome content plane scrolls over: a tall transparent head where the photo shows through and the
+ * dish title floats at its foot, then floating frosted strata (score story, your vote, voters, comments)
+ * over a darkened continuation of the same plate. Floating glass chrome (back / share / report / block /
+ * delete) hovers over the photo; the comment composer is a glass pill pinned to the bottom.
+ *
+ * ALL ViewModel wiring (rate / share / report / block / delete / comment intents + every dialog, sheet
+ * and toast) is preserved verbatim — only the visual layer changed.
+ */
 @Composable
 fun MealDetailScreen(
     mealId: String,
@@ -99,22 +140,38 @@ fun MealDetailScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     var showDeleteMealDialog by remember { mutableStateOf(false) }
+    // UGC compliance §5 — block-confirmation dialog.
+    // [pendingBlockAccountId] carries the raw account-id string of whoever is about to be blocked.
+    // [pendingBlockIsMealAuthor] distinguishes the two intents: true → BlockAuthor (meal-level,
+    // dispatch removes meal content reactively), false → BlockCommentAuthor(id) (comment-level).
+    var pendingBlockAccountId by remember { mutableStateOf<String?>(null) }
+    var pendingBlockIsMealAuthor by remember { mutableStateOf(false) }
     LaunchedEffect(state.mealDeleted) { if (state.mealDeleted) onBack() }
 
-    FrScreenScaffold {
+    Box(modifier = Modifier.fillMaxSize()) {
+        val error = state.error
         when {
-            state.isLoading -> CenteredState(onBack) { FrProgressIndicator() }
-            state.error != null -> {
-                val err: FeedError = state.error!!
-                CenteredState(onBack) { FrErrorBanner(text = resolve(err.toStringKey())) }
-            }
+            state.isLoading -> DetailLoadingSkeleton(onBack)
+            error != null ->
+                CenteredState(onBack) { FrText(text = resolve(error.toStringKey()), color = StructuralColors.foreground) }
             state.notFound || state.meal == null ->
-                CenteredState(onBack) { FrText(text = resolve(FeedStringKey.DetailNotFound)) }
+                CenteredState(onBack) { FrText(text = resolve(FeedStringKey.DetailNotFound), color = StructuralColors.foreground) }
             else -> MealDetailBody(
                 state = state,
                 onIntent = vm::onIntent,
                 onBack = onBack,
                 onRequestDeleteMeal = { showDeleteMealDialog = true },
+                // UGC §5 — set pending block target; the confirm dialog is rendered at screen level so
+                // it overlays the full surface cleanly. pendingBlockIsMealAuthor selects the correct
+                // intent on confirm so BlockAuthor and BlockCommentAuthor both reach their VM paths.
+                onRequestBlockAuthor = {
+                    pendingBlockIsMealAuthor = true
+                    pendingBlockAccountId = state.meal?.authorId
+                },
+                onRequestBlockCommentAuthor = { authorId ->
+                    pendingBlockIsMealAuthor = false
+                    pendingBlockAccountId = authorId
+                },
             )
         }
     }
@@ -145,91 +202,369 @@ fun MealDetailScreen(
             destructive = true,
         )
     }
-}
 
-/** Transient states (loading / error / not-found) still need a back affordance. */
-@Composable
-private fun CenteredState(onBack: () -> Unit, content: @Composable () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().padding(Spacing.md)) {
-        FrGlassPill(
-            icon = FrIcons.Back,
-            onClick = onBack,
-            contentDescription = resolve(FeedStringKey.DetailBackCta),
-            modifier = Modifier.align(Alignment.TopStart),
+    // UGC compliance §5 — block confirmation dialog (author or comment author).
+    pendingBlockAccountId?.let { accountId ->
+        FrConfirmDialog(
+            title = resolve(FeedStringKey.BlockConfirmTitle),
+            message = resolve(FeedStringKey.BlockConfirmBody),
+            confirmLabel = resolve(FeedStringKey.BlockConfirmCta),
+            dismissLabel = resolve(FeedStringKey.DeleteCancelCta),
+            onConfirm = {
+                pendingBlockAccountId = null
+                val intent = if (pendingBlockIsMealAuthor) {
+                    MealDetailIntent.BlockAuthor
+                } else {
+                    MealDetailIntent.BlockCommentAuthor(accountId)
+                }
+                vm.onIntent(intent)
+            },
+            onDismiss = { pendingBlockAccountId = null },
+            destructive = true,
         )
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { content() }
+    }
+
+    // Report sheet (UGC compliance §4).
+    state.reportTarget?.let { target ->
+        val title = resolve(
+            when (target) {
+                ReportTargetUi.Author       -> FeedStringKey.ReportUserCta
+                is ReportTargetUi.Comment   -> FeedStringKey.ReportCommentCta
+                ReportTargetUi.Meal         -> FeedStringKey.ReportMealCta
+            },
+        )
+        val submitLabel = resolve(
+            when (target) {
+                ReportTargetUi.Author       -> FeedStringKey.ReportSubmitUser
+                is ReportTargetUi.Comment   -> FeedStringKey.ReportSubmitComment
+                ReportTargetUi.Meal         -> FeedStringKey.ReportSubmitMeal
+            },
+        )
+        FrReportSheet(
+            title = title,
+            reasonLabels = reportReasonLabels(),
+            submitLabel = submitLabel,
+            cancelLabel = resolve(FeedStringKey.DeleteCancelCta),
+            submitting = state.reportSubmitting,
+            onSubmit = { reason -> vm.onIntent(MealDetailIntent.SubmitReport(reason)) },
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissReport) },
+        )
+    }
+
+    // Report-accepted confirmation toast.
+    if (state.reportSuccess) {
+        ShareOutcomeToast(
+            message = resolve(FeedStringKey.ReportSuccess),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissReportSuccess) },
+        )
+    }
+    // Report / block failure toast.
+    state.reportError?.let { err ->
+        ShareOutcomeToast(
+            message = resolve(err.toStringKey()),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissReport) },
+        )
+    }
+    state.blockError?.let { err ->
+        ShareOutcomeToast(
+            message = resolve(err.toStringKey()),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissError) },
+        )
+    }
+    // Block-success toast (UGC §5).
+    if (state.blockSuccess) {
+        ShareOutcomeToast(
+            message = resolve(FeedStringKey.BlockSuccess),
+            onDismiss = { vm.onIntent(MealDetailIntent.DismissBlockSuccess) },
+        )
     }
 }
 
-@OptIn(kotlin.time.ExperimentalTime::class)
+/** Resolves the six report-reason labels for [FrReportSheet] (UGC compliance §4). */
+@Composable
+private fun reportReasonLabels(): Map<FrReportReasonOption, String> = mapOf(
+    FrReportReasonOption.SPAM       to resolve(FeedStringKey.ReportReasonSpam),
+    FrReportReasonOption.HARASSMENT to resolve(FeedStringKey.ReportReasonHarassment),
+    FrReportReasonOption.HATE       to resolve(FeedStringKey.ReportReasonHate),
+    FrReportReasonOption.SEXUAL     to resolve(FeedStringKey.ReportReasonSexual),
+    FrReportReasonOption.VIOLENCE   to resolve(FeedStringKey.ReportReasonViolence),
+    FrReportReasonOption.OTHER      to resolve(FeedStringKey.ReportReasonOther),
+)
+
+/** Space reserved so the last content clears the sticky composer. */
+private val COMPOSER_CLEARANCE = Sizes.touchTarget + Spacing.xl
+
+/**
+ * The plate header fills ~2/3 of the screen height so the meal photo dominates the detail view;
+ * the title floats at its foot and the rest scrolls below. Computed from the live window height
+ * (KMP-safe via [LocalWindowInfo]); falls back to a sane fixed height before the size is known.
+ */
+private const val HEAD_HEIGHT_FRACTION = 0.66f
+private val HEAD_HEIGHT_FALLBACK = 340.dp
+
+@Composable
+private fun rememberHeadHeight(): Dp {
+    val containerHeightPx = LocalWindowInfo.current.containerSize.height
+    val density = LocalDensity.current
+    return remember(containerHeightPx, density) {
+        if (containerHeightPx <= 0) {
+            HEAD_HEIGHT_FALLBACK
+        } else {
+            with(density) { (containerHeightPx * HEAD_HEIGHT_FRACTION).toDp() }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Transient states (loading / error / not-found) — still need a back affordance + a floor.
+// ----------------------------------------------------------------------------------------------
+
+@Composable
+private fun CenteredState(onBack: () -> Unit, content: @Composable () -> Unit) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        FrMediaFloorBrush()
+        Box(modifier = Modifier.fillMaxSize().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = Alignment.Center) { content() }
+        FrGlassCircleButton(
+            icon = FrIcons.Back,
+            onClick = onBack,
+            contentDescription = resolve(FeedStringKey.DetailBackCta),
+            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
+        )
+    }
+}
+
+/** Loading placeholder: a frosted floor + a back pill + a couple of shimmer strata. */
+@Composable
+private fun DetailLoadingSkeleton(onBack: () -> Unit) {
+    val headHeight = rememberHeadHeight()
+    Box(modifier = Modifier.fillMaxSize()) {
+        FrMediaFloorBrush()
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .frSafeHorizontalPadding()
+                .padding(horizontal = Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        ) {
+            Spacer(Modifier.height(headHeight - Spacing.xl))
+            FrShimmerBox(modifier = Modifier.fillMaxWidth(0.6f).height(34.dp), shape = RoundedCornerShape(Radius.sm))
+            FrShimmerBox(modifier = Modifier.fillMaxWidth().height(120.dp), shape = RoundedCornerShape(Radius.lg))
+            FrShimmerBox(modifier = Modifier.fillMaxWidth().height(72.dp), shape = RoundedCornerShape(Radius.lg))
+        }
+        FrGlassCircleButton(
+            icon = FrIcons.Back,
+            onClick = onBack,
+            contentDescription = resolve(FeedStringKey.DetailBackCta),
+            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
+        )
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Body
+// ----------------------------------------------------------------------------------------------
+
 @Composable
 private fun MealDetailBody(
     state: MealDetailState,
     onIntent: (MealDetailIntent) -> Unit,
     onBack: () -> Unit,
     onRequestDeleteMeal: () -> Unit,
+    onRequestBlockAuthor: () -> Unit = {},
+    onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     val meal = state.meal ?: return
+    val headHeight = rememberHeadHeight()
     var pendingDeleteCommentId by remember { mutableStateOf<MealCommentId?>(null) }
+    // Full-screen zoomable photo viewer (opened by tapping the header plate).
+    var showPhotoViewer by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState()),
-        ) {
-            PhotoHero(
-                meal = meal,
-                canDelete = state.canDeleteMeal,
-                deleteEnabled = !state.isDeletingMeal,
-                isPreparingShare = state.isPreparingShare,
-                onBack = onBack,
-                onDelete = onRequestDeleteMeal,
-                onShare = { onIntent(MealDetailIntent.ShareTapped) },
-            )
+        // Z0 — a solid, warm-concrete page floor. The plate is NO LONGER the full-screen floor: it's
+        // bounded to the header at the top of the scrolling plane (below), so everything under the
+        // header sits on an opaque, comfortable surface instead of a darkened full-bleed photo.
+        Box(Modifier.fillMaxSize().background(StructuralColors.stageFloor))
 
+        // Z2 — scrolling content plane.
+        Column(
+            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+        ) {
+            // Header: the plate, bounded to the top. The dish title floats at its foot over a scrim.
+            // clipToBounds() is essential: FrMediaFloor over-scales the image (.scale(1.06f)), which
+            // would otherwise bleed the bright bottom edge of the photo down over the description below.
+            // Tapping the plate opens the full-screen zoomable viewer (only when there's a real photo).
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(headHeight)
+                    .clipToBounds()
+                    .then(
+                        if (meal.photoUrl.isNotBlank()) {
+                            Modifier.clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClickLabel = resolve(FeedStringKey.MealPhotoOpenCd),
+                                onClick = { showPhotoViewer = true },
+                            )
+                        } else {
+                            Modifier
+                        },
+                    ),
+            ) {
+                // The plate, confined to the header. Standard scrim keeps it crisp; OnMedia keeps the
+                // dark wash in light theme so the white title/author stay legible over it.
+                if (meal.photoUrl.isNotBlank()) {
+                    FrMediaFloor(
+                        painter = rememberAsyncImagePainter(model = stablePlateRequest(meal.photoUrl, meal.plateCacheKey)),
+                        blur = StructuralBlur.None,
+                        dim = 0.18f,
+                        scrim = FrScrimStyle.Standard,
+                        tone = FrFloorTone.OnMedia,
+                    )
+                } else {
+                    FrMediaFloor(brush = dishBrushFor(meal.slot), blur = StructuralBlur.Soft, dim = 0.3f, tone = FrFloorTone.OnMedia)
+                }
+                // Bottom-anchored gradient scrim so the white title/author stay readable over a
+                // bright plate (the Standard media-floor scrim is transparent at the head foot).
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(headHeight * 0.55f)
+                        .align(Alignment.BottomCenter)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                            ),
+                        ),
+                )
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
+                    verticalArrangement = Arrangement.Bottom,
+                ) {
+                    // Slot chip — only when tagged (slot is optional).
+                    meal.slot?.let { slot ->
+                        FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
+                        Spacer(Modifier.height(Spacing.sm))
+                    }
+                    FrText(
+                        text = meal.dishName,
+                        style = StructuralType.titleXl,
+                        color = StructuralColors.onMedia,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Spacer(Modifier.height(Spacing.sm))
+                    AuthorRow(meal)
+                }
+            }
+
+            // Content plane on the solid floor — a top gap clears the photo header so the description
+            // sits comfortably on the floor instead of crowding the photo's bottom edge.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = Spacing.md, vertical = Spacing.lg),
+                    .frSafeHorizontalPadding()
+                    .frContentWidth(Breakpoints.contentMax)
+                    .padding(horizontal = Spacing.lg)
+                    .padding(top = Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
             ) {
-                AuthorRow(meal)
-
-                Column(verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                    FrText(text = meal.dishName, style = MaterialTheme.typography.headlineMedium)
-                    if (meal.description.isNotBlank()) {
-                        FrText(text = meal.description, style = MaterialTheme.typography.bodyLarge)
-                    }
+                if (meal.description.isNotBlank()) {
+                    FrText(
+                        text = meal.description,
+                        style = StructuralType.body,
+                        color = StructuralColors.foreground.copy(alpha = 0.92f),
+                    )
                 }
 
                 if (meal.ingredients.isNotEmpty()) IngredientChips(meal.ingredients)
 
                 LocationSection(meal)
 
-                ScoreStoryCard(meal)
+                ScoreStoryCard(meal, state.scoreStyle)
 
-                RatingSection(meal = meal, pendingRate = state.pendingRate, onIntent = onIntent)
+                RatingSection(
+                    meal = meal,
+                    pendingRate = state.pendingRate,
+                    scoreStyle = state.scoreStyle,
+                    voteEditMode = state.voteEditMode,
+                    showChangeVoteConfirm = state.showChangeVoteConfirm,
+                    onIntent = onIntent,
+                )
 
-                if (meal.votes.isNotEmpty()) VotersCard(meal)
+                if (meal.votes.isNotEmpty()) VotersCard(meal, state.scoreStyle)
 
                 CommentsSection(
                     state = state,
                     onRequestDeleteComment = { pendingDeleteCommentId = it },
+                    onRequestBlockCommentAuthor = onRequestBlockCommentAuthor,
+                    onIntent = onIntent,
                 )
 
-                // Spacer so the last content clears the sticky composer.
-                Spacer(Modifier.height(Sizes.touchTarget + Spacing.lg))
+                Spacer(Modifier.height(COMPOSER_CLEARANCE))
             }
         }
 
-        StickyCommentComposer(
+        // Floating chrome over the plate (fixed; always tappable).
+        FrGlassCircleButton(
+            icon = FrIcons.Back,
+            onClick = onBack,
+            contentDescription = resolve(FeedStringKey.DetailBackCta),
+            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
+        )
+        Row(
+            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        ) {
+            if (state.isPreparingShare) {
+                FrProgressIndicator()
+            } else {
+                FrGlassCircleButton(
+                    icon = FrIcons.Share,
+                    onClick = { onIntent(MealDetailIntent.ShareTapped) },
+                    contentDescription = resolve(FeedStringKey.ShareMeal),
+                )
+            }
+            // Report/block the author (UGC §4/§5). Hidden on your own meal + while blind voting masks it.
+            if (state.canModerateMeal && !meal.authorMasked) {
+                FrGlassCircleButton(
+                    icon = FrIcons.Flag,
+                    onClick = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Meal)) },
+                    contentDescription = resolve(FeedStringKey.ReportMealCta),
+                )
+                FrGlassCircleButton(
+                    icon = FrIcons.Block,
+                    onClick = onRequestBlockAuthor,
+                    contentDescription = resolve(FeedStringKey.BlockAuthorCta),
+                )
+            }
+            if (state.canDeleteMeal && !state.isDeletingMeal) {
+                FrGlassCircleButton(
+                    icon = FrIcons.Delete,
+                    onClick = onRequestDeleteMeal,
+                    contentDescription = resolve(FeedStringKey.DeleteMealCta),
+                    danger = true,
+                )
+            }
+        }
+
+        // Sticky comment composer — a glass pill pinned to the bottom; rises with the IME.
+        StructuralCommentComposer(
             value = state.commentInput,
             enabled = !state.isPostingComment,
             sendEnabled = !state.isPostingComment && state.commentInput.isNotBlank(),
             onChange = { onIntent(MealDetailIntent.CommentInputChanged(it)) },
             onSend = { onIntent(MealDetailIntent.PostComment) },
             modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+
+    if (showPhotoViewer && meal.photoUrl.isNotBlank()) {
+        MealPhotoViewer(
+            photoUrl = meal.photoUrl,
+            cacheKey = meal.plateCacheKey,
+            onDismiss = { showPhotoViewer = false },
         )
     }
 
@@ -248,162 +583,45 @@ private fun MealDetailBody(
     }
 }
 
-@Composable
-private fun PhotoHero(
-    meal: FeedMealUi,
-    canDelete: Boolean,
-    deleteEnabled: Boolean,
-    isPreparingShare: Boolean,
-    onBack: () -> Unit,
-    onDelete: () -> Unit,
-    onShare: () -> Unit,
-) {
-    val semantic = LocalFrSemanticColors.current
-    // Pinch-to-zoom that snaps back on release. Two-finger only, so single-finger drags still
-    // scroll the detail page; on the last finger up the scale + pan spring back to rest.
-    val scale = remember { Animatable(1f) }
-    val offset = remember { Animatable(Offset.Zero, Offset.VectorConverter) }
-    val scope = rememberCoroutineScope()
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f)
-            .clipToBounds(),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(Unit) {
-                    awaitEachGesture {
-                        awaitFirstDown(requireUnconsumed = false)
-                        do {
-                            val event = awaitPointerEvent()
-                            if (event.changes.count { it.pressed } >= 2) {
-                                val zoom = event.calculateZoom()
-                                val pan = event.calculatePan()
-                                scope.launch { scale.snapTo((scale.value * zoom).coerceIn(1f, 4f)) }
-                                scope.launch { offset.snapTo(offset.value + pan) }
-                                event.changes.forEach { if (it.positionChanged()) it.consume() }
-                            }
-                        } while (event.changes.any { it.pressed })
-                        scope.launch { scale.animateTo(1f, spring()) }
-                        scope.launch { offset.animateTo(Offset.Zero, spring()) }
-                    }
-                }
-                .graphicsLayer {
-                    scaleX = scale.value
-                    scaleY = scale.value
-                    translationX = offset.value.x
-                    translationY = offset.value.y
-                },
-        ) {
-            if (meal.photoUrl.isNotBlank()) {
-                // Detail always loads the FULL plate; the ThumbHash blur is the placeholder while
-                // it streams in (the feed thumbnail is already cached, so the hand-off is smooth).
-                val placeholder = rememberThumbHashPainter(meal.thumbHash)
-                AsyncImage(
-                    model = meal.photoUrl,
-                    contentDescription = meal.dishName,
-                    contentScale = ContentScale.Crop,
-                    placeholder = placeholder,
-                    error = placeholder,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant))
-            }
-        }
-        // Top dim — keeps the back/delete pills legible.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.32f)
-                .align(Alignment.TopCenter)
-                .background(Brush.verticalGradient(listOf(semantic.scrim.copy(alpha = 0.45f), Color.Transparent))),
-        )
-        // Bottom protection gradient — single black→transparent wash.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.45f)
-                .align(Alignment.BottomCenter)
-                .background(Brush.verticalGradient(listOf(Color.Transparent, semantic.scrim.copy(alpha = 0.62f)))),
-        )
-        FrGlassPill(
-            icon = FrIcons.Back,
-            onClick = onBack,
-            contentDescription = resolve(FeedStringKey.DetailBackCta),
-            modifier = Modifier.align(Alignment.TopStart).padding(Spacing.md),
-        )
-        Row(
-            modifier = Modifier.align(Alignment.TopEnd).padding(Spacing.md),
-            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-        ) {
-            if (isPreparingShare) {
-                FrProgressIndicator()
-            } else {
-                FrGlassPill(
-                    icon = FrIcons.Share,
-                    onClick = onShare,
-                    contentDescription = resolve(FeedStringKey.ShareMeal),
-                )
-            }
-            if (canDelete && deleteEnabled) {
-                FrGlassPill(
-                    icon = FrIcons.Delete,
-                    onClick = onDelete,
-                    contentDescription = resolve(FeedStringKey.DeleteMealCta),
-                )
-            }
-        }
-    }
-}
-
-/** Tappable mini-map; FrLocationMap opens the native maps app (Apple/Google) on tap. */
-@Composable
-private fun LocationSection(meal: FeedMealUi) {
-    val lat = meal.latitude
-    val lon = meal.longitude
-    if (lat == null || lon == null) return
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(resolve(FeedStringKey.LocationLabel))
-        val mapLabel = resolve(FeedStringKey.LocationMapCta)
-        FrLocationMap(
-            latitude = lat,
-            longitude = lon,
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(2.5f)
-                .clip(RoundedCornerShape(Radius.md))
-                .semantics {
-                    contentDescription = mapLabel
-                    role = Role.Button
-                },
-        )
-    }
-}
+// ----------------------------------------------------------------------------------------------
+// Head — author
+// ----------------------------------------------------------------------------------------------
 
 @Composable
 private fun AuthorRow(meal: FeedMealUi) {
-    // Blind voting: while the crew hides who cooked until the viewer rates, the detail screen
-    // must mask the author exactly like the feed row — name → "Hidden until you rate", no avatar.
+    // Blind voting: mask the author exactly like the feed — name → "Hidden until you rate", no avatar.
     val authorLabel = if (meal.authorMasked) resolve(FeedStringKey.BlindAuthor) else meal.authorName
+    val time = resolve(
+        FeedStringKey.TimeOfDay,
+        meal.publishedHour.toString().padStart(2, '0'),
+        meal.publishedMinute.toString().padStart(2, '0'),
+    )
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        // decorative — the adjacent author-name label carries the identity for screen readers.
-        FrAvatar(
+        FrGlassAvatar(
             initials = if (meal.authorMasked) "" else meal.authorName,
-            imageUrl = if (meal.authorMasked) null else meal.authorAvatarUrl,
+            image = if (meal.authorMasked) null else meal.authorAvatarUrl?.let { rememberAsyncImagePainter(it) },
+            ring = FrAvatarRing.Rust,
+            size = 40.dp,
         )
-        Column(modifier = Modifier.weight(1f)) {
-            FrText(text = authorLabel, style = MaterialTheme.typography.titleMedium)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xxs),
+        ) {
             FrText(
-                text = meal.dayEmote,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = authorLabel,
+                style = StructuralType.titleMd,
+                color = StructuralColors.onMedia,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            FrMicroRow(
+                // Slot is optional — drop it from the micro row when the author tagged none.
+                items = listOfNotNull(time, meal.slot?.let { resolve(it.labelKey()).uppercase() }),
+                color = StructuralColors.onMedia.copy(alpha = 0.72f),
             )
         }
     }
@@ -412,36 +630,86 @@ private fun AuthorRow(meal: FeedMealUi) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IngredientChips(ingredients: List<String>) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        ingredients.forEach { name -> FrChip(label = name, onClick = {}) }
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        ingredients.forEach { name -> FrStructuralChip(label = name, compact = true) }
     }
 }
 
+/** Tappable mini-map; [FrLocationMap] opens the native maps app on tap. */
 @Composable
-private fun ScoreStoryCard(meal: FeedMealUi) {
+private fun LocationSection(meal: FeedMealUi) {
+    val lat = meal.latitude
+    val lon = meal.longitude
+    if (lat == null || lon == null) return
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        FrEyebrow(text = resolve(FeedStringKey.LocationLabel).uppercase(), color = StructuralColors.foreground.copy(alpha = 0.85f))
+        val mapLabel = resolve(FeedStringKey.LocationMapCta)
+        FrLocationMap(
+            latitude = lat,
+            longitude = lon,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2.5f)
+                .clip(RoundedCornerShape(Radius.lg))
+                .semantics {
+                    contentDescription = mapLabel
+                    role = Role.Button
+                },
+        )
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Score story — the oversized metric
+// ----------------------------------------------------------------------------------------------
+
+@Composable
+private fun ScoreStoryCard(meal: FeedMealUi, scoreStyle: FrScoreStyle) {
     val avg = meal.averageScore
     if (avg == null || meal.ratingCount <= 0) {
-        FrText(
-            text = resolve(FeedStringKey.NoVotesYet),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.fillMaxWidth()) {
+            FrEyebrow(text = resolve(FeedStringKey.CrewScoreLabel).uppercase())
+            Spacer(Modifier.height(Spacing.sm))
+            FrText(
+                text = resolve(FeedStringKey.NoVotesYet),
+                style = StructuralType.body,
+                color = StructuralColors.foreground.copy(alpha = 0.7f),
+            )
+        }
         return
     }
-    val avgRounded = (kotlin.math.round(avg * 10) / 10.0).toString()
-    FrCard(modifier = Modifier.fillMaxWidth()) {
-        SectionEyebrow(resolve(FeedStringKey.CrewScoreLabel))
+    val avgRounded = (round(avg * 10) / 10.0).toString()
+    val avgRoundedInt = round(avg).toInt().coerceIn(1, 5)
+    // C8b: the headline number adapts to the crew's score style.
+    val headlineScore = when (scoreStyle) {
+        FrScoreStyle.Stars   -> avgRounded
+        FrScoreStyle.Emoji   -> scoreToEmoji(avgRoundedInt)
+        FrScoreStyle.Numeric -> avgRounded
+    }
+    val captionText = when (scoreStyle) {
+        FrScoreStyle.Stars   -> resolve(FeedStringKey.RatingSummary, avgRounded, meal.ratingCount)
+        FrScoreStyle.Emoji   -> resolvePlural(FeedPluralKey.ScoreSummaryVotes, meal.ratingCount, scoreToEmoji(avgRoundedInt), meal.ratingCount)
+        FrScoreStyle.Numeric -> resolvePlural(FeedPluralKey.ScoreSummaryVotes, meal.ratingCount, avgRounded, meal.ratingCount)
+    }
+    FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.fillMaxWidth()) {
+        FrEyebrow(text = resolve(FeedStringKey.CrewScoreLabel).uppercase())
         Spacer(Modifier.height(Spacing.xs))
-        FrText(text = avgRounded, style = FrTextStyles.statNumberLarge, color = MaterialTheme.colorScheme.primary)
+        FrMetric(value = headlineScore, size = FrMetricSize.Xl, color = MaterialTheme.colorScheme.primary)
         FrText(
-            text = resolve(FeedStringKey.RatingSummary, avgRounded, meal.ratingCount),
-            style = FrTextStyles.statNumberSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = captionText,
+            style = StructuralType.micro,
+            color = StructuralColors.foreground.copy(alpha = 0.72f),
         )
         if (meal.votes.isNotEmpty()) {
-            Spacer(Modifier.height(Spacing.sm))
+            Spacer(Modifier.height(Spacing.md))
+            val voteHistogram = remember(meal.votes) {
+                meal.votes.groupingBy { it.score.coerceIn(Score.MIN, Score.MAX) }.eachCount()
+            }
             FrVoteBars(
-                votes = meal.votes.groupingBy { it.score.coerceIn(Score.MIN, Score.MAX) }.eachCount(),
+                votes = voteHistogram,
                 maxScore = Score.MAX,
                 hotThreshold = Score.MAX - 1,
                 modifier = Modifier.fillMaxWidth(),
@@ -450,138 +718,489 @@ private fun ScoreStoryCard(meal: FeedMealUi) {
     }
 }
 
+// ----------------------------------------------------------------------------------------------
+// Your vote
+// ----------------------------------------------------------------------------------------------
+
 @Composable
-private fun RatingSection(meal: FeedMealUi, pendingRate: Boolean, onIntent: (MealDetailIntent) -> Unit) {
-    val celebration = LocalFrSemanticColors.current.celebration
-    // Captured while still on the picker stage; stays null until the viewer votes this session.
-    val initialRating = remember { meal.viewerRating }
+private fun RatingSection(
+    meal: FeedMealUi,
+    pendingRate: Boolean,
+    scoreStyle: FrScoreStyle,
+    voteEditMode: Boolean,
+    showChangeVoteConfirm: Boolean,
+    onIntent: (MealDetailIntent) -> Unit,
+) {
     when {
-        meal.viewerRating != null -> {
-            val justVoted = initialRating == null
-            val pop = remember { Animatable(1f) }
-            LaunchedEffect(Unit) {
-                if (justVoted) {
-                    pop.snapTo(0.7f)
-                    pop.animateTo(1f, animationSpec = tween(Motion.medium, easing = Motion.Emphasized))
+        // Already voted and NOT actively changing → the locked tile, plus the one-time-only
+        // "Change my vote" affordance while [FeedMealUi.canChangeVote] (voted, not yet edited,
+        // window open). Once the change is used the affordance is gone and the tile is final.
+        meal.viewerRating != null && !voteEditMode -> {
+            val voteText = when (scoreStyle) {
+                FrScoreStyle.Stars   -> resolve(FeedStringKey.YourVote, meal.viewerRating)
+                FrScoreStyle.Emoji   -> scoreToEmoji(meal.viewerRating.coerceIn(1, 5))
+                FrScoreStyle.Numeric -> meal.viewerRating.toString()
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FrEyebrow(text = resolve(FeedStringKey.YourVoteLockedEyebrow).uppercase(), color = StructuralColors.foreground.copy(alpha = 0.85f))
+                FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                        if (scoreStyle == FrScoreStyle.Stars) {
+                            FrIcon(image = FrIcons.Star, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(Sizes.iconMd))
+                        }
+                        FrText(text = voteText, style = StructuralType.titleLg, color = StructuralColors.foreground)
+                    }
+                }
+                if (meal.canChangeVote) {
+                    FrGlassButton(
+                        label = resolve(FeedStringKey.ChangeVoteCta),
+                        onClick = { onIntent(MealDetailIntent.RequestChangeVote) },
+                        tone = FrButtonTone.Glass,
+                        compact = true,
+                        enabled = !pendingRate,
+                    )
                 }
             }
-            Row(
-                modifier = Modifier.graphicsLayer {
-                    scaleX = pop.value
-                    scaleY = pop.value
-                    transformOrigin = TransformOrigin(0f, 0.5f)
-                },
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
-            ) {
-                FrIcon(image = FrIcons.Star, tint = celebration, modifier = Modifier.size(Sizes.iconSm))
-                SectionEyebrow(resolve(FeedStringKey.YourVote, meal.viewerRating))
-            }
         }
-        meal.canRate -> Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            SectionEyebrow(resolve(FeedStringKey.RateThisMeal))
-            FrCard(modifier = Modifier.fillMaxWidth()) {
+        // First vote OR an in-progress change → the picker (pre-filled with the current score in
+        // edit mode so the user can adjust from where they were).
+        meal.canRate || voteEditMode -> Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+            FrEyebrow(
+                text = resolve(if (voteEditMode) FeedStringKey.ChangeVoteCta else FeedStringKey.RateThisMeal).uppercase(),
+                color = StructuralColors.foreground.copy(alpha = 0.85f),
+            )
+            FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.fillMaxWidth()) {
                 FrStarRatingPicker(
                     onSelect = { score -> onIntent(MealDetailIntent.RateMeal(score)) },
+                    value = if (voteEditMode) (meal.viewerRating ?: 0) else 0,
                     enabled = !pendingRate,
+                    style = scoreStyle,
                 )
             }
         }
         else -> Unit
     }
+
+    // One-time-only confirmation before the single allowed change.
+    if (showChangeVoteConfirm) {
+        FrConfirmDialog(
+            title = resolve(FeedStringKey.ChangeVoteConfirmTitle),
+            message = resolve(FeedStringKey.ChangeVoteConfirmBody),
+            confirmLabel = resolve(FeedStringKey.ChangeVoteConfirmCta),
+            dismissLabel = resolve(FeedStringKey.DeleteCancelCta),
+            onConfirm = { onIntent(MealDetailIntent.ConfirmChangeVote) },
+            onDismiss = { onIntent(MealDetailIntent.CancelChangeVote) },
+        )
+    }
 }
 
+// ----------------------------------------------------------------------------------------------
+// Voters
+// ----------------------------------------------------------------------------------------------
+
 @Composable
-private fun VotersCard(meal: FeedMealUi) {
-    val semantic = LocalFrSemanticColors.current
+private fun VotersCard(meal: FeedMealUi, scoreStyle: FrScoreStyle) {
+    val sortedVotes = remember(meal.votes) { meal.votes.sortedByDescending { it.score } }
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(resolve(FeedStringKey.VotersLabel))
-        FrCard(modifier = Modifier.fillMaxWidth()) {
-            meal.votes.sortedByDescending { it.score }.forEachIndexed { index, v ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                ) {
-                    Box(modifier = Modifier.width(Sizes.iconMd), contentAlignment = Alignment.Center) {
-                        if (index == 0) {
-                            FrIcon(image = FrIcons.Crown, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(Sizes.iconSm))
-                        } else {
-                            FrText(
-                                text = (index + 1).toString(),
-                                style = FrTextStyles.statNumberSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                    // decorative — the adjacent rater-name label carries the identity for screen readers.
-                    FrAvatar(initials = v.raterName, imageUrl = v.raterAvatarUrl, size = Sizes.avatarSm)
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
-                        FrText(text = v.raterName, style = MaterialTheme.typography.bodyMedium)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(Spacing.xs)
-                                .clip(RoundedCornerShape(Radius.pill))
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth(v.score.coerceIn(Score.MIN, Score.MAX) / Score.MAX.toFloat())
-                                    .fillMaxHeight()
-                                    .clip(RoundedCornerShape(Radius.pill))
-                                    .background(if (v.score >= Score.MAX - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline),
-                            )
-                        }
-                    }
-                    FrText(
-                        text = resolve(FeedStringKey.VoterScoreCompact, v.score),
-                        style = FrTextStyles.statNumberSmall,
-                        color = if (v.score >= Score.MAX - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
-                    )
-                }
+        FrEyebrow(text = resolve(FeedStringKey.VotersLabel).uppercase(), color = StructuralColors.foreground.copy(alpha = 0.85f))
+        FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth()) {
+            sortedVotes.forEachIndexed { index, v ->
+                if (index > 0) Spacer(Modifier.height(Spacing.md))
+                VoterRow(index = index, vote = v, scoreStyle = scoreStyle)
             }
         }
     }
 }
 
 @Composable
+private fun VoterRow(index: Int, vote: RaterVoteUi, scoreStyle: FrScoreStyle) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        Box(modifier = Modifier.width(Sizes.iconMd), contentAlignment = Alignment.Center) {
+            if (index == 0) {
+                FrIcon(image = FrIcons.Crown, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(Sizes.iconSm))
+            } else {
+                FrText(
+                    text = (index + 1).toString(),
+                    style = StructuralType.microMono,
+                    color = StructuralColors.foreground.copy(alpha = 0.6f),
+                )
+            }
+        }
+        FrGlassAvatar(
+            initials = vote.raterName,
+            image = vote.raterAvatarUrl?.let { rememberAsyncImagePainter(it) },
+            ring = FrAvatarRing.None,
+            size = 32.dp,
+        )
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+            FrText(text = vote.raterName, style = StructuralType.body, color = StructuralColors.foreground)
+            FrBarTrack(
+                progress = vote.score.coerceIn(Score.MIN, Score.MAX) / Score.MAX.toFloat(),
+                modifier = Modifier.widthIn(max = 160.dp),
+            )
+        }
+        VoterScoreBadge(score = vote.score, scoreStyle = scoreStyle)
+    }
+}
+
+/** Trailing score glyph for a voter row: a structural score disc, or the emoji when that style is set. */
+@Composable
+private fun VoterScoreBadge(score: Int, scoreStyle: FrScoreStyle) {
+    val hot = score >= Score.MAX - 1
+    when (scoreStyle) {
+        FrScoreStyle.Emoji -> FrText(
+            text = scoreToEmoji(score.coerceIn(1, 5)),
+            style = StructuralType.titleLg,
+        )
+        else -> FrScoreDisc(
+            score = score.coerceIn(1, 10),
+            tone = if (hot) FrScoreTone.Hot else FrScoreTone.Olive,
+            size = 34.dp,
+            contentDescription = resolve(FeedStringKey.VoterScoreCompact, score),
+        )
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Comments
+// ----------------------------------------------------------------------------------------------
+
+@Composable
 private fun CommentsSection(
     state: MealDetailState,
     onRequestDeleteComment: (MealCommentId) -> Unit,
+    onIntent: (MealDetailIntent) -> Unit,
+    onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-        SectionEyebrow(resolve(FeedStringKey.CommentsTitle))
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+        FrEyebrow(text = resolve(FeedStringKey.CommentsTitle).uppercase(), color = StructuralColors.foreground.copy(alpha = 0.85f))
         when {
-            state.commentsLoading && state.commentRows.isEmpty() -> Box(
-                modifier = Modifier.fillMaxWidth().padding(Spacing.md),
-                contentAlignment = Alignment.Center,
-            ) { FrProgressIndicator() }
+            state.commentsLoading && state.commentRows.isEmpty() -> CommentsLoadingSkeleton()
             state.commentRows.isEmpty() && state.commentReadError == null ->
-                FrEmptyState(icon = FrIcons.Comment, headline = resolve(FeedStringKey.CommentsEmpty))
+                FrText(
+                    text = resolve(FeedStringKey.CommentsEmpty),
+                    style = StructuralType.body,
+                    color = StructuralColors.foreground.copy(alpha = 0.6f),
+                )
             state.commentReadError != null ->
-                FrErrorBanner(text = resolve(state.commentReadError.toStringKey()))
+                FrText(
+                    text = resolve(state.commentReadError.toStringKey()),
+                    style = StructuralType.body,
+                    color = MaterialTheme.colorScheme.error,
+                )
             else -> state.commentRows.forEach { c ->
-                FrCommentRow(
+                val editing = state.editingCommentId == c.id
+                StructuralCommentRow(
+                    isOwn = c.isOwnComment,
                     displayName = c.displayName,
                     avatarUrl = c.avatarUrl,
                     text = c.text,
                     relative = c.relative,
                     loading = c.loading,
                     isDeleted = c.isDeleted,
+                    isEdited = c.isEdited,
                     canDelete = c.canDelete,
                     onDelete = { onRequestDeleteComment(c.id) },
+                    canEdit = c.canEdit,
+                    onEdit = { onIntent(MealDetailIntent.StartEditComment(c.id)) },
+                    canModerate = c.canModerate,
+                    onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Comment(c.id))) },
+                    onBlock = { onRequestBlockCommentAuthor(c.authorId) },
+                    editing = editing,
+                    editInput = state.commentEditInput,
+                    isSavingEdit = state.isEditingComment,
+                    editError = if (editing) state.commentEditError?.let { resolve(it.toStringKey()) } else null,
+                    onEditInputChange = { onIntent(MealDetailIntent.EditCommentInputChanged(it)) },
+                    onEditSave = { onIntent(MealDetailIntent.SubmitEditComment) },
+                    onEditCancel = { onIntent(MealDetailIntent.CancelEditComment) },
                 )
             }
         }
         if (state.commentWriteError != null) {
-            FrErrorBanner(text = resolve(state.commentWriteError.toStringKey()))
+            FrText(
+                text = resolve(state.commentWriteError.toStringKey()),
+                style = StructuralType.body,
+                color = MaterialTheme.colorScheme.error,
+            )
         }
     }
 }
 
+// Chat-bubble width split: the bubble takes 5 parts, a flexible gutter on the opposite side takes 1,
+// so each comment occupies ~4/5 of the row and clearly hugs its side.
+private const val COMMENT_BUBBLE_WEIGHT = 5f
+private const val COMMENT_GUTTER_WEIGHT = 1f
+
+/**
+ * A comment as a structural stratum: avatar + frosted bubble (name · time, text, moderation chrome).
+ * Chat-bubble layout — the viewer's own comments hug the right (avatar trailing); everyone else's hug
+ * the left (avatar leading), each leaving a flexible gutter on the far side.
+ */
 @Composable
-private fun StickyCommentComposer(
+private fun StructuralCommentRow(
+    isOwn: Boolean,
+    displayName: String,
+    avatarUrl: String?,
+    text: String,
+    relative: RelativeTimestamp,
+    loading: Boolean,
+    isDeleted: Boolean,
+    isEdited: Boolean,
+    canDelete: Boolean,
+    onDelete: () -> Unit,
+    canEdit: Boolean,
+    onEdit: () -> Unit,
+    canModerate: Boolean,
+    onReport: () -> Unit,
+    onBlock: () -> Unit,
+    editing: Boolean,
+    editInput: String,
+    isSavingEdit: Boolean,
+    editError: String?,
+    onEditInputChange: (String) -> Unit,
+    onEditSave: () -> Unit,
+    onEditCancel: () -> Unit,
+) {
+    val nameLabel = when {
+        isDeleted -> resolve(FeedStringKey.DeletedAuthor)
+        loading   -> "…"
+        else      -> displayName
+    }
+    val avatarInitials = when {
+        isDeleted -> "?"
+        loading   -> "·"
+        else      -> displayName.ifBlank { "?" }
+    }
+    var menuExpanded by remember { mutableStateOf(false) }
+    val avatar: @Composable () -> Unit = {
+        FrGlassAvatar(
+            initials = avatarInitials,
+            image = if (isDeleted || loading) null else avatarUrl?.let { rememberAsyncImagePainter(it) },
+            ring = FrAvatarRing.None,
+            size = 32.dp,
+        )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // Own comments hug the right: a leading flexible gutter pushes the bubble + trailing avatar over.
+        if (isOwn) Spacer(Modifier.weight(COMMENT_GUTTER_WEIGHT))
+        if (!isOwn) avatar()
+        FrGlassTile(
+            depth = FrTileDepth.Deep,
+            modifier = Modifier.weight(COMMENT_BUBBLE_WEIGHT),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                FrText(
+                    text = nameLabel,
+                    style = StructuralType.titleMd,
+                    color = StructuralColors.foreground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.xs)) {
+                    FrText(
+                        text = resolve(relative.key, relative.amount),
+                        style = StructuralType.microMono,
+                        color = StructuralColors.foreground.copy(alpha = 0.6f),
+                    )
+                    if (isEdited) {
+                        FrText(
+                            text = resolve(FeedStringKey.CommentEdited),
+                            style = StructuralType.microMono,
+                            color = StructuralColors.foreground.copy(alpha = 0.5f),
+                        )
+                    }
+                    // The overflow menu is suppressed while this row is in edit mode.
+                    if (!editing && (canModerate || canDelete || canEdit)) {
+                        Box {
+                            FrGlassCircleButton(
+                                icon = FrIcons.MoreVert,
+                                onClick = { menuExpanded = true },
+                                contentDescription = resolve(FeedStringKey.OverflowMenuCd),
+                                size = 30.dp,
+                            )
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false },
+                            ) {
+                                if (canEdit) {
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.EditCommentCta)) },
+                                        onClick = { menuExpanded = false; onEdit() },
+                                        leadingIcon = { FrIcon(FrIcons.Edit, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    )
+                                }
+                                if (canModerate) {
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.ReportCommentCta)) },
+                                        onClick = { menuExpanded = false; onReport() },
+                                        leadingIcon = { FrIcon(FrIcons.Flag, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.BlockUserCta)) },
+                                        onClick = { menuExpanded = false; onBlock() },
+                                        leadingIcon = { FrIcon(FrIcons.Block, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+                                    )
+                                }
+                                if (canDelete) {
+                                    DropdownMenuItem(
+                                        text = { FrText(resolve(FeedStringKey.DeleteCommentCta), color = MaterialTheme.colorScheme.error) },
+                                        onClick = { menuExpanded = false; onDelete() },
+                                        leadingIcon = { FrIcon(FrIcons.Delete, tint = MaterialTheme.colorScheme.error) },
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            Spacer(Modifier.height(Spacing.xs))
+            if (editing) {
+                FrUnderlineField(
+                    value = editInput,
+                    onValueChange = onEditInputChange,
+                    placeholder = resolve(FeedStringKey.CommentsInputPlaceholder),
+                    singleLine = false,
+                    enabled = !isSavingEdit,
+                )
+                if (editError != null) {
+                    Spacer(Modifier.height(Spacing.xs))
+                    FrText(text = editError, style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                }
+                Spacer(Modifier.height(Spacing.sm))
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    FrGlassButton(
+                        label = resolve(FeedStringKey.DeleteCancelCta),
+                        onClick = onEditCancel,
+                        tone = FrButtonTone.Ghost,
+                        enabled = !isSavingEdit,
+                        compact = true,
+                    )
+                    FrGlassButton(
+                        label = resolve(FeedStringKey.EditCommentSaveCta),
+                        onClick = onEditSave,
+                        tone = FrButtonTone.Primary,
+                        enabled = !isSavingEdit && editInput.isNotBlank(),
+                        compact = true,
+                    )
+                }
+            } else {
+                FrText(text = text, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.92f))
+            }
+        }
+        if (isOwn) avatar()
+        // Everyone else's comments hug the left: the flexible gutter sits on the right.
+        if (!isOwn) Spacer(Modifier.weight(COMMENT_GUTTER_WEIGHT))
+    }
+}
+
+@Composable
+private fun CommentsLoadingSkeleton() {
+    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.fillMaxWidth()) {
+        repeat(3) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                FrShimmerBox(modifier = Modifier.size(Sizes.avatarSm), shape = CircleShape)
+                FrShimmerBox(modifier = Modifier.fillMaxWidth().height(56.dp), shape = RoundedCornerShape(Radius.lg))
+            }
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Full-screen photo viewer
+// ----------------------------------------------------------------------------------------------
+
+/**
+ * Full-screen, zoomable plate viewer. The photo is fitted on a near-opaque black scrim and can be
+ * pinch-zoomed (1×–5×), double-tapped to toggle 1×⇄2.5×, and panned while zoomed (pan is clamped so
+ * the image can't be dragged fully off-screen). A single tap while at 1× — or the close button, the
+ * backdrop, or system back — dismisses it ([Dialog] consumes back).
+ */
+@Composable
+private fun MealPhotoViewer(photoUrl: String, cacheKey: String, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        var scale by remember { mutableStateOf(1f) }
+        var offset by remember { mutableStateOf(Offset.Zero) }
+        var containerSize by remember { mutableStateOf(IntSize.Zero) }
+        val minScale = 1f
+        val maxScale = 5f
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.97f))
+                .onSizeChanged { containerSize = it },
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = rememberAsyncImagePainter(model = stablePlateRequest(photoUrl, cacheKey)),
+                contentDescription = resolve(FeedStringKey.MealPhotoCd),
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            scale = (scale * zoom).coerceIn(minScale, maxScale)
+                            if (scale > 1f) {
+                                // Clamp pan so the (scaled) image edges can't cross the screen centre.
+                                val maxX = (containerSize.width * (scale - 1f)) / 2f
+                                val maxY = (containerSize.height * (scale - 1f)) / 2f
+                                offset = Offset(
+                                    (offset.x + pan.x).coerceIn(-maxX, maxX),
+                                    (offset.y + pan.y).coerceIn(-maxY, maxY),
+                                )
+                            } else {
+                                offset = Offset.Zero
+                            }
+                        }
+                    }
+                    .pointerInput(Unit) {
+                        detectTapGestures(
+                            onTap = { if (scale <= 1f) onDismiss() },
+                            onDoubleTap = {
+                                if (scale > 1f) {
+                                    scale = 1f
+                                    offset = Offset.Zero
+                                } else {
+                                    scale = 2.5f
+                                }
+                            },
+                        )
+                    }
+                    .graphicsLayer {
+                        scaleX = scale
+                        scaleY = scale
+                        translationX = offset.x
+                        translationY = offset.y
+                    },
+            )
+            FrGlassCircleButton(
+                icon = FrIcons.Close,
+                onClick = onDismiss,
+                contentDescription = resolve(FeedStringKey.MealPhotoCloseCd),
+                modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(Spacing.md),
+            )
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
+// Sticky composer
+// ----------------------------------------------------------------------------------------------
+
+@Composable
+private fun StructuralCommentComposer(
     value: String,
     enabled: Boolean,
     sendEnabled: Boolean,
@@ -592,55 +1211,78 @@ private fun StickyCommentComposer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                Brush.verticalGradient(
-                    listOf(Color.Transparent, MaterialTheme.colorScheme.background),
-                ),
-            )
+            // Sticky bar: feather the top edge but land fully opaque so the scrolling comment
+            // list cannot bleed through the composer.
+            .background(Brush.verticalGradient(listOf(Color.Transparent, StructuralColors.tileSolid)))
+            .navigationBarsPadding()
+            .imePadding()
+            .frSafeHorizontalPadding()
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
-        FrTextField(
-            value = value,
-            onValueChange = onChange,
-            label = resolve(FeedStringKey.CommentsInputPlaceholder),
-            enabled = enabled,
-            modifier = Modifier.weight(1f),
-        )
-        FrIconButton(
-            icon = FrIcons.ChevronRight,
-            onClick = onSend,
-            contentDescription = resolve(FeedStringKey.CommentsSendCta),
-            enabled = sendEnabled,
-        )
+        // Opaque input surface — the underline field writes straight onto the media floor by
+        // design, so give it its own solid tile here or text overlaps whatever scrolls behind.
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .clip(RoundedCornerShape(Radius.lg))
+                .background(StructuralColors.tileSolid)
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
+        ) {
+            FrUnderlineField(
+                value = value,
+                onValueChange = onChange,
+                placeholder = resolve(FeedStringKey.CommentsInputPlaceholder),
+                singleLine = false,
+                enabled = enabled,
+            )
+        }
+        if (sendEnabled) {
+            FrGlassCircleButton(
+                icon = FrIcons.ChevronRight,
+                onClick = onSend,
+                contentDescription = resolve(FeedStringKey.CommentsSendCta),
+            )
+        }
     }
 }
 
-/**
- * Brief, auto-dismissing bottom toast for a share outcome (spec §10). No system Toast primitive
- * exists in the design system, so this is a small in-app overlay built from `Fr*` atoms; it clears
- * itself after a short window via [onDismiss].
- */
+// ----------------------------------------------------------------------------------------------
+// Toast
+// ----------------------------------------------------------------------------------------------
+
+/** Brief, auto-dismissing bottom toast built from structural strata (spec §10). */
 @Composable
 private fun ShareOutcomeToast(message: String, onDismiss: () -> Unit) {
     LaunchedEffect(message) {
         kotlinx.coroutines.delay(2500)
         onDismiss()
     }
-    Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
-        FrCard {
-            FrText(text = message, style = MaterialTheme.typography.bodyMedium)
+    Box(modifier = Modifier.fillMaxSize().navigationBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
+        FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.widthIn(max = 420.dp)) {
+            FrText(text = message, style = StructuralType.body, color = StructuralColors.foreground)
         }
     }
 }
 
+// ----------------------------------------------------------------------------------------------
+// helpers
+// ----------------------------------------------------------------------------------------------
+
+/** A warm Iron & Ember brush floor for the transient (loading / error) states. */
 @Composable
-private fun SectionEyebrow(text: String, modifier: Modifier = Modifier) {
-    FrText(
-        text = text.uppercase(),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = modifier,
-    )
+private fun FrMediaFloorBrush() {
+    FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft)
+}
+
+/** Appetizing brush shown behind the plate while it loads (or when the meal has none). */
+private fun dishBrushFor(slot: MealSlotUi?): Brush = when (slot) {
+    MealSlotUi.Breakfast -> StructuralColors.dishSalad
+    MealSlotUi.Brunch -> StructuralColors.dishTacos
+    MealSlotUi.Lunch -> StructuralColors.dishMackerel
+    MealSlotUi.Snack -> StructuralColors.dishTacos
+    MealSlotUi.Merienda -> StructuralColors.dishSalad
+    MealSlotUi.Dinner -> StructuralColors.dishRamen
+    null -> StructuralColors.dishMackerel
 }

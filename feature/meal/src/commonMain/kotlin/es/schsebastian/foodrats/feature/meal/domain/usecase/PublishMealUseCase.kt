@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.meal.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
@@ -17,23 +18,24 @@ class PublishMealUseCase(
     suspend operator fun invoke(draft: MealDraft): Result<Meal, MealError> {
         val today = MealDay.today(clock, zone)
         if (draft.day != today) return Result.failure(MealError.Publish.NotToday)
-        val slot = draft.slot ?: return Result.failure(MealError.Publish.NoSlotSelected)
         if (draft.plate == null) return Result.failure(MealError.Validation.NoPhoto)
         if (draft.dish == null)  return Result.failure(MealError.Validation.Blank)
         if (draft.audienceCrewIds.isEmpty()) return Result.failure(MealError.Publish.NoCrewSelected)
+        // Slot is optional now — no NoSlotSelected check.
 
-        // A slot is "already posted today" only when it's taken in EVERY selected crew —
-        // i.e. there is no crew left to receive this plate. While any selected crew is
-        // still free, publishing proceeds and the repository fans the plate out to just
-        // the free ones (the deterministic per-crew meal id keeps it idempotent on retry).
-        var anyFree = false
-        for (crewId in draft.audienceCrewIds) {
-            when (val r = repository.hasMealForSlot(crewId, today, slot)) {
-                is Result.Ok  -> if (!r.value) anyFree = true
-                is Result.Err -> return Result.failure(r.error)
-            }
+        // Audience-aware daily cap: a crew is "available" only while it holds fewer than
+        // MAX_MEALS_PER_CREW_PER_DAY meals from this author today. Publishing proceeds while ANY
+        // selected crew still has room; the repository fans the plate out to just those (skipping
+        // full crews, and idempotently skipping crews this draft already reached on a retry).
+        // When every selected crew is full, this is the daily limit (AlreadyPostedToday).
+        val counts = when (val r = repository.mealCountsPerCrew(draft.audienceCrewIds, today)) {
+            is Result.Ok  -> r.value
+            is Result.Err -> return Result.failure(r.error)
         }
-        if (!anyFree) return Result.failure(MealError.Publish.AlreadyPostedToday)
+        val anyRoom = draft.audienceCrewIds.any {
+            (counts[it] ?: 0) < MealPublishPolicy.MAX_MEALS_PER_CREW_PER_DAY
+        }
+        if (!anyRoom) return Result.failure(MealError.Publish.AlreadyPostedToday)
 
         return repository.publish(draft).also {
             if (it is Result.Ok) repository.clearDraft()

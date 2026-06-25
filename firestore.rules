@@ -20,7 +20,21 @@ service cloud.firestore {
     // + `hasAny()` (requires maintaining the index atomically on join/leave).
     match /accounts/{uid} {
       allow read:  if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == uid;
+      // Create: owner initialises their own profile doc.  `badgeId` must be absent
+      // (the @EncodeDefault(NEVER) annotation on AccountDto guarantees the app never
+      // sends it, but the rule provides an independent security layer).
+      allow create: if request.auth != null
+                    && request.auth.uid == uid
+                    && !('badgeId' in request.resource.data);
+      // Update: owner may update any field EXCEPT `badgeId`.  `badgeId` is server-only —
+      // assigned exclusively by the onMealCreated Cloud Function via the Admin SDK (which
+      // bypasses rules).  Reject any update that attempts to add or change `badgeId`.
+      allow update: if request.auth != null
+                    && request.auth.uid == uid
+                    && !request.resource.data.diff(resource.data).affectedKeys()
+                         .hasAny(['badgeId']);
+      // Delete: handled server-side only (deleteAccount Cloud Function + Admin SDK).
+      allow delete: if false;
 
       // Owner-only private data (PII, consent, anything that must never be
       // crew-visible). Reads are denied to everyone but the owner.
@@ -49,57 +63,168 @@ service cloud.firestore {
       match /nudges/{dayKey} {
         allow read, write: if false;
       }
+
+      // Server-only badge bookkeeping (U8). The lifetime publish counter
+      // (`badgeProgress/counter`) and the per-publish dedup markers
+      // (`publishedMealKeys/{canonicalKey}`) are written ONLY by the onMealCreated Cloud
+      // Function via the Admin SDK (which bypasses rules). Deny all client access so the
+      // raw count is neither world-readable (no leaderboard arms race) nor client-forgeable
+      // (a client cannot inflate its own count to fast-track a higher badge tier).
+      match /badgeProgress/{doc} {
+        allow read, write: if false;
+      }
+      match /publishedMealKeys/{canonicalKey} {
+        allow read, write: if false;
+      }
+
+      // Block list (UGC compliance §5). Owner-private on read AND write — mirrors
+      // /devices and /achievements above. The doc id IS the blocked account id;
+      // only the owner can see or modify whom they've blocked. Used purely as a
+      // client-side read filter (no server fan-out).
+      match /blocks/{blockedUid} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
     }
 
     // Crew root
     match /crews/{crewId} {
+      // True when a membership write (approve / leave / remove-member) leaves EVERY
+      // non-membership field untouched. The client commits these as a full-document
+      // `set(crewRef, crew.copy(...))` — GitLive `.set(dto)` re-serializes the WHOLE
+      // CrewDto with encodeDefaults=true, so a crew created before a field existed
+      // (scoreStyle, bannerPath, …) receives that field as a newly-ADDED key. A naive
+      // `diff().affectedKeys().hasOnly(['memberIds','members'])` counts those re-stated
+      // defaults as changes and rejected EVERY membership write on an older crew (the
+      // reported "no one can join" bug). Comparing each field to its effective
+      // (default-resolved) prior value with get(k, default) treats "absent" and
+      // "re-stated default" as equal, while still rejecting a real change — so a membership
+      // write can ONLY shift the member set and can never seize ownership, rotate the invite
+      // code, backdate the crew, rename it, or flip any owner-only policy. Defaults mirror
+      // CrewDto exactly: blindVoting=false, scoreStyle='stars', every other optional null.
+      // Every NON-membership field EXCEPT ownerId is untouched. ownerId is handled separately so the
+      // two ownership-changing membership branches (transfer / owner-leave-reassign) can reuse this
+      // while validating the ownerId transition themselves. All other membership writes pin ownerId
+      // via onlyMembershipUnchanged() below.
+      function nonMembershipFieldsUnchanged() {
+        return request.resource.data.get('id', null) == resource.data.get('id', null)
+          && request.resource.data.get('code', null) == resource.data.get('code', null)
+          && request.resource.data.get('createdAtEpochMs', null) == resource.data.get('createdAtEpochMs', null)
+          && request.resource.data.get('name', null) == resource.data.get('name', null)
+          && request.resource.data.get('blindVoting', false) == resource.data.get('blindVoting', false)
+          && request.resource.data.get('tagline', null) == resource.data.get('tagline', null)
+          && request.resource.data.get('welcomeMessage', null) == resource.data.get('welcomeMessage', null)
+          && request.resource.data.get('weeklyChallenge', null) == resource.data.get('weeklyChallenge', null)
+          && request.resource.data.get('weeklyChallengeSetAtMillis', null) == resource.data.get('weeklyChallengeSetAtMillis', null)
+          && request.resource.data.get('scoreStyle', 'stars') == resource.data.get('scoreStyle', 'stars')
+          && request.resource.data.get('bannerPath', null) == resource.data.get('bannerPath', null)
+          && request.resource.data.get('bannerFocalY', null) == resource.data.get('bannerFocalY', null);
+      }
+      function onlyMembershipUnchanged() {
+        return request.resource.data.get('ownerId', null) == resource.data.get('ownerId', null)
+          && nonMembershipFieldsUnchanged();
+      }
       // Read is open to any authenticated user. `crewId` is a random UUID, so it
       // functions as a soft access token — you need it to read the doc, and a
       // joining user must be able to read the doc inside the joinByCode transaction
       // before writing themselves into memberIds. Consistent with /crewCodes/ which
       // is already readable by any authenticated user.
       allow read:   if request.auth != null;
-      // Update is partitioned into five explicit branches so non-owners can't rename
-      // the crew and rogue clients can't rewrite ownerId / createdAt / code:
-      //   (1) owner renames `name`
-      //   (2) any current member renames themselves inside the `members` map
-      //   (3) join — non-member adds self (auth.uid moves from absent to present in memberIds)
-      //   (4) leave — existing member removes self (and only self) from memberIds + members
-      //   (5) owner toggles the `blindVoting` policy flag (owner-only; no other field touched)
-      //   (6) remove-member — owner removes another member (never self) from memberIds + members
+      // ── Update — dispatched on TWO cheap discriminators (did ownerId change? did memberIds
+      // change?) so each write kind pays only for its own group's expressions. Before this split
+      // every membership/ownership write re-evaluated the heavy field-pin across many OR branches
+      // and could trip Firestore's 1000-expression-per-request ceiling (a legitimate write would
+      // then be wrongly DENIED). The three groups are mutually exclusive on (ownerIdChanged,
+      // membersChanged):
+      //   • ownerId changed         → transfer-ownership (14) | owner-leave-reassign (15)
+      //   • memberIds changed       → approve (13) | leave (4) | remove-member (6)
+      //   • neither changed         → owner single-field settings (1,5,7–12) | member self-rename (2)
+      function isOwner()  { return resource.data.ownerId == request.auth.uid; }
+      function isMember() { return request.auth.uid in resource.data.memberIds; }
+      function changed()  { return request.resource.data.diff(resource.data).affectedKeys(); }
+      function ownerIdChanged() {
+        return request.resource.data.get('ownerId', null) != resource.data.get('ownerId', null);
+      }
+      function membersChanged() {
+        return request.resource.data.get('memberIds', []) != resource.data.get('memberIds', []);
+      }
+      // Owner single-field settings writes (1,5,7–12). Each touches exactly one field group; the
+      // owner is always a member, so isOwner() suffices. Neither ownerId nor memberIds moves here.
+      function ownerSettingsWrite() {
+        return isOwner() && (
+          changed().hasOnly(['name'])
+          || (changed().hasOnly(['blindVoting']) && request.resource.data.blindVoting is bool)
+          || (changed().hasOnly(['tagline'])
+              && (request.resource.data.tagline == null || request.resource.data.tagline is string))
+          || (changed().hasOnly(['welcomeMessage'])
+              && (request.resource.data.welcomeMessage == null || request.resource.data.welcomeMessage is string))
+          || (changed().hasOnly(['weeklyChallenge', 'weeklyChallengeSetAtMillis'])
+              && (request.resource.data.weeklyChallenge == null || request.resource.data.weeklyChallenge is string)
+              && (request.resource.data.weeklyChallengeSetAtMillis == null || request.resource.data.weeklyChallengeSetAtMillis is int))
+          || (changed().hasOnly(['scoreStyle'])
+              && request.resource.data.scoreStyle in ['stars', 'emoji', 'numeric'])
+          || (changed().hasOnly(['bannerPath'])
+              && (request.resource.data.bannerPath == null || request.resource.data.bannerPath is string))
+          || (changed().hasOnly(['bannerFocalY'])
+              && request.resource.data.bannerFocalY is number
+              && request.resource.data.bannerFocalY >= 0
+              && request.resource.data.bannerFocalY <= 1)
+        );
+      }
+      // (2) any current member edits ONLY their own entry in the `members` map (display-name rename).
+      function memberMapWrite() {
+        return isMember() && changed().hasOnly(['members']);
+      }
+      // Membership writes that PRESERVE ownerId — approve (13) / leave (4) / remove (6). The full
+      // doc is set() by the client, so onlyMembershipUnchanged() pins every non-membership field
+      // (evaluated ONCE for the whole group). Each shape is a cheap size/hasAll check.
+      function membershipWrite() {
+        return onlyMembershipUnchanged() && (
+          // (13) approve — owner appends exactly one member; owner stays; old members survive; ≤ 8.
+          (isOwner()
+           && request.auth.uid in request.resource.data.memberIds
+           && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+           && request.resource.data.memberIds.size() <= 8
+           && request.resource.data.memberIds.hasAll(resource.data.memberIds))
+          ||
+          // (4) leave — a member removes ONLY themselves; no other member evicted.
+          (isMember()
+           && !(request.auth.uid in request.resource.data.memberIds)
+           && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+           && resource.data.memberIds.hasAll(request.resource.data.memberIds))
+          ||
+          // (6) remove-member — owner removes ANOTHER member; owner stays; exactly one dropped.
+          (isOwner()
+           && request.auth.uid in request.resource.data.memberIds
+           && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+           && resource.data.memberIds.hasAll(request.resource.data.memberIds))
+        );
+      }
+      // (14) transfer ownership — owner reassigns ownerId to a current member, nothing else.
+      function transferOwnershipWrite() {
+        return isOwner()
+          && changed().hasOnly(['ownerId'])
+          && request.resource.data.ownerId != resource.data.ownerId
+          && request.resource.data.ownerId in resource.data.memberIds;
+      }
+      // (15) owner leaves & hands off — owner removes ONLY self AND sets ownerId to a remaining
+      // member. nonMembershipFieldsUnchanged() pins code/name/policy (NOT ownerId, which moves here).
+      function ownerLeaveReassignWrite() {
+        return isOwner()
+          && request.auth.uid in resource.data.memberIds
+          && !(request.auth.uid in request.resource.data.memberIds)
+          && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1
+          && resource.data.memberIds.hasAll(request.resource.data.memberIds)
+          && request.resource.data.ownerId != request.auth.uid
+          && request.resource.data.ownerId in request.resource.data.memberIds
+          && nonMembershipFieldsUnchanged();
+      }
       allow update: if request.auth != null
                     && (
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name']))
-                      ||
-                      (request.auth.uid in resource.data.memberIds
-                       && resource.data.ownerId == request.auth.uid
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['blindVoting'])
-                       && request.resource.data.blindVoting is bool)
-                      ||
-                      (request.auth.uid in resource.data.memberIds
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members']))
-                      ||
-                      (!(request.auth.uid in resource.data.memberIds)
-                       && request.auth.uid in request.resource.data.memberIds
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
-                       && request.resource.data.memberIds.size() <= 8)
-                      ||
-                      (request.auth.uid in resource.data.memberIds
-                       && !(request.auth.uid in request.resource.data.memberIds)
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1)
-                      ||
-                      // (6) owner removes ANOTHER member: owner stays a member, the removed uid is
-                      // dropped from both memberIds + members, and the set shrinks by exactly one.
-                      // The owner can't remove self through this branch (they remain in both the old
-                      // and new memberIds). ownerId/createdAt/code/name are untouched (hasOnly).
-                      (resource.data.ownerId == request.auth.uid
-                       && request.auth.uid in request.resource.data.memberIds
-                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds', 'members'])
-                       && request.resource.data.memberIds.size() == resource.data.memberIds.size() - 1)
+                      ownerIdChanged()
+                        ? (transferOwnershipWrite() || ownerLeaveReassignWrite())
+                        : membersChanged()
+                            ? membershipWrite()
+                            : (ownerSettingsWrite() || memberMapWrite())
                     );
       allow create: if request.auth != null
                     && request.auth.uid in request.resource.data.memberIds
@@ -111,16 +236,56 @@ service cloud.firestore {
                       || resource.data.ownerId == request.auth.uid
                     );
 
-      // Meals are scoped under crews. Up to 3 per author per day — one per slot.
-      // Deterministic doc ID enforces same-day-per-slot uniqueness without composite indexes.
+      // Join requests — the owner's intake inbox. A non-member who has the invite code
+      // (resolved to this crewId via crewCodes) files crews/{crewId}/joinRequests/{uid};
+      // the owner Approves (a crew membership write, branch 13, which deletes this doc in the
+      // same transaction) or Declines (deletes this doc). The doc id IS the requester uid, so a
+      // requester can only ever touch their own request. There is NO instant self-join — owner
+      // approval is the sole membership-grant path.
+      match /joinRequests/{requesterId} {
+        function isCrewOwner() {
+          return request.auth != null
+                 && get(/databases/$(database)/documents/crews/$(crewId)).data.ownerId == request.auth.uid;
+        }
+        // Owner sees every pending request; a requester sees only their own.
+        allow read: if request.auth != null
+                    && (request.auth.uid == requesterId || isCrewOwner());
+        // A non-member files their own request. `accountId` mirrors the doc id; the requester
+        // must not already be a member. Knowing the crewId (a random soft-token id resolved from
+        // the invite code) is the capability to file here, exactly as for reading the crew.
+        allow create: if request.auth != null
+                      && request.auth.uid == requesterId
+                      && request.resource.data.accountId == requesterId
+                      && request.resource.data.requestedAtEpochMs is int
+                      && request.resource.data.keys().hasOnly(['accountId', 'requestedAtEpochMs'])
+                      && !(request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds);
+        // Decline (owner) or cancel (the requester). Approval also deletes the doc, but inside the
+        // owner's add-member transaction — covered here by isCrewOwner().
+        allow delete: if request.auth != null
+                      && (request.auth.uid == requesterId || isCrewOwner());
+        // Requests are immutable once filed — approve/decline are create-of-member / delete-of-request.
+        allow update: if false;
+      }
+
+      // Meals are scoped under crews. The per-author per-day cap (10) is enforced CLIENT-SIDE —
+      // Firestore rules can't count documents. The doc id is `crewId_uid_dayKey_token` where token
+      // is a stable per-post hash (idempotent retries + reconstructible per-crew delete). The rule
+      // pins ownership, the optional slot vocabulary, and the id shape via split('_') (none of the
+      // four parts contains '_': auto-ids/uids are alphanumeric, dayKey is YYYY-MM-DD, token is hex).
       match /meals/{mealId} {
         allow read:   if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds;
         allow create: if request.auth != null
                       && request.auth.uid == request.resource.data.authorId
+                      && request.resource.data.crewId == crewId
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
-                      && request.resource.data.slot in ["breakfast", "lunch", "dinner"]
-                      && mealId == crewId + "_" + request.auth.uid + "_" + request.resource.data.dayKey + "_" + request.resource.data.slot
+                      && (request.resource.data.slot == ""
+                          || request.resource.data.slot in ["breakfast", "brunch", "lunch", "snack", "merienda", "dinner"])
+                      && request.resource.data.id == mealId
+                      && mealId.split("_").size() == 4
+                      && mealId.split("_")[0] == crewId
+                      && mealId.split("_")[1] == request.auth.uid
+                      && mealId.split("_")[2] == request.resource.data.dayKey
                       && !exists(/databases/$(database)/documents/crews/$(crewId)/meals/$(mealId))
                       // Whitelist the client-writable fields at publish. The server-owned fields
                       // `thumbHash` / `thumbnailPath` are written later by the image pipeline via
@@ -153,9 +318,12 @@ service cloud.firestore {
                       && (!('publishedAtEpochMs' in request.resource.data)
                           || request.resource.data.publishedAtEpochMs <= request.time.toMillis() + 300000);
         // Rating-write update: a voter (not the author) may add their own entry to the
-        // `ratings` map. The diff must be limited to the three denormalized rating fields,
-        // the voter can only touch their own key in the map, and the cached sum/count
-        // must equal the recomputed values from the new map.
+        // `ratings` map, OR change it exactly ONCE. The diff is limited to the three
+        // denormalized rating fields, the voter can only touch their own key in the map,
+        // and the cached sum/count must equal the recomputed values from the new map.
+        // A voter gets one change: a first vote writes `edited:false`, the single allowed
+        // change overwrites it with `edited:true`, and any further attempt (entry already
+        // `edited`) is rejected here. `.get('edited', false)` tolerates pre-feature entries.
         allow update: if request.auth != null
                       && request.auth.uid in get(/databases/$(database)/documents/crews/$(crewId)).data.memberIds
                       && request.auth.uid != resource.data.authorId
@@ -163,15 +331,29 @@ service cloud.firestore {
                            .hasOnly(['ratings', 'ratingSum', 'voterCount'])
                       && request.resource.data.ratings.diff(resource.data.ratings).affectedKeys()
                            .hasOnly([request.auth.uid])
-                      && !(request.auth.uid in resource.data.ratings)
                       && request.resource.data.ratings[request.auth.uid].score is int
                       && request.resource.data.ratings[request.auth.uid].score >= 1
                       && request.resource.data.ratings[request.auth.uid].score <= 5
                       && request.resource.data.voterCount == request.resource.data.ratings.size()
-                      // ratingSum must equal the old sum plus the voter's new score, preventing
-                      // a client from inflating or deflating the aggregate independently.
-                      && request.resource.data.ratingSum == resource.data.ratingSum + request.resource.data.ratings[request.auth.uid].score
-                      && request.time.toMillis() - resource.data.publishedAtEpochMs < 172800000;
+                      && request.time.toMillis() - resource.data.publishedAtEpochMs < 172800000
+                      && (
+                        // First vote: no prior entry; the new entry is not-yet-edited; the sum
+                        // grows by exactly the new score (a client can't inflate the aggregate).
+                        (
+                          !(request.auth.uid in resource.data.ratings)
+                          && request.resource.data.ratings[request.auth.uid].get('edited', false) == false
+                          && request.resource.data.ratingSum == resource.data.ratingSum + request.resource.data.ratings[request.auth.uid].score
+                        )
+                        ||
+                        // The single allowed change: prior entry exists and was NOT yet edited; the
+                        // new entry is marked edited; the sum adjusts by the score delta (old → new).
+                        (
+                          request.auth.uid in resource.data.ratings
+                          && resource.data.ratings[request.auth.uid].get('edited', false) == false
+                          && request.resource.data.ratings[request.auth.uid].get('edited', false) == true
+                          && request.resource.data.ratingSum == resource.data.ratingSum - resource.data.ratings[request.auth.uid].score + request.resource.data.ratings[request.auth.uid].score
+                        )
+                      );
 
         // Delete: the meal's author OR the crew owner may delete it. Author = self-service,
         // owner = moderation. Orphaned subcollections (comments, deprecated ratings) are
@@ -216,7 +398,18 @@ service cloud.firestore {
                         && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
                         && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000;
 
-          // No update — comments are immutable once posted.
+          // The author may edit their OWN comment's text (1–500 chars). `authorId` is immutable
+          // so an edit can never re-attribute a comment, and only the author (never the crew
+          // owner) may rewrite the words. createdAtEpochMs is intentionally NOT pinned: the
+          // offline outbox's idempotent post-replay re-stamps it via a full `.set()`, and the
+          // prior rule tolerated that too. Real edits use a partial update that never touches it.
+          allow update: if request.auth != null
+                        && request.auth.uid == resource.data.authorId
+                        && request.resource.data.authorId == resource.data.authorId
+                        && request.resource.data.text is string
+                        && request.resource.data.text.size() >= 1
+                        && request.resource.data.text.size() <= 500;
+
           // Delete: the comment's author OR the crew owner may delete it (self-service
           // + moderation), mirroring the meal delete rule above.
           allow delete: if request.auth != null
@@ -305,6 +498,100 @@ service cloud.firestore {
                     );
       allow delete: if request.auth != null
                     && request.auth.uid in get(/databases/$(database)/documents/crews/$(resource.data.crewId)).data.memberIds;
+    }
+
+    // Reports queue (UGC compliance §4). Create-only by the reporter; NEVER
+    // client-readable (it's a moderation queue read only by the onReportCreated
+    // function + manual review via the Admin SDK, which bypasses rules — mirrors
+    // the server-only nudges deny pattern above). The doc id is
+    // `${reporterUid}|${targetKey}` so a reporter can report a given target at
+    // most once (idempotent create powers the distinct-reporter count and
+    // AlreadyReported). The delimiter is `|` (not `_` / `-`): meal ids embed
+    // underscores (`crewId_uid_dayKey_slot`) and ids/day-keys may contain `-`, so
+    // those joins were AMBIGUOUS — two distinct (reporter, target) pairs could
+    // collide on one doc id, or a crafted targetKey could satisfy the id equality
+    // for a different target, undermining the one-report-per-reporter-per-target
+    // invariant the distinct count relies on. No component (uid / crewId auto-id /
+    // dayKey / slot) can contain `|`, so the id is strictly one-to-one with
+    // (reporter, target). Reports are immutable from the client; the server flips
+    // status via the Admin SDK.
+    //
+    // Hardening (UGC review F3/F4/F5/F6):
+    //  - `keys().hasOnly([...])` whitelist so a client can't smuggle extra fields
+    //    (e.g. a forged status, or a bogus crewId/mealId aimed at a DIFFERENT victim).
+    //  - The separate `crewId`/`mealId`/`commentId`/`accountId` fields the trigger
+    //    deletes by are PINNED to the validated `targetKey` (rules have no split(),
+    //    so we reconstruct the key from the fields and require equality). The trigger
+    //    can therefore trust those fields — they provably match the key.
+    //  - Crew-membership gate AND target-existence gate for meal/comment targets:
+    //    only someone who can READ the content may report it (mirrors the meal read
+    //    rule), and the named meal/comment must actually exist — so 3 cheap throwaway
+    //    accounts outside the crew can't dogpile-nuke content they were never able to
+    //    see, and a forged crewId/mealId pointing at nothing is rejected at create.
+    //  - Account target: `accountId != reporter` (no self-report) and the account must
+    //    exist. Account reports are human-reviewed only — never auto-actioned.
+    // Moderation audit trail (UGC hardening §7.1). Written exclusively by the
+    // `onReportCreated` Cloud Function via the Admin SDK (which bypasses rules).
+    // No client — not even the app owner — may read or write these docs: triage
+    // is done via the Firebase console or the Admin SDK in the RUNBOOK. Mirrors
+    // the `nudges` server-only pattern above.
+    match /moderationActions/{actionId} {
+      allow read, write: if false;
+    }
+
+    match /reports/{reportId} {
+      allow read:   if false;            // server-only (Admin SDK)
+      allow update,
+            delete: if false;            // immutable; server actions use Admin SDK
+      allow create: if request.auth != null
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'reporterId', 'targetType', 'crewId', 'mealId', 'commentId',
+                      'accountId', 'targetKey', 'reason', 'status', 'createdAtEpochMs'
+                    ])
+                    && request.resource.data.status == "open"
+                    && request.resource.data.reason in
+                         ["spam", "harassment", "hate", "sexual", "violence", "other"]
+                    && request.resource.data.createdAtEpochMs is int
+                    && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
+                    && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000
+                    && reportId == request.auth.uid + "|" + request.resource.data.targetKey
+                    && (
+                      // Meal target: crewId + mealId fields must reconstruct targetKey
+                      // exactly (so the trigger's delete-by-fields can't be aimed at an
+                      // unrelated meal); the reporter must be a member of that crew and
+                      // the meal must exist.
+                      (request.resource.data.targetType == "meal"
+                       && request.resource.data.crewId is string
+                       && request.resource.data.mealId is string
+                       && request.resource.data.targetKey ==
+                            "meal|" + request.resource.data.crewId + "|" + request.resource.data.mealId
+                       && request.auth.uid in
+                            get(/databases/$(database)/documents/crews/$(request.resource.data.crewId)).data.memberIds
+                       && exists(/databases/$(database)/documents/crews/$(request.resource.data.crewId)/meals/$(request.resource.data.mealId)))
+                      ||
+                      // Comment target: crewId + mealId + commentId reconstruct targetKey;
+                      // the reporter must be a member of that crew and the comment must exist.
+                      (request.resource.data.targetType == "comment"
+                       && request.resource.data.crewId is string
+                       && request.resource.data.mealId is string
+                       && request.resource.data.commentId is string
+                       && request.resource.data.targetKey ==
+                            "comment|" + request.resource.data.crewId + "|" +
+                            request.resource.data.mealId + "|" + request.resource.data.commentId
+                       && request.auth.uid in
+                            get(/databases/$(database)/documents/crews/$(request.resource.data.crewId)).data.memberIds
+                       && exists(/databases/$(database)/documents/crews/$(request.resource.data.crewId)/meals/$(request.resource.data.mealId)/comments/$(request.resource.data.commentId)))
+                      ||
+                      // Account target: no crew scope (human-reviewed, never auto-actioned);
+                      // accountId reconstructs targetKey, may not be the reporter (no
+                      // self-report), and the account must exist.
+                      (request.resource.data.targetType == "account"
+                       && request.resource.data.accountId is string
+                       && request.resource.data.accountId != request.auth.uid
+                       && request.resource.data.targetKey == "account|" + request.resource.data.accountId
+                       && exists(/databases/$(database)/documents/accounts/$(request.resource.data.accountId)))
+                    );
     }
   }
 }

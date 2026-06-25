@@ -4,8 +4,11 @@ import dev.gitlive.firebase.auth.FirebaseAuth
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import dev.gitlive.firebase.storage.FirebaseStorage
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.database.FoodRatsDatabase
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
+import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
+import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
@@ -13,11 +16,14 @@ import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.location.LocationProvider
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
+import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
+import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
+import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.time.Clock
-import es.schsebastian.foodrats.feature.meal.data.queue.ConnectivityMonitor
 import es.schsebastian.foodrats.feature.meal.data.upload.MealUploadScheduler
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.datetime.TimeZone
 import kotlinx.serialization.json.Json
 import org.koin.core.annotation.KoinExperimentalAPI
@@ -40,6 +46,8 @@ import kotlin.test.Test
  *    `StreakNotificationPort` is no longer a coordinator dependency — the server `streakNudge`
  *    Cloud Function supersedes the local DailyInactivityWorker; see the coordinator's publish arm.)
  *  - `MealUploadScheduler` is the per-platform binding (`mealAndroidModule`/`mealIosModule`).
+ *  - `CoroutineScope` is the app-lifetime `named("appScope")` scope (bound by `ingredientModule`,
+ *    shared in the merged graph) that the offline-first `MealSyncEngine` runs its sync jobs on.
  *
  * `verify` is JVM-only, so this lives in androidHostTest.
  */
@@ -54,6 +62,8 @@ class MealModuleVerifyTest {
                 FirebaseStorage::class,
                 FirebaseAuth::class,
                 AppPreferences::class,
+                // Bound by :core:database's databaseModule; backs MealLocalStore.
+                FoodRatsDatabase::class,
                 Json::class,
                 Clock::class,
                 TimeZone::class,
@@ -66,10 +76,18 @@ class MealModuleVerifyTest {
                 MealClassifierPort::class,
                 IngredientReadPort::class,
                 CuisineReadPort::class,
+                // UGC §3 — the advisory description filter + the LocalePort it reads the language from.
+                TextModerationPort::class,
+                LocalePort::class,
                 FeatureFlagPort::class,
                 MealUploadScheduler::class,
-                ConnectivityMonitor::class,
+                ConnectivityPort::class,
                 AnalyticsPort::class,
+                AiPreferencePort::class,
+                DefaultAudiencePort::class,
+                // App-lifetime named("appScope") scope (bound by ingredientModule, shared in the
+                // merged graph) the new MealSyncEngine runs its per-crew sync jobs on.
+                CoroutineScope::class,
             ),
         )
     }

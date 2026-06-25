@@ -25,14 +25,16 @@ internal expect class PlateCompressor() {
  * Pure, platform-independent compression policy + scaling math. The defaults follow roadmap §5.1
  * (the spec is silent on exact numbers, so these are documented choices, not hidden magic):
  *
- *  - [MAX_EDGE_PX] = 1600 — caps the longest edge. Mid-range of the §5.1 "~1440–2048px" band;
- *    ample for a full-screen plate hero on any phone while roughly halving a 12-MP capture's
- *    linear size. The server still derives its own small thumbnail; this only bounds the FULL image.
- *  - [JPEG_QUALITY] = 80 — the §5.1 target; near-visually-lossless for photos at a large byte saving.
+ *  - [MAX_EDGE_PX] = 2048 — caps the longest edge. Top of the §5.1 "~1440–2048px" band; the plate is
+ *    the app's hero surface (full-screen detail header + pinch-zoom to 5×) and the FULL image is the
+ *    hard ceiling on every display path's quality, so we keep the most detail the band allows. The
+ *    server still derives its own small thumbnail; this only bounds the FULL image.
+ *  - [JPEG_QUALITY] = 85 — visually-lossless for photographic plates; the small extra bytes over 80
+ *    buy crisper edges on the large detail hero and the structural feed bento tiles.
  */
 internal object PlateCompression {
-    const val MAX_EDGE_PX: Int = 1600
-    const val JPEG_QUALITY: Int = 80
+    const val MAX_EDGE_PX: Int = 2048
+    const val JPEG_QUALITY: Int = 85
 
     /**
      * Computes the target [width]/[height] for a source of [srcWidth] x [srcHeight], scaled so the

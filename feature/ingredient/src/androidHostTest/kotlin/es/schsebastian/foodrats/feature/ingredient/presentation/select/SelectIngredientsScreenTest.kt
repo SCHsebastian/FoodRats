@@ -40,6 +40,41 @@ class SelectIngredientsScreenTest {
 
     private val tomato = Ingredient(IngredientSlug.of("tomato").getOrNull()!!, "Tomato", IngredientCategory.Vegetable)
     private val onion = Ingredient(IngredientSlug.of("onion").getOrNull()!!, "Onion", IngredientCategory.Vegetable)
+    private val apple = Ingredient(IngredientSlug.of("apple").getOrNull()!!, "Apple", IngredientCategory.Fruit)
+
+    @Test
+    fun all_groups_are_expanded_by_default() {
+        val port = FakeDraftPort(DraftIngredients(selected = emptyList(), detected = emptyList()))
+        val vm = SelectIngredientsViewModel(catalogUseCase(listOf(tomato, apple)), port)
+
+        rule.setContent {
+            FoodRatsTheme { SelectIngredientsScreen(onDone = {}, vm = vm) }
+        }
+
+        // Vegetable (first) AND Fruit (a later group) both render on entry.
+        rule.onNodeWithText("Tomato").assertExists()
+        rule.onNodeWithText("Apple").assertExists()
+    }
+
+    @Test
+    fun searching_force_expands_every_matching_group_even_when_collapsed() {
+        val port = FakeDraftPort(DraftIngredients(selected = emptyList(), detected = emptyList()))
+        val vm = SelectIngredientsViewModel(catalogUseCase(listOf(tomato, apple)), port)
+
+        rule.setContent {
+            FoodRatsTheme { SelectIngredientsScreen(onDone = {}, vm = vm) }
+        }
+
+        // Collapse the Fruit group → its Apple row disappears.
+        vm.onIntent(SelectIngredientsIntent.ToggleCategory(IngredientCategory.Fruit))
+        rule.waitForIdle()
+        rule.onNodeWithText("Apple").assertDoesNotExist()
+
+        // Typing a query re-opens every group that has a match → Apple is back.
+        vm.onIntent(SelectIngredientsIntent.QueryChanged("apple"))
+        rule.waitForIdle()
+        rule.onNodeWithText("Apple").assertExists()
+    }
 
     @Test
     fun renders_default_expanded_vegetables_and_confirm_writes_selection() {

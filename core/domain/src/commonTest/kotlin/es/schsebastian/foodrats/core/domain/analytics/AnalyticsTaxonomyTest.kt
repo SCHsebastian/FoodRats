@@ -25,6 +25,9 @@ class AnalyticsTaxonomyTest {
         AnalyticsEvent.CrewJoined(crewId, JoinMethod.INVITE_CODE),
         AnalyticsEvent.CrewCreated(crewId),
         AnalyticsEvent.CrewLeft(crewId),
+        AnalyticsEvent.CrewRenamed(crewId),
+        AnalyticsEvent.CrewDeleted(crewId),
+        AnalyticsEvent.CrewSwitched(crewId),
         AnalyticsEvent.CrewMemberRemoved(crewId),
         AnalyticsEvent.CrewInviteShared(crewId),
         AnalyticsEvent.PlateShared(mealId),
@@ -53,7 +56,10 @@ class AnalyticsTaxonomyTest {
         AnalyticsEvent.NotifPermissionGranted,
         AnalyticsEvent.NotifPermissionDenied,
         AnalyticsEvent.ScreenViewed(ScreenName("meal_detail")),
+        AnalyticsEvent.ScreenMoved(from = ScreenName("feed"), to = ScreenName("meal_detail")),
         AnalyticsEvent.AccountDeleted,
+        AnalyticsEvent.SettingChanged(AppSetting.NOTIFICATIONS, enabled = true),
+        AnalyticsEvent.SettingChanged(AppSetting.THEME),
         AnalyticsEvent.ConsentGranted(version = 1),
     )
 

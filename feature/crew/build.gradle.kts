@@ -27,6 +27,7 @@ kotlin {
         commonMain.dependencies {
             implementation(projects.core.domain)
             implementation(projects.core.data)
+            implementation(projects.core.database)
             implementation(projects.core.designsystem)
             implementation(projects.core.presentation)
             implementation(projects.core.i18n)
@@ -34,6 +35,11 @@ kotlin {
             implementation(libs.bundles.firebase.gitlive)
             implementation(libs.bundles.kotlinx.common)
             implementation(libs.androidx.datastore.preferences)
+            // SQLDelight runtime (FoodRatsDatabase/CrewQueries) + the asFlow/mapToList reactive
+            // extensions the CrewLocalStore reads return. :core:database exposes these
+            // `implementation` (not api), so feature/crew declares them directly.
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutines.ext)
             // Avatar picker (gallery) — same KMP picker the meal feature uses.
             // Mirror feature:meal: if iOS link breaks on material-icons-extended, add the same
             // exclude noted in CLAUDE.md.
@@ -59,6 +65,8 @@ kotlin {
         val androidHostTest by getting {
             dependencies {
                 implementation(libs.bundles.feature.hosttest)
+                // In-memory JVM SQLDelight driver for CrewLocalStore + CrewSyncEngine host tests.
+                implementation(libs.sqldelight.jvm.driver)
             }
         }
     }

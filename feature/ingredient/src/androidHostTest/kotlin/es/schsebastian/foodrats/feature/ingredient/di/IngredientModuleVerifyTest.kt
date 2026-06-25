@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.ingredient.di
 
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.MealDraftIngredientsPort
 import kotlinx.coroutines.flow.Flow
@@ -17,6 +18,7 @@ import kotlin.test.Test
  *  - `Flow` covers `IngredientRepository.language: Flow<String>`, derived from `LocalePort` in the
  *    binding lambda (the lambda body isn't reflected — only the constructor is — so the language
  *    `Flow` shows up as a required type).
+ *  - `AnalyticsPort` is bound per-platform (not in this module); `SelectIngredientsViewModel` needs it.
  *
  * `verify` is JVM-only, so this lives in androidHostTest.
  */
@@ -30,6 +32,7 @@ class IngredientModuleVerifyTest {
                 MealDraftIngredientsPort::class,
                 DispatcherProvider::class,
                 Flow::class,
+                AnalyticsPort::class,
             ),
         )
     }

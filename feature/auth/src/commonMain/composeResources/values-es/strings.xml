@@ -1,15 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="auth_signin_title">FoodRats</string>
-    <string name="auth_signin_subtitle">Comida real con tu crew. Sin filtros.</string>
+    <string name="auth_signin_subtitle">Comida real con tu cuadrilla. Sin filtros.</string>
     <string name="auth_signin_continue_google">Continuar con Google</string>
     <string name="auth_signin_continue_apple">Continuar con Apple</string>
     <string name="auth_signin_highlight_share">Captura el plato del día</string>
-    <string name="auth_signin_highlight_rate">Puntúa lo que cocina tu grupo</string>
+    <string name="auth_signin_highlight_rate">Puntúa lo que cocina tu cuadrilla</string>
     <string name="auth_signin_highlight_feed">Mantén viva la racha</string>
-    <string name="auth_signin_footer">Sin feed público. Solo tu crew.</string>
+    <string name="auth_signin_footer">Sin feed público. Solo tu cuadrilla.</string>
+    <!-- Línea de aceptación UGC bajo los botones de inicio de sesión; los dos enlaces son pulsables. -->
+    <string name="auth_signin_agreement_prefix">Al continuar, aceptas los </string>
+    <string name="auth_signin_agreement_eula_link">Términos (EULA)</string>
+    <string name="auth_signin_agreement_connector"> y las </string>
+    <string name="auth_signin_agreement_guidelines_link">Normas de la Comunidad</string>
     <string name="auth_field_email">Email</string>
     <string name="auth_field_password">Contraseña</string>
+    <string name="auth_field_confirm_password">Confirmar contraseña</string>
+    <!-- Etiquetas de accesibilidad para el botón de mostrar/ocultar contraseña (icono de ojo). -->
+    <string name="auth_show_password">Mostrar contraseña</string>
+    <string name="auth_hide_password">Ocultar contraseña</string>
     <string name="auth_mode_signin_cta">Entrar</string>
     <string name="auth_mode_signup_cta">Crear cuenta</string>
     <string name="auth_toggle_to_signup">¿Sin cuenta? Regístrate</string>
@@ -28,6 +37,7 @@
     <string name="auth_error_password_too_short">La contraseña debe tener al menos 6 caracteres.</string>
     <string name="auth_error_email_in_use">Ese email ya está en uso.</string>
     <string name="auth_error_wrong_credentials">Email o contraseña incorrectos.</string>
+    <string name="auth_error_password_mismatch">Las contraseñas no coinciden.</string>
     <string name="auth_profile_title">Ajustes</string>
     <string name="auth_profile_back_cta">Atrás</string>
     <string name="auth_profile_identity_section">General</string>
@@ -39,15 +49,37 @@
     <string name="auth_profile_save">Guardar</string>
     <string name="auth_profile_change_avatar_cta">Toca para cambiar avatar</string>
     <string name="auth_profile_avatar_uploading">Subiendo…</string>
+    <string name="auth_profile_remove_avatar_cta">Eliminar avatar</string>
+    <string name="auth_profile_remove_avatar_removing">Eliminando…</string>
+    <string name="auth_profile_remove_avatar_confirm_title">¿Eliminar avatar?</string>
+    <string name="auth_profile_remove_avatar_confirm_body">Tu avatar se borrará y se reemplazará con tus iniciales.</string>
+    <string name="auth_profile_remove_avatar_confirm_cta">Eliminar</string>
+    <string name="auth_profile_remove_avatar_cancel">Cancelar</string>
+    <string name="auth_profile_remove_avatar_error">No se pudo eliminar tu avatar. Inténtalo de nuevo.</string>
     <string name="auth_profile_account_section">Cuenta</string>
     <string name="auth_profile_achievements_section">Insignias</string>
     <string name="auth_profile_achievements_row">Insignias</string>
     <string name="auth_profile_achievements_subtitle">Mira tus logros conseguidos y bloqueados</string>
+    <!-- Etiquetas de insignia de perfil — nivel ganado mostrado junto al nombre. -->
+    <string name="auth_profile_badge_first">Primer Plato</string>
+    <string name="auth_profile_badge_ten">10 Platos</string>
+    <string name="auth_profile_badge_fifty">50 Platos</string>
+    <string name="auth_profile_badge_hundred">100 Platos</string>
+    <!-- Sección "Seguridad" del perfil (cumplimiento UGC §5) — abre la lista de usuarios bloqueados. -->
+    <string name="auth_profile_safety_section">Seguridad</string>
+    <string name="auth_profile_blocked_users_row">Usuarios bloqueados</string>
+    <string name="auth_profile_blocked_users_subtitle">Gestiona a las personas que has bloqueado</string>
+    <!-- Sección "Legal" del perfil (cumplimiento UGC §6) — abre el EULA / las Normas de la Comunidad. -->
+    <string name="auth_profile_legal_section">Legal</string>
+    <string name="auth_profile_legal_eula_row">Términos (EULA)</string>
+    <string name="auth_profile_legal_guidelines_row">Normas de la Comunidad</string>
     <string name="auth_profile_sign_out_cta">Cerrar sesión</string>
     <string name="auth_profile_sign_out_failed">No se pudo cerrar sesión. Inténtalo de nuevo.</string>
     <string name="auth_profile_display_name_blank">El nombre no puede estar vacío.</string>
     <string name="auth_profile_display_name_too_long">El nombre es demasiado largo (máx. 40).</string>
     <string name="auth_profile_backend_unavailable">Sin conexión. Inténtalo de nuevo.</string>
+    <string name="auth_profile_offline">Estás sin conexión. Lo guardaremos cuando vuelvas a estar en línea.</string>
+    <string name="auth_profile_session_expired">Tu sesión expiró. Inicia sesión de nuevo.</string>
     <string name="auth_profile_avatar_empty_bytes">No se pudo leer la imagen seleccionada. Prueba con otra.</string>
 
     <string name="auth_profile_theme_row">Tema</string>
@@ -80,25 +112,35 @@
     <string name="auth_profile_reminders_remove_cta">Quitar recordatorio</string>
     <string name="auth_profile_reminders_persist_failed">No se pudieron guardar tus recordatorios. Inténtalo de nuevo.</string>
 
+    <string name="auth_profile_bio_label">Bio personal</string>
+    <string name="auth_profile_bio_placeholder">Cocinero casero de Barcelona · máx. 100 caracteres</string>
+    <string name="auth_profile_bio_save">Guardar bio</string>
+    <string name="auth_profile_bio_too_long">La bio es demasiado larga (máx. 100 caracteres).</string>
+
+    <string name="auth_profile_ai_row">Sugerencias de IA</string>
+    <string name="auth_profile_ai_subtitle_on">Las fotos de tu plato se analizan en tu dispositivo para sugerir ingredientes.</string>
+    <string name="auth_profile_ai_subtitle_off">La IA está desactivada — añade los ingredientes tú mismo.</string>
+    <string name="auth_profile_ai_persist_failed">No se pudo guardar tu preferencia de IA. Inténtalo de nuevo.</string>
+
     <string name="auth_profile_analytics_row">Compartir datos de uso anónimos</string>
     <string name="auth_profile_analytics_subtitle_on">Activado: ayudas a mejorar FoodRats. Nunca se recopila contenido personal y puedes desactivarlo cuando quieras.</string>
     <string name="auth_profile_analytics_subtitle_off">Desactivado: no se recopilan datos de uso. Actívalo para ayudar a mejorar FoodRats; nunca se recopila contenido personal.</string>
 
     <string name="auth_export_data_row">Exportar mis datos</string>
-    <string name="auth_export_data_subtitle">Descarga una copia de tu cuenta, platos, puntuaciones y crews (RGPD).</string>
+    <string name="auth_export_data_subtitle">Descarga una copia de tu cuenta, platos, puntuaciones y cuadrillas (RGPD).</string>
     <string name="auth_export_data_in_flight">Preparando tu exportación…</string>
     <string name="auth_export_data_ready_subtitle">Tu exportación está lista. El enlace de descarga es válido durante unos 15 minutos.</string>
     <string name="auth_export_data_ready_cta">Descargar</string>
     <string name="auth_export_data_error_backend">No se pudo preparar tu exportación. Inténtalo de nuevo.</string>
 
     <string name="auth_profile_delete_account_row">Eliminar mi cuenta</string>
-    <string name="auth_profile_delete_account_subtitle">Elimina permanentemente tus platos, puntuaciones y crews.</string>
+    <string name="auth_profile_delete_account_subtitle">Elimina permanentemente tus platos, puntuaciones y cuadrillas.</string>
 
     <string name="auth_delete_account_title">Eliminar tu cuenta</string>
     <string name="auth_delete_account_intro">Esta acción es permanente y no se puede deshacer. Antes de continuar, asegúrate de entender qué ocurre.</string>
-    <string name="auth_delete_account_warning_meals">Todos los platos que has publicado se eliminarán de todas las crews.</string>
+    <string name="auth_delete_account_warning_meals">Todos los platos que has publicado se eliminarán de todas las cuadrillas.</string>
     <string name="auth_delete_account_warning_ratings">Tus puntuaciones en otros platos también se eliminarán.</string>
-    <string name="auth_delete_account_warning_crews">Las crews que tú gestionas deben transferirse a otro miembro o quedar vacías antes.</string>
+    <string name="auth_delete_account_warning_crews">Las cuadrillas que tú gestionas deben transferirse a otro miembro o quedar vacías antes.</string>
     <string name="auth_delete_account_warning_irreversible">Tu cuenta no se podrá recuperar.</string>
     <string name="auth_delete_account_phrase_label">Escribe BORRAR %1$s para confirmar</string>
     <string name="auth_delete_account_phrase_template">BORRAR %1$s</string>
@@ -110,5 +152,15 @@
     <string name="auth_delete_account_in_flight">Eliminando la cuenta…</string>
     <string name="auth_delete_account_error_phrase">La frase de confirmación no coincide. Escríbela exactamente.</string>
     <string name="auth_delete_account_error_backend">No se pudo contactar con el servicio de eliminación. Inténtalo de nuevo.</string>
-    <string name="auth_delete_account_error_ownership">No se pudo reasignar la propiedad de tu grupo. Inténtalo de nuevo.</string>
+    <string name="auth_delete_account_error_ownership">No se pudo reasignar la propiedad de tu cuadrilla. Inténtalo de nuevo.</string>
+
+    <!-- Selector de color de acento (U6) -->
+    <string name="auth_profile_accent_row">Color de acento</string>
+    <string name="auth_profile_accent_picker_title">Elige tu acento</string>
+    <string name="auth_profile_accent_option_ember">Ember (predeterminado)</string>
+    <string name="auth_profile_accent_option_moss">Musgo</string>
+    <string name="auth_profile_accent_option_rust">Óxido</string>
+    <string name="auth_profile_accent_option_steel">Acero</string>
+    <string name="auth_profile_accent_option_berry">Mora</string>
+    <string name="auth_profile_accent_persist_failed">No se pudo guardar el acento. Inténtalo de nuevo.</string>
 </resources>

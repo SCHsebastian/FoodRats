@@ -8,9 +8,12 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
+import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
+import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
+import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -18,6 +21,7 @@ import kotlin.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 private class FakeSessionForBlindVoting(
     private val session: Session?,
@@ -41,29 +45,35 @@ class SetBlindVotingUseCaseTest {
         members = listOf(Member(ownerId, Instant.fromEpochMilliseconds(0L))),
     )
 
+    private fun useCase(
+        repo: FakeCrewRepository,
+        session: Session?,
+        connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
+        outbox: RecordingOutboxPort = RecordingOutboxPort(),
+    ) = SetBlindVotingUseCase(repo, FakeSessionForBlindVoting(session), connectivity, outbox)
+
     @Test fun enables_blind_voting_when_owner() = runTest {
         val session = Session(accountId = ownerId, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val useCase = SetBlindVotingUseCase(repo, FakeSessionForBlindVoting(session))
-        val r = useCase(crewId, enabled = true)
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, outbox = outbox)(crewId, enabled = true)
         assertIs<Result.Ok<Unit>>(r)
         assertEquals(crewId to true, repo.lastSetBlindVoting)
+        assertTrue(outbox.enqueued.isEmpty())
     }
 
     @Test fun passes_disabled_flag_through_to_repository() = runTest {
         val session = Session(accountId = ownerId, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val useCase = SetBlindVotingUseCase(repo, FakeSessionForBlindVoting(session))
-        val r = useCase(crewId, enabled = false)
+        val r = useCase(repo, session)(crewId, enabled = false)
         assertIs<Result.Ok<Unit>>(r)
         assertEquals(crewId to false, repo.lastSetBlindVoting)
     }
 
-    @Test fun maps_missing_session_to_backend_unavailable() = runTest {
+    @Test fun maps_missing_session_to_not_signed_in() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val useCase = SetBlindVotingUseCase(repo, FakeSessionForBlindVoting(session = null))
-        val r = useCase(crewId, enabled = true)
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        val r = useCase(repo, session = null)(crewId, enabled = true)
+        assertEquals(Result.failure(CrewError.Session.NotSignedIn), r)
         assertEquals(null, repo.lastSetBlindVoting)
     }
 
@@ -71,8 +81,46 @@ class SetBlindVotingUseCaseTest {
         val nonOwner = aid("uid-other")
         val session = Session(accountId = nonOwner, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val useCase = SetBlindVotingUseCase(repo, FakeSessionForBlindVoting(session))
-        val r = useCase(crewId, enabled = true)
+        val r = useCase(repo, session)(crewId, enabled = true)
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+    }
+
+    @Test fun offline_non_owner_rejected_without_enqueue() = runTest {
+        val nonOwner = aid("uid-other")
+        val session = Session(accountId = nonOwner, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(crewId, enabled = true)
+        assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertTrue(outbox.enqueued.isEmpty(), "a non-owner must not park a doomed offline command")
+    }
+
+    @Test fun offline_enqueues_and_returns_ok() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(
+            crewId, enabled = true,
+        )
+        assertIs<Result.Ok<Unit>>(r)
+        assertEquals(null, repo.lastSetBlindVoting, "offline must not perform the direct write")
+        assertEquals(
+            listOf<PendingCommand>(PendingCommand.SetBlindVoting(crewId, ownerId, true)),
+            outbox.enqueued,
+        )
+    }
+
+    @Test fun connectivity_class_error_falls_back_to_outbox() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew)).apply {
+            nextSetBlindVoting = Result.failure(CrewError.Backend.Network)
+        }
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, outbox = outbox)(crewId, enabled = true)
+        assertIs<Result.Ok<Unit>>(r)
+        assertEquals(
+            listOf<PendingCommand>(PendingCommand.SetBlindVoting(crewId, ownerId, true)),
+            outbox.enqueued,
+        )
     }
 }

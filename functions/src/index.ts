@@ -5,6 +5,7 @@ initializeApp();
 export { onCommentCreated } from "./triggers/onCommentCreated";
 export { onMealCreated } from "./triggers/onMealCreated";
 export { onMealDeleted } from "./triggers/onMealDeleted";
+export { onReportCreated } from "./triggers/onReportCreated";
 export { onPlateImageFinalized } from "./triggers/onPlateImageFinalized";
 export { weeklyDigest } from "./triggers/weeklyDigest";
 export { streakNudge } from "./triggers/streakNudge";

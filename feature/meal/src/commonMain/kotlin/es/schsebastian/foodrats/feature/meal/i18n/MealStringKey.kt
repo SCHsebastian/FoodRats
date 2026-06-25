@@ -9,14 +9,24 @@ import foodrats.feature.meal.generated.resources.meal_capture_session_error
 import foodrats.feature.meal.generated.resources.meal_classifier_load_failed
 import foodrats.feature.meal.generated.resources.meal_classifier_no_detection
 import foodrats.feature.meal.generated.resources.meal_compose_add_location
+import foodrats.feature.meal.generated.resources.meal_compose_all_slots_taken
 import foodrats.feature.meal.generated.resources.meal_compose_audience_all
 import foodrats.feature.meal.generated.resources.meal_compose_audience_label
 import foodrats.feature.meal.generated.resources.meal_compose_clear_location
 import foodrats.feature.meal.generated.resources.meal_compose_coordinates_format
+import foodrats.feature.meal.generated.resources.meal_compose_counter_a11y
 import foodrats.feature.meal.generated.resources.meal_compose_description_counter
+import foodrats.feature.meal.generated.resources.meal_compose_description_label
 import foodrats.feature.meal.generated.resources.meal_compose_description_placeholder
+import foodrats.feature.meal.generated.resources.meal_compose_dish_counter
 import foodrats.feature.meal.generated.resources.meal_compose_dish_label
+import foodrats.feature.meal.generated.resources.meal_compose_eyebrow
 import foodrats.feature.meal.generated.resources.meal_compose_locating
+import foodrats.feature.meal.generated.resources.meal_compose_photo_description
+import foodrats.feature.meal.generated.resources.meal_compose_slot_label
+import foodrats.feature.meal.generated.resources.meal_compose_slot_optional
+import foodrats.feature.meal.generated.resources.meal_description_moderation_warning
+import foodrats.feature.meal.generated.resources.meal_dish_moderation_warning
 import foodrats.feature.meal.generated.resources.meal_compose_title
 import foodrats.feature.meal.generated.resources.meal_error_already_posted
 import foodrats.feature.meal.generated.resources.meal_error_location_permission
@@ -44,16 +54,27 @@ import foodrats.feature.meal.generated.resources.meal_publish_confirm_title
 import foodrats.feature.meal.generated.resources.meal_publish_no_slot
 import foodrats.feature.meal.generated.resources.meal_publish_title
 import foodrats.feature.meal.generated.resources.meal_slot_breakfast
+import foodrats.feature.meal.generated.resources.meal_slot_brunch
 import foodrats.feature.meal.generated.resources.meal_slot_dinner
 import foodrats.feature.meal.generated.resources.meal_slot_lunch
+import foodrats.feature.meal.generated.resources.meal_slot_merienda
+import foodrats.feature.meal.generated.resources.meal_slot_snack
 import org.jetbrains.compose.resources.StringResource
 
 enum class MealStringKey(override val resourceId: StringResource) : StringKey {
+    ComposeEyebrow(Res.string.meal_compose_eyebrow),
     ComposeTitle(Res.string.meal_compose_title),
+    ComposeSlotLabel(Res.string.meal_compose_slot_label),
+    ComposeSlotOptional(Res.string.meal_compose_slot_optional),
     ComposeDishLabel(Res.string.meal_compose_dish_label),
+    ComposeDescriptionLabel(Res.string.meal_compose_description_label),
     ComposeDescriptionPlaceholder(Res.string.meal_compose_description_placeholder),
     ComposeDescriptionCounter(Res.string.meal_compose_description_counter),
+    ComposeDishCounter(Res.string.meal_compose_dish_counter),
+    ComposeCounterA11y(Res.string.meal_compose_counter_a11y),
+    ComposePhotoDescription(Res.string.meal_compose_photo_description),
     ComposeAddLocation(Res.string.meal_compose_add_location),
+    ComposeAllSlotsTaken(Res.string.meal_compose_all_slots_taken),
     ComposeAudienceLabel(Res.string.meal_compose_audience_label),
     ComposeAudienceAll(Res.string.meal_compose_audience_all),
     ComposeLocating(Res.string.meal_compose_locating),
@@ -64,13 +85,19 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     PublishConfirmMessage(Res.string.meal_publish_confirm_message),
     PublishConfirmCta(Res.string.meal_publish_confirm_cta),
     SlotBreakfast(Res.string.meal_slot_breakfast),
+    SlotBrunch(Res.string.meal_slot_brunch),
     SlotLunch(Res.string.meal_slot_lunch),
+    SlotSnack(Res.string.meal_slot_snack),
+    SlotMerienda(Res.string.meal_slot_merienda),
     SlotDinner(Res.string.meal_slot_dinner),
     IngredientsClassifying(Res.string.meal_ingredients_classifying),
     ClassifierBannerNoDetection(Res.string.meal_classifier_no_detection),
     ClassifierBannerLoadFailed(Res.string.meal_classifier_load_failed),
     IngredientsRowAdd(Res.string.meal_ingredients_row_add),
     IngredientsRowSummary(Res.string.meal_ingredients_row_summary),
+    // UGC compliance §3 — HARD-BLOCK moderation banners for dish and description.
+    DescriptionModerationWarning(Res.string.meal_description_moderation_warning),
+    DishModerationWarning(Res.string.meal_dish_moderation_warning),
     MealErrorAlreadyPosted(Res.string.meal_error_already_posted),
     MealErrorPublishNoCrewSelected(Res.string.meal_error_no_crew_selected),
     MealErrorNotToday(Res.string.meal_error_not_today),

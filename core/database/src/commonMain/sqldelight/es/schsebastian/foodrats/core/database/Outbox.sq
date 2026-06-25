@@ -1,0 +1,162 @@
+-- Durable write outbox (offline-first P3b §2.5 / P3b-T6). Replaces the DataStore-JSON blob
+-- (Keys.OutboxJson) that backed the P2 OutboxLocalStore. One row per queued user mutation
+-- (rate / comment / reaction / crew-admin), with its lifecycle status + attempt bookkeeping.
+--
+-- The domain PendingCommand is NOT persisted as a serialized sealed hierarchy; it is FLATTENED
+-- into nullable payload columns selected by `type` (only the columns a leaf uses are populated),
+-- mirroring the P2 CommandJson shape. An unknown `type` from a newer build is dropped on read.
+--
+-- COALESCING: `idempotencyKey` carries a UNIQUE index, so an offline user rating the same meal
+-- twice ends with ONE row — `upsertByIdem` (INSERT OR REPLACE) replaces the prior row sharing the
+-- key (last-write-wins), matching the P2 store's filterNot-then-append behavior.
+
+CREATE TABLE outbox (
+    id                   TEXT    NOT NULL PRIMARY KEY,
+    type                 TEXT    NOT NULL,
+    idempotencyKey       TEXT    NOT NULL,
+    -- Lifecycle: 'pending' | 'uploading' | 'failed'.
+    statusKind           TEXT    NOT NULL,
+    -- failed only: the i18n error key + whether a retry is still worthwhile.
+    errorKey             TEXT,
+    retryable            INTEGER NOT NULL DEFAULT 0,
+    attemptCount         INTEGER NOT NULL DEFAULT 0,
+    createdAtEpochMs     INTEGER NOT NULL,
+    lastAttemptAtEpochMs INTEGER,
+    -- Flattened PendingCommand payload (nullable; only the leaf's fields are set).
+    crewId               TEXT,
+    mealId               TEXT,
+    accountId            TEXT,
+    commentId            TEXT,
+    text                 TEXT,
+    score                INTEGER,
+    reactionKindKey      TEXT,
+    desiredPresent       INTEGER,
+    enabled              INTEGER,
+    targetAccountId      TEXT,
+    newName              TEXT,
+    -- C-series crew-settings extension (offline-first): banner vertical focal point (0..1),
+    -- weekly-challenge set-at timestamp, and the score-style key. Added in migration 2.sqm
+    -- (v2 -> v3). Only the relevant leaf populates them; all other rows leave them NULL.
+    focalY               REAL,
+    setAtMillis          INTEGER,
+    styleKey             TEXT
+);
+
+-- Enforces enqueue coalescing: two commands sharing an idempotency key collapse to one row.
+CREATE UNIQUE INDEX outbox_idem ON outbox(idempotencyKey);
+
+-- The runner filters by lifecycle (pending / failed-retryable) when draining.
+CREATE INDEX outbox_status ON outbox(statusKind);
+
+-- Whole outbox, oldest first (createdAt ordering — matches the P2 sortedBy { createdAt }).
+selectAll:
+SELECT * FROM outbox
+ORDER BY createdAtEpochMs ASC;
+
+-- Just the entries still awaiting a (re)try, oldest first.
+selectPending:
+SELECT * FROM outbox
+WHERE statusKind = 'pending'
+ORDER BY createdAtEpochMs ASC;
+
+-- Enqueue, coalescing on idempotencyKey via the UNIQUE index (INSERT OR REPLACE → last-write-wins).
+-- A same-id collision also replaces (PK). NOTE: REPLACE deletes the conflicting row(s) first, so a
+-- coalesced row takes the NEW id (the prior row sharing the key is dropped).
+upsertByIdem:
+INSERT OR REPLACE INTO outbox(
+    id, type, idempotencyKey, statusKind, errorKey, retryable, attemptCount,
+    createdAtEpochMs, lastAttemptAtEpochMs,
+    crewId, mealId, accountId, commentId, text, score, reactionKindKey,
+    desiredPresent, enabled, targetAccountId, newName,
+    focalY, setAtMillis, styleKey
+) VALUES (
+    :id, :type, :idempotencyKey, :statusKind, :errorKey, :retryable, :attemptCount,
+    :createdAtEpochMs, :lastAttemptAtEpochMs,
+    :crewId, :mealId, :accountId, :commentId, :text, :score, :reactionKindKey,
+    :desiredPresent, :enabled, :targetAccountId, :newName,
+    :focalY, :setAtMillis, :styleKey
+);
+
+-- Update the lifecycle + attempt bookkeeping for one entry (no-op if the id is absent).
+updateStatus:
+UPDATE outbox
+SET statusKind = :statusKind,
+    errorKey = :errorKey,
+    retryable = :retryable,
+    attemptCount = :attemptCount,
+    lastAttemptAtEpochMs = :lastAttemptAtEpochMs
+WHERE id = :id;
+
+deleteById:
+DELETE FROM outbox WHERE id = :id;
+
+-- H1: Conditional claim — only transitions the entry to 'uploading' when it is currently
+-- 'pending'. Run countChanges immediately after (in the same transaction) to detect whether
+-- a row was actually claimed (changes() > 0) vs. already-owned/absent (changes() == 0).
+claimForUpload:
+UPDATE outbox
+SET statusKind           = 'uploading',
+    lastAttemptAtEpochMs = :now
+WHERE id        = :id
+  AND statusKind = 'pending';
+
+-- Returns the number of rows affected by the immediately-preceding DML statement.
+-- Used after claimForUpload to detect a CAS hit (claimed) vs. a miss (already owned/absent).
+countChanges:
+SELECT changes();
+
+-- L4: Keyed read by primary key — used by update() to avoid a full-table scan.
+selectById:
+SELECT * FROM outbox
+WHERE id = :id;
+
+-- M1: Fetch a row by its idempotency key (used for the identity-preserving coalesce in add()).
+selectByIdempotencyKey:
+SELECT * FROM outbox
+WHERE idempotencyKey = :idempotencyKey;
+
+-- User-initiated retry: reset the entry back to Pending AND clear the attempt counter to 0,
+-- granting a fresh retry budget. This is the ONLY path that resets attemptCount — the automatic
+-- backoff re-arm (OutboxRunner.scheduleRetry → updateStatus) must NOT reset it.
+requeueById:
+UPDATE outbox
+SET statusKind = 'pending',
+    errorKey = NULL,
+    retryable = 0,
+    attemptCount = 0,
+    lastAttemptAtEpochMs = NULL
+WHERE id = :id;
+
+-- M5: Age out terminally-failed entries to bound unbounded growth. Entries whose
+-- terminal failure was recorded before :beforeEpochMs are dropped. Only targets
+-- Failed(retryable=false) rows — pending/uploading/retryable rows are untouched.
+deleteTerminalBefore:
+DELETE FROM outbox
+WHERE statusKind = 'failed' AND retryable = 0
+  AND createdAtEpochMs < :beforeEpochMs;
+
+-- M1: Update payload + reset lifecycle columns on an existing row, preserving
+-- id / createdAt / attemptCount (intentionally — a re-issued command must not
+-- reset its retry budget).
+updatePayloadByIdempotencyKey:
+UPDATE outbox
+SET type                 = :type,
+    statusKind           = 'pending',
+    errorKey             = NULL,
+    retryable            = 0,
+    lastAttemptAtEpochMs = NULL,
+    crewId               = :crewId,
+    mealId               = :mealId,
+    accountId            = :accountId,
+    commentId            = :commentId,
+    text                 = :text,
+    score                = :score,
+    reactionKindKey      = :reactionKindKey,
+    desiredPresent       = :desiredPresent,
+    enabled              = :enabled,
+    targetAccountId      = :targetAccountId,
+    newName              = :newName,
+    focalY               = :focalY,
+    setAtMillis          = :setAtMillis,
+    styleKey             = :styleKey
+WHERE idempotencyKey = :idempotencyKey;

@@ -1,8 +1,10 @@
 package es.schsebastian.foodrats.feature.stats.di
 
 import es.schsebastian.foodrats.core.data.share.StoryShareController
+import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.cuisine.CuisineReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealReadPort
@@ -36,11 +38,15 @@ class StatsModuleVerifyTest {
                 MealReadPort::class,
                 IngredientReadPort::class,
                 CuisineReadPort::class,
+                // UGC compliance §5 — stats excludes blocked authors from every ranking.
+                BlockedAccountsPort::class,
                 MealUploadProgressPort::class,
                 Clock::class,
                 TimeZone::class,
                 StoryShareController::class,
                 AnalyticsPort::class,
+                // C8b — crew's score style, so leaderboard cards render Stars/Emoji/Numeric.
+                CrewWelcomePort::class,
             ),
         )
     }

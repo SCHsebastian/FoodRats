@@ -17,7 +17,8 @@ class KonsistRulesTest {
                     imp.name.startsWith("com.google.firebase") ||
                     imp.name.startsWith("dev.gitlive.firebase") ||
                     imp.name.startsWith("org.jetbrains.compose") ||
-                    imp.name.startsWith("androidx.compose")
+                    imp.name.startsWith("androidx.compose") ||
+                    imp.name.startsWith("app.cash.sqldelight")
                 }
             }
     }

@@ -15,4 +15,4 @@ Cross-cutting data infrastructure shared by every feature: DataStore factory (`e
 
 ## Test
 
-No host-test task — `commonTest` runs through `:core:data:testDebugUnitTest` (Android) and `:core:data:iosSimulatorArm64Test` (iOS, currently fails to link without Xcode-resolved Firebase SPM frameworks).
+`commonTest` runs on the JVM through `:core:data:testAndroidHostTest` (this is a KMP `androidLibrary` module with `withHostTest`, so the host-test task is `testAndroidHostTest`, NOT `testDebugUnitTest` — the latter does not exist here) and on iOS through `:core:data:iosSimulatorArm64Test` (currently fails to link without Xcode-resolved Firebase SPM frameworks).

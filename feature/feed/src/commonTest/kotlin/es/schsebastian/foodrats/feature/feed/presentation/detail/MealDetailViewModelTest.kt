@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.feed.presentation.detail
 import app.cash.turbine.test
 import es.schsebastian.foodrats.core.data.share.RecordingStoryShareController
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
+import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
@@ -22,12 +23,16 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeActiveCrewProvider
+import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.FakeMealReadPort
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOptimisticMealWritePort
+import es.schsebastian.foodrats.feature.feed.domain.usecase.RecordingOutboxPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeCrewBlindVotingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeMealRatingPort
 import es.schsebastian.foodrats.feature.feed.presentation.feed.FakeSessionProvider
@@ -43,6 +48,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
@@ -80,7 +86,7 @@ class MealDetailViewModelTest {
             crewIds: Set<CrewId>,
             authorId: AccountId,
             day: MealDay,
-            slot: MealSlot,
+            token: String,
         ): Result<Unit, MealDeleteError> {
             deleteFromAllCrewsCalls++
             return Result.success(Unit)
@@ -113,12 +119,16 @@ class MealDetailViewModelTest {
         )
         val active = FakeActiveCrewProvider(initial = crew)
         val session = FakeSessionProvider(Session(viewerId, crew))
+        val connectivity = FakeConnectivityPort(online = true)
+        val outbox = RecordingOutboxPort()
         return MealDetailViewModel(
             mealId = "meal-1",
             dayIso = dayIso,
-            observeFeed = ObserveFeedUseCase(active, readPort),
-            rateMeal = RateMealUseCase(FakeMealRatingPort()),
+            observeFeed = ObserveFeedUseCase(active, readPort, session, es.schsebastian.foodrats.feature.feed.domain.usecase.FakeBlockedAccountsPort()),
+            rateMeal = RateMealUseCase(FakeMealRatingPort(), connectivity, outbox, RecordingOptimisticMealWritePort()),
             commentPort = commentPort,
+            connectivity = connectivity,
+            outbox = outbox,
             accountReadPort = FakeAccountReadPort(),
             ingredientRead = FakeIngredientReadPort(),
             activeCrew = active,
@@ -131,7 +141,8 @@ class MealDetailViewModelTest {
                 deleteMyMealPort,
                 FakeCrewMembership(listOf(CrewSummary(crew, "Crew"))),
             ),
-            deleteComment = DeleteCommentUseCase(commentPort),
+            deleteComment = DeleteCommentUseCase(commentPort, connectivity, outbox),
+            editComment = EditCommentUseCase(commentPort, connectivity, outbox),
             crewOwner = FakeCrewOwnerPort(owner),
             storyShareController = RecordingStoryShareController(),
         )
@@ -189,15 +200,52 @@ class MealDetailViewModelTest {
         }
     }
 
+    // --- vote change (one edit) ------------------------------------------------
+
+    @Test fun change_vote_flow_confirms_then_edit_mode_then_clears_on_successful_rate() = runTest {
+        val vm = newSut(mealAuthor = authorId) // viewer != author → eligible to vote
+        runCurrent()
+
+        vm.onIntent(MealDetailIntent.RequestChangeVote)
+        runCurrent()
+        assertTrue(vm.state.value.showChangeVoteConfirm)
+        assertFalse(vm.state.value.voteEditMode)
+
+        vm.onIntent(MealDetailIntent.ConfirmChangeVote)
+        runCurrent()
+        assertFalse(vm.state.value.showChangeVoteConfirm)
+        assertTrue(vm.state.value.voteEditMode)
+
+        vm.onIntent(MealDetailIntent.RateMeal(5))
+        runCurrent()
+        // A successful re-rate leaves edit mode (the synced meal locks the "Your vote" tile).
+        assertFalse(vm.state.value.voteEditMode)
+        assertFalse(vm.state.value.pendingRate)
+    }
+
+    @Test fun cancel_change_vote_closes_confirm_without_entering_edit_mode() = runTest {
+        val vm = newSut(mealAuthor = authorId)
+        runCurrent()
+
+        vm.onIntent(MealDetailIntent.RequestChangeVote)
+        runCurrent()
+        vm.onIntent(MealDetailIntent.CancelChangeVote)
+        runCurrent()
+
+        assertFalse(vm.state.value.showChangeVoteConfirm)
+        assertFalse(vm.state.value.voteEditMode)
+    }
+
     // --- comment-row canDelete gate --------------------------------------------
 
-    private fun commentFrom(author: AccountId): MealComment = MealComment(
+    private fun commentFrom(author: AccountId, editedAt: Instant? = null): MealComment = MealComment(
         id = MealCommentId("cmt-1"),
         mealId = (MealId.of("meal-1") as Result.Ok).value,
         crewId = crew,
         authorId = author,
         text = (CommentText.of("hi") as Result.Ok).value,
         createdAt = Instant.parse("2026-05-20T11:59:00Z"),
+        editedAt = editedAt,
     )
 
     @Test fun comment_row_deletable_when_viewer_is_comment_author() = runTest {
@@ -230,6 +278,80 @@ class MealDetailViewModelTest {
             assertFalse(expectMostRecentItem().commentRows.single().canDelete)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // --- comment-row canEdit gate (author-only, unlike delete) -----------------
+
+    @Test fun comment_row_editable_when_viewer_is_comment_author() = runTest {
+        val commentPort = FakeMealCommentPort()
+        val vm = newSut(mealAuthor = authorId, owner = null, commentPort = commentPort)
+        commentPort.emit(listOf(commentFrom(viewerId)))
+        vm.state.test {
+            assertTrue(expectMostRecentItem().commentRows.single().canEdit)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun comment_row_not_editable_for_crew_owner_who_is_not_author() = runTest {
+        val other = (AccountId.of("u-other") as Result.Ok).value
+        val commentPort = FakeMealCommentPort()
+        // Viewer owns the crew (so they may DELETE) but did not author the comment → may NOT edit.
+        val vm = newSut(mealAuthor = authorId, owner = viewerId, commentPort = commentPort)
+        commentPort.emit(listOf(commentFrom(other)))
+        vm.state.test {
+            val row = expectMostRecentItem().commentRows.single()
+            assertTrue(row.canDelete)
+            assertFalse(row.canEdit)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun comment_row_marked_edited_when_editedAt_present() = runTest {
+        val commentPort = FakeMealCommentPort()
+        val vm = newSut(mealAuthor = authorId, owner = null, commentPort = commentPort)
+        commentPort.emit(listOf(commentFrom(viewerId, editedAt = Instant.parse("2026-05-20T12:30:00Z"))))
+        vm.state.test {
+            assertTrue(expectMostRecentItem().commentRows.single().isEdited)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun submit_edit_calls_port_with_new_text_and_leaves_edit_mode() = runTest {
+        val commentPort = FakeMealCommentPort()
+        val vm = newSut(mealAuthor = authorId, owner = null, commentPort = commentPort)
+        commentPort.emit(listOf(commentFrom(viewerId)))
+        runCurrent()
+
+        vm.onIntent(MealDetailIntent.StartEditComment(MealCommentId("cmt-1")))
+        runCurrent()
+        assertEquals(MealCommentId("cmt-1"), vm.state.value.editingCommentId)
+        // Pre-filled with the existing text.
+        assertEquals("hi", vm.state.value.commentEditInput)
+
+        vm.onIntent(MealDetailIntent.EditCommentInputChanged("hi again"))
+        vm.onIntent(MealDetailIntent.SubmitEditComment)
+        runCurrent()
+
+        assertEquals(listOf("cmt-1" to "hi again"), commentPort.editCalls)
+        assertNull(vm.state.value.editingCommentId)
+        assertEquals("", vm.state.value.commentEditInput)
+    }
+
+    @Test fun submit_edit_surfaces_too_long_without_calling_port() = runTest {
+        val commentPort = FakeMealCommentPort()
+        val vm = newSut(mealAuthor = authorId, owner = null, commentPort = commentPort)
+        commentPort.emit(listOf(commentFrom(viewerId)))
+        runCurrent()
+
+        vm.onIntent(MealDetailIntent.StartEditComment(MealCommentId("cmt-1")))
+        vm.onIntent(MealDetailIntent.EditCommentInputChanged("x".repeat(501)))
+        vm.onIntent(MealDetailIntent.SubmitEditComment)
+        runCurrent()
+
+        assertEquals(CommentError.Edit.TooLong, vm.state.value.commentEditError)
+        assertTrue(commentPort.editCalls.isEmpty())
+        // Still in edit mode so the user can fix it.
+        assertEquals(MealCommentId("cmt-1"), vm.state.value.editingCommentId)
     }
 
     // --- author-vs-owner delete routing ----------------------------------------

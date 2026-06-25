@@ -21,7 +21,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.map
 import org.koin.core.module.dsl.factoryOf
-import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.module.dsl.viewModel
 import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
@@ -56,7 +56,15 @@ val ingredientModule = module {
     } bind IngredientReadPort::class
     factoryOf(::ObserveCatalogUseCase)
     factoryOf(::SearchIngredientsUseCase)
-    viewModelOf(::SelectIngredientsViewModel)
+    // Explicit (not viewModelOf): the analytics param has a Noop default that
+    // viewModelOf would short-circuit to. See the analytics-base convention in CLAUDE.md.
+    viewModel {
+        SelectIngredientsViewModel(
+            observeCatalog = get(),
+            draftIngredients = get(),
+            analytics = get(),
+        )
+    }
 }
 
 /**

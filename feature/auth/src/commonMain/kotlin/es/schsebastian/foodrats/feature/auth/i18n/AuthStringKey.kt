@@ -32,28 +32,61 @@ import foodrats.feature.auth.generated.resources.auth_error_email_invalid
 import foodrats.feature.auth.generated.resources.auth_error_missing_server_client_id
 import foodrats.feature.auth.generated.resources.auth_error_network
 import foodrats.feature.auth.generated.resources.auth_error_no_google_accounts
+import foodrats.feature.auth.generated.resources.auth_error_password_mismatch
 import foodrats.feature.auth.generated.resources.auth_error_password_too_short
 import foodrats.feature.auth.generated.resources.auth_error_play_services
 import foodrats.feature.auth.generated.resources.auth_error_session_expired
 import foodrats.feature.auth.generated.resources.auth_error_unknown
 import foodrats.feature.auth.generated.resources.auth_error_user_cancelled
 import foodrats.feature.auth.generated.resources.auth_error_wrong_credentials
+import foodrats.feature.auth.generated.resources.auth_field_confirm_password
 import foodrats.feature.auth.generated.resources.auth_field_email
 import foodrats.feature.auth.generated.resources.auth_field_password
+import foodrats.feature.auth.generated.resources.auth_hide_password
+import foodrats.feature.auth.generated.resources.auth_show_password
 import foodrats.feature.auth.generated.resources.auth_mode_signin_cta
 import foodrats.feature.auth.generated.resources.auth_mode_signup_cta
 import foodrats.feature.auth.generated.resources.auth_or_divider
 import foodrats.feature.auth.generated.resources.auth_profile_account_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_row
+import foodrats.feature.auth.generated.resources.auth_profile_badge_first
+import foodrats.feature.auth.generated.resources.auth_profile_badge_ten
+import foodrats.feature.auth.generated.resources.auth_profile_badge_fifty
+import foodrats.feature.auth.generated.resources.auth_profile_badge_hundred
+import foodrats.feature.auth.generated.resources.auth_profile_bio_label
+import foodrats.feature.auth.generated.resources.auth_profile_bio_placeholder
+import foodrats.feature.auth.generated.resources.auth_profile_bio_save
+import foodrats.feature.auth.generated.resources.auth_profile_bio_too_long
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_subtitle
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_berry
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_ember
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_moss
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_rust
+import foodrats.feature.auth.generated.resources.auth_profile_accent_option_steel
+import foodrats.feature.auth.generated.resources.auth_profile_accent_persist_failed
+import foodrats.feature.auth.generated.resources.auth_profile_accent_picker_title
+import foodrats.feature.auth.generated.resources.auth_profile_accent_row
+import foodrats.feature.auth.generated.resources.auth_profile_ai_row
+import foodrats.feature.auth.generated.resources.auth_profile_ai_subtitle_on
+import foodrats.feature.auth.generated.resources.auth_profile_ai_subtitle_off
+import foodrats.feature.auth.generated.resources.auth_profile_ai_persist_failed
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_row
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_off
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_on
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_empty_bytes
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_uploading
 import foodrats.feature.auth.generated.resources.auth_profile_backend_unavailable
+import foodrats.feature.auth.generated.resources.auth_profile_offline
+import foodrats.feature.auth.generated.resources.auth_profile_session_expired
 import foodrats.feature.auth.generated.resources.auth_profile_change_avatar_cta
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_cta
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_removing
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_confirm_title
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_confirm_body
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_confirm_cta
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_cancel
+import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_error
 import foodrats.feature.auth.generated.resources.auth_profile_danger_zone_section
 import foodrats.feature.auth.generated.resources.auth_profile_danger_zone_subtitle
 import foodrats.feature.auth.generated.resources.auth_profile_delete_account_row
@@ -97,7 +130,17 @@ import foodrats.feature.auth.generated.resources.auth_profile_back_cta
 import foodrats.feature.auth.generated.resources.auth_profile_title
 import foodrats.feature.auth.generated.resources.auth_signin_continue_apple
 import foodrats.feature.auth.generated.resources.auth_signin_continue_google
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_connector
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_eula_link
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_guidelines_link
+import foodrats.feature.auth.generated.resources.auth_signin_agreement_prefix
 import foodrats.feature.auth.generated.resources.auth_signin_footer
+import foodrats.feature.auth.generated.resources.auth_profile_legal_section
+import foodrats.feature.auth.generated.resources.auth_profile_legal_eula_row
+import foodrats.feature.auth.generated.resources.auth_profile_legal_guidelines_row
+import foodrats.feature.auth.generated.resources.auth_profile_safety_section
+import foodrats.feature.auth.generated.resources.auth_profile_blocked_users_row
+import foodrats.feature.auth.generated.resources.auth_profile_blocked_users_subtitle
 import foodrats.feature.auth.generated.resources.auth_signin_highlight_feed
 import foodrats.feature.auth.generated.resources.auth_signin_highlight_rate
 import foodrats.feature.auth.generated.resources.auth_signin_highlight_share
@@ -116,8 +159,18 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     HighlightRate(Res.string.auth_signin_highlight_rate),
     HighlightFeed(Res.string.auth_signin_highlight_feed),
     Footer(Res.string.auth_signin_footer),
+
+    // UGC-compliance agreement line below the sign-in buttons (UGC compliance §6). The two doc names
+    // are tappable links that open Route.Eula / Route.CommunityGuidelines; continuing accepts both.
+    SignInAgreementPrefix(Res.string.auth_signin_agreement_prefix),
+    SignInAgreementEulaLink(Res.string.auth_signin_agreement_eula_link),
+    SignInAgreementConnector(Res.string.auth_signin_agreement_connector),
+    SignInAgreementGuidelinesLink(Res.string.auth_signin_agreement_guidelines_link),
     FieldEmail(Res.string.auth_field_email),
     FieldPassword(Res.string.auth_field_password),
+    FieldConfirmPassword(Res.string.auth_field_confirm_password),
+    ShowPassword(Res.string.auth_show_password),
+    HidePassword(Res.string.auth_hide_password),
     ModeSignInCta(Res.string.auth_mode_signin_cta),
     ModeSignUpCta(Res.string.auth_mode_signup_cta),
     ToggleToSignUp(Res.string.auth_toggle_to_signup),
@@ -136,6 +189,7 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ErrorPasswordTooShort(Res.string.auth_error_password_too_short),
     ErrorEmailInUse(Res.string.auth_error_email_in_use),
     ErrorWrongCredentials(Res.string.auth_error_wrong_credentials),
+    ErrorPasswordMismatch(Res.string.auth_error_password_mismatch),
     ProfileTitle(Res.string.auth_profile_title),
     ProfileBackCta(Res.string.auth_profile_back_cta),
     ProfileIdentitySection(Res.string.auth_profile_identity_section),
@@ -147,15 +201,45 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileSave(Res.string.auth_profile_save),
     ProfileChangeAvatarCta(Res.string.auth_profile_change_avatar_cta),
     ProfileAvatarUploading(Res.string.auth_profile_avatar_uploading),
+    ProfileRemoveAvatarCta(Res.string.auth_profile_remove_avatar_cta),
+    ProfileAvatarRemoving(Res.string.auth_profile_remove_avatar_removing),
+    ProfileRemoveAvatarConfirmTitle(Res.string.auth_profile_remove_avatar_confirm_title),
+    ProfileRemoveAvatarConfirmBody(Res.string.auth_profile_remove_avatar_confirm_body),
+    ProfileRemoveAvatarConfirmCta(Res.string.auth_profile_remove_avatar_confirm_cta),
+    ProfileRemoveAvatarCancel(Res.string.auth_profile_remove_avatar_cancel),
+    ProfileRemoveAvatarError(Res.string.auth_profile_remove_avatar_error),
+
+    ProfileBioLabel(Res.string.auth_profile_bio_label),
+    ProfileBioPlaceholder(Res.string.auth_profile_bio_placeholder),
+    ProfileBioSave(Res.string.auth_profile_bio_save),
+    ProfileBioTooLong(Res.string.auth_profile_bio_too_long),
+
     ProfileAccountSection(Res.string.auth_profile_account_section),
     ProfileAchievementsSection(Res.string.auth_profile_achievements_section),
     ProfileAchievementsRow(Res.string.auth_profile_achievements_row),
     ProfileAchievementsSubtitle(Res.string.auth_profile_achievements_subtitle),
+
+    // Badge labels — one per tier; rendered next to the display name when earned.
+    ProfileBadgeFirst(Res.string.auth_profile_badge_first),
+    ProfileBadgeTen(Res.string.auth_profile_badge_ten),
+    ProfileBadgeFifty(Res.string.auth_profile_badge_fifty),
+    ProfileBadgeHundred(Res.string.auth_profile_badge_hundred),
+
+    // Profile "Legal" section (UGC compliance §6) — opens the embedded EULA / Community Guidelines.
+    // Profile "Safety" section (UGC compliance §5) — opens the blocked-users list.
+    ProfileSafetySection(Res.string.auth_profile_safety_section),
+    ProfileBlockedUsersRow(Res.string.auth_profile_blocked_users_row),
+    ProfileBlockedUsersSubtitle(Res.string.auth_profile_blocked_users_subtitle),
+    ProfileLegalSection(Res.string.auth_profile_legal_section),
+    ProfileLegalEulaRow(Res.string.auth_profile_legal_eula_row),
+    ProfileLegalGuidelinesRow(Res.string.auth_profile_legal_guidelines_row),
     ProfileSignOutCta(Res.string.auth_profile_sign_out_cta),
     ProfileSignOutFailed(Res.string.auth_profile_sign_out_failed),
     ProfileDisplayNameBlank(Res.string.auth_profile_display_name_blank),
     ProfileDisplayNameTooLong(Res.string.auth_profile_display_name_too_long),
     ProfileBackendUnavailable(Res.string.auth_profile_backend_unavailable),
+    ProfileOffline(Res.string.auth_profile_offline),
+    ProfileSessionExpired(Res.string.auth_profile_session_expired),
     ProfileAvatarEmptyBytes(Res.string.auth_profile_avatar_empty_bytes),
 
     ProfileThemeRow(Res.string.auth_profile_theme_row),
@@ -187,6 +271,20 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileRemindersPickerTitle(Res.string.auth_profile_reminders_picker_title),
     ProfileRemindersRemoveCta(Res.string.auth_profile_reminders_remove_cta),
     ProfileRemindersPersistFailed(Res.string.auth_profile_reminders_persist_failed),
+
+    ProfileAiRow(Res.string.auth_profile_ai_row),
+    ProfileAiSubtitleOn(Res.string.auth_profile_ai_subtitle_on),
+    ProfileAiSubtitleOff(Res.string.auth_profile_ai_subtitle_off),
+    ProfileAiPersistFailed(Res.string.auth_profile_ai_persist_failed),
+
+    ProfileAccentRow(Res.string.auth_profile_accent_row),
+    ProfileAccentPickerTitle(Res.string.auth_profile_accent_picker_title),
+    ProfileAccentOptionEmber(Res.string.auth_profile_accent_option_ember),
+    ProfileAccentOptionMoss(Res.string.auth_profile_accent_option_moss),
+    ProfileAccentOptionRust(Res.string.auth_profile_accent_option_rust),
+    ProfileAccentOptionSteel(Res.string.auth_profile_accent_option_steel),
+    ProfileAccentOptionBerry(Res.string.auth_profile_accent_option_berry),
+    ProfileAccentPersistFailed(Res.string.auth_profile_accent_persist_failed),
 
     ProfileAnalyticsRow(Res.string.auth_profile_analytics_row),
     ProfileAnalyticsSubtitleOn(Res.string.auth_profile_analytics_subtitle_on),

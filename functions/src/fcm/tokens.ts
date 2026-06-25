@@ -4,6 +4,9 @@ import { logger } from "firebase-functions/v2";
 export interface DeviceToken {
   token: string;
   platform: "android" | "ios";
+  /** Effective UI language the device last reported (bare BCP-47, e.g. "en"/"es"). Undefined for
+   *  pre-existing tokens written before language stamping; the sender falls back to English. */
+  languageTag?: string;
 }
 
 /** Read every registered device token for a uid. */
@@ -14,6 +17,7 @@ export async function readTokens(uid: string): Promise<DeviceToken[]> {
     return {
       token: d.id,
       platform: (data.platform ?? "android") as "android" | "ios",
+      languageTag: data.languageTag as string | undefined,
     };
   });
 }
