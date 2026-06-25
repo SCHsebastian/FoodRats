@@ -42,4 +42,13 @@ class AppPreferences(private val store: DataStore<Preferences>) {
         FrLog.d(FrLog.Tags.Prefs) { "clear(${key.prefs.name})" }
         store.edit { it.remove(key.prefs) }
     }
+
+    /**
+     * Removes several keys in a single DataStore transaction (atomic — observers never see a
+     * partially-cleared state). Used by the sign-out local-data wipe (security #3).
+     */
+    suspend fun clearAll(vararg keys: StoreKey<*>) {
+        FrLog.d(FrLog.Tags.Prefs) { "clearAll(${keys.joinToString { it.prefs.name }})" }
+        store.edit { prefs -> keys.forEach { prefs.remove(it.prefs) } }
+    }
 }

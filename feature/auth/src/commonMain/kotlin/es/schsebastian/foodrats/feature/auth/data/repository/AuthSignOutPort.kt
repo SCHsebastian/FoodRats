@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.auth.data.repository
 
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.session.LocalDataEraser
 import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
@@ -14,9 +15,12 @@ import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
  * (e.g. settings) avoid depending on the whole `:feature:auth` module surface.
  *
  * This is also the single funnel for every sign-out, so it's where we evict this
- * device's push token (D5). Consuming [TokenRegistrationPort] here — rather than from
- * the auth repository, which is the `SessionProvider` the deregister use case itself
- * depends on — keeps the Koin graph acyclic.
+ * device's push token (D5) AND wipe the account-scoped local caches (security #3 — the
+ * SQLDelight feed/crew/outbox cache + scoped DataStore keys) via [LocalDataEraser], so the
+ * next account on this device can't read the previous user's data and the previous user's
+ * queued writes don't replay under the new identity. Consuming [TokenRegistrationPort] /
+ * [LocalDataEraser] here — rather than from the auth repository, which is the `SessionProvider`
+ * the deregister use case itself depends on — keeps the Koin graph acyclic.
  *
  * Maps [AuthError] → [SessionError]. The full GoogleSignIn / EmailPassword error
  * trees can't actually fire from sign-out (those are sign-IN paths) so the only
@@ -26,6 +30,7 @@ import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 internal class AuthSignOutPort(
     private val auth: AuthRepository,
     private val tokenRegistration: TokenRegistrationPort,
+    private val localDataEraser: LocalDataEraser,
 ) : SignOutPort {
 
     override suspend fun signOut(): Result<Unit, SessionError> {
@@ -40,6 +45,10 @@ internal class AuthSignOutPort(
         return when (val r = auth.signOut()) {
             is Result.Ok  -> {
                 FrLog.d(FrLog.Tags.SignOut) { "port: repo returned Ok" }
+                // Wipe the previous user's local caches now that the session is gone (security #3).
+                // Best-effort: a wipe failure must not turn a successful sign-out into an error.
+                runCatching { localDataEraser.eraseLocalAccountData() }
+                    .onFailure { FrLog.d(FrLog.Tags.SignOut) { "port: local data erase threw=$it" } }
                 Result.success(Unit)
             }
             is Result.Err -> {

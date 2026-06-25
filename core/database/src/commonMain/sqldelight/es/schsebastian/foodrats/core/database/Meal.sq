@@ -140,3 +140,11 @@ VALUES (:mealId, :raterId, :score, :atMs, :pending, :edited);
 
 deleteRating:
 DELETE FROM mealRating WHERE mealId = :mealId AND raterId = :raterId;
+
+-- Full wipe of the local feed cache (sign-out: a different account on this device must not read
+-- the previous user's cached meals/ratings — security #3). Ratings first, then meals.
+deleteAllRatings:
+DELETE FROM mealRating;
+
+deleteAllMeals:
+DELETE FROM meal;

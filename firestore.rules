@@ -226,9 +226,33 @@ service cloud.firestore {
                             ? membershipWrite()
                             : (ownerSettingsWrite() || memberMapWrite())
                     );
+      // Create — the founder mints a crew with THEMSELVES as the sole member AND owner.
+      // ownerId MUST equal the creator (the ownerId-is-creator-and-a-member invariant that the
+      // transfer/owner-leave update branches and the storage banner rule all trust); the seeded
+      // `members` map may only carry the creator's own entry; the field set is whitelisted to
+      // CrewDto and the user-controlled strings are bounded so a client can't inject arbitrary
+      // fields or an oversized name/code at create. `createdAtEpochMs` is intentionally NOT
+      // time-pinned (the client stamps it from its own Clock; back-dating it is harmless).
       allow create: if request.auth != null
+                    && request.resource.data.ownerId == request.auth.uid
                     && request.auth.uid in request.resource.data.memberIds
-                    && request.resource.data.memberIds.size() == 1;
+                    && request.resource.data.memberIds.size() == 1
+                    && (!('members' in request.resource.data)
+                        || request.resource.data.members.keys().hasOnly([request.auth.uid]))
+                    && request.resource.data.keys().hasOnly([
+                         'id', 'name', 'code', 'ownerId', 'createdAtEpochMs', 'memberIds', 'members',
+                         'blindVoting', 'tagline', 'welcomeMessage', 'weeklyChallenge',
+                         'weeklyChallengeSetAtMillis', 'scoreStyle', 'bannerPath', 'bannerFocalY'
+                       ])
+                    && request.resource.data.name is string
+                    && request.resource.data.name.size() >= 1
+                    && request.resource.data.name.size() <= 100
+                    && (!('code' in request.resource.data)
+                        || (request.resource.data.code is string && request.resource.data.code.size() <= 32))
+                    && (!('blindVoting' in request.resource.data)
+                        || request.resource.data.blindVoting is bool)
+                    && (!('scoreStyle' in request.resource.data)
+                        || request.resource.data.scoreStyle in ['stars', 'emoji', 'numeric']);
       // Delete is allowed when either the last member leaves OR the owner explicitly deletes.
       allow delete: if request.auth != null
                     && (
@@ -551,7 +575,7 @@ service cloud.firestore {
                     ])
                     && request.resource.data.status == "open"
                     && request.resource.data.reason in
-                         ["spam", "harassment", "hate", "sexual", "violence", "other"]
+                         ["child_safety", "spam", "harassment", "hate", "sexual", "violence", "other"]
                     && request.resource.data.createdAtEpochMs is int
                     && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
                     && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000

@@ -65,7 +65,7 @@ val authModule = module {
     // token refresh and signs out a revoked/disabled/deleted account so the root nav routes to SignIn
     // instead of leaving the user on stale authenticated screens.
     single<SessionRevalidator> { AuthSessionRevalidator(firebase = get()) }
-    single<SignOutPort> { AuthSignOutPort(get(), get()) }
+    single<SignOutPort> { AuthSignOutPort(get(), get(), get()) }
     single<AccountSnapshotSource> {
         FirebaseAccountSnapshotSource(
             firestore = get(),

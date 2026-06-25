@@ -82,11 +82,13 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
 }
 
-// FCM token refresh — GitLive observes this internally via the underlying SDK; this delegate
-// hook is required by MessagingDelegate but the app does not need to do anything with the
-// refreshed token here.
+// FCM token refresh. iOS hands the APNs token to Firebase asynchronously after launch, so the FCM
+// token read at sign-in may have been null (APNs not ready) — meaning this device never got a
+// `devices/{token}` doc and the server can't deliver to it. This fires when a token first becomes
+// available and on every rotation; re-run the idempotent registration so the doc is (re)written.
 extension AppDelegate: MessagingDelegate {
     func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        // No-op: IosFcmTokenProvider reads Messaging.messaging().token on demand.
+        guard fcmToken != nil else { return }
+        IosFcmTokenBridge.shared.tokenRefreshed()
     }
 }

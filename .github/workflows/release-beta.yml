@@ -23,7 +23,9 @@ concurrency:
 jobs:
   android:
     name: Android → Play Internal
-    runs-on: ubuntu-latest
+    # Self-hosted Mac runner: the upload keystore + passwords live on the machine
+    # (sourced from ~/.config/foodrats/signing.env) and never touch GitHub.
+    runs-on: [self-hosted, macos]
     environment: beta
     steps:
       - name: Checkout
@@ -41,10 +43,17 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Set up Ruby + Fastlane
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
+        # Self-hosted macOS: use the runner's Homebrew Ruby (ruby/setup-ruby
+        # assumes the hosted-runner tool-cache path and fails with EACCES).
+        run: |
+          set -euo pipefail
+          BREW_RUBY="$(brew --prefix ruby)/bin"
+          echo "$BREW_RUBY" >> "$GITHUB_PATH"
+          export PATH="$BREW_RUBY:$PATH"
+          chmod -R u+rwX "$(ruby -e 'print Gem.dir')" 2>/dev/null || true
+          ruby -v
+          gem install bundler:2.5.23 --no-document
+          bundle install
 
       - name: Compute version
         run: ./scripts/ci/compute_version.sh beta >> "$GITHUB_ENV"
@@ -61,29 +70,18 @@ jobs:
       - name: Provide Google server client id
         run: echo "googleServerClientId=${{ secrets.GOOGLE_SERVER_CLIENT_ID }}" >> gradle.properties
 
-      - name: Decode upload keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/upload.jks" >> "$GITHUB_ENV"
-
       - name: Build signed AAB (minified)
-        env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: >
-          ./gradlew --no-daemon :androidApp:bundleRelease
-          -PversionName="$VERSION_NAME"
-          -PversionCode="$VERSION_CODE"
+        # Upload keystore + passwords come from the local, untracked signing env.
+        run: |
+          set -a; source "$HOME/.config/foodrats/signing.env"; set +a
+          ./gradlew --no-daemon :androidApp:bundleRelease \
+            -PversionName="$VERSION_NAME" \
+            -PversionCode="$VERSION_CODE"
 
       - name: Upload to Play Internal
-        env:
-          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
-          printf '%s' "$PLAY_SERVICE_ACCOUNT_JSON" | base64 --decode > "$RUNNER_TEMP/play.json"
-          PLAY_JSON_KEY_PATH="$RUNNER_TEMP/play.json" bundle exec fastlane android beta
+          set -a; source "$HOME/.config/foodrats/signing.env"; set +a
+          PLAY_JSON_KEY_PATH="$PLAY_SERVICE_ACCOUNT_PATH" bundle exec fastlane android beta
 
   ios:
     name: iOS → TestFlight
@@ -102,10 +100,19 @@ jobs:
           java-version: '21'
 
       - name: Set up Ruby + Fastlane
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
+        # Self-hosted macOS runner: ruby/setup-ruby@v1 assumes the GitHub-hosted
+        # tool-cache path and dies with `EACCES: mkdir '/Users/runner'`. Use the
+        # Homebrew Ruby already installed on the runner instead.
+        run: |
+          set -euo pipefail
+          BREW_RUBY="$(brew --prefix ruby)/bin"
+          echo "$BREW_RUBY" >> "$GITHUB_PATH"
+          export PATH="$BREW_RUBY:$PATH"
+          # Defensive: make the gem dir writable for the runner user (no sudo).
+          chmod -R u+rwX "$(ruby -e 'print Gem.dir')" 2>/dev/null || true
+          ruby -v
+          gem install bundler:2.5.23 --no-document
+          bundle install
 
       - name: Compute version
         run: ./scripts/ci/compute_version.sh beta >> "$GITHUB_ENV"
@@ -115,18 +122,10 @@ jobs:
           GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
         run: printf '%s' "$GOOGLE_SERVICE_INFO_PLIST" | base64 --decode > iosApp/iosApp/GoogleService-Info.plist
 
-      - name: Decode App Store Connect API key
-        env:
-          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: |
-          printf '%s' "$ASC_KEY_P8" | base64 --decode > "$RUNNER_TEMP/asc_key.p8"
-          echo "ASC_KEY_PATH=$RUNNER_TEMP/asc_key.p8" >> "$GITHUB_ENV"
-
       - name: Build & upload to TestFlight
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-          MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
-          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-          MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
-        run: bundle exec fastlane ios beta
+        # ASC API key (.p8) + match creds come from the local, untracked signing
+        # env (~/.config/foodrats/signing.env), same as the Android jobs — nothing
+        # signing-related is stored on GitHub.
+        run: |
+          set -a; source "$HOME/.config/foodrats/signing.env"; set +a
+          bundle exec fastlane ios beta

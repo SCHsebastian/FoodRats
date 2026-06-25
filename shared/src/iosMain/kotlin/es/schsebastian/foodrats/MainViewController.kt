@@ -20,6 +20,8 @@ import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.meal.di.mealIosModule
 import es.schsebastian.foodrats.feature.mealai.di.mealAiIosModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsIosModule
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.Platform
 import org.koin.core.context.startKoin
 import org.koin.mp.KoinPlatform
 import platform.Foundation.NSData
@@ -57,6 +59,7 @@ import platform.UIKit.UIViewController
  * thread, so it is built in Swift (see iosApp/StoryShareBridge.swift). Returns a status code:
  * 0 = Instagram opened, 1 = fallback sheet, 2 = failed.
  */
+@OptIn(ExperimentalNativeApi::class)
 fun MainViewController(
     viewControllerProvider: () -> UIViewController,
     googleSignIn: (
@@ -127,6 +130,10 @@ fun MainViewController(
                 )
             }
         }
+        // Silence the FrLog println path in release Kotlin/Native binaries (security #8) — mirrors
+        // the Android BuildConfig.DEBUG gate so account UIDs / session state don't reach the device
+        // console in production. Warnings/errors still reach the Crashlytics sink below.
+        FrLog.enabled = Platform.isDebugBinary
         // Route FrLog warnings/errors to the Crashlytics-backed CrashReporter. Crashlytics
         // collection is already disabled in debug on the Swift side (`#if DEBUG`), so this is
         // effectively a no-op there; the debug println path is unaffected.

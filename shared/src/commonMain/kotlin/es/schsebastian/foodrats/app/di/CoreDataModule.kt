@@ -6,6 +6,8 @@ import dev.gitlive.firebase.firestore.firestore
 import dev.gitlive.firebase.storage.storage
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
 import es.schsebastian.foodrats.core.data.datastore.providePreferencesDataStore
+import es.schsebastian.foodrats.core.data.session.LocalAccountDataEraser
+import es.schsebastian.foodrats.core.domain.session.LocalDataEraser
 import es.schsebastian.foodrats.core.data.analytics.AnalyticsIdentityBinder
 import es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver
 import es.schsebastian.foodrats.core.data.preferences.AccentPaletteRepository
@@ -54,6 +56,12 @@ val coreDataModule = module {
     single(createdAtStart = true) { AnalyticsIdentityBinder(session = get(), analytics = get()) }
     single { providePreferencesDataStore() }
     single { AppPreferences(get()) }
+    // Sign-out local-cache wipe (security #3): erases the SQLDelight feed/crew/outbox cache + the
+    // account-scoped DataStore keys so the next account on this device can't read the previous
+    // user's data and their queued writes don't replay. Consumed by AuthSignOutPort.
+    single<LocalDataEraser> {
+        LocalAccountDataEraser(database = get(), prefs = get(), dispatchers = get())
+    }
     single<ThemeModePort> { ThemeModeRepository(prefs = get(), dispatchers = get()) }
     single<LocalePort> { LocaleRepository(prefs = get(), dispatchers = get()) }
     single<NotificationsPreferencePort> {

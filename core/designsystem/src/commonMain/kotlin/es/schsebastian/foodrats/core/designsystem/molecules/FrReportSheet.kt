@@ -40,7 +40,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
  * `ReportReason` and supplies the already-resolved label for each. Ordered to mirror the report
  * domain's reason taxonomy (UGC compliance §4).
  */
-enum class FrReportReasonOption { SPAM, HARASSMENT, HATE, SEXUAL, VIOLENCE, OTHER }
+enum class FrReportReasonOption { CHILD_SAFETY, SPAM, HARASSMENT, HATE, SEXUAL, VIOLENCE, OTHER }
 
 /**
  * Bottom-sheet reason picker for reporting a meal / comment / user (UGC compliance §4.4).

@@ -16,8 +16,8 @@ import { logger } from "firebase-functions/v2";
  *   4    `uid`'s ratings/votes on OTHER users' meals (key delete + aggregate recompute in a txn),
  *   5+9  crew memberships — owned crews reassigned-or-deleted per the §6 policy (deleting orphaned
  *        `crewCodes` for any crew removed), non-owned crews drop `uid` from `memberIds`+`members`,
- *   6+7+8 the `accounts/{uid}` doc (+ `private`/`devices` subtrees), the avatar blob, top-level
- *        `devices/{uid}`,
+ *   6+7+8 the `accounts/{uid}` doc (+ `private`/`devices` subtrees), the avatar blobs, the
+ *        `exports/{uid}/` data-export archives (GDPR erasure), top-level `devices/{uid}`,
  *   10   the Firebase Auth user record — LAST, only after all data is gone, so a mid-cascade
  *        failure leaves a still-valid session the user can retry from.
  *
@@ -168,6 +168,10 @@ export async function deleteAccountCore(
   // `avatars/{uid}.jpg` for accounts that pre-date the versioned layout.
   await deps.deleteBlobPrefix(`avatars/${uid}/`);
   await deps.deleteBlob(`avatars/${uid}.jpg`);
+  // GDPR Art. 17 erasure must also sweep any data-export archives the user generated — exportMyData
+  // writes `exports/{uid}/{timestamp}.json` (a full personal-data dump). Without this, a complete
+  // PII snapshot survives the account deletion. deleteFiles over an empty prefix is a no-op.
+  await deps.deleteBlobPrefix(`exports/${uid}/`);
   await deps.recursiveDelete(`devices/${uid}`);
 
   // 10: Auth user LAST — only after all data is gone, so a mid-failure leaves a retryable session.

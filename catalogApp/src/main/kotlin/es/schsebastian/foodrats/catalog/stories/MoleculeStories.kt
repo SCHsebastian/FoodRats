@@ -419,6 +419,7 @@ private fun SettingsRowStory() {
 private fun ReportSheetStory() {
     var open by remember { mutableStateOf(false) }
     val labels = mapOf(
+        FrReportReasonOption.CHILD_SAFETY to "Child safety",
         FrReportReasonOption.SPAM to "Spam or scam",
         FrReportReasonOption.HARASSMENT to "Harassment or bullying",
         FrReportReasonOption.HATE to "Hate speech",

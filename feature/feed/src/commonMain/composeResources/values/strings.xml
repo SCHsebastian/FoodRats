@@ -102,6 +102,7 @@
     <string name="feed_report_error_already_reported">You've already reported this.</string>
     <string name="feed_report_error_unavailable">Couldn't send your report. Try again.</string>
     <string name="feed_block_error_unavailable">Couldn't block this user. Try again.</string>
+    <string name="feed_report_reason_child_safety">Child safety</string>
     <string name="feed_report_reason_spam">Spam or scam</string>
     <string name="feed_report_reason_harassment">Harassment or bullying</string>
     <string name="feed_report_reason_hate">Hate speech</string>

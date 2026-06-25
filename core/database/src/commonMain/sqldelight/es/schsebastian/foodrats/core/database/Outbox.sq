@@ -160,3 +160,8 @@ SET type                 = :type,
     setAtMillis          = :setAtMillis,
     styleKey             = :styleKey
 WHERE idempotencyKey = :idempotencyKey;
+
+-- Full wipe of the durable write outbox (sign-out: the previous user's queued mutations must not
+-- replay under the next account, and must not be readable on a shared device — security #3).
+deleteAllOutbox:
+DELETE FROM outbox;

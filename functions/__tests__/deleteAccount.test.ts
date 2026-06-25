@@ -181,10 +181,15 @@ describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
     const r = fullDeps();
     await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
 
-    // The live avatar lives at `avatars/{uid}/{token}.jpg`, so the whole prefix must be swept.
-    expect(r.blobPrefixesDeleted).toEqual([`avatars/${UID}/`]);
+    // The live avatar lives at `avatars/{uid}/{token}.jpg`, so the whole prefix must be swept;
+    // the `exports/{uid}/` GDPR data-export archives are swept in the same pass (#7).
+    expect(r.blobPrefixesDeleted).toEqual([`avatars/${UID}/`, `exports/${UID}/`]);
     // The legacy single-object delete is still attempted (best-effort for un-migrated users).
     expect(r.blobsDeleted).toContain(`avatars/${UID}.jpg`);
+    // GDPR erasure: the export archives must be gone before the Auth user is deleted.
+    expect(r.calls.indexOf(`deleteBlobPrefix:exports/${UID}/`)).toBeLessThan(
+      r.calls.indexOf(`deleteAuthUser:${UID}`),
+    );
     // Prefix sweep happens before the legacy fallback, and both before the Auth-user delete.
     expect(r.calls.indexOf(`deleteBlobPrefix:avatars/${UID}/`)).toBeLessThan(
       r.calls.indexOf(`deleteBlob:avatars/${UID}.jpg`),

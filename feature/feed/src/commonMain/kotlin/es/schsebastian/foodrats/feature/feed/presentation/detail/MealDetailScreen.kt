@@ -280,9 +280,10 @@ fun MealDetailScreen(
     }
 }
 
-/** Resolves the six report-reason labels for [FrReportSheet] (UGC compliance §4). */
+/** Resolves the report-reason labels for [FrReportSheet], Child-safety first (UGC compliance §4). */
 @Composable
 private fun reportReasonLabels(): Map<FrReportReasonOption, String> = mapOf(
+    FrReportReasonOption.CHILD_SAFETY to resolve(FeedStringKey.ReportReasonChildSafety),
     FrReportReasonOption.SPAM       to resolve(FeedStringKey.ReportReasonSpam),
     FrReportReasonOption.HARASSMENT to resolve(FeedStringKey.ReportReasonHarassment),
     FrReportReasonOption.HATE       to resolve(FeedStringKey.ReportReasonHate),

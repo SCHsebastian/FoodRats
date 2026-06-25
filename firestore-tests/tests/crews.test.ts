@@ -42,6 +42,79 @@ describe("crews — create + read posture", () => {
     const db = env.authenticatedContext("stranger").firestore();
     await assertSucceeds(getDoc(doc(db, "crews/c1")));
   });
+
+  // Security #1 — create must pin ownerId to the creator + reject mass-assignment.
+  it("a user CANNOT create a crew owned by someone else", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/evil1"), {
+        ownerId: "victim",
+        name: "Mine",
+        memberIds: ["alice"],
+        members: { alice: {} },
+      }),
+    );
+  });
+
+  it("a user CANNOT seed another account into the new crew's members map", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/evil2"), {
+        ownerId: "alice",
+        name: "Mine",
+        memberIds: ["alice"],
+        members: { alice: {}, bob: {} },
+      }),
+    );
+  });
+
+  it("a user CANNOT inject an unknown field at create", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/evil3"), {
+        ownerId: "alice",
+        name: "Mine",
+        memberIds: ["alice"],
+        members: { alice: {} },
+        isPremium: true,
+      }),
+    );
+  });
+
+  it("a user CANNOT create a crew with an over-long name", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(db, "crews/evil4"), {
+        ownerId: "alice",
+        name: "x".repeat(101),
+        memberIds: ["alice"],
+        members: { alice: {} },
+      }),
+    );
+  });
+
+  it("a full CrewDto create by the founder still succeeds", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(doc(db, "crews/ok1"), {
+        id: "ok1",
+        name: "Saturday Brunch",
+        code: "ABC123",
+        ownerId: "alice",
+        createdAtEpochMs: 1700000000000,
+        memberIds: ["alice"],
+        members: { alice: { joinedAtEpochMs: 1700000000000 } },
+        blindVoting: false,
+        tagline: null,
+        welcomeMessage: null,
+        weeklyChallenge: null,
+        weeklyChallengeSetAtMillis: null,
+        scoreStyle: "stars",
+        bannerPath: null,
+        bannerFocalY: null,
+      }),
+    );
+  });
 });
 
 // Reproduces the real client write path. CrewFirestoreDataSource commits join/leave/

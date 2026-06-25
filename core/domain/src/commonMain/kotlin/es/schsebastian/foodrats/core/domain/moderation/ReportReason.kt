@@ -6,6 +6,8 @@ package es.schsebastian.foodrats.core.domain.moderation
  * 1:1 to the wire `reason` strings the Firestore rules whitelist (`§8.2`).
  */
 sealed interface ReportReason {
+    /** Child sexual abuse / exploitation (CSAE). Highest-severity reason; surfaced first in the sheet. */
+    data object ChildSafety : ReportReason
     data object Spam : ReportReason
     data object Harassment : ReportReason
     data object Hate : ReportReason
