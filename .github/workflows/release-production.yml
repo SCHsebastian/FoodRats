@@ -102,10 +102,19 @@ jobs:
           java-version: '21'
 
       - name: Set up Ruby + Fastlane
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.3'
-          bundler-cache: true
+        # Self-hosted macOS runner: ruby/setup-ruby@v1 assumes the GitHub-hosted
+        # tool-cache path and dies with `EACCES: mkdir '/Users/runner'`. Use the
+        # Homebrew Ruby already installed on the runner instead.
+        run: |
+          set -euo pipefail
+          BREW_RUBY="$(brew --prefix ruby)/bin"
+          echo "$BREW_RUBY" >> "$GITHUB_PATH"
+          export PATH="$BREW_RUBY:$PATH"
+          # Defensive: make the gem dir writable for the runner user (no sudo).
+          chmod -R u+rwX "$(ruby -e 'print Gem.dir')" 2>/dev/null || true
+          ruby -v
+          gem install bundler:2.5.23 --no-document
+          bundle install
 
       - name: Compute version
         run: ./scripts/ci/compute_version.sh prod >> "$GITHUB_ENV"
