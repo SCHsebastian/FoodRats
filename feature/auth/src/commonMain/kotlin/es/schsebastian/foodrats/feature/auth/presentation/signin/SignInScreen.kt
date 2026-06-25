@@ -43,6 +43,8 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
@@ -54,6 +56,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -96,6 +99,8 @@ fun SignInScreen(
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
+                .frSafeHorizontalPadding()
+                .frContentWidth(Breakpoints.formMax)
                 .padding(horizontal = Spacing.lg),
             horizontalAlignment = Alignment.Start,
         ) {

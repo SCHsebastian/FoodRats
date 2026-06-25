@@ -39,6 +39,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
 import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
 import es.schsebastian.foodrats.core.designsystem.structural.FrAvatarRing
@@ -116,6 +117,7 @@ fun CrewPickerScreen(
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
                 .navigationBarsPadding()
+                .frSafeHorizontalPadding()
                 .padding(horizontal = Spacing.lg, vertical = Spacing.xl),
             contentAlignment = if (contentCanOverflow) Alignment.TopCenter else Alignment.Center,
         ) {
@@ -242,6 +244,7 @@ fun CrewPickerScreen(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
+                .frSafeHorizontalPadding()
                 .padding(Spacing.lg),
         )
     }

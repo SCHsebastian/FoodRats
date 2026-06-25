@@ -47,6 +47,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.structural.FrAvatarRing
@@ -71,6 +73,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -158,6 +161,8 @@ fun FeedScreen(
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
                         .statusBarsPadding()
+                        .frSafeHorizontalPadding()
+                        .frContentWidth(Breakpoints.contentMax)
                         .padding(horizontal = Spacing.md),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
@@ -466,9 +471,11 @@ private fun StructuralMealTile(
             .background(dishBrushFor(ui.slot))
             .clickable(onClick = onClick),
     ) {
-        if (ui.feedImageUrl.isNotBlank()) {
+        if (ui.bentoImageUrl.isNotBlank()) {
             AsyncImage(
-                model = stablePlateRequest(ui.feedImageUrl, ui.feedImageCacheKey),
+                // Full plate (not the 512px thumbnail) — the bento tiles render large and the thumb
+                // looks soft scaled up to fill them. See FeedMealUi.bentoImageUrl.
+                model = stablePlateRequest(ui.bentoImageUrl, ui.bentoImageCacheKey),
                 contentDescription = ui.dishName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
@@ -637,7 +644,7 @@ private fun FeedSkeleton() {
 
 @Composable
 private fun NoCrewPlane(onPickCrewClick: () -> Unit) {
-    Box(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg), contentAlignment = Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = Alignment.Center) {
         FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.widthIn(max = 420.dp)) {
             FrText(
                 text = resolve(FeedStringKey.NoActiveCrewHeadline),

@@ -40,6 +40,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.structural.FrBadgeDisc
 import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassCircleButton
@@ -51,6 +53,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -84,7 +87,7 @@ fun AchievementsScreen(
 
         Column(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(top = 56.dp)) {
             state.error?.let { error ->
-                Box(modifier = Modifier.fillMaxWidth().padding(Spacing.lg)) {
+                Box(modifier = Modifier.fillMaxWidth().frSafeHorizontalPadding().padding(Spacing.lg)) {
                     DangerBanner(text = resolve(error.toStringKey()))
                 }
             }
@@ -100,7 +103,7 @@ fun AchievementsScreen(
 
         // Floating chrome — back (left) + centered title.
         Row(
-            modifier = Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = Spacing.md, vertical = Spacing.sm),
+            modifier = Modifier.fillMaxWidth().statusBarsPadding().frSafeHorizontalPadding().padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -148,7 +151,7 @@ private fun BadgeGrid(
     }
     LazyVerticalGrid(
         columns = GridCells.Fixed(3),
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().frSafeHorizontalPadding().frContentWidth(Breakpoints.contentMax),
         contentPadding = PaddingValues(Spacing.lg),
         horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),

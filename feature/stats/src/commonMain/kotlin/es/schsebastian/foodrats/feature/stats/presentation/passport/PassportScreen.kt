@@ -34,6 +34,9 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.cuisine.CuisinePassport
 import es.schsebastian.foodrats.core.domain.meal.CollectedIngredient
@@ -68,7 +71,7 @@ fun PassportScreen(vm: StatsViewModel = koinViewModel()) {
         FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft, scrim = FrScrimStyle.Even)
         when {
             snapshot == null && error == null -> LoadingSkeleton()
-            error != null -> Box(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg)) {
+            error != null -> Box(modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg)) {
                 FrText(
                     text = resolve(error.toStringKey()),
                     style = StructuralType.body,
@@ -104,7 +107,7 @@ private fun CollectionGrid(passport: CuisinePassport?, bingo: IngredientBingo?) 
 
     LazyVerticalGrid(
         columns = GridCells.Fixed(GRID_COLUMNS),
-        modifier = Modifier.fillMaxSize().statusBarsPadding(),
+        modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().frContentWidth(Breakpoints.contentMax),
         contentPadding = PaddingValues(start = Spacing.lg, top = Spacing.lg, end = Spacing.lg, bottom = DOCK_CLEARANCE),
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
@@ -208,7 +211,7 @@ private fun CategoryHeader(text: String) {
 
 @Composable
 private fun EmptyState() {
-    Box(modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg), contentAlignment = androidx.compose.ui.Alignment.Center) {
+    Box(modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = androidx.compose.ui.Alignment.Center) {
         FrGlassTile(depth = FrTileDepth.Near) {
             FrText(text = resolve(StatsStringKey.EmptyHeadline), style = StructuralType.titleLg, color = StructuralColors.foreground)
             androidx.compose.foundation.layout.Spacer(Modifier.height(Spacing.xs))
@@ -220,7 +223,7 @@ private fun EmptyState() {
 @Composable
 private fun LoadingSkeleton() {
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg),
+        modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         androidx.compose.foundation.layout.Spacer(Modifier.height(Spacing.xs))

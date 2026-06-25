@@ -67,6 +67,8 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportSheet
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
@@ -97,6 +99,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -320,12 +323,12 @@ private fun rememberHeadHeight(): Dp {
 private fun CenteredState(onBack: () -> Unit, content: @Composable () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         FrMediaFloorBrush()
-        Box(modifier = Modifier.fillMaxSize().padding(Spacing.lg), contentAlignment = Alignment.Center) { content() }
+        Box(modifier = Modifier.fillMaxSize().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = Alignment.Center) { content() }
         FrGlassCircleButton(
             icon = FrIcons.Back,
             onClick = onBack,
             contentDescription = resolve(FeedStringKey.DetailBackCta),
-            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(Spacing.md),
+            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
         )
     }
 }
@@ -340,6 +343,7 @@ private fun DetailLoadingSkeleton(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
+                .frSafeHorizontalPadding()
                 .padding(horizontal = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
@@ -352,7 +356,7 @@ private fun DetailLoadingSkeleton(onBack: () -> Unit) {
             icon = FrIcons.Back,
             onClick = onBack,
             contentDescription = resolve(FeedStringKey.DetailBackCta),
-            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(Spacing.md),
+            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
         )
     }
 }
@@ -460,6 +464,8 @@ private fun MealDetailBody(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .frSafeHorizontalPadding()
+                    .frContentWidth(Breakpoints.contentMax)
                     .padding(horizontal = Spacing.lg)
                     .padding(top = Spacing.lg),
                 verticalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -505,10 +511,10 @@ private fun MealDetailBody(
             icon = FrIcons.Back,
             onClick = onBack,
             contentDescription = resolve(FeedStringKey.DetailBackCta),
-            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(Spacing.md),
+            modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
         )
         Row(
-            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(Spacing.md),
+            modifier = Modifier.align(Alignment.TopEnd).statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.md),
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             if (state.isPreparingShare) {
@@ -1210,6 +1216,7 @@ private fun StructuralCommentComposer(
             .background(Brush.verticalGradient(listOf(Color.Transparent, StructuralColors.tileSolid)))
             .navigationBarsPadding()
             .imePadding()
+            .frSafeHorizontalPadding()
             .padding(horizontal = Spacing.md, vertical = Spacing.sm),
         verticalAlignment = Alignment.Bottom,
         horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
@@ -1252,7 +1259,7 @@ private fun ShareOutcomeToast(message: String, onDismiss: () -> Unit) {
         kotlinx.coroutines.delay(2500)
         onDismiss()
     }
-    Box(modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
+    Box(modifier = Modifier.fillMaxSize().navigationBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
         FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.widthIn(max = 420.dp)) {
             FrText(text = message, style = StructuralType.body, color = StructuralColors.foreground)
         }

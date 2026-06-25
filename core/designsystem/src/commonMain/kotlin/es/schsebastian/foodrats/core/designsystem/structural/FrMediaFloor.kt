@@ -74,8 +74,10 @@ fun FrMediaFloor(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
-                    // slight over-scale so blurred edges never reveal the floor
-                    .scale(1.06f)
+                    // Slight over-scale ONLY when blurred, so the blur's soft edges never reveal the
+                    // floor behind. On a sharp photo (blur = None, e.g. the meal-detail hero) the
+                    // upscale would just magnify and soften it for no reason, so skip it there.
+                    .then(if (applyBlur) Modifier.scale(1.06f) else Modifier)
                     .then(if (applyBlur) Modifier.blur(blur.radius) else Modifier),
             )
         } else {

@@ -13,5 +13,12 @@
          color as the window background prevents a flash before the first Compose frame. -->
     <style name="Theme.FoodRats" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/splash_background</item>
+        <!-- Edge-to-edge under the camera cutout in BOTH orientations. The camera notch sits on the
+             phone's physical short edge, which is a "short edge" of the screen in portrait (top) AND
+             landscape (a side), so shortEdges extends the window under it either way. This lets the
+             structural FrMediaFloor bleed full-bleed under the camera and makes WindowInsets.displayCutout
+             / safeDrawing report the cutout so content can be inset off it (see Modifier.frSafeHorizontalPadding).
+             Without this, the default mode letterboxes the side cutout in landscape. -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>

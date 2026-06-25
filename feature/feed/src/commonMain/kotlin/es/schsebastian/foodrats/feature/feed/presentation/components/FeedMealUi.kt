@@ -162,6 +162,20 @@ data class FeedMealUi(
      */
     val feedImageCacheKey: String
         get() = if (thumbnailUrl.isNotBlank()) thumbCacheKey else plateCacheKey
+
+    /**
+     * The URL the structural FEED BENTO tiles should load. Unlike the tiny 76dp [feedImageUrl]
+     * thumbnail (sized for the legacy compact row), the bento tiles render large — the hero spans the
+     * full screen width at 230dp — so a 512px server thumbnail looks soft Crop-scaled up to fill them.
+     * The bento therefore loads the FULL plate ([photoUrl]) for crisp tiles, falling back to the
+     * thumbnail only when no plate URL is known yet (the few-seconds pre-upload window).
+     */
+    val bentoImageUrl: String
+        get() = photoUrl.ifBlank { feedImageUrl }
+
+    /** STABLE cache key paired with [bentoImageUrl] (plate path key, mirroring the URL fallback). */
+    val bentoImageCacheKey: String
+        get() = if (photoUrl.isNotBlank()) plateCacheKey else feedImageCacheKey
 }
 
 /**

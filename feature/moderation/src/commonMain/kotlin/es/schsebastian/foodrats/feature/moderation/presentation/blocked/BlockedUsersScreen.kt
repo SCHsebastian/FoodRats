@@ -29,6 +29,8 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassCircleButton
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
@@ -39,6 +41,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -76,14 +79,14 @@ fun BlockedUsersScreen(
             ) { FrProgressIndicator() }
 
             state.blockedIds.isEmpty() -> Box(
-                modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = Spacing.lg),
+                modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(horizontal = Spacing.lg),
                 contentAlignment = Alignment.Center,
             ) {
                 BlockedEmptyTile()
             }
 
             else -> LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().frSafeHorizontalPadding().frContentWidth(Breakpoints.contentMax),
                 contentPadding = PaddingValues(
                     start = Spacing.lg,
                     end = Spacing.lg,
@@ -120,6 +123,7 @@ fun BlockedUsersScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
+                .frSafeHorizontalPadding()
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -210,7 +214,7 @@ private fun StructuralToast(message: String, onDismiss: () -> Unit) {
         onDismiss()
     }
     Box(
-        modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(Spacing.lg),
+        modifier = Modifier.fillMaxSize().navigationBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg),
         contentAlignment = Alignment.BottomCenter,
     ) {
         FrGlassTile(depth = FrTileDepth.Near) {

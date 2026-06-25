@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -45,6 +44,7 @@ import es.schsebastian.foodrats.core.domain.analytics.DigestStorySource
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeBottomBarPadding
 import es.schsebastian.foodrats.core.designsystem.structural.FrDock
 import es.schsebastian.foodrats.core.designsystem.structural.FrDockItem
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
@@ -497,7 +497,9 @@ private fun MainScaffold(rootController: NavHostController) {
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .navigationBarsPadding()
+                // Bottom nav-bar clearance + horizontal cutout/side-nav clearance so the dock and its
+                // FAB never sit under the bottom nav bar or a side camera cutout in landscape.
+                .frSafeBottomBarPadding()
                 .padding(horizontal = Spacing.lg)
                 .padding(bottom = Spacing.sm),
         )

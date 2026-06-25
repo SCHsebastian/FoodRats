@@ -36,6 +36,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.atoms.FrUploadProgressBar
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.structural.FrAvatarRing
@@ -112,7 +113,7 @@ fun StatsScreen(
             FrMediaFloor(brush = StructuralColors.oliveFloor, blur = StructuralBlur.Soft, scrim = FrScrimStyle.Even)
         }
 
-        Box(modifier = Modifier.fillMaxSize().frContentWidth(Breakpoints.contentMax)) {
+        Box(modifier = Modifier.fillMaxSize().frSafeHorizontalPadding().frContentWidth(Breakpoints.contentMax)) {
             FrUploadProgressBar(visible = state.isUploadActive)
             when {
                 state.snapshot == null && state.error == null -> LoadingSkeleton()
@@ -166,6 +167,7 @@ private fun StatsContent(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
+            .frSafeHorizontalPadding()
             .padding(horizontal = Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
@@ -565,7 +567,7 @@ private fun roastMetric(roast: MemberAverage, style: FrScoreStyle): String {
 @Composable
 private fun ErrorState(message: String, onRetry: () -> Unit) {
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg),
+        modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Spacer(Modifier.height(Spacing.xl))
@@ -588,7 +590,7 @@ private fun HistoricLoading() {
 @Composable
 private fun LoadingSkeleton() {
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg),
+        modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Spacer(Modifier.height(Spacing.xl))
@@ -605,7 +607,7 @@ private fun ShareOutcomeToast(message: String, onDismiss: () -> Unit, modifier: 
         kotlinx.coroutines.delay(2500)
         onDismiss()
     }
-    Box(modifier = modifier.fillMaxWidth().navigationBarsPadding().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
+    Box(modifier = modifier.fillMaxWidth().navigationBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
         FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.widthIn(max = 420.dp)) {
             FrText(text = message, style = StructuralType.body, color = StructuralColors.foreground)
         }

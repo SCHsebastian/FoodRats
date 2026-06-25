@@ -44,6 +44,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.structural.FrChipTone
 import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
@@ -60,6 +62,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -133,6 +136,8 @@ fun ComposePlateScreen(
                 .verticalScroll(rememberScrollState())
                 .statusBarsPadding()
                 .imePadding()
+                .frSafeHorizontalPadding()
+                .frContentWidth(Breakpoints.formMax)
                 .padding(horizontal = Spacing.lg),
         ) {
             Spacer(Modifier.height(64.dp)) // clear the floating chrome row
@@ -377,6 +382,7 @@ fun ComposePlateScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
+                .frSafeHorizontalPadding()
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,

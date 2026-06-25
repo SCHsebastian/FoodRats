@@ -54,6 +54,8 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrQrCode
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
+import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.molecules.FrConfirmDialog
 import es.schsebastian.foodrats.core.designsystem.motion.frRevealScale
 import es.schsebastian.foodrats.core.designsystem.motion.frRiseIn
@@ -74,6 +76,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
+import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -179,7 +182,7 @@ fun CrewSettingsScreen(
 
         when {
             crew == null && state.error != null -> Box(
-                modifier = Modifier.fillMaxSize().statusBarsPadding().padding(Spacing.lg),
+                modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg),
                 contentAlignment = Alignment.Center,
             ) {
                 FrText(
@@ -191,7 +194,7 @@ fun CrewSettingsScreen(
             crew == null -> CrewSettingsSkeleton()
             else -> {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize().statusBarsPadding(),
+                    modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().frContentWidth(Breakpoints.contentMax),
                     contentPadding = PaddingValues(
                         start = Spacing.lg,
                         end = Spacing.lg,
@@ -590,6 +593,7 @@ fun CrewSettingsScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
+                .frSafeHorizontalPadding()
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
@@ -996,7 +1000,7 @@ private fun StructuralToast(message: String, onDismiss: () -> Unit) {
         onDismiss()
     }
     Box(
-        modifier = Modifier.fillMaxSize().navigationBarsPadding().padding(Spacing.lg),
+        modifier = Modifier.fillMaxSize().navigationBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg),
         contentAlignment = Alignment.BottomCenter,
     ) {
         FrGlassTile(depth = FrTileDepth.Near) {
@@ -1008,7 +1012,7 @@ private fun StructuralToast(message: String, onDismiss: () -> Unit) {
 @Composable
 private fun CrewSettingsSkeleton() {
     Column(
-        modifier = Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = Spacing.lg).padding(top = 96.dp),
+        modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().padding(horizontal = Spacing.lg).padding(top = 96.dp),
         verticalArrangement = Arrangement.spacedBy(Spacing.lg),
     ) {
         FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.fillMaxWidth().height(180.dp)) {}
