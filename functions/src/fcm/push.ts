@@ -68,6 +68,44 @@ export async function sendToCrew(
   );
 }
 
+/**
+ * Build the per-language multicast message. Extracted (and exported) so the iOS-critical `apns`
+ * block is unit-testable without a live Messaging client.
+ *
+ * The `apns` block is REQUIRED for correct iOS delivery: without it, FCM emits a `notification`-only
+ * message that arrives on iOS **silently** (no sound) and depends on FCM's implicit `apns-push-type`
+ * default. We make it explicit — `apns-push-type: alert` + `apns-priority: 10` headers and
+ * `aps: { sound: "default" }` — so comment / new-meal pushes ring on iOS the same as Android. The
+ * block is inert for Android tokens, so the single message stays correct for the mixed-platform group.
+ */
+export function buildMulticastMessage(
+  tokens: string[],
+  title: string,
+  body: string,
+  data: Record<string, string>,
+) {
+  return {
+    tokens,
+    notification: { title, body },
+    data,
+    apns: {
+      headers: {
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+      },
+      payload: {
+        aps: {
+          alert: { title, body },
+          sound: "default",
+        },
+      },
+    },
+    android: {
+      priority: "high" as const,
+    },
+  };
+}
+
 async function sendToTokens(
   uid: string,
   tokens: DeviceToken[],
@@ -91,15 +129,15 @@ async function sendToTokens(
   await Promise.all(
     [...groups.entries()].map(async ([lang, groupTokens]) => {
       const localized = localizeNotification(lang, payload.key, data);
-      const message = {
-        tokens: groupTokens.map((t) => t.token),
-        notification: {
-          // Fall back to the payload's English default for any key without a localizer.
-          title: localized?.title ?? payload.notificationTitle,
-          body: localized?.body ?? payload.notificationBody,
-        },
+      // Fall back to the payload's English default for any key without a localizer.
+      const title = localized?.title ?? payload.notificationTitle;
+      const body = localized?.body ?? payload.notificationBody;
+      const message = buildMulticastMessage(
+        groupTokens.map((t) => t.token),
+        title,
+        body,
         data,
-      };
+      );
       const response: BatchResponse = await getMessaging().sendEachForMulticast(message);
       await pruneUnregistered(uid, groupTokens, response);
     }),

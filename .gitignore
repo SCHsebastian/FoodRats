@@ -75,3 +75,4 @@ vendor/bundle/
 
 # Local test-account credentials (never commit).
 test-accounts.md
+androidApp/google-services.json.bak.20260625-155031

@@ -151,3 +151,31 @@ describe("firestore.rules — owner banner write at production scale (8 members)
     );
   });
 });
+
+// Security #4 — plate upload now requires crew membership (crewId path segment was unconstrained).
+// Crew c1 (seeded in the top beforeEach): owner alice, members alice + bob; carol is a non-member.
+describe("storage.rules — plate upload requires crew membership (#4)", () => {
+  const platePath = (uid: string) => `crews/c1/meals/c1_${uid}_2026-06-14_lunch.jpg`;
+
+  it("a crew MEMBER can upload their own plate", async () => {
+    const storage = env.authenticatedContext("bob").storage();
+    await assertSucceeds(
+      uploadBytes(ref(storage, platePath("bob")), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("a NON-member CANNOT upload a plate into the crew", async () => {
+    const storage = env.authenticatedContext("carol").storage();
+    await assertFails(
+      uploadBytes(ref(storage, platePath("carol")), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("a member still cannot upload a plate naming ANOTHER user's uid", async () => {
+    // alice is a member, but the filename embeds bob's uid → the author-scope clause rejects it.
+    const storage = env.authenticatedContext("alice").storage();
+    await assertFails(
+      uploadBytes(ref(storage, platePath("bob")), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+});

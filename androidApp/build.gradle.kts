@@ -232,8 +232,8 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         // Version is injected by CI via -PversionName / -PversionCode (see
         // scripts/ci/compute_version.sh). Locals fall back to the dev defaults.
-        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 3
-        versionName = (project.findProperty("versionName") as String?) ?: "1.00.6"
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 4
+        versionName = (project.findProperty("versionName") as String?) ?: "1.00.7"
         buildConfigField("String", "GOOGLE_SERVER_CLIENT_ID", "\"${project.findProperty("googleServerClientId") ?: ""}\"")
         buildConfigField("String", "MAPS_API_KEY", "\"${project.findProperty("googleMapsApiKey") ?: ""}\"")
     }

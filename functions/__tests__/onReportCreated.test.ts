@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   processReport,
   moderationActionId,
+  reconstructTargetKey,
   THRESHOLD,
   type ModerationActionDoc,
   type ReportDeps,
@@ -211,6 +212,43 @@ describe("processReport — below threshold", () => {
     expect(outcome.distinctReporters).toBe(2);
     expect(r.removedMeals).toEqual([]);
     expect(r.removedComments).toEqual([]);
+    expect(r.actioned).toEqual([]);
+    expect(r.auditDocs.size).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Security #6 — targetKey reconstruction guard
+// ---------------------------------------------------------------------------
+
+describe("reconstructTargetKey", () => {
+  it("rebuilds the meal / comment / account keys from typed fields", () => {
+    expect(reconstructTargetKey(mealReport("u1"))).toBe(MEAL_KEY);
+    expect(reconstructTargetKey(commentReport("u1"))).toBe(COMMENT_KEY);
+    expect(reconstructTargetKey(accountReport("u1"))).toBe(ACCOUNT_KEY);
+  });
+
+  it("returns null when required fields are missing", () => {
+    expect(reconstructTargetKey({ reporterId: "u1", targetType: "meal", targetKey: MEAL_KEY })).toBeNull();
+  });
+});
+
+describe("processReport — refuses a report whose fields don't reconstruct targetKey (#6)", () => {
+  it("does NOT take down a meal when mealId is desynced from targetKey, even at threshold", async () => {
+    const r = recorder(new Set(["u1", "u2", "u3"]));
+    // Claims targetKey = meal|c1|<MEAL> but names a DIFFERENT meal → reconstructs to a non-matching
+    // key → the guard refuses before any removeMeal.
+    const forged: ReportDoc = {
+      reporterId: "u3",
+      targetType: "meal",
+      targetKey: MEAL_KEY,
+      crewId: CREW,
+      mealId: "c1_attacker_2026-06-14_dinner",
+    };
+    const outcome = await processReport(forged, r.deps);
+    expect(outcome.action).toBe("below_threshold");
+    expect(outcome.thresholdReached).toBe(false);
+    expect(r.removedMeals).toEqual([]);
     expect(r.actioned).toEqual([]);
     expect(r.auditDocs.size).toBe(0);
   });

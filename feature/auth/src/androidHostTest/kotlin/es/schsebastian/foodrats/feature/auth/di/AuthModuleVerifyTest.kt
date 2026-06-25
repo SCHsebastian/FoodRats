@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
+import es.schsebastian.foodrats.core.domain.session.LocalDataEraser
 import es.schsebastian.foodrats.core.domain.preferences.AccentPalettePort
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferencePort
 import es.schsebastian.foodrats.core.domain.preferences.EulaPort
@@ -53,6 +54,7 @@ class AuthModuleVerifyTest {
                 MealReminderSchedulePort::class,
                 NotificationsPreferencePort::class,
                 TokenRegistrationPort::class,
+                LocalDataEraser::class,
                 NotificationPermissionPort::class,
                 AnalyticsPort::class,
                 ConsentPort::class,

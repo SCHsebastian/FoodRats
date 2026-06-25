@@ -159,6 +159,31 @@ export function moderationActionId(targetKey: string): string {
 }
 
 /**
+ * Defense-in-depth: rebuild the canonical `targetKey` from the report's TYPED fields and confirm it
+ * matches the stored `targetKey` BEFORE any admin-privileged takedown. The `reports` create rule
+ * already pins `crewId`/`mealId`/`commentId`/`accountId` into `targetKey` and gates on membership +
+ * target existence — but this trigger DELETES by those reporter-supplied fields, so if a rules
+ * regression ever let them desync from `targetKey`, a forged report could aim a takedown at unrelated
+ * content. Reconstructing here makes the trigger self-validating regardless of the rules.
+ *
+ * Returns the reconstructed key, or `null` when the required fields are absent / inconsistent.
+ */
+export function reconstructTargetKey(report: ReportDoc): string | null {
+  switch (report.targetType) {
+    case "meal":
+      return report.crewId && report.mealId ? `meal|${report.crewId}|${report.mealId}` : null;
+    case "comment":
+      return report.crewId && report.mealId && report.commentId
+        ? `comment|${report.crewId}|${report.mealId}|${report.commentId}`
+        : null;
+    case "account":
+      return report.accountId ? `account|${report.accountId}` : null;
+    default:
+      return null;
+  }
+}
+
+/**
  * Injectable collaborators — lets the auto-hide decision be unit-tested without firebase-admin.
  */
 export interface ReportDeps {
@@ -203,6 +228,24 @@ export interface ReportDeps {
 }
 
 export async function processReport(report: ReportDoc, deps: ReportDeps): Promise<ReportOutcome> {
+  // Defense-in-depth (security #6): refuse to act on any report whose typed fields don't
+  // reconstruct its stored targetKey. A mismatch means the report is internally inconsistent
+  // (only reachable via a rules regression / Admin-SDK-written doc) — never auto-take-down by it.
+  const reconstructed = reconstructTargetKey(report);
+  if (reconstructed === null || reconstructed !== report.targetKey) {
+    logger.error(
+      `onReportCreated: targetKey mismatch — refusing takedown ` +
+        `(stored=${report.targetKey}, reconstructed=${reconstructed ?? "null"}, type=${report.targetType})`,
+    );
+    return {
+      targetKey: report.targetKey,
+      targetType: report.targetType,
+      distinctReporters: 0,
+      thresholdReached: false,
+      action: "below_threshold",
+    };
+  }
+
   const threshold = resolvedThreshold();
   const distinct = await deps.countDistinctReporters(report.targetKey);
   const distinctReporters = distinct.size;

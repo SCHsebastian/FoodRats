@@ -77,6 +77,12 @@ class FoodRatsApplication : Application() {
             )
         }
 
+        // Silence the FrLog println path in release builds (security #8): FrLog.d/w write account
+        // UIDs, session/sign-out state, and DataStore key names to logcat, which must not ship in
+        // production. Warnings/errors still reach the Crashlytics sink below (that path is
+        // independent of `enabled`), so release observability is unaffected.
+        FrLog.enabled = BuildConfig.DEBUG
+
         // Release-only: route FrLog warnings/errors to Crashlytics breadcrumbs + non-fatals
         // via the bound CrashReporter. Debug keeps the println-only path (sink stays null).
         if (!BuildConfig.DEBUG) {
