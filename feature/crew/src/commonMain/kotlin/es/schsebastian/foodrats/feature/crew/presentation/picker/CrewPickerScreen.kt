@@ -46,6 +46,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
 import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassAvatar
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassCircleButton
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
 import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
 import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
@@ -74,6 +75,7 @@ import org.koin.compose.viewmodel.koinViewModel
 @Composable
 fun CrewPickerScreen(
     onCrewSelected: (crewId: String) -> Unit,
+    onProfileClick: () -> Unit,
     vm: CrewPickerViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -228,6 +230,20 @@ fun CrewPickerScreen(
                 }
             }
         }
+
+        // Profile entry, pinned top-end above the scroll. This is the only sign-out path for a
+        // crewless just-registered user: the canonical sign-out CTAs live inside Profile / CrewSettings,
+        // both reachable only from Route.Main, which a user with no crew can't yet land on. Without this
+        // they'd be stranded on the picker with no way to log out.
+        FrGlassCircleButton(
+            icon = FrIcons.Person,
+            onClick = onProfileClick,
+            contentDescription = resolve(CrewStringKey.PickerProfileCta),
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(Spacing.lg),
+        )
     }
 }
 

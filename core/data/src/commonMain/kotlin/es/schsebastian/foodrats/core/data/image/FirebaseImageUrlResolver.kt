@@ -40,7 +40,28 @@ class FirebaseImageUrlResolver(
         crewId: CrewId,
         paths: List<String>,
     ): Result<Map<String, String>, ImageUrlError> = withContext(dispatchers.io) {
-        if (paths.isEmpty()) return@withContext Result.success(emptyMap())
+        mintCached(crewIdValue = crewId.value, paths = paths)
+    }
+
+    override suspend fun resolveOwnAvatar(path: String): Result<String?, ImageUrlError> =
+        withContext(dispatchers.io) {
+            // Empty crewId ⇒ the server authorizes ONLY the caller's own avatar paths (no crew check).
+            when (val r = mintCached(crewIdValue = "", paths = listOf(path))) {
+                is Result.Ok -> Result.success(r.value[path])
+                is Result.Err -> Result.failure(r.error)
+            }
+        }
+
+    /**
+     * Cache-aware mint shared by [resolve] (crew-scoped) and [resolveOwnAvatar] (own-uid, empty
+     * [crewIdValue]). Serves still-fresh cached URLs without a network call and degrades gracefully
+     * on backend failure (returns whatever subset is still fresh).
+     */
+    private suspend fun mintCached(
+        crewIdValue: String,
+        paths: List<String>,
+    ): Result<Map<String, String>, ImageUrlError> {
+        if (paths.isEmpty()) return Result.success(emptyMap())
         val nowMs = clock.now().toEpochMilliseconds()
         val distinct = paths.distinct()
 
@@ -52,11 +73,11 @@ class FirebaseImageUrlResolver(
                 if (c != null && c.expiresAtMs - SAFETY_MS > nowMs) fresh[p] = c.url else misses += p
             }
         }
-        if (misses.isEmpty()) return@withContext Result.success(fresh)
+        if (misses.isEmpty()) return Result.success(fresh)
 
-        runCatching {
+        return runCatching {
             functions.httpsCallable(CALLABLE)
-                .invoke(MintRequest(crewId = crewId.value, paths = misses))
+                .invoke(MintRequest(crewId = crewIdValue, paths = misses))
                 .data<MintResponse>()
         }.fold(
             onSuccess = { response ->

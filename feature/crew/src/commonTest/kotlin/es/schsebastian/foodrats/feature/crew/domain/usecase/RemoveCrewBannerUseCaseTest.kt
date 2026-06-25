@@ -60,10 +60,10 @@ class RemoveCrewBannerUseCaseTest {
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
     }
 
-    @Test fun no_session_returns_unavailable() = runTest {
+    @Test fun no_session_returns_not_signed_in() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val useCase = RemoveCrewBannerUseCase(repo, FakeSessionForRemoveBanner(null))
         val r = useCase(crewId)
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Session.NotSignedIn), r)
     }
 }

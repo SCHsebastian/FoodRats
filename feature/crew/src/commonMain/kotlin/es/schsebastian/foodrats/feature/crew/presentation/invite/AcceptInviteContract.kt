@@ -20,6 +20,8 @@ data class AcceptInviteState(
      * owner's approval" confirmation instead of the join CTA — the user is NOT yet a member.
      */
     val requestSent: Boolean = false,
+    /** True while the requester's own pending request is being withdrawn. */
+    val isCancelling: Boolean = false,
     val error: CrewError? = null,
 ) : MviState
 
@@ -27,6 +29,8 @@ sealed interface AcceptInviteIntent : MviIntent {
     /** Resolve the preview crew for the current [AcceptInviteState.code]. */
     data object Resolve : AcceptInviteIntent
     data object Join : AcceptInviteIntent
+    /** Withdraw the just-filed join request (requester-side cancel) and return to the join CTA. */
+    data object Cancel : AcceptInviteIntent
     data object DismissError : AcceptInviteIntent
 }
 

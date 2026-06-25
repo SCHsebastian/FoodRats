@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveMyCrewsUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RequestToJoinCrewUseCase
@@ -25,7 +26,14 @@ class CrewPickerViewModel(
 
     init {
         viewModelScope.launch {
-            val account = session.current.first()?.accountId ?: return@launch
+            // A null session here means the user is signed out / the session was lost. Without this,
+            // the `?: return@launch` left isLoading=true forever → a permanent skeleton with no error
+            // and no retry (A3). Surface a typed session error and end the skeleton; the root nav
+            // routes to SignIn.
+            val account = session.current.first()?.accountId ?: run {
+                update { it.copy(isLoading = false, error = CrewError.Session.NotSignedIn) }
+                return@launch
+            }
             observeMyCrews(account).collect { r ->
                 when (r) {
                     is Result.Ok  -> update { it.copy(crews = r.value, isLoading = false) }
@@ -52,7 +60,8 @@ class CrewPickerViewModel(
 
     private suspend fun doCreate() {
         val state = currentState
-        val account = session.current.first()?.accountId ?: return
+        val account = session.current.first()?.accountId
+            ?: return update { it.copy(error = CrewError.Session.NotSignedIn) }
         update { it.copy(isCreating = true, error = null) }
         when (val r = createCrew(state.createInput, account)) {
             is Result.Ok  -> {
@@ -67,7 +76,8 @@ class CrewPickerViewModel(
 
     private suspend fun doJoin() {
         val state = currentState
-        val account = session.current.first()?.accountId ?: return
+        val account = session.current.first()?.accountId
+            ?: return update { it.copy(error = CrewError.Session.NotSignedIn) }
         update { it.copy(isJoining = true, error = null) }
         // No instant join — this files a request the crew owner must approve. We don't switch the
         // active crew or navigate; the screen shows a "request sent" confirmation and the user lands

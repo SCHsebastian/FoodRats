@@ -490,12 +490,9 @@ class ProfileViewModel(
             null -> current + newTime
             else -> current.toMutableList().also { if (editingIndex in it.indices) it[editingIndex] = newTime }
         }
-        val normalized = updated
-            .distinct()
-            .sortedWith(compareBy({ it.hour }, { it.minute }))
-            .take(MealReminderSchedulePort.MAX_REMINDERS)
         update { it.copy(reminderPickerOpen = false, reminderEditingIndex = null) }
-        doSetReminders(normalized)
+        // De-dupe / sort / cap is the use case's job now (it owns the port contract); pass intent.
+        doSetReminders(updated)
     }
 
     private suspend fun doRemoveReminder(index: Int) {

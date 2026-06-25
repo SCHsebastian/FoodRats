@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
+import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyRequestedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource
@@ -70,10 +71,11 @@ internal class FirebaseCrewRepository(
             onFailure = { t ->
                 Result.failure(
                     when (t) {
-                        CodeUnknownException   -> CrewError.Invite.CodeUnknown
-                        NotFoundException      -> CrewError.Membership.NotFound
-                        AlreadyMemberException -> CrewError.Membership.AlreadyMember
-                        else                   -> errorMapper.map(t)
+                        CodeUnknownException      -> CrewError.Invite.CodeUnknown
+                        NotFoundException         -> CrewError.Membership.NotFound
+                        AlreadyMemberException    -> CrewError.Membership.AlreadyMember
+                        AlreadyRequestedException -> CrewError.Invite.AlreadyRequested
+                        else                      -> errorMapper.map(t)
                     },
                 )
             },
@@ -121,6 +123,14 @@ internal class FirebaseCrewRepository(
         return dataSource.declineJoinRequest(crewId, requester)
     }
 
+    override suspend fun cancelJoinRequest(
+        crewId: CrewId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> =
+        // No owner/fetchOnce gate here: the requester deletes their OWN request doc, which the
+        // Firestore rule permits. The datasource op is the same single-doc delete as decline.
+        dataSource.declineJoinRequest(crewId, requester)
+
     override suspend fun transferOwnership(
         crewId: CrewId,
         requestedBy: AccountId,
@@ -128,6 +138,9 @@ internal class FirebaseCrewRepository(
     ): Result<Unit, CrewError> {
         val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return Result.failure(CrewError.Transfer.NotOwner)
+        // A self-transfer is a silent no-op (re-writing ownerId to the same value "succeeds"); reject
+        // it explicitly so the UI can say "you're already the owner" instead of showing a fake success.
+        if (newOwner == requestedBy) return Result.failure(CrewError.Transfer.CannotTransferToSelf)
         if (crew.members.none { it.accountId == newOwner }) return Result.failure(CrewError.Transfer.TargetNotMember)
         return dataSource.transferOwnership(crewId, newOwner)
     }
@@ -288,23 +301,28 @@ internal class FirebaseCrewRepository(
 
     // C9 — crew banner ————————————————————————————————————————————————————————————————————————————
 
+    // NOTE: no repo-level `withContext(dispatchers.io)` here. `setBannerPath`/`clearBannerPath`
+    // already own their IO boundary in the datasource (like every other settings write), so wrapping
+    // them again would NEST `withContext(io)` inside `withContext(io)`. The Storage upload/delete —
+    // which do NOT own a boundary — get their own `withContext(io)` individually. Sequential
+    // boundaries (fetchOnce → storage → datasource), never nested, matching `renameCrew` et al.
     override suspend fun setBanner(
         crewId: CrewId,
         requestedBy: AccountId,
         bytes: ByteArray,
-    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
-        val crew = dataSource.fetchOnce(crewId) ?: return@withContext Result.failure(CrewError.Membership.NotFound)
-        if (crew.ownerId != requestedBy) return@withContext Result.failure(CrewError.Authorization.NotOwner)
-        val storage = bannerStorage ?: return@withContext Result.failure(CrewError.Banner.UploadFailed)
-        val path = runCatching { storage.upload(crewId, bytes) }
-            .getOrElse { return@withContext Result.failure(CrewError.Banner.UploadFailed) }
-        when (val written = dataSource.setBannerPath(crewId, path)) {
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        val storage = bannerStorage ?: return Result.failure(CrewError.Banner.UploadFailed)
+        val path = runCatching { withContext(dispatchers.io) { storage.upload(crewId, bytes) } }
+            .getOrElse { return Result.failure(CrewError.Banner.UploadFailed) }
+        return when (val written = dataSource.setBannerPath(crewId, path)) {
             is Result.Ok -> written
             is Result.Err -> {
                 // The object landed but the Firestore pointer write was rejected (e.g. a rules
                 // denial). Best-effort orphan cleanup, then surface the REAL cause rather than
                 // masking every post-upload failure as the generic Banner.UploadFailed.
-                runCatching { storage.delete(crewId) }
+                runCatching { withContext(dispatchers.io) { storage.delete(crewId) } }
                 written
             }
         }
@@ -313,13 +331,22 @@ internal class FirebaseCrewRepository(
     override suspend fun removeBanner(
         crewId: CrewId,
         requestedBy: AccountId,
-    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
-        val crew = dataSource.fetchOnce(crewId) ?: return@withContext Result.failure(CrewError.Membership.NotFound)
-        if (crew.ownerId != requestedBy) return@withContext Result.failure(CrewError.Authorization.NotOwner)
-        val storage = bannerStorage ?: return@withContext Result.failure(CrewError.Banner.DeleteFailed)
-        runCatching {
-            storage.delete(crewId)
-            dataSource.clearBannerPath(crewId)
-        }.getOrElse { Result.failure(CrewError.Banner.DeleteFailed) }
+    ): Result<Unit, CrewError> {
+        val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
+        if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
+        val storage = bannerStorage ?: return Result.failure(CrewError.Banner.DeleteFailed)
+        // Clear the Firestore pointer FIRST — it is the source of truth for "is there a banner". A
+        // transient Storage delete error must NOT strand a dangling pointer (the old order deleted
+        // Storage first, so a non-NOT_FOUND Storage error left `bannerPath` pointing at an object the
+        // owner tried to remove, with no retry path). Then best-effort delete the now-orphaned object
+        // (NOT_FOUND-tolerant; a leftover Storage object is harmless).
+        return when (val cleared = dataSource.clearBannerPath(crewId)) {
+            is Result.Ok -> {
+                runCatching { withContext(dispatchers.io) { storage.delete(crewId) } }
+                cleared
+            }
+            // Surface the real cause (permission / unknown) instead of the generic DeleteFailed.
+            is Result.Err -> cleared
+        }
     }
 }

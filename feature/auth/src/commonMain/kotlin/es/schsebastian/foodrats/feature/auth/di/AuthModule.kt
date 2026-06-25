@@ -4,7 +4,9 @@ import es.schsebastian.foodrats.core.domain.account.AccountDeletionPort
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
 import es.schsebastian.foodrats.core.domain.account.AccountWritePort
 import es.schsebastian.foodrats.core.domain.account.DataExportPort
+import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
+import es.schsebastian.foodrats.core.domain.session.SessionRevalidator
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.auth.data.firebase.AccountDocStore
@@ -18,6 +20,8 @@ import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountReadD
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseAccountDeletionPort
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirebaseDataExportPort
 import es.schsebastian.foodrats.feature.auth.data.firebase.FirestoreAccountWriter
+import es.schsebastian.foodrats.feature.auth.data.outbox.AuthOutboxCommandHandler
+import es.schsebastian.foodrats.feature.auth.data.repository.AuthSessionRevalidator
 import es.schsebastian.foodrats.feature.auth.data.repository.AuthSignOutPort
 import es.schsebastian.foodrats.feature.auth.data.repository.FirebaseAuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
@@ -46,16 +50,21 @@ import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.singleOf
 import org.koin.core.module.dsl.viewModel
 import org.koin.core.module.dsl.viewModelOf
+import org.koin.core.qualifier.named
 import org.koin.dsl.module
 
 val authModule = module {
     singleOf(::AuthErrorMapper)
-    single<AccountDocStore> { FirestoreAccountDocStore(firestore = get()) }
+    single<AccountDocStore> { FirestoreAccountDocStore(firestore = get(), dispatchers = get()) }
     single { FirebaseAuthDataSource(auth = get(), store = get(), clock = get<Clock>(), dispatchers = get()) }
     // appleClient (2nd arg) is bound per-platform alongside GoogleAuthClient:
     // androidAuthModule() in FoodRatsApplication, authIosModule(...) on iOS.
     single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get(), get()) }
     single<SessionProvider> { get<AuthRepository>() }
+    // Proactive server-side session-validity check, run on app foreground (FoodRatsApp). Forces a
+    // token refresh and signs out a revoked/disabled/deleted account so the root nav routes to SignIn
+    // instead of leaving the user on stale authenticated screens.
+    single<SessionRevalidator> { AuthSessionRevalidator(firebase = get()) }
     single<SignOutPort> { AuthSignOutPort(get(), get()) }
     single<AccountSnapshotSource> {
         FirebaseAccountSnapshotSource(
@@ -74,12 +83,17 @@ val authModule = module {
         )
     }
     single<AccountReadPort> {
-        FirestoreAccountReadDataSource(source = get(), imageUrls = get(), activeCrew = get())
+        FirestoreAccountReadDataSource(source = get(), imageUrls = get(), activeCrew = get(), session = get())
     }
     singleOf(::AvatarStorageDataSource)
     single<AccountWritePort> {
-        FirestoreAccountWriter(firestore = get(), avatarStorage = get(), dispatchers = get())
+        FirestoreAccountWriter(firestore = get(), avatarStorage = get(), dispatchers = get(), crashReporter = get())
     }
+    // Replays the offline-first profile-text outbox commands (SetDisplayName / SetBio) — contributed
+    // to the cross-feature OutboxRunner via Koin getAll(), mirroring CrewOutboxCommandHandler. The
+    // named() qualifier is REQUIRED (ArchitectureFitnessTest): unqualified single<OutboxCommandHandler>
+    // bindings collide at one Koin index → getAll() drops all but one → half the outbox never replays.
+    single<OutboxCommandHandler>(named("authOutboxHandler")) { AuthOutboxCommandHandler(accountWrite = get()) }
     single<AccountDeletionPort> { FirebaseAccountDeletionPort(dispatchers = get()) }
     single<DataExportPort> { FirebaseDataExportPort(dispatchers = get()) }
     factoryOf(::UpdateMyDisplayNameUseCase)

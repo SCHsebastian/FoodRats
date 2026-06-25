@@ -142,6 +142,11 @@ internal class FakeImageUrlPort(
         if (fail) return Result.failure(ImageUrlError.Unavailable)
         return Result.success(paths.associateWith { "signed://$it" })
     }
+
+    override suspend fun resolveOwnAvatar(path: String): Result<String?, ImageUrlError> {
+        if (fail) return Result.failure(ImageUrlError.Unavailable)
+        return Result.success("signed://$path")
+    }
 }
 
 /**

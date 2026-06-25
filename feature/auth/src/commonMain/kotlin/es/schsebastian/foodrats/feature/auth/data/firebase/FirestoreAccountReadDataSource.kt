@@ -7,13 +7,13 @@ import es.schsebastian.foodrats.core.domain.image.ImageUrlPort
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.getOrNull
+import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 
 /**
  * Thin seam that yields the latest `accounts/{uid}` DTO snapshot (null when the doc is
@@ -35,22 +35,31 @@ class FirestoreAccountReadDataSource(
     private val source: AccountSnapshotSource,
     private val imageUrls: ImageUrlPort,
     private val activeCrew: ActiveCrewProvider,
+    private val session: SessionProvider,
 ) : AccountReadPort {
     override fun observe(id: AccountId): Flow<Account?> = flow {
         val snapshots = source.snapshots(id.value)
         emitAll(
-            combine(snapshots, activeCrew.current) { dto, crewId -> dto to crewId }
-                .map { (dto, crewId) ->
-                    val account = dto?.toAccount() ?: return@map null
-                    // `account.avatarUrl` holds the avatar PATH at this layer (see AccountMapper).
-                    account.copy(avatarUrl = resolveAvatar(account.avatarUrl, crewId))
-                }
+            combine(snapshots, activeCrew.current, session.current) { dto, crewId, sess ->
+                val account = dto?.toAccount() ?: return@combine null
+                // `account.avatarUrl` holds the avatar PATH at this layer (see AccountMapper).
+                account.copy(
+                    avatarUrl = resolveAvatar(account.avatarUrl, crewId, isSelf = sess?.accountId == id),
+                )
+            }
                 .distinctUntilChanged()
         )
     }
 
-    private suspend fun resolveAvatar(path: String?, crewId: CrewId?): String? {
-        if (path == null || crewId == null) return null
-        return imageUrls.resolve(crewId, listOf(path)).getOrNull()?.get(path)
+    private suspend fun resolveAvatar(path: String?, crewId: CrewId?, isSelf: Boolean): String? {
+        if (path == null) return null
+        return when {
+            // In a crew: any member's avatar resolves through the crew-scoped signed-URL mint.
+            crewId != null -> imageUrls.resolve(crewId, listOf(path)).getOrNull()?.get(path)
+            // No active crew yet (just signed up / left the only crew): still resolve the CALLER'S
+            // OWN avatar so it isn't blank in their own top bar/profile. Others' avatars need a crew.
+            isSelf -> imageUrls.resolveOwnAvatar(path).getOrNull()
+            else -> null
+        }
     }
 }

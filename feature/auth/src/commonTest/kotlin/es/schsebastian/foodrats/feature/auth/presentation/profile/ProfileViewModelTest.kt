@@ -52,7 +52,9 @@ import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyBioU
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.UpdateMyDisplayNameUseCase
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import es.schsebastian.foodrats.feature.auth.testdoubles.FakeAccountWritePort
+import es.schsebastian.foodrats.feature.auth.testdoubles.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.auth.testdoubles.FixedSessionProvider
+import es.schsebastian.foodrats.feature.auth.testdoubles.RecordingOutboxPort
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -276,8 +278,8 @@ class ProfileViewModelTest {
             aiPreferencePort = aiPreferencePort,
             accentPalettePort = accentPalettePort,
             mealRemindersPort = reminders,
-            updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session),
-            updateBio = UpdateMyBioUseCase(writePort, session),
+            updateDisplayName = UpdateMyDisplayNameUseCase(writePort, session, FakeConnectivityPort(), RecordingOutboxPort()),
+            updateBio = UpdateMyBioUseCase(writePort, session, FakeConnectivityPort(), RecordingOutboxPort()),
             updateAvatar = UpdateMyAvatarUseCase(writePort, session),
             removeAvatar = RemoveMyAvatarUseCase(writePort, session),
             signOut = signOut,

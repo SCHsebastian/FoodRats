@@ -19,4 +19,6 @@ data class CommentRowUi(
     val authorId: String = "",
     /** True when the viewer may report/block this commenter (not their own comment). */
     val canModerate: Boolean = false,
+    /** True when the viewer authored this comment — drives right-vs-left chat-bubble alignment. */
+    val isOwnComment: Boolean = false,
 )

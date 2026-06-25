@@ -8,18 +8,18 @@ import es.schsebastian.foodrats.feature.auth.domain.error.toProfileError
 
 /**
  * Uploads the user's avatar bytes to Storage and writes the resulting object PATH to
- * `accounts/{uid}.avatarPath` (canonical). Returns the stored path on success.
+ * `accounts/{uid}.avatarPath` (canonical).
  *
  * The new avatar surfaces in the UI via `AccountReadPort` re-emission, which resolves the
  * path to a membership-checked signed URL — there's no usable URL to hand back synchronously
- * (download-token URLs were removed in #15). Crew member lists resolve identity live, so this
- * single canonical write is enough — no denormalized cache to propagate.
+ * (download-token URLs were removed in #15), so this returns [Unit]. Crew member lists resolve
+ * identity live, so this single canonical write is enough — no denormalized cache to propagate.
  */
 class UpdateMyAvatarUseCase(
     private val accountWrite: AccountWritePort,
     private val session: SessionProvider,
 ) {
-    suspend operator fun invoke(bytes: ByteArray): Result<String, ProfileError> {
+    suspend operator fun invoke(bytes: ByteArray): Result<Unit, ProfileError> {
         if (bytes.isEmpty()) return Result.failure(ProfileError.Validation.EmptyBytes)
 
         val current = when (val r = session.requireCurrent()) {
@@ -28,7 +28,7 @@ class UpdateMyAvatarUseCase(
         }
 
         return when (val r = accountWrite.uploadAndSetAvatar(current.accountId, bytes)) {
-            is Result.Ok -> Result.success(r.value)
+            is Result.Ok -> Result.success(Unit)
             is Result.Err -> Result.failure(r.error.toProfileError())
         }
     }

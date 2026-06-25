@@ -27,6 +27,7 @@ import es.schsebastian.foodrats.feature.crew.data.sync.CrewSyncEngine
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ApproveJoinRequestUseCase
+import es.schsebastian.foodrats.feature.crew.domain.usecase.CancelJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeclineJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.LeaveCrewUseCase
@@ -215,6 +216,7 @@ val crewModule = module {
 
     factoryOf(::CreateCrewUseCase)
     factoryOf(::RequestToJoinCrewUseCase)
+    factoryOf(::CancelJoinRequestUseCase)
     factoryOf(::ObservePendingJoinRequestsUseCase)
     factoryOf(::ApproveJoinRequestUseCase)
     factoryOf(::DeclineJoinRequestUseCase)
@@ -249,6 +251,7 @@ val crewModule = module {
             session = get(),
             resolveCrew = get(),
             requestToJoin = get(),
+            cancelJoinRequest = get(),
         )
     }
     viewModel { (crewId: CrewId) ->

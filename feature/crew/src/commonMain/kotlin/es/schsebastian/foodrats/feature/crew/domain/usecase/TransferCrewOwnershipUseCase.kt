@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
+import es.schsebastian.foodrats.feature.crew.domain.error.toCrewError
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 
 /**
@@ -19,7 +20,7 @@ class TransferCrewOwnershipUseCase(
     suspend operator fun invoke(crewId: CrewId, newOwner: AccountId): Result<Unit, CrewError> {
         val requestedBy = when (val s = session.requireCurrent()) {
             is Result.Ok -> s.value.accountId
-            is Result.Err -> return Result.failure(CrewError.Backend.Unavailable)
+            is Result.Err -> return Result.failure(s.error.toCrewError())
         }
         return repository.transferOwnership(crewId, requestedBy, newOwner)
     }

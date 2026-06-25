@@ -21,6 +21,10 @@ import foodrats.feature.crew.generated.resources.crew_error_network
 import foodrats.feature.crew.generated.resources.crew_error_not_found
 import foodrats.feature.crew.generated.resources.crew_error_not_member
 import foodrats.feature.crew.generated.resources.crew_error_permission
+import foodrats.feature.crew.generated.resources.crew_error_session_expired
+import foodrats.feature.crew.generated.resources.crew_error_session_not_signed_in
+import foodrats.feature.crew.generated.resources.crew_error_invite_already_requested
+import foodrats.feature.crew.generated.resources.crew_error_transfer_cannot_transfer_to_self
 import foodrats.feature.crew.generated.resources.crew_error_unknown
 import foodrats.feature.crew.generated.resources.crew_join_code_label
 import foodrats.feature.crew.generated.resources.crew_join_submit
@@ -34,6 +38,7 @@ import foodrats.feature.crew.generated.resources.crew_picker_empty_headline
 import foodrats.feature.crew.generated.resources.crew_picker_empty_subtext
 import foodrats.feature.crew.generated.resources.crew_picker_hero_subtitle
 import foodrats.feature.crew.generated.resources.crew_picker_join_cta
+import foodrats.feature.crew.generated.resources.crew_picker_profile_cta
 import foodrats.feature.crew.generated.resources.crew_picker_title
 import foodrats.feature.crew.generated.resources.crew_settings_actions_section
 import foodrats.feature.crew.generated.resources.crew_settings_back_cta
@@ -112,6 +117,7 @@ import foodrats.feature.crew.generated.resources.crew_picker_join_requested
 import foodrats.feature.crew.generated.resources.crew_invite_request_sent_title
 import foodrats.feature.crew.generated.resources.crew_invite_request_sent_body
 import foodrats.feature.crew.generated.resources.crew_invite_done_cta
+import foodrats.feature.crew.generated.resources.crew_invite_cancel_request_cta
 import foodrats.feature.crew.generated.resources.crew_settings_requests_section
 import foodrats.feature.crew.generated.resources.crew_settings_requests_count
 import foodrats.feature.crew.generated.resources.crew_settings_approve_cta
@@ -140,6 +146,7 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     PickerBrandName(Res.string.crew_picker_brand_name),
     PickerCrewsLabel(Res.string.crew_picker_crews_label),
     PickerCrewButton(Res.string.crew_picker_crew_button),
+    PickerProfileCta(Res.string.crew_picker_profile_cta),
     CreateNameLabel(Res.string.crew_create_name_label),
     CreateSubmit(Res.string.crew_create_submit),
     JoinCodeLabel(Res.string.crew_join_code_label),
@@ -199,6 +206,10 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     ErrorPermission(Res.string.crew_error_permission),
     ErrorCollision(Res.string.crew_error_collision),
     ErrorUnknown(Res.string.crew_error_unknown),
+    ErrorSessionNotSignedIn(Res.string.crew_error_session_not_signed_in),
+    ErrorSessionExpired(Res.string.crew_error_session_expired),
+    ErrorInviteAlreadyRequested(Res.string.crew_error_invite_already_requested),
+    ErrorTransferCannotTransferToSelf(Res.string.crew_error_transfer_cannot_transfer_to_self),
     ErrorAuthorizationNotOwner(Res.string.crew_error_authorization_not_owner),
     ErrorValidationDisplayNameBlank(Res.string.crew_error_validation_display_name_blank),
     ErrorValidationDisplayNameTooLong(Res.string.crew_error_validation_display_name_too_long),
@@ -245,6 +256,7 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     InviteRequestSentTitle(Res.string.crew_invite_request_sent_title),
     InviteRequestSentBody(Res.string.crew_invite_request_sent_body),
     InviteDoneCta(Res.string.crew_invite_done_cta),
+    InviteCancelRequestCta(Res.string.crew_invite_cancel_request_cta),
     SettingsRequestsSection(Res.string.crew_settings_requests_section),
     SettingsRequestsCount(Res.string.crew_settings_requests_count),
     SettingsApproveCta(Res.string.crew_settings_approve_cta),

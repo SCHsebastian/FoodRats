@@ -73,10 +73,11 @@ class AccountMapperTest {
         assertNull(account.bio)
     }
 
-    @Test fun toAccount_silently_drops_overlong_bio() {
-        // A bio exceeding 100 chars (e.g. old data) is dropped rather than surfaced as a malformed value.
+    @Test fun toAccount_clamps_overlong_bio_to_cap() {
+        // A bio exceeding 100 chars (e.g. old data / a tightened cap) is CLAMPED to the cap rather
+        // than dropped — dropping would let a subsequent save erase it server-side (L2).
         val overlong = "a".repeat(101)
         val account = validDto.copy(bio = overlong).toAccount()!!
-        assertNull(account.bio)
+        assertEquals("a".repeat(100), account.bio?.value)
     }
 }

@@ -7,6 +7,10 @@ data class Account(
     val id: AccountId,
     val handle: String,
     val displayName: String,
+    // ALWAYS null when read from the public `accounts/{uid}` doc — email is PII and deliberately
+    // never lives there (it's owned by Firebase Auth). Do NOT "fix" this by adding `email` to
+    // `AccountDto`; that re-introduces the PII leak the Firestore rules guard against. Surface it
+    // from Firebase Auth / an owner-only `private/` subcollection if ever displayed.
     val email: String?,
     val avatarUrl: String?,
     // Personal tagline / bio (≤ 100 chars). Null = no bio set.

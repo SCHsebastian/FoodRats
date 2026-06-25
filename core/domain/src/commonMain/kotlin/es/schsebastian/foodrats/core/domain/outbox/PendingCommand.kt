@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.core.domain.outbox
 
+import es.schsebastian.foodrats.core.domain.account.Bio
+import es.schsebastian.foodrats.core.domain.account.DisplayName
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -241,5 +243,31 @@ sealed interface PendingCommand {
     ) : PendingCommand {
         override val idempotencyKey: String = "crew.bannerFocal:${crewId.value}"
         override val aggregateKey: String = "crew:${crewId.value}"
+    }
+
+    /**
+     * Set the caller's own display name (offline-first). Idempotent (sets the value). Pre-validated
+     * by the use case via [DisplayName.of]. Shares the `account:{uid}` aggregate with [SetBio] so a
+     * name-then-bio edit drains FIFO. (Avatar BYTES can't ride this flattened-column store — see the
+     * class header — so only the text fields are offline-first.)
+     */
+    data class SetDisplayName(
+        val accountId: AccountId,
+        val displayName: DisplayName,
+    ) : PendingCommand {
+        override val idempotencyKey: String = "account.displayName:${accountId.value}"
+        override val aggregateKey: String = "account:${accountId.value}"
+    }
+
+    /**
+     * Set or clear ([bio] == null) the caller's own bio (offline-first). Idempotent. Pre-validated
+     * by the use case via [Bio.of]. Shares the `account:{uid}` aggregate with [SetDisplayName].
+     */
+    data class SetBio(
+        val accountId: AccountId,
+        val bio: Bio?,
+    ) : PendingCommand {
+        override val idempotencyKey: String = "account.bio:${accountId.value}"
+        override val aggregateKey: String = "account:${accountId.value}"
     }
 }

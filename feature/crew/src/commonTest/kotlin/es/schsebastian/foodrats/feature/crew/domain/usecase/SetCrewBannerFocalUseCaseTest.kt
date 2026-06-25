@@ -77,10 +77,20 @@ class SetCrewBannerFocalUseCaseTest {
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
     }
 
-    @Test fun no_session_returns_unavailable() = runTest {
+    @Test fun offline_non_owner_rejected_without_enqueue() = runTest {
+        val nonOwner = aid("uid-other")
+        val session = Session(accountId = nonOwner, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(crewId, 0.3f)
+        assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertTrue(outbox.enqueued.isEmpty(), "a non-owner must not park a doomed offline command")
+    }
+
+    @Test fun no_session_returns_not_signed_in() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val r = useCase(repo, session = null)(crewId, 0.3f)
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Session.NotSignedIn), r)
     }
 
     @Test fun offline_enqueues_clamped_focal_and_returns_ok() = runTest {
@@ -96,11 +106,11 @@ class SetCrewBannerFocalUseCaseTest {
         )
     }
 
-    @Test fun no_session_offline_still_returns_unavailable_without_enqueue() = runTest {
+    @Test fun no_session_offline_still_returns_not_signed_in_without_enqueue() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val outbox = RecordingOutboxPort()
         val r = useCase(repo, session = null, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(crewId, 0.3f)
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Session.NotSignedIn), r)
         assertTrue(outbox.enqueued.isEmpty())
     }
 }

@@ -48,11 +48,14 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -288,8 +291,26 @@ private fun reportReasonLabels(): Map<FrReportReasonOption, String> = mapOf(
 /** Space reserved so the last content clears the sticky composer. */
 private val COMPOSER_CLEARANCE = Sizes.touchTarget + Spacing.xl
 
-/** Tall transparent head height — the plate shows through; the title floats at its foot. */
-private val HEAD_HEIGHT = 340.dp
+/**
+ * The plate header fills ~2/3 of the screen height so the meal photo dominates the detail view;
+ * the title floats at its foot and the rest scrolls below. Computed from the live window height
+ * (KMP-safe via [LocalWindowInfo]); falls back to a sane fixed height before the size is known.
+ */
+private const val HEAD_HEIGHT_FRACTION = 0.66f
+private val HEAD_HEIGHT_FALLBACK = 340.dp
+
+@Composable
+private fun rememberHeadHeight(): Dp {
+    val containerHeightPx = LocalWindowInfo.current.containerSize.height
+    val density = LocalDensity.current
+    return remember(containerHeightPx, density) {
+        if (containerHeightPx <= 0) {
+            HEAD_HEIGHT_FALLBACK
+        } else {
+            with(density) { (containerHeightPx * HEAD_HEIGHT_FRACTION).toDp() }
+        }
+    }
+}
 
 // ----------------------------------------------------------------------------------------------
 // Transient states (loading / error / not-found) — still need a back affordance + a floor.
@@ -312,6 +333,7 @@ private fun CenteredState(onBack: () -> Unit, content: @Composable () -> Unit) {
 /** Loading placeholder: a frosted floor + a back pill + a couple of shimmer strata. */
 @Composable
 private fun DetailLoadingSkeleton(onBack: () -> Unit) {
+    val headHeight = rememberHeadHeight()
     Box(modifier = Modifier.fillMaxSize()) {
         FrMediaFloorBrush()
         Column(
@@ -321,7 +343,7 @@ private fun DetailLoadingSkeleton(onBack: () -> Unit) {
                 .padding(horizontal = Spacing.lg),
             verticalArrangement = Arrangement.spacedBy(Spacing.lg),
         ) {
-            Spacer(Modifier.height(HEAD_HEIGHT - Spacing.xl))
+            Spacer(Modifier.height(headHeight - Spacing.xl))
             FrShimmerBox(modifier = Modifier.fillMaxWidth(0.6f).height(34.dp), shape = RoundedCornerShape(Radius.sm))
             FrShimmerBox(modifier = Modifier.fillMaxWidth().height(120.dp), shape = RoundedCornerShape(Radius.lg))
             FrShimmerBox(modifier = Modifier.fillMaxWidth().height(72.dp), shape = RoundedCornerShape(Radius.lg))
@@ -349,6 +371,7 @@ private fun MealDetailBody(
     onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     val meal = state.meal ?: return
+    val headHeight = rememberHeadHeight()
     var pendingDeleteCommentId by remember { mutableStateOf<MealCommentId?>(null) }
     // Full-screen zoomable photo viewer (opened by tapping the header plate).
     var showPhotoViewer by remember { mutableStateOf(false) }
@@ -370,7 +393,7 @@ private fun MealDetailBody(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(HEAD_HEIGHT)
+                    .height(headHeight)
                     .clipToBounds()
                     .then(
                         if (meal.photoUrl.isNotBlank()) {
@@ -403,7 +426,7 @@ private fun MealDetailBody(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(HEAD_HEIGHT * 0.55f)
+                        .height(headHeight * 0.55f)
                         .align(Alignment.BottomCenter)
                         .background(
                             Brush.verticalGradient(
@@ -866,6 +889,7 @@ private fun CommentsSection(
             else -> state.commentRows.forEach { c ->
                 val editing = state.editingCommentId == c.id
                 StructuralCommentRow(
+                    isOwn = c.isOwnComment,
                     displayName = c.displayName,
                     avatarUrl = c.avatarUrl,
                     text = c.text,
@@ -900,9 +924,19 @@ private fun CommentsSection(
     }
 }
 
-/** A comment as a structural stratum: avatar + frosted bubble (name · time, text, moderation chrome). */
+// Chat-bubble width split: the bubble takes 5 parts, a flexible gutter on the opposite side takes 1,
+// so each comment occupies ~4/5 of the row and clearly hugs its side.
+private const val COMMENT_BUBBLE_WEIGHT = 5f
+private const val COMMENT_GUTTER_WEIGHT = 1f
+
+/**
+ * A comment as a structural stratum: avatar + frosted bubble (name · time, text, moderation chrome).
+ * Chat-bubble layout — the viewer's own comments hug the right (avatar trailing); everyone else's hug
+ * the left (avatar leading), each leaving a flexible gutter on the far side.
+ */
 @Composable
 private fun StructuralCommentRow(
+    isOwn: Boolean,
     displayName: String,
     avatarUrl: String?,
     text: String,
@@ -936,20 +970,25 @@ private fun StructuralCommentRow(
         else      -> displayName.ifBlank { "?" }
     }
     var menuExpanded by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-        verticalAlignment = Alignment.Top,
-    ) {
+    val avatar: @Composable () -> Unit = {
         FrGlassAvatar(
             initials = avatarInitials,
             image = if (isDeleted || loading) null else avatarUrl?.let { rememberAsyncImagePainter(it) },
             ring = FrAvatarRing.None,
             size = 32.dp,
         )
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalAlignment = Alignment.Top,
+    ) {
+        // Own comments hug the right: a leading flexible gutter pushes the bubble + trailing avatar over.
+        if (isOwn) Spacer(Modifier.weight(COMMENT_GUTTER_WEIGHT))
+        if (!isOwn) avatar()
         FrGlassTile(
             depth = FrTileDepth.Deep,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(COMMENT_BUBBLE_WEIGHT),
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1055,6 +1094,9 @@ private fun StructuralCommentRow(
                 FrText(text = text, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.92f))
             }
         }
+        if (isOwn) avatar()
+        // Everyone else's comments hug the left: the flexible gutter sits on the right.
+        if (!isOwn) Spacer(Modifier.weight(COMMENT_GUTTER_WEIGHT))
     }
 }
 

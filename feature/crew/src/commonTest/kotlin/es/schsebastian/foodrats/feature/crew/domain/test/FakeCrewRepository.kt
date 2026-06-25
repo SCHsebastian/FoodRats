@@ -39,6 +39,9 @@ class FakeCrewRepository(
     var lastRequestToJoin: Pair<CrewCode, AccountId>? = null
     var lastApprove: Pair<CrewId, AccountId>? = null
     var lastDecline: Pair<CrewId, AccountId>? = null
+    var lastCancel: Pair<CrewId, AccountId>? = null
+    /** When set, overrides the default cancelJoinRequest behavior (drop the requester's own request). */
+    var nextCancel: Result<Unit, CrewError>? = null
     var lastTransfer: Pair<CrewId, AccountId>? = null
     var lastLeave: Triple<CrewId, AccountId, AccountId?>? = null
     /** When set, overrides the default rename behavior (ownership check + mutation). */
@@ -95,6 +98,17 @@ class FakeCrewRepository(
     override fun observeJoinRequests(crewId: CrewId): Flow<Result<List<JoinRequest>, CrewError>> =
         joinRequests.map { Result.success(it[crewId].orEmpty()) }
 
+    override suspend fun cancelJoinRequest(
+        crewId: CrewId,
+        requester: AccountId,
+    ): Result<Unit, CrewError> {
+        lastCancel = crewId to requester
+        nextCancel?.let { return it }
+        joinRequests.value = joinRequests.value +
+            (crewId to joinRequests.value[crewId].orEmpty().filterNot { it.accountId == requester })
+        return Result.success(Unit)
+    }
+
     override suspend fun approveJoinRequest(
         crewId: CrewId,
         requestedBy: AccountId,
@@ -138,6 +152,7 @@ class FakeCrewRepository(
         val crew = crews.value.firstOrNull { it.id == crewId }
             ?: return Result.failure(CrewError.Membership.NotFound)
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Transfer.NotOwner)
+        if (newOwner == requestedBy) return Result.failure(CrewError.Transfer.CannotTransferToSelf)
         if (crew.members.none { it.accountId == newOwner }) return Result.failure(CrewError.Transfer.TargetNotMember)
         crews.value = crews.value.map { if (it.id == crewId) it.copy(ownerId = newOwner) else it }
         return Result.success(Unit)

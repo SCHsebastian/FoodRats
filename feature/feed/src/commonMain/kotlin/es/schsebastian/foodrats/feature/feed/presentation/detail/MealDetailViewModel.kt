@@ -20,7 +20,11 @@ import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.ingredientNameResolver
+import es.schsebastian.foodrats.core.domain.account.BlockError
 import es.schsebastian.foodrats.core.domain.meal.CommentError
+import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
+import es.schsebastian.foodrats.core.domain.meal.RateError
+import es.schsebastian.foodrats.core.domain.moderation.ReportError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
 import es.schsebastian.foodrats.core.domain.meal.Meal
@@ -335,6 +339,8 @@ class MealDetailViewModel(
             authorId = c.authorId.value,
             // Report/block is offered on everyone else's comments (UGC §4/§5) — never your own.
             canModerate = viewerId != null && c.authorId != viewerId,
+            // Same viewer==author signal as canEdit; surfaced for chat-bubble alignment.
+            isOwnComment = canEdit,
         )
     }
 
@@ -395,8 +401,11 @@ class MealDetailViewModel(
     /** Submits a report for the currently-open [MealDetailState.reportTarget] (UGC compliance §4). */
     private suspend fun submitReport(reasonOption: FrReportReasonOption) {
         val target = currentState.reportTarget ?: return
-        val crewId = activeCrew.current.first() ?: return
-        val reporter = session.current.first()?.accountId ?: return
+        // A4: session/crew lost mid-use → surface a typed error instead of a silent dead tap.
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(reportError = ReportError.Submit.NotSignedIn) }
+        val reporter = session.current.first()?.accountId
+            ?: return update { it.copy(reportError = ReportError.Submit.NotSignedIn) }
         val parsedMealId = MealId.of(mealId).getOrNull() ?: return
         // The account self-report guard lives in the rule (`accountId != reporter`) and the repository
         // pre-flight; meal/comment authorization is by crew membership + target existence, so the report
@@ -424,7 +433,9 @@ class MealDetailViewModel(
 
     /** Blocks [rawAccountId]; the feed/detail/comment streams re-emit without their content. */
     private suspend fun blockAccount(rawAccountId: String) {
-        val owner = session.current.first()?.accountId ?: return
+        // A4: session lost mid-use → surface a typed error instead of a silent dead tap.
+        val owner = session.current.first()?.accountId
+            ?: return update { it.copy(blockError = BlockError.Write.Unavailable) }
         val target = AccountId.of(rawAccountId).getOrNull() ?: return
         when (val r = blockedAccounts.block(owner, target)) {
             is Result.Ok  -> update { it.copy(blockSuccess = true) } // content vanishes via observeBlocked re-emission.
@@ -478,7 +489,8 @@ class MealDetailViewModel(
         } else {
             val crewId = activeCrew.current.first()
             if (crewId == null) {
-                update { it.copy(isDeletingMeal = false) }
+                // A4: crew lost mid-use → surface a typed error, don't silently drop the delete.
+                update { it.copy(isDeletingMeal = false, mealDeleteError = MealDeleteError.Unavailable) }
                 return
             }
             deleteMeal(crewId, parsedMealId)
@@ -493,7 +505,9 @@ class MealDetailViewModel(
     }
 
     private suspend fun deleteCommentAction(id: MealCommentId) {
-        val crewId = activeCrew.current.first() ?: return
+        // A4: crew lost mid-use → surface a typed error instead of a silent dead tap.
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(commentDeleteError = CommentError.Delete.Unavailable) }
         val parsedMealId = MealId.of(mealId).getOrElse { return }
         val r = deleteComment(crewId, parsedMealId, id)
         if (r is Result.Err) update { it.copy(commentDeleteError = r.error) }
@@ -555,8 +569,11 @@ class MealDetailViewModel(
     }
 
     private suspend fun rate(scoreRaw: Int) {
-        val crewId = activeCrew.current.first() ?: return
-        val raterId = session.current.first()?.accountId ?: return
+        // A4: session/crew lost mid-use → surface a typed error instead of a silent dead tap.
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(rateError = RateError.Unauthorized) }
+        val raterId = session.current.first()?.accountId
+            ?: return update { it.copy(rateError = RateError.Unauthorized) }
         val parsedMealId = MealId.of(mealId).getOrElse { return }
         val score = Score.of(scoreRaw).getOrElse { return }
         update { it.copy(pendingRate = true, rateError = null) }

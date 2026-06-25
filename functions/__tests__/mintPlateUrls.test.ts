@@ -1,7 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   authorizedPaths,
   buildSignedUrls,
+  ownAvatarPaths,
   URL_TTL_MS,
   MAX_PATHS,
   type ReadCrew,
@@ -73,6 +74,28 @@ describe("authorizedPaths — crew-scoped allow-list (#15)", () => {
   });
 });
 
+describe("ownAvatarPaths — self-avatar allow-list (H2)", () => {
+  it("keeps the caller's own avatar (versioned + legacy) and drops everything else", () => {
+    const paths = [
+      "avatars/alice/abc123.jpg", // own versioned
+      "avatars/alice.jpg", // own legacy
+      "avatars/bob/def456.jpg", // foreign uid
+      "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg", // plate
+      "crew_banners/c1/banner.jpg", // banner
+    ];
+    expect(ownAvatarPaths("alice", paths)).toEqual([
+      "avatars/alice/abc123.jpg",
+      "avatars/alice.jpg",
+    ]);
+  });
+
+  it("de-duplicates repeated own-avatar paths", () => {
+    expect(ownAvatarPaths("alice", ["avatars/alice.jpg", "avatars/alice.jpg"])).toEqual([
+      "avatars/alice.jpg",
+    ]);
+  });
+});
+
 describe("buildSignedUrls — membership-checked minting (#15)", () => {
   it("signs the authorized subset for a member, with a 15-min TTL", async () => {
     const res = await buildSignedUrls(deps, "alice", {
@@ -113,10 +136,44 @@ describe("buildSignedUrls — membership-checked minting (#15)", () => {
     ).toBe("unauthenticated");
   });
 
-  it("rejects a blank crewId with invalid-argument", async () => {
+  it("signs the caller's own avatar for an empty crewId WITHOUT a crew lookup (H2)", async () => {
+    const readCrewSpy = vi.fn(readCrew);
+    const res = await buildSignedUrls(
+      { readCrew: readCrewSpy, sign, nowMs: NOW },
+      "carol", // not a member of any crew
+      {
+        crewId: "",
+        paths: [
+          "avatars/carol/9f3c1a2b.jpg", // own versioned avatar
+          "avatars/alice.jpg", // dropped: another user's avatar
+          "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg", // dropped: a plate
+        ],
+      },
+    );
+
+    expect(readCrewSpy).not.toHaveBeenCalled(); // no crew lookup / membership check
+    expect(res.expiresAtMs).toBe(NOW + URL_TTL_MS);
+    expect(Object.keys(res.urls)).toEqual(["avatars/carol/9f3c1a2b.jpg"]);
+    expect(res.urls["avatars/carol/9f3c1a2b.jpg"]).toBe(
+      `https://signed.example/avatars/carol/9f3c1a2b.jpg?exp=${NOW + URL_TTL_MS}`,
+    );
+  });
+
+  it("treats a whitespace-only crewId as a self-avatar request (H2)", async () => {
+    const readCrewSpy = vi.fn(readCrew);
+    const res = await buildSignedUrls(
+      { readCrew: readCrewSpy, sign, nowMs: NOW },
+      "alice",
+      { crewId: "  ", paths: ["avatars/alice.jpg"] },
+    );
+    expect(readCrewSpy).not.toHaveBeenCalled();
+    expect(Object.keys(res.urls)).toEqual(["avatars/alice.jpg"]);
+  });
+
+  it("rejects an unauthenticated empty-crewId self-avatar request (H2)", async () => {
     expect(
-      await codeOf(() => buildSignedUrls(deps, "alice", { crewId: "  ", paths: [] })),
-    ).toBe("invalid-argument");
+      await codeOf(() => buildSignedUrls(deps, undefined, { crewId: "", paths: ["avatars/x.jpg"] })),
+    ).toBe("unauthenticated");
   });
 
   it("caps requests at MAX_PATHS paths (functions-03)", async () => {

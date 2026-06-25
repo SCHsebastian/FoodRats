@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
+import es.schsebastian.foodrats.feature.crew.domain.usecase.CancelJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RequestToJoinCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ResolveCrewByCodeUseCase
 import es.schsebastian.foodrats.feature.crew.presentation.picker.FakeSessionProvider
@@ -51,6 +52,7 @@ class AcceptInviteViewModelTest {
         session = FakeSessionProvider(Session(me, null)),
         resolveCrew = ResolveCrewByCodeUseCase(repo),
         requestToJoin = RequestToJoinCrewUseCase(repo),
+        cancelJoinRequest = CancelJoinRequestUseCase(repo, FakeSessionProvider(Session(me, null))),
     )
 
     @Test fun resolves_preview_crew_on_init() = runTest {
@@ -109,5 +111,24 @@ class AcceptInviteViewModelTest {
         vm.onIntent(AcceptInviteIntent.Join)
         assertEquals(CrewError.Membership.AlreadyMember, vm.state.value.error)
         assertTrue(!vm.state.value.requestSent)
+    }
+
+    @Test fun cancel_withdraws_request_and_returns_to_join_cta() = runTest {
+        val repo = FakeCrewRepository(initial = listOf(crew)).apply {
+            nextRequestToJoin = Result.success(Unit)
+        }
+        val vm = viewModel(repo)
+        // Wait for the preview crew to resolve so `cancel` has a crewId to act on.
+        vm.state.test {
+            var s = awaitItem()
+            while (s.crew == null && s.error == null) s = awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+        vm.onIntent(AcceptInviteIntent.Join)
+        assertTrue(vm.state.value.requestSent)
+        vm.onIntent(AcceptInviteIntent.Cancel)
+        assertTrue(!vm.state.value.requestSent, "cancel returns the screen to the join CTA")
+        assertEquals(crew.id to me, repo.lastCancel)
+        assertEquals(null, vm.state.value.error)
     }
 }

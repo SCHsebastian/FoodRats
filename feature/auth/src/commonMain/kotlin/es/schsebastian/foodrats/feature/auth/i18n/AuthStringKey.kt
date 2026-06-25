@@ -77,6 +77,8 @@ import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_empty_bytes
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_uploading
 import foodrats.feature.auth.generated.resources.auth_profile_backend_unavailable
+import foodrats.feature.auth.generated.resources.auth_profile_offline
+import foodrats.feature.auth.generated.resources.auth_profile_session_expired
 import foodrats.feature.auth.generated.resources.auth_profile_change_avatar_cta
 import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_cta
 import foodrats.feature.auth.generated.resources.auth_profile_remove_avatar_removing
@@ -236,6 +238,8 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileDisplayNameBlank(Res.string.auth_profile_display_name_blank),
     ProfileDisplayNameTooLong(Res.string.auth_profile_display_name_too_long),
     ProfileBackendUnavailable(Res.string.auth_profile_backend_unavailable),
+    ProfileOffline(Res.string.auth_profile_offline),
+    ProfileSessionExpired(Res.string.auth_profile_session_expired),
     ProfileAvatarEmptyBytes(Res.string.auth_profile_avatar_empty_bytes),
 
     ProfileThemeRow(Res.string.auth_profile_theme_row),

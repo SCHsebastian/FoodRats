@@ -9,6 +9,7 @@
     <string name="crew_picker_join_cta">Join with code</string>
     <string name="crew_picker_brand_name">FoodRats</string>
     <string name="crew_picker_crew_button">%1$s (%2$d/8)</string>
+    <string name="crew_picker_profile_cta">Your profile</string>
     <string name="crew_create_name_label">Crew name</string>
     <string name="crew_create_submit">Create</string>
     <string name="crew_join_code_label">Invite code</string>
@@ -58,6 +59,9 @@
     <string name="crew_error_permission">You don't have permission.</string>
     <string name="crew_error_collision">Couldn't pick a unique code, try again.</string>
     <string name="crew_error_unknown">Something went wrong. Try again.</string>
+    <string name="crew_error_session_not_signed_in">You're signed out. Sign in to continue.</string>
+    <string name="crew_error_session_expired">Your session expired. Sign in again.</string>
+    <string name="crew_error_invite_already_requested">You've already asked to join this crew.</string>
     <string name="crew_error_authorization_not_owner">Only the crew owner can do this.</string>
     <string name="crew_error_validation_display_name_blank">Display name can't be empty.</string>
     <string name="crew_error_validation_display_name_too_long">Display name is too long (max 40 characters).</string>
@@ -114,6 +118,7 @@
     <string name="crew_invite_request_sent_title">Request sent</string>
     <string name="crew_invite_request_sent_body">You'll join %1$s once the owner approves your request.</string>
     <string name="crew_invite_done_cta">Done</string>
+    <string name="crew_invite_cancel_request_cta">Cancel request</string>
     <string name="crew_settings_requests_section">JOIN REQUESTS</string>
     <string name="crew_settings_requests_count">%1$d waiting</string>
     <string name="crew_settings_approve_cta">Approve</string>
@@ -130,4 +135,5 @@
     <string name="crew_settings_leave_owner_auto">Automatic (longest-standing member)</string>
     <string name="crew_error_transfer_not_owner">Only the crew owner can transfer ownership.</string>
     <string name="crew_error_transfer_target_not_member">You can only hand ownership to a current member.</string>
+    <string name="crew_error_transfer_cannot_transfer_to_self">You're already the owner.</string>
 </resources>

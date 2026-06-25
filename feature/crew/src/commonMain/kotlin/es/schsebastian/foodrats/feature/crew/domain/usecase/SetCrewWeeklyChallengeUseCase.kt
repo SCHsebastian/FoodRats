@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
+import es.schsebastian.foodrats.feature.crew.domain.error.toCrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlinx.coroutines.flow.first
@@ -41,7 +42,7 @@ class SetCrewWeeklyChallengeUseCase(
     suspend operator fun invoke(crewId: CrewId, challenge: String): Result<Unit, CrewError> {
         val accountId = when (val s = session.requireCurrent()) {
             is Result.Ok  -> s.value.accountId
-            is Result.Err -> return Result.failure(CrewError.Backend.Unavailable)
+            is Result.Err -> return Result.failure(s.error.toCrewError())
         }
         val validated = when (val r = WeeklyChallenge.of(challenge)) {
             is Result.Ok  -> r.value      // null = blank input → clear challenge
@@ -51,6 +52,7 @@ class SetCrewWeeklyChallengeUseCase(
         val challengeText = validated?.value
         val setAtMillis = if (validated == null) null else clock.now().toEpochMilliseconds()
         if (!connectivity.isOnline().first()) {
+            repository.offlineOwnerGuard(crewId, accountId)?.let { return Result.failure(it) }
             return enqueue(crewId, accountId, challengeText, setAtMillis)
         }
         return when (

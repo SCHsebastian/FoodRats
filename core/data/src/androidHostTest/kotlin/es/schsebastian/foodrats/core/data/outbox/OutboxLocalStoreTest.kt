@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.core.data.outbox
 
+import es.schsebastian.foodrats.core.domain.account.Bio
+import es.schsebastian.foodrats.core.domain.account.DisplayName
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealId
@@ -120,6 +122,9 @@ class OutboxLocalStoreTest {
             ),
             PendingCommand.SetCrewScoreStyle(crewId = crew, requestedBy = acc, styleKey = "emoji"),
             PendingCommand.SetCrewBannerFocalY(crewId = crew, requestedBy = acc, focalY = 0.25f),
+            // Offline-first profile-text commands: displayName + bio reuse the accountId/text columns.
+            PendingCommand.SetDisplayName(accountId = acc, displayName = DisplayName.of("Sebas").getOrNull()!!),
+            PendingCommand.SetBio(accountId = acc, bio = Bio.of("Home cook").getOrNull()),
         )
         commands.forEachIndexed { idx, cmd -> store.add(entry(idx, cmd)) }
 
@@ -137,6 +142,8 @@ class OutboxLocalStoreTest {
             PendingCommand.SetCrewWeeklyChallenge(
                 crewId = crew, requestedBy = acc, challenge = null, setAtMillis = null,
             ),
+            // Bio "clear" = null bio → null text column → must round-trip as a SetBio(null), not drop.
+            PendingCommand.SetBio(accountId = acc, bio = null),
         )
         commands.forEachIndexed { idx, cmd -> store.add(entry(idx, cmd)) }
 

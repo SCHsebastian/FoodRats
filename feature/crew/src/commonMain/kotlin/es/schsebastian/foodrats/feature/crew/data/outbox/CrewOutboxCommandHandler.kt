@@ -50,7 +50,9 @@ class CrewOutboxCommandHandler(
         is PendingCommand.PostComment,
         is PendingCommand.EditComment,
         is PendingCommand.DeleteComment,
-        is PendingCommand.ToggleReaction -> false
+        is PendingCommand.ToggleReaction,
+        is PendingCommand.SetDisplayName,
+        is PendingCommand.SetBio -> false
     }
 
     override suspend fun execute(cmd: PendingCommand): OutboxExecuteResult = when (cmd) {
@@ -82,7 +84,9 @@ class CrewOutboxCommandHandler(
         is PendingCommand.PostComment,
         is PendingCommand.EditComment,
         is PendingCommand.DeleteComment,
-        is PendingCommand.ToggleReaction -> OutboxExecuteResult.Terminal("outbox.error.wrongHandler")
+        is PendingCommand.ToggleReaction,
+        is PendingCommand.SetDisplayName,
+        is PendingCommand.SetBio -> OutboxExecuteResult.Terminal("outbox.error.wrongHandler")
     }
 
     private fun Result<Unit, CrewError>.toExecuteResult(): OutboxExecuteResult = when (this) {
@@ -95,6 +99,13 @@ class CrewOutboxCommandHandler(
             CrewError.Membership.NotMember,
             CrewError.RemoveMember.MemberNotFound -> OutboxExecuteResult.AlreadyApplied
             // Everything else is a permanent failure that retrying cannot fix.
+            // Unclassifiable backend failure — terminal so it can't loop forever (the transient
+            // codes are mapped to Backend.Unavailable above; this is the genuine catch-all).
+            CrewError.Backend.Unknown -> OutboxExecuteResult.Terminal("crew.error.backendUnknown")
+            // Session loss — the command can't replay without a signed-in account; the root
+            // navigator routes the user to sign-in. Terminal here.
+            CrewError.Session.NotSignedIn -> OutboxExecuteResult.Terminal("crew.error.notSignedIn")
+            CrewError.Session.Expired -> OutboxExecuteResult.Terminal("crew.error.sessionExpired")
             CrewError.Backend.PermissionDenied -> OutboxExecuteResult.Terminal("crew.error.permissionDenied")
             CrewError.Authorization.NotOwner -> OutboxExecuteResult.Terminal("crew.error.notOwner")
             CrewError.Validation.NameBlank -> OutboxExecuteResult.Terminal("crew.error.nameBlank")
@@ -111,6 +122,7 @@ class CrewOutboxCommandHandler(
             CrewError.Membership.AlreadyMember -> OutboxExecuteResult.Terminal("crew.error.alreadyMember")
             CrewError.Invite.CodeUnknown -> OutboxExecuteResult.Terminal("crew.error.codeUnknown")
             CrewError.Invite.Expired -> OutboxExecuteResult.Terminal("crew.error.codeExpired")
+            CrewError.Invite.AlreadyRequested -> OutboxExecuteResult.Terminal("crew.error.alreadyRequested")
             CrewError.Create.CodeCollisionRetriesExhausted -> OutboxExecuteResult.Terminal("crew.error.codeCollision")
             CrewError.RemoveMember.NotOwner -> OutboxExecuteResult.Terminal("crew.error.removeNotOwner")
             CrewError.RemoveMember.CannotRemoveSelf -> OutboxExecuteResult.Terminal("crew.error.removeSelf")
@@ -118,6 +130,7 @@ class CrewOutboxCommandHandler(
             // stay exhaustive — a transfer error reaching here is unreplayable, so terminal.
             CrewError.Transfer.NotOwner -> OutboxExecuteResult.Terminal("crew.error.transferNotOwner")
             CrewError.Transfer.TargetNotMember -> OutboxExecuteResult.Terminal("crew.error.transferTargetNotMember")
+            CrewError.Transfer.CannotTransferToSelf -> OutboxExecuteResult.Terminal("crew.error.transferToSelf")
             // C9 — banner IMAGE errors are never queued (bytes not serializable; the focal point IS
             // queued via SetCrewBannerFocalY). Listed so the when stays exhaustive.
             CrewError.Banner.UploadFailed -> OutboxExecuteResult.Terminal("crew.error.bannerUploadFailed")

@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
+import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyRequestedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto
@@ -119,10 +120,10 @@ class FirebaseCrewRepositoryTest {
     }
 
     @Test
-    fun create_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
+    fun create_classifies_unknown_throwable_as_Backend_Unknown() = runTest {
         ds.createThrows = RuntimeException("boom")
         val r = repo().create("Test Crew", aid("owner"))
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Backend.Unknown), r)
     }
 
     @Test
@@ -162,6 +163,13 @@ class FirebaseCrewRepositoryTest {
         ds.requestToJoinThrows = AlreadyMemberException
         val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
         assertEquals(Result.failure(CrewError.Membership.AlreadyMember), r)
+    }
+
+    @Test
+    fun requestToJoinByCode_classifies_AlreadyRequested_as_Invite_AlreadyRequested() = runTest {
+        ds.requestToJoinThrows = AlreadyRequestedException
+        val r = repo().requestToJoinByCode(code("ABCD23"), aid("joiner"))
+        assertEquals(Result.failure(CrewError.Invite.AlreadyRequested), r)
     }
 
     @Test
@@ -239,6 +247,23 @@ class FirebaseCrewRepositoryTest {
         assertNull(ds.lastTransfer)
     }
 
+    @Test
+    fun transferOwnership_to_self_returns_CannotTransferToSelf_without_writing() = runTest {
+        ds.fetchOnceResult = crewWithMembers("owner", "bob")
+        val r = repo().transferOwnership(cid("c-1"), aid("owner"), aid("owner"))
+        assertEquals(Result.failure(CrewError.Transfer.CannotTransferToSelf), r)
+        assertNull(ds.lastTransfer)
+    }
+
+    @Test
+    fun cancelJoinRequest_deletes_requesters_own_request_without_owner_gate() = runTest {
+        // No fetchOnce / owner read — the requester deletes their own request doc directly.
+        val r = repo().cancelJoinRequest(cid("c-1"), aid("joiner"))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(cid("c-1") to aid("joiner"), ds.lastDecline)
+        assertNull(ds.lastFetchOnce)
+    }
+
     // ---------------- leave ----------------
 
     @Test
@@ -263,10 +288,10 @@ class FirebaseCrewRepositoryTest {
     }
 
     @Test
-    fun leave_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
+    fun leave_classifies_unknown_throwable_as_Backend_Unknown() = runTest {
         ds.leaveThrows = RuntimeException("boom")
         val r = repo().leave(cid("c-1"), aid("owner"))
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Backend.Unknown), r)
     }
 
     // ---------------- removeMember ----------------
@@ -337,11 +362,11 @@ class FirebaseCrewRepositoryTest {
     }
 
     @Test
-    fun removeMember_classifies_unknown_throwable_as_Backend_Unavailable() = runTest {
+    fun removeMember_classifies_unknown_throwable_as_Backend_Unknown() = runTest {
         ds.fetchOnceResult = crewWithMembers("owner", "victim")
         ds.removeMemberThrows = RuntimeException("boom")
         val r = repo().removeMember(cid("c-1"), aid("owner"), aid("victim"))
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Backend.Unknown), r)
     }
 
     // ---------------- renameCrew ----------------

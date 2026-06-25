@@ -84,10 +84,10 @@ class SetCrewWeeklyChallengeUseCaseTest {
         assertNull(repo.lastSetWeeklyChallenge)
     }
 
-    @Test fun maps_missing_session_to_backend_unavailable() = runTest {
+    @Test fun maps_missing_session_to_not_signed_in() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val r = useCase(repo, session = null)(crewId, "Soup week")
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Session.NotSignedIn), r)
         assertNull(repo.lastSetWeeklyChallenge)
     }
 
@@ -97,6 +97,17 @@ class SetCrewWeeklyChallengeUseCaseTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val r = useCase(repo, session)(crewId, "Soup week")
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertNull(repo.lastSetWeeklyChallenge)
+    }
+
+    @Test fun offline_non_owner_rejected_without_enqueue() = runTest {
+        val nonOwner = aid("uid-other")
+        val session = Session(accountId = nonOwner, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, FakeConnectivityPort(online = false), outbox)(crewId, "Soup week")
+        assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertTrue(outbox.enqueued.isEmpty(), "a non-owner must not park a doomed offline command")
         assertNull(repo.lastSetWeeklyChallenge)
     }
 

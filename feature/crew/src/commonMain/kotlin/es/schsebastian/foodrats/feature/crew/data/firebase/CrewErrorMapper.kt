@@ -13,6 +13,9 @@ class CrewErrorMapper {
         CrewFault.PermissionDenied -> CrewError.Backend.PermissionDenied
         CrewFault.Network -> CrewError.Backend.Network
         CrewFault.NotFound -> CrewError.Membership.NotFound
-        CrewFault.Unavailable -> CrewError.Backend.Unavailable
+        // Transient (contention / deadline / resource-exhausted) is retryable by the outbox.
+        CrewFault.Transient -> CrewError.Backend.Unavailable
+        // Unknown is TERMINAL — never retried forever.
+        CrewFault.Unknown -> CrewError.Backend.Unknown
     }
 }

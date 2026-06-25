@@ -70,10 +70,10 @@ class SetBlindVotingUseCaseTest {
         assertEquals(crewId to false, repo.lastSetBlindVoting)
     }
 
-    @Test fun maps_missing_session_to_backend_unavailable() = runTest {
+    @Test fun maps_missing_session_to_not_signed_in() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val r = useCase(repo, session = null)(crewId, enabled = true)
-        assertEquals(Result.failure(CrewError.Backend.Unavailable), r)
+        assertEquals(Result.failure(CrewError.Session.NotSignedIn), r)
         assertEquals(null, repo.lastSetBlindVoting)
     }
 
@@ -83,6 +83,16 @@ class SetBlindVotingUseCaseTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val r = useCase(repo, session)(crewId, enabled = true)
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+    }
+
+    @Test fun offline_non_owner_rejected_without_enqueue() = runTest {
+        val nonOwner = aid("uid-other")
+        val session = Session(accountId = nonOwner, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, session, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(crewId, enabled = true)
+        assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertTrue(outbox.enqueued.isEmpty(), "a non-owner must not park a doomed offline command")
     }
 
     @Test fun offline_enqueues_and_returns_ok() = runTest {

@@ -14,7 +14,8 @@ internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Validation.BioTooLong -> AuthStringKey.ProfileBioTooLong
     ProfileError.Validation.EmptyBytes -> AuthStringKey.ProfileAvatarEmptyBytes
     ProfileError.Backend.Unavailable -> AuthStringKey.ProfileBackendUnavailable
-    ProfileError.Session.SignedOut -> AuthStringKey.ProfileBackendUnavailable
+    ProfileError.Backend.Offline -> AuthStringKey.ProfileOffline
+    ProfileError.Session.SignedOut -> AuthStringKey.ProfileSessionExpired
     ProfileError.Theme.PersistFailed -> AuthStringKey.ProfileThemePersistFailed
     ProfileError.Locale.PersistFailed -> AuthStringKey.ProfileLanguagePersistFailed
     ProfileError.Notifications.PersistFailed -> AuthStringKey.ProfileNotificationsPersistFailed

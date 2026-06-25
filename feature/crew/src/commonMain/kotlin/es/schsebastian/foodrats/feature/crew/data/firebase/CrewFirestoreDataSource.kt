@@ -107,8 +107,12 @@ class CrewFirestoreDataSource(
         if (!crewSnap.exists) throw NotFoundException
         val crew = crewSnap.data<CrewDto>()
         if (requester.value in crew.memberIds) throw AlreadyMemberException
-        crewsCol.document(crewId).collection("joinRequests").document(requester.value)
-            .set(JoinRequestDto(accountId = requester.value, requestedAtEpochMs = nowMs))
+        val reqRef = crewsCol.document(crewId).collection("joinRequests").document(requester.value)
+        // Dedupe: a pending request already on file means "you've already asked" — surface it as a
+        // distinct error rather than silently re-stamping requestedAtEpochMs (which would reset the
+        // owner's pending-list ordering and hide that the request is already in flight).
+        if (reqRef.get().exists) throw AlreadyRequestedException
+        reqRef.set(JoinRequestDto(accountId = requester.value, requestedAtEpochMs = nowMs))
     }
 
     override fun observeJoinRequests(crewId: CrewId): Flow<List<JoinRequestDto>> =
@@ -357,4 +361,5 @@ internal object CodeCollisionExhaustedException : RuntimeException() { private f
 internal object NotFoundException : RuntimeException() { private fun readResolve(): Any = NotFoundException }
 internal object FullException : RuntimeException() { private fun readResolve(): Any = FullException }
 internal object AlreadyMemberException : RuntimeException() { private fun readResolve(): Any = AlreadyMemberException }
+internal object AlreadyRequestedException : RuntimeException() { private fun readResolve(): Any = AlreadyRequestedException }
 internal object NotMemberException : RuntimeException() { private fun readResolve(): Any = NotMemberException }

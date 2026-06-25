@@ -78,6 +78,8 @@
     <string name="auth_profile_display_name_blank">El nombre no puede estar vacío.</string>
     <string name="auth_profile_display_name_too_long">El nombre es demasiado largo (máx. 40).</string>
     <string name="auth_profile_backend_unavailable">Sin conexión. Inténtalo de nuevo.</string>
+    <string name="auth_profile_offline">Estás sin conexión. Lo guardaremos cuando vuelvas a estar en línea.</string>
+    <string name="auth_profile_session_expired">Tu sesión expiró. Inicia sesión de nuevo.</string>
     <string name="auth_profile_avatar_empty_bytes">No se pudo leer la imagen seleccionada. Prueba con otra.</string>
 
     <string name="auth_profile_theme_row">Tema</string>

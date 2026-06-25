@@ -22,9 +22,9 @@ import kotlinx.serialization.Serializable
  * The request carries **no** caller-supplied fields — the function derives the uid from
  * `request.auth.uid`; a client may only export its own data. The response is
  * `{ downloadUrl, expiresAtMs }` (a 15-minute V4 signed READ URL to a JSON archive). This is a
- * read-only operation: there is no `failed-precondition`/`aborted`, so every failure maps to the
- * single retryable [DataExportError.Backend.Unavailable]. See
- * `docs/session/handoffs/w0-data-export-function.md`.
+ * read-only operation (no `failed-precondition`/`aborted`): a server `unauthenticated` maps to the
+ * re-auth-routed [DataExportError.Session.Unauthenticated], everything else to the retryable
+ * [DataExportError.Backend.Unavailable]. See `docs/session/handoffs/w0-data-export-function.md`.
  */
 class FirebaseDataExportPort(
     private val dispatchers: DispatcherProvider,
@@ -47,13 +47,27 @@ class FirebaseDataExportPort(
                 },
                 onFailure = { t ->
                     FrLog.w("DataExport", t) { "exportMyData failed: ${t.message}" }
-                    Result.failure(DataExportError.Backend.Unavailable)
+                    Result.failure(t.toDataExportError())
                 },
             )
         }
 
     private companion object {
         const val CALLABLE = "exportMyData"
+    }
+}
+
+/**
+ * Maps the `HttpsError` code (string-matched on [Throwable.message], like
+ * [Throwable.toAccountDeletionError]) to the typed export error tree: `unauthenticated → Session.
+ * Unauthenticated` (route to re-auth); everything else → `Backend.Unavailable` (retryable). `internal`
+ * so a unit test can exercise the mapping directly without a live `Firebase.functions`.
+ */
+internal fun Throwable.toDataExportError(): DataExportError {
+    val msg = message?.lowercase() ?: ""
+    return when {
+        "unauthenticated" in msg -> DataExportError.Session.Unauthenticated
+        else -> DataExportError.Backend.Unavailable
     }
 }
 

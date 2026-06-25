@@ -4,6 +4,8 @@ import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
 import es.schsebastian.foodrats.core.database.FoodRatsDatabase
 import es.schsebastian.foodrats.core.database.Outbox as OutboxRow
+import es.schsebastian.foodrats.core.domain.account.Bio
+import es.schsebastian.foodrats.core.domain.account.DisplayName
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
@@ -208,6 +210,8 @@ class OutboxLocalStore(
         const val SET_WEEKLY_CHALLENGE = "set_weekly_challenge"
         const val SET_SCORE_STYLE = "set_score_style"
         const val SET_BANNER_FOCAL = "set_banner_focal"
+        const val SET_DISPLAY_NAME = "set_display_name"
+        const val SET_BIO = "set_bio"
     }
 
     // ── domain → columns ──────────────────────────────────────────────────────
@@ -333,6 +337,16 @@ class OutboxLocalStore(
             crewId = crewId.value,
             accountId = requestedBy.value,
             focalY = focalY.toDouble(),
+        )
+        is PendingCommand.SetDisplayName -> CommandPayload(
+            type = CommandType.SET_DISPLAY_NAME,
+            accountId = accountId.value,
+            text = displayName.value,
+        )
+        is PendingCommand.SetBio -> CommandPayload(
+            type = CommandType.SET_BIO,
+            accountId = accountId.value,
+            text = bio?.value, // null = clear
         )
     }
 
@@ -461,6 +475,19 @@ class OutboxLocalStore(
             val by = accountId.toAccountId() ?: return null
             val focal = focalY ?: return null
             PendingCommand.SetCrewBannerFocalY(crewId = crew, requestedBy = by, focalY = focal.toFloat())
+        }
+        CommandType.SET_DISPLAY_NAME -> {
+            val acc = accountId.toAccountId() ?: return null
+            val name = text?.let { DisplayName.of(it).getOrNull() } ?: return null
+            PendingCommand.SetDisplayName(accountId = acc, displayName = name)
+        }
+        CommandType.SET_BIO -> {
+            val acc = accountId.toAccountId() ?: return null
+            // text null = "clear the bio"; a present-but-invalid (overlong) value drops the row
+            // (pre-validated at enqueue, so this is defensive only).
+            val rawBio = text
+            val bio = if (rawBio == null) null else (Bio.of(rawBio).getOrNull() ?: return null)
+            PendingCommand.SetBio(accountId = acc, bio = bio)
         }
         else -> null // unknown discriminator from a newer build → drop the row
     }

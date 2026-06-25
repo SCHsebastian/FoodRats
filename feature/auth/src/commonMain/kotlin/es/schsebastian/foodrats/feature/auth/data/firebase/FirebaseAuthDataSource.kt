@@ -4,13 +4,14 @@ import dev.gitlive.firebase.auth.FirebaseAuth
 import dev.gitlive.firebase.auth.GoogleAuthProvider
 import dev.gitlive.firebase.auth.OAuthProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
+import es.schsebastian.foodrats.core.domain.model.AccountId
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.auth.data.apple.AppleSignInToken
 import es.schsebastian.foodrats.feature.auth.data.google.GoogleIdToken
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.withContext
@@ -55,9 +56,9 @@ class FirebaseAuthDataSource(
             ?: error("Firebase Auth returned null user")
     }
 
-    suspend fun ensureAccountDoc(uid: String): AccountDto = withContext(dispatchers.io) {
-        healer.ensureAccountDoc(uid)
-    }
+    // No own withContext: AccountDocStore.read/upsert each own their IO boundary, so this composes
+    // two already-IO-confined calls. (Was double-wrapping before the store gained its own boundary.)
+    suspend fun ensureAccountDoc(uid: String): AccountDto = healer.ensureAccountDoc(uid)
 
     suspend fun signOut() = withContext(dispatchers.io) {
         FrLog.d(FrLog.Tags.SignOut) { "data: auth.signOut() about to call" }
@@ -71,9 +72,30 @@ class FirebaseAuthDataSource(
                 FrLog.d(FrLog.Tags.Session) { "data: authStateChanged user=${user?.uid ?: "null"}" }
             }
             .map { user ->
-                user?.uid?.let { uid ->
-                    val acc = ensureAccountDoc(uid)
-                    acc.toAccount()?.toSession()
+                val uid = user?.uid ?: return@map null
+                try {
+                    ensureAccountDoc(uid).toAccount()?.toSession()
+                } catch (t: Throwable) {
+                    // The account-doc round-trip can throw on cold start when Firebase has restored a
+                    // PERSISTED user but the session is no longer valid server-side. If we let the throw
+                    // escape, the `current` SharedFlow never emits its authoritative first value and the
+                    // root nav sits on Splash FOREVER (the original cold-start hang). Classify instead:
+                    if (t.indicatesRevokedSession()) {
+                        // Account deleted/disabled or token revoked → the persisted user is stale. Sign
+                        // it out so the next authStateChanged emits null and the root nav routes to
+                        // SignIn. (The sibling accounts/{uid} snapshot path is guarded the same way; this
+                        // authoritative session path was the one that wasn't.)
+                        FrLog.w(FrLog.Tags.Session, t) { "data: session revoked server-side → signOut + null" }
+                        runCatching { auth.signOut() }
+                        null
+                    } else {
+                        // Transient (network/unavailable/timeout): Firebase restored the user from local
+                        // cache, so they ARE signed in — do NOT sign them out. Proceed on a minimal
+                        // session (offline-first); the account-doc display data recovers via the separate
+                        // AccountReadPort snapshot. Swallowing the throw is what keeps the flow alive.
+                        FrLog.w(FrLog.Tags.Session, t) { "data: account-doc transient fail → minimal session" }
+                        AccountId.of(uid).getOrNull()?.let { Session(accountId = it, activeCrewId = null) }
+                    }
                 }
             }
             .onEach { session ->
@@ -81,5 +103,32 @@ class FirebaseAuthDataSource(
                     "data: sessions emit account=${session?.accountId?.value ?: "null"}"
                 }
             }
-            .flowOn(dispatchers.io)
+    // No .flowOn(io): the only IO in the map body is ensureAccountDoc → AccountDocStore, which owns
+    // its own withContext(io). Keeping flowOn here would double-wrap the same boundary (N1).
+
+    /**
+     * Proactively re-checks that the currently-signed-in user is still valid server-side, and signs
+     * out if it isn't.
+     *
+     * Firebase auto-refreshes the ID token only ~hourly, so a server-side disable/delete or token
+     * revocation can go undetected for up to an hour while the app stays open — the user keeps acting
+     * on authenticated screens, with writes silently failing. [getIdToken(forceRefresh = true)] forces
+     * an immediate server round-trip: on a revoked-session error we sign out (which nulls
+     * `SessionProvider.current` → routes to SignIn); a transient failure is ignored so a network blip
+     * never logs a valid user out. No-op when signed out. Called on app foreground (see FoodRatsApp).
+     */
+    suspend fun revalidateSession(): Unit = withContext(dispatchers.io) {
+        val user = auth.currentUser ?: return@withContext
+        try {
+            user.getIdToken(true)
+            FrLog.d(FrLog.Tags.Session) { "data: revalidate ok (${user.uid})" }
+        } catch (t: Throwable) {
+            if (t.indicatesRevokedSession()) {
+                FrLog.w(FrLog.Tags.Session, t) { "data: revalidate → session revoked → signOut" }
+                runCatching { auth.signOut() }
+            } else {
+                FrLog.d(FrLog.Tags.Session) { "data: revalidate transient, keeping session: ${t.message}" }
+            }
+        }
+    }
 }

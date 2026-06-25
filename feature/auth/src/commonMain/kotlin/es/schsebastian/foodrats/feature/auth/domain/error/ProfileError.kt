@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.domain.error
 import es.schsebastian.foodrats.core.domain.account.AccountDeletionError
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.core.domain.account.DataExportError
+import es.schsebastian.foodrats.core.domain.account.DisplayNameError
 import es.schsebastian.foodrats.core.domain.preferences.AccentPaletteError
 import es.schsebastian.foodrats.core.domain.preferences.AiPreferenceError
 import es.schsebastian.foodrats.core.domain.preferences.LocalePreferenceError
@@ -26,9 +27,13 @@ sealed interface ProfileError {
 
     sealed interface Backend : ProfileError {
         data object Unavailable : Backend
+
+        /** Lost connectivity — the write couldn't reach the backend. Distinct user message. */
+        data object Offline : Backend
     }
 
     sealed interface Session : ProfileError {
+        /** Signed out / token expired — route the user to re-auth, don't offer endless retry. */
         data object SignedOut : Session
     }
 
@@ -80,11 +85,18 @@ sealed interface ProfileError {
 }
 
 internal fun AccountWriteError.toProfileError(): ProfileError = when (this) {
-    AccountWriteError.Validation.DisplayNameBlank -> ProfileError.Validation.DisplayNameBlank
-    AccountWriteError.Validation.DisplayNameTooLong -> ProfileError.Validation.DisplayNameTooLong
-    AccountWriteError.Validation.BioTooLong -> ProfileError.Validation.BioTooLong
-    AccountWriteError.Validation.EmptyBytes -> ProfileError.Validation.EmptyBytes
+    AccountWriteError.Session.Expired -> ProfileError.Session.SignedOut
+    AccountWriteError.Backend.Network -> ProfileError.Backend.Offline
     AccountWriteError.Backend.Unavailable -> ProfileError.Backend.Unavailable
+    // Permission-denied on your OWN account write is a doc-shape bug, not a user-actionable state —
+    // surface the generic backend message (it's also recorded as a non-fatal at the mapping seam).
+    AccountWriteError.Backend.PermissionDenied -> ProfileError.Backend.Unavailable
+    AccountWriteError.Backend.Unknown -> ProfileError.Backend.Unavailable
+}
+
+internal fun DisplayNameError.toProfileError(): ProfileError = when (this) {
+    DisplayNameError.Validation.Blank -> ProfileError.Validation.DisplayNameBlank
+    DisplayNameError.Validation.TooLong -> ProfileError.Validation.DisplayNameTooLong
 }
 
 internal fun ThemePreferenceError.toProfileError(): ProfileError = when (this) {
@@ -110,6 +122,7 @@ internal fun AccountDeletionError.toProfileError(): ProfileError = when (this) {
 }
 
 internal fun DataExportError.toProfileError(): ProfileError = when (this) {
+    DataExportError.Session.Unauthenticated -> ProfileError.Session.SignedOut
     DataExportError.Backend.Unavailable -> ProfileError.Export.Unavailable
 }
 
@@ -122,9 +135,11 @@ internal fun AccentPaletteError.toProfileError(): ProfileError = when (this) {
 }
 
 internal fun AccountWriteError.toRemoveAvatarProfileError(): ProfileError = when (this) {
-    AccountWriteError.Validation.DisplayNameBlank -> ProfileError.Avatar.RemoveFailed
-    AccountWriteError.Validation.DisplayNameTooLong -> ProfileError.Avatar.RemoveFailed
-    AccountWriteError.Validation.BioTooLong -> ProfileError.Avatar.RemoveFailed
-    AccountWriteError.Validation.EmptyBytes -> ProfileError.Avatar.RemoveFailed
-    AccountWriteError.Backend.Unavailable -> ProfileError.Avatar.RemoveFailed
+    // Session/connectivity get their own routes; only genuine backend/permission failures are a
+    // generic "couldn't remove avatar".
+    AccountWriteError.Session.Expired -> ProfileError.Session.SignedOut
+    AccountWriteError.Backend.Network -> ProfileError.Backend.Offline
+    AccountWriteError.Backend.Unavailable,
+    AccountWriteError.Backend.PermissionDenied,
+    AccountWriteError.Backend.Unknown -> ProfileError.Avatar.RemoveFailed
 }

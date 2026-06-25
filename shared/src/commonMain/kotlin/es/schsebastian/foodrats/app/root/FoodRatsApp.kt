@@ -18,6 +18,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.rememberNavController
 import es.schsebastian.foodrats.app.navigation.EventsEffect
@@ -38,6 +41,7 @@ import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.LocalePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
 import es.schsebastian.foodrats.core.domain.preferences.ThemeModePort
+import es.schsebastian.foodrats.core.domain.session.SessionRevalidator
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.feature.notifications.domain.bus.NotificationBus
 import org.koin.compose.koinInject
@@ -47,6 +51,20 @@ import org.koin.compose.viewmodel.koinViewModel
 fun FoodRatsApp() {
     val rootController = rememberNavController()
     val rootVm: RootNavViewModel = koinViewModel()
+
+    // Live session-expiry detection (A2): on every foreground, force a token refresh so a server-side
+    // disable/delete/revocation is discovered promptly. The revalidator signs out a revoked account,
+    // which nulls SessionProvider.current → root nav routes to SignIn. A valid session is a cheap
+    // no-op; transient failures are ignored (never sign a valid user out). Without this, revocation
+    // goes unnoticed until the next ~hourly token refresh or app restart.
+    val sessionRevalidator = koinInject<SessionRevalidator>()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(sessionRevalidator, lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            sessionRevalidator.revalidate()
+        }
+    }
+
     EventsEffect(events = rootVm.effects) { eff ->
         FrLog.d(FrLog.Tags.RootNav) { "app: collected effect=$eff" }
         when (eff) {

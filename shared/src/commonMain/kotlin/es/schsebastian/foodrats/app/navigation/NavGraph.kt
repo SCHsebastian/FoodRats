@@ -1,5 +1,11 @@
 package es.schsebastian.foodrats.app.navigation
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +27,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
@@ -40,6 +47,7 @@ import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.structural.FrDock
 import es.schsebastian.foodrats.core.designsystem.structural.FrDockItem
+import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
@@ -151,7 +159,13 @@ fun NavGraph(navController: NavController = rememberNavController()) {
         }
 
         composable<Route.CrewPicker> {
-            CrewPickerScreen(onCrewSelected = { _ -> controller.navigateTopLevel(Route.Main) })
+            CrewPickerScreen(
+                onCrewSelected = { _ -> controller.navigateTopLevel(Route.Main) },
+                // Profile keeps its own back-stack entry on top of the picker, so a crewless user can
+                // reach their profile (and the sign-out CTA) and return with Back. Sign-out itself
+                // re-routes the whole stack to SignIn via the RootNav stage machine.
+                onProfileClick = { controller.navigate(Route.Profile) { launchSingleTop = true } },
+            )
         }
 
         composable<Route.CrewSettings> { entry ->
@@ -322,6 +336,14 @@ private fun MainTab.toScreenName(): ScreenName = ScreenName(
     },
 )
 
+/** Left-to-right order of the tabs in the dock — drives both selection and slide direction. */
+private val MainTab.dockIndex: Int
+    get() = when (this) {
+        MainTab.Feed -> 0
+        MainTab.Passport -> 1
+        MainTab.Stats -> 2
+    }
+
 private fun String.pascalToSnakeCase(): String = buildString {
     this@pascalToSnakeCase.forEachIndexed { index, c ->
         if (c.isUpperCase()) {
@@ -403,39 +425,59 @@ private fun MainScaffold(rootController: NavHostController) {
         FrDockItem(FrIcons.Stats, resolve(SharedStringKey.NavTabStats)),
         FrDockItem(FrIcons.Person, resolve(SharedStringKey.NavProfileCta)),
     )
-    val selectedIndex = when (selectedTab) {
-        MainTab.Feed -> 0
-        MainTab.Passport -> 1
-        MainTab.Stats -> 2
-    }
+    val selectedIndex = selectedTab.dockIndex
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        when (selectedTab) {
-            MainTab.Stats -> StatsScreen(
-                // In-app weekly-recap entry (roadmap §2.4). weekStart is informational — the
-                // client derives the recap from its own stats/achievements read paths.
-                onOpenRecap = {
-                    rootController.navigate(
-                        Route.WeeklyStory(weekStart = "", fromNotification = false),
-                    ) { launchSingleTop = true }
-                },
-            )
-            MainTab.Passport -> PassportScreen()
-            MainTab.Feed -> FeedScreen(
-                crewName = crewName,
-                avatarInitials = topBarAvatar.initials,
-                avatarUrl = topBarAvatar.avatarUrl,
-                onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
-                onProfileClick = { rootController.navigate(Route.Profile) { launchSingleTop = true } },
-                onCrewSettingsClick = {
-                    activeCrewId?.let {
-                        rootController.navigate(Route.CrewSettings(it.value)) { launchSingleTop = true }
-                    }
-                },
-                onMealClick = { mealId, dayIso ->
-                    rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
-                },
-            )
+        // Smooth tab switching: slide + fade between the three main tabs so changing tabs feels like
+        // the rest of the app's animated navigation (the root NavHost crossfades screen-to-screen; tab
+        // switching used to hard-cut). Direction follows dock order — moving toward a higher-index tab
+        // slides the new content in from the right, a lower-index tab from the left.
+        AnimatedContent(
+            targetState = selectedTab,
+            transitionSpec = {
+                val direction = if (targetState.dockIndex > initialState.dockIndex) {
+                    AnimatedContentTransitionScope.SlideDirection.Left
+                } else {
+                    AnimatedContentTransitionScope.SlideDirection.Right
+                }
+                val slideSpec = tween<IntOffset>(Motion.medium, easing = Motion.Standard)
+                (fadeIn(tween(Motion.medium, easing = Motion.Decelerated)) +
+                    slideIntoContainer(direction, slideSpec))
+                    .togetherWith(
+                        fadeOut(tween(Motion.short, easing = Motion.Accelerated)) +
+                            slideOutOfContainer(direction, slideSpec),
+                    )
+            },
+            modifier = Modifier.fillMaxSize(),
+            label = "MainTabContent",
+        ) { tab ->
+            when (tab) {
+                MainTab.Stats -> StatsScreen(
+                    // In-app weekly-recap entry (roadmap §2.4). weekStart is informational — the
+                    // client derives the recap from its own stats/achievements read paths.
+                    onOpenRecap = {
+                        rootController.navigate(
+                            Route.WeeklyStory(weekStart = "", fromNotification = false),
+                        ) { launchSingleTop = true }
+                    },
+                )
+                MainTab.Passport -> PassportScreen()
+                MainTab.Feed -> FeedScreen(
+                    crewName = crewName,
+                    avatarInitials = topBarAvatar.initials,
+                    avatarUrl = topBarAvatar.avatarUrl,
+                    onPickCrewClick = { rootController.navigate(Route.CrewPicker) { launchSingleTop = true } },
+                    onProfileClick = { rootController.navigate(Route.Profile) { launchSingleTop = true } },
+                    onCrewSettingsClick = {
+                        activeCrewId?.let {
+                            rootController.navigate(Route.CrewSettings(it.value)) { launchSingleTop = true }
+                        }
+                    },
+                    onMealClick = { mealId, dayIso ->
+                        rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
+                    },
+                )
+            }
         }
         FrDock(
             items = dockItems,

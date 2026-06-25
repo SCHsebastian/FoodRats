@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.auth.testdoubles
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
 import es.schsebastian.foodrats.core.domain.account.AccountWritePort
 import es.schsebastian.foodrats.core.domain.account.Bio
+import es.schsebastian.foodrats.core.domain.account.DisplayName
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.Result
 
@@ -15,13 +16,12 @@ class FakeAccountWritePort : AccountWritePort {
     var nextBioError: AccountWriteError? = null
     var nextAvatarError: AccountWriteError? = null
     var nextRemoveAvatarError: AccountWriteError? = null
-    var nextAvatarUrl: String = "https://example.test/avatar.jpg"
 
     override suspend fun updateDisplayName(
         accountId: AccountId,
-        name: String,
+        name: DisplayName,
     ): Result<Unit, AccountWriteError> {
-        displayNameCalls += accountId to name
+        displayNameCalls += accountId to name.value
         return nextDisplayNameError?.let { Result.failure(it) } ?: Result.success(Unit)
     }
 
@@ -36,9 +36,9 @@ class FakeAccountWritePort : AccountWritePort {
     override suspend fun uploadAndSetAvatar(
         accountId: AccountId,
         bytes: ByteArray,
-    ): Result<String, AccountWriteError> {
+    ): Result<Unit, AccountWriteError> {
         avatarUploads += accountId to bytes
-        return nextAvatarError?.let { Result.failure(it) } ?: Result.success(nextAvatarUrl)
+        return nextAvatarError?.let { Result.failure(it) } ?: Result.success(Unit)
     }
 
     override suspend fun removeAvatar(

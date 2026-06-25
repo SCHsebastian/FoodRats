@@ -20,6 +20,8 @@ import es.schsebastian.foodrats.core.domain.meal.MealReactions
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
+import es.schsebastian.foodrats.core.domain.account.BlockError
+import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.ReactionError
 import es.schsebastian.foodrats.core.domain.meal.ReactionKind
 import es.schsebastian.foodrats.core.domain.meal.ReactionToggle
@@ -487,8 +489,13 @@ class FeedViewModel(
     /** Submits the feed report against the pending [FeedState.feedReportTarget] (UGC compliance §4). */
     private suspend fun submitFeedReport(reasonOption: FrReportReasonOption) {
         val target = currentState.feedReportTarget ?: return
-        val crewId = activeCrew.current.first() ?: return
-        val reporter = session.current.first()?.accountId ?: return
+        // A4: session/crew lost mid-use → close the sheet instead of leaving it frozen open. (This
+        // report path surfaces only success today; full failure surfacing on the feed overflow is a
+        // pre-existing gap — the detail screen's report DOES show reportError.)
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(feedReportTarget = null) }
+        val reporter = session.current.first()?.accountId
+            ?: return update { it.copy(feedReportTarget = null) }
         val parsedMealId = MealId.of(target.mealId).getOrElse { return }
         val domainTarget: ReportTarget = when (target) {
             is FeedReportTarget.Meal   -> ReportTarget.Meal(parsedMealId, crewId)
@@ -510,7 +517,10 @@ class FeedViewModel(
      * dialog is shown by the screen before this intent fires, so no guard is needed here.
      */
     private suspend fun blockFeedAuthor(rawAuthorId: String) {
-        val owner = session.current.first()?.accountId ?: return
+        // A4: don't silently no-op when the session is lost mid-use — surface a typed error so the
+        // user sees the tap failed (the root nav routes to SignIn once current goes null).
+        val owner = session.current.first()?.accountId
+            ?: return update { it.copy(feedBlockError = BlockError.Write.Unavailable) }
         val target = AccountId.of(rawAuthorId).getOrElse { return }
         update { it.copy(feedBlockError = null) }
         when (val r = blockedAccounts.block(owner, target)) {
@@ -520,8 +530,11 @@ class FeedViewModel(
     }
 
     private suspend fun rate(mealIdRaw: String, scoreRaw: Int) {
-        val crewId = activeCrew.current.first() ?: return
-        val raterId = session.current.first()?.accountId ?: return
+        // A4: session/crew lost mid-use → surface a typed error instead of a silent dead tap.
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(rateError = RateError.Unauthorized) }
+        val raterId = session.current.first()?.accountId
+            ?: return update { it.copy(rateError = RateError.Unauthorized) }
         val mealId = MealId.of(mealIdRaw).getOrElse { return }
         val score = Score.of(scoreRaw).getOrElse { return }
         update { it.copy(pendingRateMealId = mealIdRaw, rateError = null) }
@@ -536,8 +549,11 @@ class FeedViewModel(
     }
 
     private suspend fun react(mealIdRaw: String) {
-        val crewId = activeCrew.current.first() ?: return
-        val reactorId = session.current.first()?.accountId ?: return
+        // A4: session/crew lost mid-use → surface a typed error instead of a silent dead tap.
+        val crewId = activeCrew.current.first()
+            ?: return update { it.copy(reactError = ReactionError.Toggle.Unauthorized) }
+        val reactorId = session.current.first()?.accountId
+            ?: return update { it.copy(reactError = ReactionError.Toggle.Unauthorized) }
         val mealId = MealId.of(mealIdRaw).getOrElse { return }
         val kind = ReactionKind.DailyGlyph
         // The reaction is a relative flip online, but the outbox command is modelled as an

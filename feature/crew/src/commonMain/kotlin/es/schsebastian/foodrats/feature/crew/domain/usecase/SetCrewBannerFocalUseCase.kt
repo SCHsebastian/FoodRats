@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
+import es.schsebastian.foodrats.feature.crew.domain.error.toCrewError
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlinx.coroutines.flow.first
 
@@ -32,10 +33,11 @@ class SetCrewBannerFocalUseCase(
     suspend operator fun invoke(crewId: CrewId, focalY: Float): Result<Unit, CrewError> {
         val accountId = when (val s = session.requireCurrent()) {
             is Result.Ok -> s.value.accountId
-            is Result.Err -> return Result.failure(CrewError.Backend.Unavailable)
+            is Result.Err -> return Result.failure(s.error.toCrewError())
         }
         val clamped = focalY.coerceIn(0f, 1f)
         if (!connectivity.isOnline().first()) {
+            repository.offlineOwnerGuard(crewId, accountId)?.let { return Result.failure(it) }
             return enqueue(crewId, accountId, clamped)
         }
         return when (val r = repository.setBannerFocalY(crewId, accountId, clamped)) {

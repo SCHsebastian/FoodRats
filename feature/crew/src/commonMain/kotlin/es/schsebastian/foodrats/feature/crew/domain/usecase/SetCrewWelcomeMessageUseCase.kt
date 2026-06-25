@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
+import es.schsebastian.foodrats.feature.crew.domain.error.toCrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.WelcomeMessage
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import kotlinx.coroutines.flow.first
@@ -34,7 +35,7 @@ class SetCrewWelcomeMessageUseCase(
     suspend operator fun invoke(crewId: CrewId, message: String): Result<Unit, CrewError> {
         val accountId = when (val s = session.requireCurrent()) {
             is Result.Ok  -> s.value.accountId
-            is Result.Err -> return Result.failure(CrewError.Backend.Unavailable)
+            is Result.Err -> return Result.failure(s.error.toCrewError())
         }
         val validated = when (val r = WelcomeMessage.of(message)) {
             is Result.Ok  -> r.value      // null = blank input → clear message
@@ -42,6 +43,7 @@ class SetCrewWelcomeMessageUseCase(
         }
         val value = validated?.value
         if (!connectivity.isOnline().first()) {
+            repository.offlineOwnerGuard(crewId, accountId)?.let { return Result.failure(it) }
             return enqueue(crewId, accountId, value)
         }
         return when (val r = repository.setWelcomeMessage(crewId, accountId, value)) {

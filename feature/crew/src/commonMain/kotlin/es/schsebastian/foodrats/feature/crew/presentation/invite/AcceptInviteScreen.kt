@@ -108,10 +108,19 @@ fun AcceptInviteScreen(
                         )
                     }
                 }
+                error?.let { FrErrorBanner(text = resolve(it.toStringKey())) }
                 FrButton(
                     label = resolve(CrewStringKey.InviteDoneCta),
                     onClick = onBack,
                     modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 90),
+                )
+                // Requester-side cancel: withdraw the pending request and return to the join CTA.
+                FrButton(
+                    label = resolve(CrewStringKey.InviteCancelRequestCta),
+                    onClick = { vm.onIntent(AcceptInviteIntent.Cancel) },
+                    variant = FrButtonVariant.Secondary,
+                    enabled = !state.isCancelling,
+                    modifier = Modifier.fillMaxWidth().frRiseIn(delayMillis = 130),
                 )
             }
 

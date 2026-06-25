@@ -13,6 +13,7 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ApproveJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeclineJoinRequestUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.DeleteCrewUseCase
@@ -190,7 +191,8 @@ class CrewSettingsViewModel(
     }
 
     private suspend fun doLeave() {
-        val account = session.current.first()?.accountId ?: return
+        val account = session.current.first()?.accountId
+            ?: return update { it.copy(error = CrewError.Session.NotSignedIn) }
         // Owner leaving with members remaining → hand ownership to the chosen successor (or, when
         // none is picked, the longest-tenured member is selected by the repository). For a non-owner
         // or a sole member the successor is irrelevant.

@@ -9,6 +9,7 @@
     <string name="crew_picker_join_cta">Unirme con código</string>
     <string name="crew_picker_brand_name">FoodRats</string>
     <string name="crew_picker_crew_button">%1$s (%2$d/8)</string>
+    <string name="crew_picker_profile_cta">Tu perfil</string>
     <string name="crew_create_name_label">Nombre de la cuadrilla</string>
     <string name="crew_create_submit">Crear</string>
     <string name="crew_join_code_label">Código de invitación</string>
@@ -58,6 +59,9 @@
     <string name="crew_error_permission">No tienes permiso.</string>
     <string name="crew_error_collision">No se ha podido generar un código único, inténtalo de nuevo.</string>
     <string name="crew_error_unknown">Algo salió mal. Inténtalo de nuevo.</string>
+    <string name="crew_error_session_not_signed_in">Has cerrado sesión. Inicia sesión para continuar.</string>
+    <string name="crew_error_session_expired">Tu sesión ha caducado. Vuelve a iniciar sesión.</string>
+    <string name="crew_error_invite_already_requested">Ya has pedido unirte a esta cuadrilla.</string>
     <string name="crew_error_authorization_not_owner">Solo el dueño de la cuadrilla puede hacer esto.</string>
     <string name="crew_error_validation_display_name_blank">El nombre de usuario no puede estar vacío.</string>
     <string name="crew_error_validation_display_name_too_long">El nombre de usuario es demasiado largo (máx. 40 caracteres).</string>
@@ -114,6 +118,7 @@
     <string name="crew_invite_request_sent_title">Solicitud enviada</string>
     <string name="crew_invite_request_sent_body">Entrarás en %1$s cuando el dueño apruebe tu solicitud.</string>
     <string name="crew_invite_done_cta">Listo</string>
+    <string name="crew_invite_cancel_request_cta">Cancelar solicitud</string>
     <string name="crew_settings_requests_section">SOLICITUDES DE INGRESO</string>
     <string name="crew_settings_requests_count">%1$d en espera</string>
     <string name="crew_settings_approve_cta">Aprobar</string>
@@ -130,4 +135,5 @@
     <string name="crew_settings_leave_owner_auto">Automático (miembro más antiguo)</string>
     <string name="crew_error_transfer_not_owner">Solo el dueño de la cuadrilla puede transferir la propiedad.</string>
     <string name="crew_error_transfer_target_not_member">Solo puedes ceder la propiedad a un miembro actual.</string>
+    <string name="crew_error_transfer_cannot_transfer_to_self">Ya eres el dueño.</string>
 </resources>

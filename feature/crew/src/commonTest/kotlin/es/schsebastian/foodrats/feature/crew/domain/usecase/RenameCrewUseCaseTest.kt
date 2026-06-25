@@ -75,6 +75,16 @@ class RenameCrewUseCaseTest {
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
     }
 
+    @Test fun offline_non_owner_rejected_without_enqueue() = runTest {
+        val nonOwner = aid("uid-other")
+        val nonOwnerSession = Session(accountId = nonOwner, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort()
+        val r = useCase(repo, nonOwnerSession, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(crewId, "New Name")
+        assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
+        assertTrue(outbox.enqueued.isEmpty(), "a non-owner must not park a doomed offline command")
+    }
+
     @Test fun renames_when_owner_and_valid_online() = runTest {
         val repo = FakeCrewRepository(listOf(sampleCrew))
         val outbox = RecordingOutboxPort()

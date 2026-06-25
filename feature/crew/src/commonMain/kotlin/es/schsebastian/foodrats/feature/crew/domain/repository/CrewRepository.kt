@@ -27,6 +27,14 @@ interface CrewRepository {
     fun observeJoinRequests(crewId: CrewId): Flow<Result<List<JoinRequest>, CrewError>>
 
     /**
+     * Withdraws the signed-in [requester]'s OWN pending join request for [crewId] (the requester-side
+     * cancel — distinct from the owner's decline). Deletes `crews/{crewId}/joinRequests/{requester}`;
+     * the Firestore rule already permits a requester to delete their own request doc. Idempotent —
+     * cancelling an absent request succeeds.
+     */
+    suspend fun cancelJoinRequest(crewId: CrewId, requester: AccountId): Result<Unit, CrewError>
+
+    /**
      * Approves a pending join request: atomically adds [requester] to the crew and deletes their
      * request doc. Only the owner ([requestedBy]) may approve; the cap is re-checked server-side.
      * Idempotent — approving a requester who is already a member just clears the stale request.

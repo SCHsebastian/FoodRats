@@ -76,7 +76,7 @@ internal fun atomStories(): List<CatalogEntry> = listOf(
     CatalogEntry("atom.shimmerbox",    CatalogGroup.ATOMS, "FrShimmerBox",    "Skeleton with horizontal shimmer sweep") { ShimmerBoxStory() },
     CatalogEntry("atom.uploadprogress", CatalogGroup.ATOMS, "FrUploadProgressBar", "Top-of-screen indeterminate bar that slides in while uploads run") { UploadProgressBarStory() },
     CatalogEntry("atom.offlinebanner", CatalogGroup.ATOMS, "FrOfflineBanner", "App-wide 'you're offline' notice (warning role) that slides in when connectivity drops") { OfflineBannerStory() },
-    CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — plate + ears at three sizes") { LogoStory() },
+    CatalogEntry("atom.logo",          CatalogGroup.ATOMS, "FrLogo",          "FoodRats canvas mark — toque + cutlery + rat at three sizes") { LogoStory() },
     CatalogEntry("atom.card",          CatalogGroup.ATOMS, "FrCard",          "Rounded surface container — static or clickable with press lift") { CardStory() },
     CatalogEntry("atom.card.fur",      CatalogGroup.ATOMS, "FrCard (Minotaur)", "Hidden Minotaur mode — furry edge via LocalMinotaurMode") { MinotaurCardStory() },
     CatalogEntry("atom.sparkline",     CatalogGroup.ATOMS, "FrSparkline",     "Tiny inline trend chart for stat tiles") { SparklineStory() },
@@ -572,7 +572,7 @@ private fun LogoStory() {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         CatalogScene(
             label = "Sizes — 48 / 96 / 144 dp",
-            description = "Canvas-drawn plate + three ears. Defaults are the brand palette (concrete plate, ember ears).",
+            description = "Canvas-drawn toque + crossed cutlery + ember rat. Defaults are the brand palette (concrete toque, ember face).",
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(Spacing.lg),
@@ -583,11 +583,11 @@ private fun LogoStory() {
                 FrLogo(size = 144.dp)
             }
         }
-        CatalogScene(label = "Tinted — primary plate / onPrimary ears") {
+        CatalogScene(label = "Tinted — primary face / onPrimary inner ears") {
             FrLogo(
                 size = 96.dp,
-                plateColor = MaterialTheme.colorScheme.primary,
-                earColor = MaterialTheme.colorScheme.onPrimary,
+                faceColor = MaterialTheme.colorScheme.primary,
+                innerEarColor = MaterialTheme.colorScheme.onPrimary,
             )
         }
     }
