@@ -97,7 +97,7 @@ describe("ownAvatarPaths — self-avatar allow-list (H2)", () => {
 });
 
 describe("buildSignedUrls — membership-checked minting (#15)", () => {
-  it("signs the authorized subset for a member, with a 15-min TTL", async () => {
+  it("signs the authorized subset for a member, with a 6-day TTL", async () => {
     const res = await buildSignedUrls(deps, "alice", {
       crewId: "c1",
       paths: [
@@ -108,7 +108,8 @@ describe("buildSignedUrls — membership-checked minting (#15)", () => {
     });
 
     expect(res.expiresAtMs).toBe(NOW + URL_TTL_MS);
-    expect(res.expiresAtMs - NOW).toBe(15 * 60 * 1000);
+    // 6 days, safely under the GCS V4 7-day signed-URL ceiling.
+    expect(res.expiresAtMs - NOW).toBe(6 * 24 * 60 * 60 * 1000);
     expect(Object.keys(res.urls).sort()).toEqual([
       "avatars/bob.jpg",
       "crews/c1/meals/c1_bob_2026-06-14_dinner.jpg",

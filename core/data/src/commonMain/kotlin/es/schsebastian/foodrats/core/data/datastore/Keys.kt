@@ -112,4 +112,15 @@ object Keys {
      * [es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository].
      */
     val DismissedWelcomes = StoreKey(stringPreferencesKey("dismissed_welcomes"))
+
+    /**
+     * Persisted signed-image-URL cache: JSON `{ "<objectPath>": { url, freshUntilMs } }` for
+     * IMMUTABLE paths only (per-meal plates + content-versioned avatars). Lets a cold start reuse a
+     * still-valid signed URL instead of re-calling `mintPlateUrls` — and, because the URL string is
+     * stable, lets Coil serve the cached image instead of re-downloading it. The fixed-path crew
+     * banner is deliberately NOT persisted (a banner change must surface fast). Account-scoped:
+     * cleared on sign-out so the next account doesn't inherit a prior account's entries. Owned by
+     * [es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver].
+     */
+    val PlateUrlCacheJson = StoreKey(stringPreferencesKey("plate_url_cache_json"))
 }

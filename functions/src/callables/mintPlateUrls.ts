@@ -17,8 +17,19 @@ import { logger } from "firebase-functions/v2";
  * unit-tested without the Admin SDK (mirrors `weeklyDigest`'s `paginateCrews`).
  */
 
-/** How long a minted URL stays valid. The client caches a little under this (≈12 min). */
-export const URL_TTL_MS = 15 * 60 * 1000;
+/**
+ * How long a minted URL stays valid. GCS V4 signed URLs cap at 7 days; we use 6 to stay safely
+ * under the ceiling. A long TTL lets the client cache (in memory + on disk) reuse the SAME URL for
+ * days, which collapses both mintPlateUrls call volume AND image re-downloads — a rotated URL is a
+ * Coil cache-miss → a full re-fetch from Storage egress. The client refreshes shortly before expiry.
+ *
+ * Revocation trade-off: a URL already minted by a member who is later removed from the crew stays
+ * fetchable until it expires (≤6 days). Acceptable here — these are closed-crew food photos the
+ * member could already see, and membership is still enforced at MINT time (a removed member cannot
+ * mint new URLs). The client persists only immutable paths (plates, content-versioned avatars); the
+ * fixed-path crew banner is kept on a short client-side TTL so a banner change still surfaces fast.
+ */
+export const URL_TTL_MS = 6 * 24 * 60 * 60 * 1000;
 
 /** Maximum number of paths accepted in a single mintPlateUrls call. Requests above this
  *  limit are silently truncated before the signing loop to cap Cloud Function CPU + cost. */
