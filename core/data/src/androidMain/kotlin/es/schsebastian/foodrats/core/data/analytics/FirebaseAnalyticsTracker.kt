@@ -17,10 +17,16 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
  *
  * Wrapped by `ConsentGatedAnalytics`, so [track]/[setUserProperty] are only ever reached with consent
  * granted; [applyConsent] still drives the SDK collection toggle + Consent Mode for defense in depth.
+ *
+ * The [FirebaseAnalytics] instance is resolved lazily (via [provideAnalytics], on first use) rather than
+ * at Koin graph resolution: `FirebaseAnalytics.getInstance(context)` is startup-cost we don't want to pay
+ * during `startKoin`. The first port call happens only post-consent, so the SDK spins up just in time.
  */
 internal class FirebaseAnalyticsTracker(
-    private val analytics: FirebaseAnalytics,
+    provideAnalytics: () -> FirebaseAnalytics,
 ) : AnalyticsPort {
+
+    private val analytics: FirebaseAnalytics by lazy(provideAnalytics)
 
     override fun track(event: AnalyticsEvent) {
         val bundle = Bundle()

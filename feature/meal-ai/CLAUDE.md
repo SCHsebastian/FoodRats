@@ -10,7 +10,7 @@ On-device food classifier adapter. Runs a MediaPipe Tasks image-classification m
 ## Local rules
 
 - JVM target **17**: Koin transitively links shared modules that touch Firebase; inline functions compiled at JVM 17 would be rejected by a JVM 11 target.
-- `.tflite` model asset lives in `src/commonMain/composeResources/files/` — never checked in as a raw `assets/` entry.
+- `.tflite` model asset lives in `src/androidMain/composeResources/files/` (Android only — read via `Res.readBytes`; iOS loads the byte-identical `iosApp/iosApp/food101.tflite` from `Bundle.main`, so it is NOT aggregated into the iOS framework). Never checked in as a raw `assets/` entry.
 - No direct Firebase imports in this module. If added, include the BOM in `androidMain.dependencies` (see comment in `build.gradle.kts`).
 
 ## Test

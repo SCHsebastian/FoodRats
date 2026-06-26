@@ -43,6 +43,7 @@ import foodrats.feature.feed.generated.resources.feed_comments_relative_just_now
 import foodrats.feature.feed.generated.resources.feed_comments_relative_minutes
 import foodrats.feature.feed.generated.resources.feed_comments_send_cta
 import foodrats.feature.feed.generated.resources.feed_comments_title
+import foodrats.feature.feed.generated.resources.feed_load_older_comments
 import foodrats.feature.feed.generated.resources.feed_deleted_author
 import foodrats.feature.feed.generated.resources.feed_delete_cancel_cta
 import foodrats.feature.feed.generated.resources.feed_delete_comment_confirm_title
@@ -199,6 +200,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     DetailNotFound(Res.string.feed_detail_not_found),
     CommentsTitle(Res.string.feed_comments_title),
     CommentsEmpty(Res.string.feed_comments_empty),
+    // FIREST-2 — "load older comments" affordance above the bounded comment list.
+    LoadOlderComments(Res.string.feed_load_older_comments),
     CommentsInputPlaceholder(Res.string.feed_comments_input_placeholder),
     CommentsSendCta(Res.string.feed_comments_send_cta),
     CommentsRelativeJustNow(Res.string.feed_comments_relative_just_now),

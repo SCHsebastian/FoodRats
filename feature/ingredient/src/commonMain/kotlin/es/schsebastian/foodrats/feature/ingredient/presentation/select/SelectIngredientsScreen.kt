@@ -114,6 +114,18 @@ fun SelectIngredientsScreen(
 
             // ingredient-02: build detectedSlugs set once; exclude from category rows
             val detectedSlugs = remember(state.detected) { state.detected.toSet() }
+            // Group the (already-remembered) filtered catalog once per search/detected change instead
+            // of re-running these O(categories × catalog) filters inside the LazyColumn content lambda
+            // on every recomposition (selection toggles, cap changes, expand/collapse all recompose it).
+            val detectedRows = remember(filtered, detectedSlugs) {
+                filtered.filter { it.slug in detectedSlugs }
+            }
+            val categoryRows = remember(filtered, detectedSlugs) {
+                IngredientCategory.all.mapNotNull { category ->
+                    val rows = filtered.filter { it.category == category && it.slug !in detectedSlugs }
+                    if (rows.isEmpty()) null else category to rows
+                }
+            }
             val selected = state.selected
             val capReached = state.capReached
             when {
@@ -134,8 +146,7 @@ fun SelectIngredientsScreen(
                         // alike — so the picker feels assembled top-to-bottom on load. The
                         // `% 6` window keeps later items popping promptly when scrolled in.
                         var cascade = 0
-                        val detected = filtered.filter { it.slug in state.detected }
-                        if (detected.isNotEmpty()) {
+                        if (detectedRows.isNotEmpty()) {
                             val headerDelay = (cascade++ % 6) * 40
                             item(key = "detected-header") {
                                 SectionHeader(
@@ -143,7 +154,7 @@ fun SelectIngredientsScreen(
                                     modifier = Modifier.frRiseIn(delayMillis = headerDelay),
                                 )
                             }
-                            detected.forEach { ing ->
+                            detectedRows.forEach { ing ->
                                 val delay = (cascade++ % 6) * 40
                                 item(key = "detected-${ing.slug.value}") {
                                     FrIngredientRow(
@@ -158,9 +169,7 @@ fun SelectIngredientsScreen(
                             }
                         }
 
-                        IngredientCategory.all.forEach { category ->
-                            val rows = filtered.filter { it.category == category && it.slug !in detectedSlugs }
-                            if (rows.isEmpty()) return@forEach
+                        categoryRows.forEach { (category, rows) ->
                             // While searching, force every matching group open so results are
                             // never hidden inside a collapsed section.
                             val expanded = searching || category in state.expandedCategories

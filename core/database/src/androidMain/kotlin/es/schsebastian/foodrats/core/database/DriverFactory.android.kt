@@ -19,6 +19,14 @@ actual class DriverFactory(private val context: Context) {
                 override fun onConfigure(db: SupportSQLiteDatabase) {
                     super.onConfigure(db)
                     db.setForeignKeyConstraintsEnabled(true)
+                    // WAL + synchronous=NORMAL: one fsync/commit instead of the rollback-journal +
+                    // synchronous=FULL default's two. WAL is orthogonal to the FK CASCADE above;
+                    // synchronous=NORMAL under WAL only risks losing the last txn on hard power-loss
+                    // (never corruption) — fine for this Firestore-backed re-syncable cache.
+                    // journal_mode must be set OUTSIDE a transaction; onConfigure is that place, and
+                    // PRAGMA journal_mode returns a row so it must run as a query.
+                    db.query("PRAGMA journal_mode=WAL").use { it.moveToFirst() }
+                    db.execSQL("PRAGMA synchronous=NORMAL")
                 }
             },
         )

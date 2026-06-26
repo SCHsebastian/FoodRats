@@ -49,13 +49,15 @@ val outboxModule = module {
         // migrated. Idempotent across launches (the key is cleared).
         appScope.launch { get<OutboxJsonMigration>().run() }
         // M5: prune stale terminal entries (older than 30 days) so they don't accumulate forever.
-        OutboxTerminalPruner(store = get(), clock = get(), appScope = appScope).start()
+        OutboxTerminalPruner(outbox = get(), clock = get(), appScope = appScope).start()
         OutboxRunner(
             outbox = get(),
             // Feature-owned handlers (MealOutboxCommandHandler / CrewOutboxCommandHandler)
             // bound as single<OutboxCommandHandler> in their feature modules. getAll()
-            // keeps :core:data free of any :feature:* dependency.
-            handlers = getAll<OutboxCommandHandler>(),
+            // keeps :core:data free of any :feature:* dependency. STARTUP-1: wrapped in a
+            // provider so the handler graph is resolved lazily on the drain path, NOT on the
+            // main thread at startKoin (createdAtStart).
+            handlersProvider = { getAll<OutboxCommandHandler>() },
             connectivity = get(),
             policy = get(),
             analytics = get(),

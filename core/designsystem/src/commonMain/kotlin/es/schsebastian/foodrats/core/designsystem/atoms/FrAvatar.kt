@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
@@ -18,15 +19,16 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import coil3.compose.SubcomposeAsyncImage
-import coil3.compose.SubcomposeAsyncImageContent
+import coil3.compose.AsyncImage
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreviewLightDark
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 
 /**
- * Circular avatar that renders either an uploaded image (via Coil [SubcomposeAsyncImage]) or
- * initials as a fallback when [imageUrl] is null/blank or the image is still loading/failed.
+ * Circular avatar that layers an uploaded image (via Coil [AsyncImage]) over an always-present
+ * initials background. The initials show through while the image is null/blank, loading, or failed
+ * (the [AsyncImage] is transparent until the bitmap resolves), so no subcomposition or extra measure
+ * pass is needed.
  *
  * Decorative by default — `contentDescription` is null and the badge is `clearAndSetSemantics { }`-ed
  * out of the a11y tree. When it appears next to a name label, the name label carries the meaning
@@ -41,27 +43,28 @@ fun FrAvatar(
     imageUrl: String? = null,
     contentDescription: String? = null,
 ) {
-    val box = modifier
-        .size(size)
-        .clip(CircleShape)
-
-    if (!imageUrl.isNullOrBlank()) {
-        SubcomposeAsyncImage(
-            model = imageUrl,
-            contentDescription = contentDescription,
-            modifier = box,
-            contentScale = ContentScale.Crop,
-            loading = { InitialsContent(initials) },
-            error = { InitialsContent(initials) },
-            success = { SubcomposeAsyncImageContent() },
-        )
+    val semantics = if (contentDescription != null) {
+        Modifier.semantics { this.contentDescription = contentDescription }
     } else {
-        val initialsModifier = if (contentDescription != null) {
-            box.semantics { this.contentDescription = contentDescription }
-        } else {
-            box.clearAndSetSemantics { }
+        Modifier.clearAndSetSemantics { }
+    }
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(CircleShape)
+            .then(semantics),
+        contentAlignment = Alignment.Center,
+    ) {
+        InitialsContent(initials, Modifier.fillMaxSize())
+        if (!imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+            )
         }
-        InitialsContent(initials, initialsModifier)
     }
 }
 

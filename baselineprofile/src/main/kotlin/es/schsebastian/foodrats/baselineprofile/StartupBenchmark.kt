@@ -39,6 +39,19 @@ class StartupBenchmark {
         CompilationMode.Partial(baselineProfileMode = BaselineProfileMode.Require),
     )
 
+    /**
+     * Authenticated cold start (Splash → Main → Feed). Meaningful only on the **benchmark** build,
+     * where the fake-session backdoor (androidApp/src/benchmark/) lands the app on a populated Feed
+     * with no network — so this measures the real returning-user startup, not the SignIn screen.
+     */
+    @Test
+    fun startupAuthenticatedNoCompilation() = startupAuthenticated(CompilationMode.None())
+
+    @Test
+    fun startupAuthenticatedBaselineProfile() = startupAuthenticated(
+        CompilationMode.Partial(baselineProfileMode = BaselineProfileMode.Require),
+    )
+
     private fun startup(compilationMode: CompilationMode) = rule.measureRepeated(
         packageName = APP_PACKAGE,
         metrics = listOf(StartupTimingMetric()),
@@ -49,6 +62,19 @@ class StartupBenchmark {
     ) {
         startActivityAndWait()
         waitForFirstScreen()
+    }
+
+    private fun startupAuthenticated(compilationMode: CompilationMode) = rule.measureRepeated(
+        packageName = APP_PACKAGE,
+        metrics = listOf(StartupTimingMetric()),
+        compilationMode = compilationMode,
+        startupMode = StartupMode.COLD,
+        iterations = DEFAULT_ITERATIONS,
+        setupBlock = { pressHome() },
+    ) {
+        startActivityAndWait()
+        // Land on the authed Feed on the benchmark build; fall back to the first screen otherwise.
+        if (!waitForFeed()) waitForFirstScreen()
     }
 }
 

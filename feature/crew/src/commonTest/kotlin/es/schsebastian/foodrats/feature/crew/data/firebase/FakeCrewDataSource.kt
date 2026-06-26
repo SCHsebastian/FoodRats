@@ -167,8 +167,13 @@ class FakeCrewDataSource : CrewDataSource {
         return setScoreStyleResult
     }
 
-    override suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError> =
-        setBannerPathResult
+    /** Captures the (path, token) pair passed to setBannerPath (for assertions). */
+    var lastSetBannerPath: Pair<String, String>? = null
+
+    override suspend fun setBannerPath(crewId: CrewId, path: String, token: String): Result<Unit, CrewError> {
+        lastSetBannerPath = path to token
+        return setBannerPathResult
+    }
 
     override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> =
         clearBannerPathResult

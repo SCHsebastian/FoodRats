@@ -157,17 +157,20 @@ fun CrewSettingsScreen(
 
     val crew = state.crew
 
-    // When a banner is set the floor is that photo (dark in both themes) → floating chrome/eyebrows over
-    // it use white onMedia. With no banner the floor is the adaptive atmospheric one (light in light
-    // mode) → floating content uses the theme-aware foreground + the olive eyebrow accent.
-    val onMediaFloor = state.bannerImageUrl != null
+    // A set banner becomes the dark blurred-photo floor ONLY in dark mode; floating chrome/eyebrows over
+    // it then use white onMedia. In LIGHT mode the floor stays the adaptive atmospheric one (light) so
+    // the settings screen reads as a proper light screen instead of an always-near-black dimmed photo —
+    // the banner still shows in its own "Portada" section below. With no banner it's the light floor in
+    // both. Floating content over a light floor uses the theme-aware foreground + olive eyebrow accent.
+    val isLight = StructuralColors.isLight
+    val onMediaFloor = state.bannerImageUrl != null && !isLight
     val planeFg = if (onMediaFloor) StructuralColors.onMedia else StructuralColors.foreground
     val planeEyebrow = if (onMediaFloor) StructuralColors.onMedia.copy(alpha = 0.85f) else MaterialTheme.colorScheme.primary
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Z0 — the crew banner blurred (or a mackerel mood) as the floor.
+        // Z0 — the crew banner blurred as the floor (dark mode only); otherwise the light atmospheric floor.
         val bannerUrl = state.bannerImageUrl
-        if (bannerUrl != null) {
+        if (bannerUrl != null && !isLight) {
             FrMediaFloor(
                 painter = coil3.compose.rememberAsyncImagePainter(bannerUrl),
                 blur = StructuralBlur.Heavy,
@@ -175,8 +178,8 @@ fun CrewSettingsScreen(
                 scrim = FrScrimStyle.Even,
             )
         } else {
-            // No banner: an atmospheric floor that goes LIGHT in light mode (so the section eyebrows +
-            // tiles read as a proper light screen). A set banner is a real photo → stays dark (above).
+            // Light mode (or no banner): an atmospheric floor that goes LIGHT in light mode (so the
+            // section eyebrows + tiles read as a proper light screen).
             FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft)
         }
 
@@ -383,6 +386,9 @@ fun CrewSettingsScreen(
                             BannerSection(
                                 hasBanner = crew.bannerPath != null,
                                 imageUrl = state.bannerImageUrl,
+                                // IMAGE-2: key Coil on the content-versioned path when present so the
+                                // preview survives the banner's signed-URL rotation; "" → URL keying.
+                                cacheKey = if (crew.bannerToken != null) crew.bannerPath.orEmpty() else "",
                                 focalY = crew.bannerFocalY,
                                 saving = state.isSavingBanner,
                                 onPicked = { vm.onIntent(CrewSettingsIntent.BannerPicked(it)) },
@@ -878,6 +884,7 @@ private fun Chevron() {
 private fun BannerSection(
     hasBanner: Boolean,
     imageUrl: String?,
+    cacheKey: String,
     focalY: Float,
     saving: Boolean,
     onPicked: (ByteArray) -> Unit,
@@ -910,7 +917,7 @@ private fun BannerSection(
             color = if (hasBanner) StructuralColors.onMedia.copy(alpha = 0.85f) else MaterialTheme.colorScheme.primary,
         )
         if (hasBanner && imageUrl != null) {
-            BannerRepositionPreview(imageUrl = imageUrl, focalY = focalY, onReposition = onReposition)
+            BannerRepositionPreview(imageUrl = imageUrl, cacheKey = cacheKey, focalY = focalY, onReposition = onReposition)
             FrText(
                 text = resolve(CrewStringKey.SettingsBannerRepositionHint),
                 style = StructuralType.micro,
@@ -944,6 +951,7 @@ private val BannerCropHeight = 180.dp
 @Composable
 private fun BannerRepositionPreview(
     imageUrl: String,
+    cacheKey: String,
     focalY: Float,
     onReposition: (Float) -> Unit,
 ) {
@@ -952,8 +960,21 @@ private fun BannerRepositionPreview(
     // Re-seed the draft whenever the persisted focal changes (e.g. after the write lands).
     var draftFocalY by remember(focalY) { mutableStateOf(focalY) }
     val cd = resolve(CrewStringKey.SettingsBannerPreviewCd)
+    // IMAGE-2: key Coil's caches on the immutable versioned path (when present) so the rotating
+    // signed URL doesn't force a re-download; blank cacheKey → Coil's default URL-derived keying.
+    val request = remember(imageUrl, cacheKey, ctx) {
+        ImageRequest.Builder(ctx)
+            .data(imageUrl)
+            .apply {
+                if (cacheKey.isNotBlank()) {
+                    diskCacheKey(cacheKey)
+                    memoryCacheKey(cacheKey)
+                }
+            }
+            .build()
+    }
     AsyncImage(
-        model = ImageRequest.Builder(ctx).data(imageUrl).build(),
+        model = request,
         contentDescription = cd,
         contentScale = ContentScale.Crop,
         alignment = BiasAlignment(horizontalBias = 0f, verticalBias = draftFocalY * 2f - 1f),

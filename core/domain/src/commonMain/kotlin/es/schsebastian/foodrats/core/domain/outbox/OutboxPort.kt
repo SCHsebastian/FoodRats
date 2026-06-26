@@ -77,4 +77,16 @@ interface OutboxPort {
      * count — only an explicit user retry gets a fresh budget.
      */
     suspend fun requeue(id: OutboxEntryId): Result<Unit, OutboxError>
+
+    /**
+     * M5 housekeeping: drop terminally-failed entries ([OutboxEntryStatus.Failed] with
+     * `retryable = false`) whose `createdAt` is strictly older than [beforeEpochMs]. Pending,
+     * uploading, and retryable-failed entries are never touched. Called fire-and-forget at app
+     * start to bound unbounded growth of dismissed terminal entries.
+     *
+     * Default is a no-op `Result.Ok(Unit)` so non-durable adapters / test doubles need not
+     * implement housekeeping; the durable implementation overrides it behind its single IO
+     * boundary.
+     */
+    suspend fun pruneTerminal(beforeEpochMs: Long): Result<Unit, OutboxError> = Result.Ok(Unit)
 }

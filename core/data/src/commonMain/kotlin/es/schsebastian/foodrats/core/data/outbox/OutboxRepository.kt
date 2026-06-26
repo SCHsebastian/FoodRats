@@ -106,6 +106,12 @@ class OutboxRepository(
                 .fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("requeue", it) })
         }
 
+    override suspend fun pruneTerminal(beforeEpochMs: Long): Result<Unit, OutboxError> =
+        withContext(dispatchers.io) {
+            runCatching { store.pruneTerminalBefore(beforeEpochMs) }
+                .fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("pruneTerminal", it) })
+        }
+
     private fun fail(op: String, t: Throwable): Result<Nothing, OutboxError> {
         FrLog.w("Outbox", t) { "outbox op '$op' failed: ${t.message}" }
         return Result.Err(OutboxError.PersistenceUnavailable)

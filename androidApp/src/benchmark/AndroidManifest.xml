@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  BENCHMARK-ONLY manifest overlay (STARTUP-4).
+
+  Merged ONLY into the `benchmark` build type. It declares BenchmarkBackdoorInstaller, a
+  ContentProvider auto-instantiated at process start that layers the fake-session Koin override
+  (benchmarkSessionOverrideModule) on top of the real graph AFTER startKoin — so the :baselineprofile
+  macrobenchmark boots straight to an authed Feed without Google Sign-In or network.
+
+  The real `.FoodRatsApplication` (src/main) is unchanged: it is final and cannot be subclassed, so
+  we install via a provider rather than swapping the Application class.
+
+  SECURITY: this overlay, BenchmarkBackdoorInstaller, and benchmarkSessionOverrideModule exist only
+  under src/benchmark/, so the release and debug variants never merge or compile the backdoor.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+
+    <application>
+        <provider
+            android:name=".benchmark.BenchmarkBackdoorInstaller"
+            android:authorities="${applicationId}.benchmarkBackdoor"
+            android:exported="false"
+            tools:node="merge" />
+    </application>
+</manifest>

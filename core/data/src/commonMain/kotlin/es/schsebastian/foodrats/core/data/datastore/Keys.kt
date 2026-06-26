@@ -49,6 +49,14 @@ object Keys {
     val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
 
     /**
+     * Disk cache of the static, admin-seeded cuisine catalog (JSON array of `CuisineDto`). Mirrors
+     * [IngredientCatalogJson]: a single one-shot Firestore read per app launch hydrates it, and the
+     * `CuisineReadPort` flow serves from here instead of a warm snapshot listener (FIREST-4). Owned by
+     * `:feature:ingredient`'s `CuisineCatalogCache`.
+     */
+    val CuisineCatalogJson = StoreKey(stringPreferencesKey("cuisine_catalog_json"))
+
+    /**
      * The durable write outbox (offline-first P2): a JSON array of queued
      * rate / comment / reaction / crew-admin mutations (each with its
      * lifecycle status + attempt count), so a process death or airplane-mode

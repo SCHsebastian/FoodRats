@@ -44,6 +44,7 @@ class LocalAccountDataEraser(
                 Keys.MealUploadPending,
                 Keys.DraftQueueJson,
                 Keys.IngredientCatalogJson,
+                Keys.CuisineCatalogJson,
                 Keys.OutboxJson,
                 Keys.MealSyncTimestamps,
                 Keys.DefaultAudienceCrewIds,

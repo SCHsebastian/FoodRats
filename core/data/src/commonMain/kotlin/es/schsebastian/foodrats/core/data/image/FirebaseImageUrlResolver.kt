@@ -34,12 +34,14 @@ internal typealias MintUrls = suspend (crewId: String, paths: List<String>) -> M
  *    URL string is then STABLE across launches, Coil serves the already-downloaded image instead of
  *    re-fetching it from Storage (a rotated URL is a Coil cache-miss → a full re-download = egress).
  *
- * Only IMMUTABLE object paths are persisted to L2: per-meal plates (`crews/{c}/meals/{m}.jpg`) and
- * content-versioned avatars (`avatars/{uid}/{token}.jpg`). The crew banner lives at a FIXED path
- * (`crew_banners/{c}/banner.jpg`) that is overwritten in place, so a long-lived cached URL would
- * show a stale banner for days after a change — it is therefore never persisted and is held only
- * briefly in L1 ([MUTABLE_CLIENT_TTL_MS]) so a banner change surfaces quickly. Legacy unversioned
- * avatars (`avatars/{uid}.jpg`) are treated the same way.
+ * Only IMMUTABLE object paths are persisted to L2: per-meal plates (`crews/{c}/meals/{m}.jpg`),
+ * content-versioned avatars (`avatars/{uid}/{token}.jpg`), and content-versioned crew banners
+ * (`crew_banners/{c}/{token}.jpg`) — for all three the path encodes the content, so a long-lived
+ * signed URL is safe. A LEGACY fixed-path crew banner (`crew_banners/{c}/banner.jpg`, from a crew
+ * predating IMAGE-2) is overwritten in place, so a long-lived cached URL would show a stale banner
+ * for days after a change — it is therefore never persisted and is held only briefly in L1
+ * ([MUTABLE_CLIENT_TTL_MS]) so a banner change surfaces quickly. Legacy unversioned avatars
+ * (`avatars/{uid}.jpg`) are treated the same way.
  *
  * Best-effort by contract: on a backend failure it returns any still-fresh cached subset rather
  * than failing the whole call, so one flaky request can't blank an entire screen. The L2 cache is
@@ -200,9 +202,10 @@ class FirebaseImageUrlResolver internal constructor(
         const val SAFETY_MS = 60_000L
 
         /**
-         * Client-side cache lifetime for MUTABLE, fixed-path objects (crew banner, legacy avatar).
-         * Short on purpose: an in-place overwrite must surface within ~this window rather than riding
-         * the multi-day server TTL. ~Matches the old uniform behaviour for these paths.
+         * Client-side cache lifetime for MUTABLE, fixed-path objects (legacy fixed-path crew banner,
+         * legacy unversioned avatar). Short on purpose: an in-place overwrite must surface within
+         * ~this window rather than riding the multi-day server TTL. ~Matches the old uniform behaviour
+         * for these paths.
          */
         const val MUTABLE_CLIENT_TTL_MS = 10 * 60_000L
 
@@ -215,9 +218,18 @@ class FirebaseImageUrlResolver internal constructor(
         /** Content-versioned avatar: `avatars/{uid}/{token}.jpg` (immutable — token encodes content). */
         private val IMMUTABLE_AVATAR = Regex("""^avatars/[^/]+/[^/]+\.jpg$""")
 
+        /**
+         * Content-versioned crew banner: `crew_banners/{crewId}/{token}.jpg` (immutable — token
+         * encodes content). The legacy fixed `crew_banners/{crewId}/banner.jpg` shares this shape but
+         * is overwritten in place → MUTABLE, so [isImmutablePath] excludes that exact filename.
+         */
+        private val VERSIONED_BANNER = Regex("""^crew_banners/[^/]+/[^/]+\.jpg$""")
+
         /** True for object paths whose bytes never change, so a long-lived signed URL is safe to persist. */
         fun isImmutablePath(path: String): Boolean =
-            IMMUTABLE_PLATE.matches(path) || IMMUTABLE_AVATAR.matches(path)
+            IMMUTABLE_PLATE.matches(path) ||
+                IMMUTABLE_AVATAR.matches(path) ||
+                (VERSIONED_BANNER.matches(path) && !path.endsWith("/banner.jpg"))
     }
 }
 

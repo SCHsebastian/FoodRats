@@ -16,6 +16,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "FoodRatsShared"
             isStatic = true
+            binaryOption("smallBinary", "true")
         }
     }
     

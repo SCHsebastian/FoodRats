@@ -126,15 +126,18 @@ interface CrewDataSource {
     suspend fun setBannerFocalY(crewId: CrewId, focalY: Float): Result<Unit, CrewError>
 
     /**
-     * Sets the crew's banner image path (C9). [path] is the Storage object path returned by
-     * [es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource.upload].
-     * Updates only the `bannerPath` field — the `['bannerPath']` Firestore rule arm enforces this.
+     * Sets the crew's banner image path + content-version token (C9 / IMAGE-2). [path] is the
+     * content-versioned Storage object path returned by
+     * [es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource.upload] and
+     * [token] is its embedded content hash. Updates `bannerPath` AND `bannerToken` together — the
+     * `['bannerPath','bannerToken']` Firestore rule arm enforces this.
      */
-    suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError>
+    suspend fun setBannerPath(crewId: CrewId, path: String, token: String): Result<Unit, CrewError>
 
     /**
-     * Clears the crew's banner image path (C9). Passes `null` for `bannerPath`.
-     * Updates only the `bannerPath` field — the `['bannerPath']` Firestore rule arm enforces this.
+     * Clears the crew's banner (C9). Passes `null` for both `bannerPath` and `bannerToken`.
+     * Updates `bannerPath` AND `bannerToken` together — the `['bannerPath','bannerToken']` Firestore
+     * rule arm enforces this.
      */
     suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError>
 }

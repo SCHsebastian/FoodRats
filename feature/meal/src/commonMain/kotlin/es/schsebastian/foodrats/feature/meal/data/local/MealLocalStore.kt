@@ -88,7 +88,7 @@ open class MealLocalStore(
     open suspend fun upsertAll(dtos: List<MealDto>) = withContext(io) {
         val upserts = dtos.map { it.toLocalUpsert() }
         queries.transaction {
-            upserts.forEach { it.write() }
+            writeAll(upserts)
         }
     }
 
@@ -110,7 +110,7 @@ open class MealLocalStore(
             val existing = queries.mealIdsForCrewInRange(crewId, fromKey, toKey).executeAsList()
             val toDelete = existing.filterNot { it in incomingIds }
             if (toDelete.isNotEmpty()) queries.deleteMealsByIds(toDelete)
-            upserts.forEach { it.write() }
+            writeAll(upserts)
         }
     }
 
@@ -138,7 +138,7 @@ open class MealLocalStore(
      * denormalized `ratingSum`/`voterCount` from the resulting rating set, and stamp the meal
      * `pending = 1` + [idempotencyKey]. A no-op if the meal isn't held locally (nothing to render
      * against). The next server snapshot of this meal overwrites the row with `pending = 0` (see
-     * [MealUpsert.write]), auto-clearing the pending flag — no explicit reconcile call is needed.
+     * [writeAll]), auto-clearing the pending flag — no explicit reconcile call is needed.
      */
     open suspend fun applyRate(
         mealId: String,
@@ -204,8 +204,34 @@ open class MealLocalStore(
         }
     }
 
-    /** Upsert one meal row + replace its ratings. Called inside an open transaction. */
-    private fun MealUpsert.write() {
+    /**
+     * Upserts every meal row in [upserts] and re-syncs their ratings, in ONE set-based pass over the
+     * whole batch. Called inside an open transaction. A SINGLE [selectRatingsForMeals][es.schsebastian.foodrats.core.database.MealQueries.selectRatingsForMeals]
+     * over all incoming meal ids replaces the former one-query-per-meal reconcile — a 30-meal snapshot
+     * used to run ~30 ratings queries inside the replace-window transaction. Behaviour is identical to
+     * the old per-meal loop: meal ids are unique within a snapshot, so reconciling against the union of
+     * incoming `(mealId, raterId)` keys deletes/keeps exactly the same rating rows.
+     */
+    private fun writeAll(upserts: List<MealUpsert>) {
+        if (upserts.isEmpty()) return
+        upserts.forEach { it.upsertMealRow() }
+        // Re-sync the denormalized ratings across the WHOLE snapshot: a vote retracted server-side must
+        // disappear locally. ONE selectRatingsForMeals over every incoming meal id (the query takes a
+        // collection), then delete exactly the rating rows whose meal is in this batch but whose
+        // (mealId, raterId) is ABSENT from the incoming snapshot. INSERT OR REPLACE keyed on
+        // (mealId, raterId) is idempotent, so we only delete the stragglers.
+        val incomingMealIds = upserts.map { it.mealId }
+        val incomingRatingKeys = upserts.flatMapTo(HashSet()) { upsert ->
+            upsert.ratings.map { upsert.mealId to it.raterId }
+        }
+        queries.selectRatingsForMeals(incomingMealIds).executeAsList()
+            .filterNot { (it.mealId to it.raterId) in incomingRatingKeys }
+            .forEach { queries.deleteRating(it.mealId, it.raterId) }
+        upserts.forEach { it.upsertRatings() }
+    }
+
+    /** Upsert one meal row (no rating reconcile — see [writeAll]). Called inside an open transaction. */
+    private fun MealUpsert.upsertMealRow() {
         queries.upsertMeal(
             mealId = mealId,
             crewId = crewId,
@@ -230,13 +256,10 @@ open class MealLocalStore(
             pending = pending,
             idempotencyKey = idempotencyKey,
         )
-        // Re-sync the denormalized ratings: a vote retracted server-side must disappear locally.
-        // selectRatingsForMeals + diff would be cheaper, but the snapshot count is tiny and INSERT
-        // OR REPLACE keyed on (mealId, raterId) is idempotent; we only delete the stragglers.
-        val incomingRaterIds = ratings.map { it.raterId }.toSet()
-        queries.selectRatingsForMeals(listOf(mealId)).executeAsList()
-            .filterNot { it.raterId in incomingRaterIds }
-            .forEach { queries.deleteRating(mealId, it.raterId) }
+    }
+
+    /** Upsert this meal's incoming rating rows (INSERT OR REPLACE, idempotent). Inside a transaction. */
+    private fun MealUpsert.upsertRatings() {
         ratings.forEach { r ->
             queries.upsertRating(
                 mealId = mealId,

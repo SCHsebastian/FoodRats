@@ -19,8 +19,12 @@ import kotlinx.coroutines.flow.Flow
  */
 internal interface CommentFirestore {
 
-    /** Live list of every comment doc on a meal, oldest first. Re-emits on any add/delete. */
-    fun observe(crewId: CrewId, mealId: MealId): Flow<List<CommentDto>>
+    /**
+     * Live comment docs on a meal, oldest first, bounded to the newest [limit] (FIREST-2). Re-emits on
+     * any add/delete within the window. The implementation fetches the newest page (DESC + limit) then
+     * restores ascending order, so the returned list is always chronological regardless of [limit].
+     */
+    fun observe(crewId: CrewId, mealId: MealId, limit: Int): Flow<List<CommentDto>>
 
     /** Writes a new comment doc at the client-minted [CommentDto.id] (offline-replay idempotency). */
     suspend fun create(crewId: CrewId, mealId: MealId, dto: CommentDto)

@@ -217,7 +217,7 @@ private class FakeCrewListSource : CrewDataSource {
     override suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setWeeklyChallenge(crewId: CrewId, challenge: String?, setAtMillis: Long?): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setScoreStyle(crewId: CrewId, style: String): Result<Unit, CrewError> = Result.success(Unit)
-    override suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError> = Result.success(Unit)
+    override suspend fun setBannerPath(crewId: CrewId, path: String, token: String): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setBannerFocalY(crewId: CrewId, focalY: Float): Result<Unit, CrewError> = Result.success(Unit)
 }

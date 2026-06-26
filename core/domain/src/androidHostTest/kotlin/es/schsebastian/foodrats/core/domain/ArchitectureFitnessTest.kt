@@ -33,7 +33,7 @@ class ArchitectureFitnessTest {
     // ---------------------------------------------------------------------------------------------
     @Test
     fun feature_does_not_import_another_feature() {
-        Konsist.scopeFromProject()
+        scope
             .files
             .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.packagee?.name?.let(::featureSegmentOf) != null }
@@ -57,7 +57,7 @@ class ArchitectureFitnessTest {
     // ---------------------------------------------------------------------------------------------
     @Test
     fun usecases_and_viewmodels_do_not_switch_dispatchers() {
-        Konsist.scopeFromProject()
+        scope
             .files
             .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.hasPackage("..domain.usecase..") || file.hasPackage("..presentation..") }
@@ -76,7 +76,7 @@ class ArchitectureFitnessTest {
     // ---------------------------------------------------------------------------------------------
     @Test
     fun designsystem_does_not_import_domain_or_firebase() {
-        Konsist.scopeFromProject()
+        scope
             .files
             .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.hasPackage("es.schsebastian.foodrats.core.designsystem..") }
@@ -101,7 +101,7 @@ class ArchitectureFitnessTest {
     // ---------------------------------------------------------------------------------------------
     @Test
     fun feature_ui_has_no_hardcoded_text_literals() {
-        Konsist.scopeFromProject()
+        scope
             .files
             .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.hasPackage("..feature..presentation..") }
@@ -125,8 +125,6 @@ class ArchitectureFitnessTest {
     // ---------------------------------------------------------------------------------------------
     @Test
     fun every_public_designsystem_composable_has_catalog_entry() {
-        val scope = Konsist.scopeFromProject()
-
         val publicComposables = scope
             .files
             .filterNot(::isNonSourceSnapshot)
@@ -180,7 +178,7 @@ class ArchitectureFitnessTest {
     // ---------------------------------------------------------------------------------------------
     @Test
     fun outbox_command_handlers_register_with_distinct_qualifiers() {
-        val bindings = Konsist.scopeFromProject()
+        val bindings = scope
             .files
             .filterNot(::isNonSourceSnapshot)
             // Real bindings live in feature `commonMain` DI modules, never in test sources.
@@ -250,6 +248,15 @@ class ArchitectureFitnessTest {
             fn.hasAnnotation { ann -> ann.name.contains("Preview") }
 
     private companion object {
+        /**
+         * `Konsist.scopeFromProject()` re-parses the WHOLE repository tree, which is the dominant
+         * cost of this test class. Build it ONCE and reuse it across every rule below: the scope is
+         * immutable and queried (never mutated) by each assertion, so a single parse is equivalent
+         * to per-test re-parsing but avoids paying the walk 6 times in the forked 2G test JVM.
+         * `lazy` so the parse happens only when the first rule runs, not at class load.
+         */
+        val scope by lazy { Konsist.scopeFromProject() }
+
         private val FEATURE_SEGMENT =
             Regex("""es\.schsebastian\.foodrats\.feature\.([a-z0-9]+)""")
 

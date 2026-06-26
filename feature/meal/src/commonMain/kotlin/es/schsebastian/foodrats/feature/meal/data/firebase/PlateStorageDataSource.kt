@@ -5,6 +5,13 @@ import dev.gitlive.firebase.storage.storageMetadata
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
+/**
+ * `Cache-Control` for the immutable, content-addressed plate object (30-day max-age + `immutable`).
+ * Safe ONLY because the plate path embeds the photo-hash token, so the bytes never change at a
+ * given path; the fixed-path crew banner deliberately does NOT get this header.
+ */
+private const val IMMUTABLE_PLATE_CACHE_CONTROL = "public, max-age=2592000, immutable"
+
 internal class PlateStorageDataSource(
     private val storage: FirebaseStorage,
     private val compressor: PlateCompressor = PlateCompressor(),
@@ -38,7 +45,14 @@ internal class PlateStorageDataSource(
         val bytes = compressor.compress(plate.photoBytes)
         storage.reference(path).putData(
             data = bytes.toStorageData(),
-            metadata = storageMetadata { contentType = "image/jpeg" },
+            metadata = storageMetadata {
+                contentType = "image/jpeg"
+                // The plate path is content-addressed (`mealId` = photo-hash token) so the bytes
+                // here NEVER change — mark it immutable so a memory-evicted image serves from the
+                // HTTP/disk cache instead of re-downloading (IMAGE-6). The server trigger
+                // (`onPlateImageFinalized`) back-fills the same header for older clients.
+                cacheControl = IMMUTABLE_PLATE_CACHE_CONTROL
+            },
         )
         return path
     }

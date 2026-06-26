@@ -14,6 +14,13 @@ import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
 
+/**
+ * FIREST-2 comment page size: the initial bound on the live comment listener, and the increment each
+ * "load older" tap adds. Lives here so [MealDetailState.commentLimit]'s default and the ViewModel's
+ * expand step stay in lockstep.
+ */
+internal const val MEAL_DETAIL_COMMENT_PAGE_SIZE = 50
+
 data class MealDetailState(
     val meal: FeedMealUi? = null,
     val isLoading: Boolean = true,
@@ -32,6 +39,13 @@ data class MealDetailState(
     val commentRows: List<CommentRowUi> = emptyList(),
     val commentsLoading: Boolean = true,
     val commentReadError: CommentError.Read? = null,
+    /**
+     * FIREST-2: upper bound on the live comment listener. The newest [commentLimit] comments are
+     * streamed; [MealDetailIntent.LoadOlderComments] raises it by [MEAL_DETAIL_COMMENT_PAGE_SIZE] to
+     * page in older ones. Single source of truth — the ViewModel derives the listener's limit from
+     * this field, never from a parallel flow.
+     */
+    val commentLimit: Int = MEAL_DETAIL_COMMENT_PAGE_SIZE,
     val commentInput: String = "",
     val isPostingComment: Boolean = false,
     val commentWriteError: CommentError.Write? = null,
@@ -101,6 +115,9 @@ sealed interface MealDetailIntent : MviIntent {
     data object DismissError : MealDetailIntent
     data class CommentInputChanged(val value: String) : MealDetailIntent
     data object PostComment : MealDetailIntent
+
+    /** FIREST-2: raise the comment listener bound by one page to reveal older comments. */
+    data object LoadOlderComments : MealDetailIntent
 
     /** Enter inline edit mode for the viewer's own comment, pre-filling the field with its text. */
     data class StartEditComment(val id: MealCommentId) : MealDetailIntent

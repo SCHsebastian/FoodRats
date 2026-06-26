@@ -105,6 +105,14 @@ data class FeedState(
      */
     val bannerImageUrl: String? = null,
     /**
+     * Stable Coil cache key for the banner (IMAGE-2): the content-versioned Storage object path, or
+     * `""` for a legacy fixed-path banner / no banner / unreadable crew (fall back to URL keying).
+     * Keying Coil on this immutable path lets the cached bytes survive the banner's signed-URL
+     * rotation. Derived from
+     * [es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort.observeBannerCacheKey].
+     */
+    val bannerCacheKey: String = "",
+    /**
      * Active crew's banner vertical focal point (C9), `0f..1f` (top..bottom). Drives the fixed-height
      * hero crop's [androidx.compose.ui.BiasAlignment] so it shows the slice the owner chose. Defaults
      * to `0.5f` (center). Derived from

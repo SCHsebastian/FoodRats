@@ -94,7 +94,7 @@ class OutboxRunnerTest {
         val box = outbox()
         box.enqueue(rateCommand())
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy())
 
         val drained = runner.runOnce(scope = null)
 
@@ -108,7 +108,7 @@ class OutboxRunnerTest {
         val box = outbox()
         box.enqueue(rateCommand())
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.AlreadyApplied))
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy())
 
         val drained = runner.runOnce(scope = null)
 
@@ -127,7 +127,7 @@ class OutboxRunnerTest {
         val box = outbox()
         val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Retryable("rate.offline")))
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
 
         val drained = runner.runOnce(scope = null)
 
@@ -148,7 +148,7 @@ class OutboxRunnerTest {
         val box = outbox()
         val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Retryable("rate.offline")))
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
 
         val drained = runner.runOnce(scope = this) // non-null scope = in-process path
 
@@ -169,7 +169,7 @@ class OutboxRunnerTest {
             listOf(OutboxExecuteResult.Retryable("rate.offline"), OutboxExecuteResult.Retryable("rate.offline")),
         )
         // maxAttempts = 2 → after 2 failed attempts the entry is terminal.
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
 
         runner.runOnce(scope = null) // attempt 1 → Failed(retryable = true)
         box.rearm(id)                 // backoff elapsed (proxy)
@@ -189,7 +189,7 @@ class OutboxRunnerTest {
         val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Terminal("rate.unauthorized")))
         // maxAttempts high — a Terminal result must NOT consult the budget; it's terminal at once.
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
 
         val drained = runner.runOnce(scope = null)
 
@@ -210,7 +210,7 @@ class OutboxRunnerTest {
             override fun handles(cmd: PendingCommand): Boolean = false
             override suspend fun execute(cmd: PendingCommand) = OutboxExecuteResult.Success
         }
-        val runner = OutboxRunner(box, listOf(unrelated), FakeConnectivity(), OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(unrelated) }, FakeConnectivity(), OutboxRetryPolicy())
 
         val drained = runner.runOnce(scope = null)
 
@@ -232,7 +232,7 @@ class OutboxRunnerTest {
             }
         }
         val accepts = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
-        val runner = OutboxRunner(box, listOf(refuses, accepts), FakeConnectivity(), OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(refuses, accepts) }, FakeConnectivity(), OutboxRetryPolicy())
 
         runner.runOnce(scope = null)
 
@@ -261,7 +261,7 @@ class OutboxRunnerTest {
             ),
         )
         val policy = OutboxRetryPolicy(maxAttempts = 2)
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), policy)
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), policy)
 
         runner.runOnce(scope = null)          // attempt 1 → Failed(retryable = true)
         box.rearm(id)                          // proxy elapsed backoff
@@ -279,7 +279,7 @@ class OutboxRunnerTest {
 
         // Next drain: handler gets a fresh scripted outcome (success this time).
         val finalHandler = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
-        val runner2 = OutboxRunner(box, listOf(finalHandler), FakeConnectivity(), policy)
+        val runner2 = OutboxRunner(box, { listOf(finalHandler) }, FakeConnectivity(), policy)
         runner2.runOnce(scope = null)
 
         assertTrue(box.observePending().first().isEmpty(), "after success the entry must be removed")
@@ -305,7 +305,7 @@ class OutboxRunnerTest {
                 OutboxExecuteResult.Terminal("rate.unauthorized")
             override suspend fun onTerminal(command: PendingCommand) { onTerminalCalls += command }
         }
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy())
 
         runner.runOnce(scope = null)
 
@@ -324,7 +324,7 @@ class OutboxRunnerTest {
                 OutboxExecuteResult.Retryable("rate.offline")
             override suspend fun onTerminal(command: PendingCommand) { onTerminalCalls += command }
         }
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
 
         runner.runOnce(scope = null) // attempt 1 → retryable
         box.rearm(id)
@@ -347,7 +347,7 @@ class OutboxRunnerTest {
         val box = outbox()
         val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Retryable("rate.offline")))
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
 
         val drained = runner.runOnce(scope = null)
 
@@ -367,7 +367,7 @@ class OutboxRunnerTest {
                 OutboxExecuteResult.Retryable("rate.offline"),
             ),
         )
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 2))
 
         // Worker wakeup 1: attempt 1 → re-armed to Pending.
         val stillWork1 = runner.runOnce(scope = null)
@@ -388,7 +388,7 @@ class OutboxRunnerTest {
     fun observePending_reflects_a_pending_entry_then_its_drain() = runTest {
         val box = outbox()
         val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy())
 
         // Enqueue first, then observe — the store flow emits the latest value on subscribe, so the
         // pending entry is the first item Turbine sees.
@@ -420,7 +420,7 @@ class OutboxRunnerTest {
                 Result.Ok(false)
         }
 
-        val runner = OutboxRunner(portThatDeniesClaim, listOf(handler), FakeConnectivity(), OutboxRetryPolicy())
+        val runner = OutboxRunner(portThatDeniesClaim, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy())
         runner.runOnce(scope = null)
 
         assertEquals(0, handler.executeCount, "execute must not be called when CAS claim returns false")
@@ -473,7 +473,7 @@ class OutboxRunnerTest {
             }
         }
 
-        val runner = OutboxRunner(box, listOf(handler), FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
         runner.runOnce(scope = null)
 
         assertEquals(1, postExecuted, "PostComment must execute once")
@@ -505,7 +505,7 @@ class OutboxRunnerTest {
         // The handler succeeds on every call — measure how many times it executes.
         val handler = ScriptedRateHandler(List(10) { OutboxExecuteResult.Success })
         val conn = FlowConnectivity()
-        val runner = OutboxRunner(box, listOf(handler), conn, OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(handler) }, conn, OutboxRetryPolicy())
 
         // Use backgroundScope so the long-lived launchIn coroutines don't prevent runTest from
         // completing. backgroundScope is auto-cancelled when the test body finishes.
@@ -544,7 +544,7 @@ class OutboxRunnerTest {
 
         val handler = ScriptedRateHandler(List(5) { OutboxExecuteResult.Success })
         val conn = FlowConnectivity()
-        val runner = OutboxRunner(box, listOf(handler), conn, OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(handler) }, conn, OutboxRetryPolicy())
 
         // Launch start on backgroundScope so the long-lived flows don't prevent runTest from completing.
         runner.start(backgroundScope)
@@ -581,7 +581,7 @@ class OutboxRunnerTest {
         // Offline: connectivity trigger cannot fire (stays false throughout test).
         val conn = FlowConnectivity()
         conn.state.value = false
-        val runner = OutboxRunner(box, listOf(handler), conn, OutboxRetryPolicy())
+        val runner = OutboxRunner(box, { listOf(handler) }, conn, OutboxRetryPolicy())
 
         runner.start(backgroundScope)
         advanceTimeBy(100)

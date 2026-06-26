@@ -23,7 +23,8 @@ fun analyticsAndroidModule(context: Context, debug: Boolean) = module {
             NoopAnalyticsTracker
         } else {
             ConsentGatedAnalytics(
-                delegate = FirebaseAnalyticsTracker(FirebaseAnalytics.getInstance(context)),
+                // Defer getInstance(context) to first use (post-consent), not startKoin.
+                delegate = FirebaseAnalyticsTracker { FirebaseAnalytics.getInstance(context) },
                 consent = get(),
             )
         }

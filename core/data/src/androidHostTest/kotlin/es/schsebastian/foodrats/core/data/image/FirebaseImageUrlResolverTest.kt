@@ -56,6 +56,7 @@ class FirebaseImageUrlResolverTest {
     private val versionedAvatar = "avatars/alice/9f3c1a2b.jpg"
     private val legacyAvatar = "avatars/bob.jpg"
     private val banner = "crew_banners/c1/banner.jpg"
+    private val versionedBanner = "crew_banners/c1/9f3c1a2b.jpg"
 
     private val sixDaysMs = 6L * 24 * 60 * 60 * 1000
 
@@ -95,13 +96,34 @@ class FirebaseImageUrlResolverTest {
         val prefs = AppPreferences(FakeDataStore())
         val resolver = FirebaseImageUrlResolver(dispatchers, clock, prefs, json, rec.mint)
 
-        resolver.resolve(crew, listOf(plate, versionedAvatar, legacyAvatar, banner)).getOrNull()
+        resolver.resolve(crew, listOf(plate, versionedAvatar, legacyAvatar, banner, versionedBanner)).getOrNull()
 
         val persisted = prefs.observe(Keys.PlateUrlCacheJson).first() ?: ""
         assertTrue(plate in persisted, "per-meal plate persisted")
         assertTrue(versionedAvatar in persisted, "content-versioned avatar persisted")
+        assertTrue(versionedBanner in persisted, "content-versioned banner persisted (IMAGE-2)")
         assertFalse(banner in persisted, "fixed-path banner must NOT be persisted")
         assertFalse(legacyAvatar in persisted, "legacy unversioned avatar must NOT be persisted")
+    }
+
+    @Test
+    fun cold_start_reuses_a_persisted_versioned_banner_url_without_re_minting() = runTest {
+        val clock = clockAt(1_000_000_000_000)
+        val prefs = AppPreferences(FakeDataStore())
+
+        // First process: mint + persist the content-versioned banner (IMAGE-2 — immutable path).
+        val rec1 = RecordingMint({ clock.now().toEpochMilliseconds() }, sixDaysMs)
+        val original = FirebaseImageUrlResolver(dispatchers, clock, prefs, json, rec1.mint)
+            .resolve(crew, listOf(versionedBanner)).getOrNull()?.get(versionedBanner)
+
+        // Second process: fresh in-memory cache, SAME prefs → must serve from L2 with the SAME URL,
+        // so Coil disk-cache hits and the banner is NOT re-downloaded (the whole point of IMAGE-2).
+        val rec2 = RecordingMint({ clock.now().toEpochMilliseconds() }, sixDaysMs)
+        val afterRestart = FirebaseImageUrlResolver(dispatchers, clock, prefs, json, rec2.mint)
+            .resolve(crew, listOf(versionedBanner)).getOrNull()?.get(versionedBanner)
+
+        assertEquals(0, rec2.calls, "versioned banner persisted → cold start must reuse it, not re-mint")
+        assertEquals(original, afterRestart, "same (un-rotated) URL after restart → no re-download")
     }
 
     @Test

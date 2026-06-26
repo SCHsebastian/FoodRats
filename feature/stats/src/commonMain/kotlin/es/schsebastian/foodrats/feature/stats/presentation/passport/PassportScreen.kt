@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -105,7 +106,10 @@ private fun CollectionGrid(passport: CuisinePassport?, bingo: IngredientBingo?) 
                 .orEmpty()
         }
 
+    val gridState = rememberLazyGridState()
+
     LazyVerticalGrid(
+        state = gridState,
         columns = GridCells.Fixed(GRID_COLUMNS),
         modifier = Modifier.fillMaxSize().statusBarsPadding().frSafeHorizontalPadding().frContentWidth(Breakpoints.contentMax),
         contentPadding = PaddingValues(start = Spacing.lg, top = Spacing.lg, end = Spacing.lg, bottom = DOCK_CLEARANCE),
@@ -131,7 +135,7 @@ private fun CollectionGrid(passport: CuisinePassport?, bingo: IngredientBingo?) 
                 items = passport.cells,
                 key = { _, it -> "cuisine:${it.cuisine.slug.value}" },
             ) { index, cell ->
-                FrCuisineFlagCell(cell = cell, modifier = Modifier.stampIn(order = index))
+                FrCuisineFlagCell(cell = cell, modifier = Modifier.stampIn(order = index, isScrolling = { gridState.isScrollInProgress }))
             }
         }
 
@@ -150,7 +154,7 @@ private fun CollectionGrid(passport: CuisinePassport?, bingo: IngredientBingo?) 
                     items = specimens,
                     key = { _, it -> "ingredient:${it.cell.ingredient.slug.value}" },
                 ) { index, specimen ->
-                    FrPokedexCell(cell = specimen.cell, index = specimen.index, modifier = Modifier.stampIn(order = index))
+                    FrPokedexCell(cell = specimen.cell, index = specimen.index, modifier = Modifier.stampIn(order = index, isScrolling = { gridState.isScrollInProgress }))
                 }
             }
         }
@@ -169,9 +173,16 @@ private fun LazyGridScope.fullSpan(key: String, content: @Composable () -> Unit)
  * page. Staggered left-to-right per row.
  */
 @Composable
-private fun Modifier.stampIn(order: Int): Modifier {
+private fun Modifier.stampIn(order: Int, isScrolling: () -> Boolean): Modifier {
     val anim = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
+        // Cells that first compose mid-fling reveal instantly — running the spring + 3-D hardware
+        // layer for every cell entering the viewport during a fling is what drops frames. Stamp only
+        // for cells composed while the grid is at rest (initial paint + after settle).
+        if (isScrolling()) {
+            anim.snapTo(1f)
+            return@LaunchedEffect
+        }
         kotlinx.coroutines.delay((order % GRID_COLUMNS) * 55L)
         anim.animateTo(
             targetValue = 1f,

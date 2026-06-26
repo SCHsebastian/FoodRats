@@ -347,8 +347,14 @@ class FakeCrewRepository(
         val crew = crews.value.firstOrNull { it.id == crewId }
             ?: return Result.failure(CrewError.Membership.NotFound)
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
+        // Mirror production: a content-versioned path + matching token (IMAGE-2).
+        val token = bytes.contentHashCode().toUInt().toString(16)
         crews.value = crews.value.map {
-            if (it.id == crewId) it.copy(bannerPath = "crew_banners/${crewId.value}/banner.jpg") else it
+            if (it.id == crewId) {
+                it.copy(bannerPath = "crew_banners/${crewId.value}/$token.jpg", bannerToken = token)
+            } else {
+                it
+            }
         }
         return Result.success(Unit)
     }
@@ -362,7 +368,7 @@ class FakeCrewRepository(
             ?: return Result.failure(CrewError.Membership.NotFound)
         if (requestedBy != crew.ownerId) return Result.failure(CrewError.Authorization.NotOwner)
         crews.value = crews.value.map {
-            if (it.id == crewId) it.copy(bannerPath = null) else it
+            if (it.id == crewId) it.copy(bannerPath = null, bannerToken = null) else it
         }
         return Result.success(Unit)
     }

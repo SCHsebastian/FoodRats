@@ -313,6 +313,35 @@ android {
                 // single-ABI APK is ever needed.
             }
         }
+        // -------------------------------------------------------------------
+        // Macrobenchmark / Baseline Profile target (STARTUP-4).
+        //
+        // A release-like build the :baselineprofile module drives to record the startup profile
+        // and measure cold start, but debug-signed + debuggable so it installs locally and is
+        // profileable without store credentials. matchingFallbacks lets the :baselineprofile
+        // `com.android.test` variant resolve against this app's `release` dependencies.
+        //
+        // minify/shrink are OFF: the recorded profile rules must be unobfuscated, and turning R8
+        // off also means the `release`-scoped StripImagePickerShutter CLASSES transform (and the
+        // Crashlytics mapping upload) never run here — so a benchmark build needs no Firebase creds.
+        //
+        // SECURITY: this is the ONLY build type that compiles androidApp/src/benchmark/, which holds
+        // the fake-session backdoor (BenchmarkBackdoorInstaller + the Koin override that fakes
+        // SessionProvider / ActiveCrewProvider / MealReadPort so the app boots to an authed Feed with
+        // no Google Sign-In). It is debug-signed and must NEVER be published — the backdoor is
+        // unreachable from `release` and `debug`.
+        // -------------------------------------------------------------------
+        create("benchmark") {
+            initWith(getByName("release"))
+            isMinifyEnabled = false
+            isShrinkResources = false
+            isDebuggable = true
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+            // With minify off there is no mapping file to upload; make it explicit so the
+            // Crashlytics Gradle plugin never demands Firebase credentials for a benchmark build.
+            configure<CrashlyticsExtension> { mappingFileUploadEnabled = false }
+        }
     }
     buildFeatures {
         buildConfig = true
@@ -323,24 +352,26 @@ android {
     }
 }
 
-// Local dev: dump debug-keystore SHA fingerprints to a file during build so we
-// can paste them into Firebase Console. Safe to remove after registering.
-val printDebugSha = tasks.register<Exec>("printDebugSha") {
-    val outFile = layout.buildDirectory.file("debug-sha.txt").get().asFile
-    outputs.file(outFile)
-    commandLine(
-        "keytool", "-list", "-v",
-        "-keystore", "${System.getProperty("user.home")}/.android/debug.keystore",
-        "-alias", "androiddebugkey",
-        "-storepass", "android",
-        "-keypass", "android",
-    )
-    doFirst {
-        outFile.parentFile.mkdirs()
-        standardOutput = outFile.outputStream()
+// Local dev helper: dump debug-keystore SHA fingerprints to a file during build so we can paste
+// them into Firebase Console. OPT-IN ONLY (BUILD-3): the task is registered and wired onto preBuild
+// solely when the `-PprintDebugSha` Gradle property is present, so normal and CI builds never
+// realize an Exec task that shells out to `keytool`. Wiring is lazy (tasks.register + tasks.named,
+// no afterEvaluate / findByName). Safe to remove after registering.
+if (providers.gradleProperty("printDebugSha").isPresent) {
+    val printDebugSha = tasks.register<Exec>("printDebugSha") {
+        val outFile = layout.buildDirectory.file("debug-sha.txt").get().asFile
+        outputs.file(outFile)
+        commandLine(
+            "keytool", "-list", "-v",
+            "-keystore", "${System.getProperty("user.home")}/.android/debug.keystore",
+            "-alias", "androiddebugkey",
+            "-storepass", "android",
+            "-keypass", "android",
+        )
+        doFirst {
+            outFile.parentFile.mkdirs()
+            standardOutput = outFile.outputStream()
+        }
     }
-}
-
-afterEvaluate {
-    if (System.getenv("CI") == null) tasks.findByName("preBuild")?.dependsOn(printDebugSha)
+    tasks.named("preBuild") { dependsOn(printDebugSha) }
 }

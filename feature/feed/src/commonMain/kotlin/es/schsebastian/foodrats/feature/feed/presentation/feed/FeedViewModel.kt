@@ -221,6 +221,7 @@ class FeedViewModel(
         observeWeeklyChallengeBanner()
         observeScoreStyle()
         observeBannerImageUrl()
+        observeBannerCacheKey()
         observeBannerFocalY()
     }
 
@@ -441,6 +442,24 @@ class FeedViewModel(
             }
             .distinctUntilChanged()
             .onEach { url -> update { it.copy(bannerImageUrl = url) } }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * Observes the active crew's stable banner cache key (IMAGE-2). Re-subscribes on crew switch; a
+     * null crew emits `""`. Feeds [FeedState.bannerCacheKey], which keys Coil on the content-versioned
+     * Storage path so the cached banner bytes survive the signed-URL rotation (no re-download).
+     */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    private fun observeBannerCacheKey() {
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf("")
+                else welcomePort.observeBannerCacheKey(crewId)
+            }
+            .distinctUntilChanged()
+            .onEach { key -> update { it.copy(bannerCacheKey = key) } }
             .launchIn(viewModelScope)
     }
 
@@ -685,5 +704,6 @@ private object NoopCrewWelcomePort : CrewWelcomePort {
     override fun observeWeeklyChallenge(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
     override fun observeScoreStyle(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
     override fun observeBannerImageUrl(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String?> = flowOf(null)
+    override fun observeBannerCacheKey(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String> = flowOf("")
     override fun observeBannerFocalY(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<Float> = flowOf(0.5f)
 }

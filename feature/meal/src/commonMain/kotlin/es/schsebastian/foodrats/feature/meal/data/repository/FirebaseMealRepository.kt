@@ -131,6 +131,13 @@ internal class FirebaseMealRepository(
         to: MealDay,
     ): Flow<List<MealWithRatings>> =
         local.observeRange(crewId.value, from.toKey(), to.toKey())
+            // SQLDelight query listeners are table-scoped: selectRangeByCrew re-emits an EQUAL
+            // List<LocalMeal> on ANY meal-table write (a different crew's sync, an optimistic rate
+            // elsewhere, the pruner). LocalMeal/LocalRating are data classes (exact structural
+            // equality), so deduping at the source drops the redundant enrichment below
+            // (flatMapLatest restart → observeMany cancel + imageUrls.resolve re-issue) AND keeps
+            // the existing observeMany subscription alive — strictly better than a terminal dedupe.
+            .distinctUntilChanged()
             .map { rows -> rows.map { it.toMealDto() } }
             .flatMapLatest { dtos ->
                 val ids = dtos.flatMap { dto ->

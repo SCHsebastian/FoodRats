@@ -35,9 +35,18 @@ data class CrewDto(
     // value "stars" is a valid allowed string, so the initial create write is always permitted.
     val scoreStyle: String = "stars",
     // Owner-settable hero/banner image Storage path (C9). `null` means no banner is set.
+    // Content-versioned (`crew_banners/{crewId}/{token}.jpg`) for banners set after IMAGE-2; a legacy
+    // fixed `crew_banners/{crewId}/banner.jpg` for crews predating it.
     // Null-pinned so GitLive encodeDefaults=true doesn't emit `null` and fail an affectedKeys check it
     // was not part of (same GitLive regression guard as `tagline`, `welcomeMessage`, etc.).
     val bannerPath: String? = null,
+    // Content-version token of the current banner (IMAGE-2) — the same hash that names the object in
+    // [bannerPath]. `null` ⇒ no banner OR a legacy fixed-path banner (pre-IMAGE-2 crew) whose path is
+    // overwritten in place and must NOT be treated as immutable. Non-null ⇒ `bannerPath` is the
+    // content-versioned, upload-immutable path, so the resolver may persist its signed URL and the UI
+    // may key Coil on the stable path. Written together with `bannerPath` on every set/clear.
+    // Null-pinned for the same GitLive encodeDefaults reason as the other optional fields above.
+    val bannerToken: String? = null,
     // Owner-settable vertical focal point for the banner crop (C9), 0..1 (top..bottom). Firestore
     // stores numbers as doubles. `null` means unset ⇒ 0.5 (center) on read. Null-pinned for the same
     // GitLive encodeDefaults reason as the other optional fields above.

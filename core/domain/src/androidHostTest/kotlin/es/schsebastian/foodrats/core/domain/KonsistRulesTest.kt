@@ -7,7 +7,7 @@ import kotlin.test.Test
 
 class KonsistRulesTest {
     @Test fun core_domain_does_not_import_android_or_firebase() {
-        Konsist.scopeFromModule("core/domain")
+        scope
             .files
             .withPackage("es.schsebastian.foodrats.core.domain..")
             .assertFalse { file ->
@@ -21,5 +21,13 @@ class KonsistRulesTest {
                     imp.name.startsWith("app.cash.sqldelight")
                 }
             }
+    }
+
+    private companion object {
+        /**
+         * Module scope built ONCE and reused across this class's assertion(s). `scopeFromModule`
+         * re-parses `:core:domain` on every call; `lazy` defers the parse to first use.
+         */
+        val scope by lazy { Konsist.scopeFromModule("core/domain") }
     }
 }

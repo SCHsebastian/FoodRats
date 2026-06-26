@@ -26,8 +26,10 @@ import { logger } from "firebase-functions/v2";
  * Revocation trade-off: a URL already minted by a member who is later removed from the crew stays
  * fetchable until it expires (≤6 days). Acceptable here — these are closed-crew food photos the
  * member could already see, and membership is still enforced at MINT time (a removed member cannot
- * mint new URLs). The client persists only immutable paths (plates, content-versioned avatars); the
- * fixed-path crew banner is kept on a short client-side TTL so a banner change still surfaces fast.
+ * mint new URLs). The client persists only immutable paths (plates, content-versioned avatars, and
+ * content-versioned crew banners `crew_banners/{c}/{token}.jpg`); a LEGACY fixed-path crew banner
+ * (`crew_banners/{c}/banner.jpg`) is kept on a short client-side TTL so a banner change still
+ * surfaces fast.
  */
 export const URL_TTL_MS = 6 * 24 * 60 * 60 * 1000;
 
@@ -57,7 +59,8 @@ export type SignReadUrl = (path: string, expiresAtMs: number) => Promise<string>
  *  - plate photos under this crew: `crews/{crewId}/meals/*.jpg`
  *  - avatars of accounts that are members of this crew: content-versioned
  *    `avatars/{memberUid}/{token}.jpg` (and the legacy fixed `avatars/{memberUid}.jpg`)
- *  - the crew banner (C9): `crew_banners/{crewId}/banner.jpg`
+ *  - the crew banner (C9 / IMAGE-2): content-versioned `crew_banners/{crewId}/{token}.jpg`
+ *    (and the legacy fixed `crew_banners/{crewId}/banner.jpg`)
  * Anything else is silently dropped (a stale/foreign path must not break a whole screen).
  */
 export function authorizedPaths(
@@ -67,7 +70,7 @@ export function authorizedPaths(
 ): string[] {
   const members = new Set(memberIds);
   const platePrefix = `crews/${crewId}/meals/`;
-  const bannerPath = `crew_banners/${crewId}/banner.jpg`;
+  const bannerPrefix = `crew_banners/${crewId}/`;
   const seen = new Set<string>();
   const out: string[] = [];
   for (const p of paths) {
@@ -77,7 +80,9 @@ export function authorizedPaths(
     // uid is the first segment; an optional `/{token}` segment carries the content version.
     const avatar = /^avatars\/([^/]+)(?:\/[^/]+)?\.jpg$/.exec(p);
     const isMemberAvatar = avatar !== null && members.has(avatar[1]);
-    const isBanner = p === bannerPath;
+    // The object name (`banner.jpg` legacy, or `{token}.jpg` versioned) is a single segment under
+    // this crew's banner prefix — `startsWith` + the `.jpg` suffix covers both without listing both.
+    const isBanner = p.startsWith(bannerPrefix) && p.endsWith(".jpg") && !p.slice(bannerPrefix.length).includes("/");
     if (isPlate || isMemberAvatar || isBanner) out.push(p);
   }
   return out;

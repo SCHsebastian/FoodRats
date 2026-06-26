@@ -24,10 +24,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
@@ -282,15 +282,29 @@ fun MealDetailScreen(
 
 /** Resolves the report-reason labels for [FrReportSheet], Child-safety first (UGC compliance §4). */
 @Composable
-private fun reportReasonLabels(): Map<FrReportReasonOption, String> = mapOf(
-    FrReportReasonOption.CHILD_SAFETY to resolve(FeedStringKey.ReportReasonChildSafety),
-    FrReportReasonOption.SPAM       to resolve(FeedStringKey.ReportReasonSpam),
-    FrReportReasonOption.HARASSMENT to resolve(FeedStringKey.ReportReasonHarassment),
-    FrReportReasonOption.HATE       to resolve(FeedStringKey.ReportReasonHate),
-    FrReportReasonOption.SEXUAL     to resolve(FeedStringKey.ReportReasonSexual),
-    FrReportReasonOption.VIOLENCE   to resolve(FeedStringKey.ReportReasonViolence),
-    FrReportReasonOption.OTHER      to resolve(FeedStringKey.ReportReasonOther),
-)
+private fun reportReasonLabels(): Map<FrReportReasonOption, String> {
+    // resolve() is a composable read (locale-dependent), so call each one in composition; only the
+    // Map construction is hoisted into remember, keyed on the resolved strings. The map is rebuilt
+    // exactly when a label changes (e.g. locale switch) and reused across all other recompositions.
+    val childSafety = resolve(FeedStringKey.ReportReasonChildSafety)
+    val spam = resolve(FeedStringKey.ReportReasonSpam)
+    val harassment = resolve(FeedStringKey.ReportReasonHarassment)
+    val hate = resolve(FeedStringKey.ReportReasonHate)
+    val sexual = resolve(FeedStringKey.ReportReasonSexual)
+    val violence = resolve(FeedStringKey.ReportReasonViolence)
+    val other = resolve(FeedStringKey.ReportReasonOther)
+    return remember(childSafety, spam, harassment, hate, sexual, violence, other) {
+        mapOf(
+            FrReportReasonOption.CHILD_SAFETY to childSafety,
+            FrReportReasonOption.SPAM       to spam,
+            FrReportReasonOption.HARASSMENT to harassment,
+            FrReportReasonOption.HATE       to hate,
+            FrReportReasonOption.SEXUAL     to sexual,
+            FrReportReasonOption.VIOLENCE   to violence,
+            FrReportReasonOption.OTHER      to other,
+        )
+    }
+}
 
 /** Space reserved so the last content clears the sticky composer. */
 private val COMPOSER_CLEARANCE = Sizes.touchTarget + Spacing.xl
@@ -377,6 +391,9 @@ private fun MealDetailBody(
 ) {
     val meal = state.meal ?: return
     val headHeight = rememberHeadHeight()
+    // FIREST-2: the live comment listener is bounded to the newest [commentLimit] comments. When the
+    // visible rows fill that window there are (probably) older ones beyond it, so offer "load older".
+    val canLoadOlder = state.commentRows.size >= state.commentLimit
     var pendingDeleteCommentId by remember { mutableStateOf<MealCommentId?>(null) }
     // Full-screen zoomable photo viewer (opened by tapping the header plate).
     var showPhotoViewer by remember { mutableStateOf(false) }
@@ -387,124 +404,224 @@ private fun MealDetailBody(
         // header sits on an opaque, comfortable surface instead of a darkened full-bleed photo.
         Box(Modifier.fillMaxSize().background(StructuralColors.stageFloor))
 
-        // Z2 — scrolling content plane.
-        Column(
-            modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-        ) {
+        // Z2 — scrolling content plane. RENDER-3: the comment list is virtualized via a LazyColumn so
+        // a popular meal's comments compose/recycle on demand instead of all rendering up front. The
+        // fixed header sections above stay as one-shot item {} blocks in the same order. Each content
+        // item carries the original content column's horizontal gutter (full-bleed header excepted) and
+        // a leading top gap that reproduces the old spacedBy(lg) sections / spacedBy(md) comment rows.
+        val sectionModifier = Modifier
+            .fillMaxWidth()
+            .frSafeHorizontalPadding()
+            .frContentWidth(Breakpoints.contentMax)
+            .padding(horizontal = Spacing.lg)
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
             // Header: the plate, bounded to the top. The dish title floats at its foot over a scrim.
             // clipToBounds() is essential: FrMediaFloor over-scales the image (.scale(1.06f)), which
             // would otherwise bleed the bright bottom edge of the photo down over the description below.
             // Tapping the plate opens the full-screen zoomable viewer (only when there's a real photo).
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(headHeight)
-                    .clipToBounds()
-                    .then(
-                        if (meal.photoUrl.isNotBlank()) {
-                            Modifier.clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClickLabel = resolve(FeedStringKey.MealPhotoOpenCd),
-                                onClick = { showPhotoViewer = true },
-                            )
-                        } else {
-                            Modifier
-                        },
-                    ),
-            ) {
-                // The plate, confined to the header. Standard scrim keeps it crisp; OnMedia keeps the
-                // dark wash in light theme so the white title/author stay legible over it.
-                if (meal.photoUrl.isNotBlank()) {
-                    FrMediaFloor(
-                        painter = rememberAsyncImagePainter(model = stablePlateRequest(meal.photoUrl, meal.plateCacheKey)),
-                        blur = StructuralBlur.None,
-                        dim = 0.18f,
-                        scrim = FrScrimStyle.Standard,
-                        tone = FrFloorTone.OnMedia,
-                    )
-                } else {
-                    FrMediaFloor(brush = dishBrushFor(meal.slot), blur = StructuralBlur.Soft, dim = 0.3f, tone = FrFloorTone.OnMedia)
-                }
-                // Bottom-anchored gradient scrim so the white title/author stay readable over a
-                // bright plate (the Standard media-floor scrim is transparent at the head foot).
+            item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(headHeight * 0.55f)
-                        .align(Alignment.BottomCenter)
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
-                            ),
+                        .height(headHeight)
+                        .clipToBounds()
+                        .then(
+                            if (meal.photoUrl.isNotBlank()) {
+                                Modifier.clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClickLabel = resolve(FeedStringKey.MealPhotoOpenCd),
+                                    onClick = { showPhotoViewer = true },
+                                )
+                            } else {
+                                Modifier
+                            },
                         ),
-                )
-                Column(
-                    modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
-                    verticalArrangement = Arrangement.Bottom,
                 ) {
-                    // Slot chip — only when tagged (slot is optional).
-                    meal.slot?.let { slot ->
-                        FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
-                        Spacer(Modifier.height(Spacing.sm))
+                    // The plate, confined to the header. Standard scrim keeps it crisp; OnMedia keeps the
+                    // dark wash in light theme so the white title/author stay legible over it.
+                    if (meal.photoUrl.isNotBlank()) {
+                        FrMediaFloor(
+                            painter = rememberAsyncImagePainter(model = stablePlateRequest(meal.photoUrl, meal.plateCacheKey)),
+                            blur = StructuralBlur.None,
+                            dim = 0.18f,
+                            scrim = FrScrimStyle.Standard,
+                            tone = FrFloorTone.OnMedia,
+                        )
+                    } else {
+                        FrMediaFloor(brush = dishBrushFor(meal.slot), blur = StructuralBlur.Soft, dim = 0.3f, tone = FrFloorTone.OnMedia)
                     }
-                    FrText(
-                        text = meal.dishName,
-                        style = StructuralType.titleXl,
-                        color = StructuralColors.onMedia,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                    // Bottom-anchored gradient scrim so the white title/author stay readable over a
+                    // bright plate (the Standard media-floor scrim is transparent at the head foot).
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(headHeight * 0.55f)
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f)),
+                                ),
+                            ),
                     )
-                    Spacer(Modifier.height(Spacing.sm))
-                    AuthorRow(meal)
+                    Column(
+                        modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
+                        verticalArrangement = Arrangement.Bottom,
+                    ) {
+                        // Slot chip — only when tagged (slot is optional).
+                        meal.slot?.let { slot ->
+                            FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
+                            Spacer(Modifier.height(Spacing.sm))
+                        }
+                        FrText(
+                            text = meal.dishName,
+                            style = StructuralType.titleXl,
+                            color = StructuralColors.onMedia,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(Modifier.height(Spacing.sm))
+                        AuthorRow(meal)
+                    }
                 }
             }
 
             // Content plane on the solid floor — a top gap clears the photo header so the description
             // sits comfortably on the floor instead of crowding the photo's bottom edge.
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .frSafeHorizontalPadding()
-                    .frContentWidth(Breakpoints.contentMax)
-                    .padding(horizontal = Spacing.lg)
-                    .padding(top = Spacing.lg),
-                verticalArrangement = Arrangement.spacedBy(Spacing.lg),
-            ) {
-                if (meal.description.isNotBlank()) {
+            if (meal.description.isNotBlank()) {
+                item {
                     FrText(
                         text = meal.description,
                         style = StructuralType.body,
                         color = StructuralColors.foreground.copy(alpha = 0.92f),
+                        modifier = sectionModifier.padding(top = Spacing.lg),
                     )
                 }
-
-                if (meal.ingredients.isNotEmpty()) IngredientChips(meal.ingredients)
-
-                LocationSection(meal)
-
-                ScoreStoryCard(meal, state.scoreStyle)
-
-                RatingSection(
-                    meal = meal,
-                    pendingRate = state.pendingRate,
-                    scoreStyle = state.scoreStyle,
-                    voteEditMode = state.voteEditMode,
-                    showChangeVoteConfirm = state.showChangeVoteConfirm,
-                    onIntent = onIntent,
-                )
-
-                if (meal.votes.isNotEmpty()) VotersCard(meal, state.scoreStyle)
-
-                CommentsSection(
-                    state = state,
-                    onRequestDeleteComment = { pendingDeleteCommentId = it },
-                    onRequestBlockCommentAuthor = onRequestBlockCommentAuthor,
-                    onIntent = onIntent,
-                )
-
-                Spacer(Modifier.height(COMPOSER_CLEARANCE))
             }
+
+            if (meal.ingredients.isNotEmpty()) {
+                item { Box(sectionModifier.padding(top = Spacing.lg)) { IngredientChips(meal.ingredients) } }
+            }
+
+            // Guarded so a meal without a location does not leave an empty item slot (which would add a
+            // phantom gap); LocationSection itself early-returns on the same condition.
+            if (meal.latitude != null && meal.longitude != null) {
+                item { Box(sectionModifier.padding(top = Spacing.lg)) { LocationSection(meal) } }
+            }
+
+            item { Box(sectionModifier.padding(top = Spacing.lg)) { ScoreStoryCard(meal, state.scoreStyle) } }
+
+            // Guarded to mirror RatingSection's own emit condition (it renders nothing otherwise, e.g. on
+            // your own meal) so an empty slot never adds a phantom gap.
+            if (meal.viewerRating != null || meal.canRate || state.voteEditMode) {
+                item {
+                    Box(sectionModifier.padding(top = Spacing.lg)) {
+                        RatingSection(
+                            meal = meal,
+                            pendingRate = state.pendingRate,
+                            scoreStyle = state.scoreStyle,
+                            voteEditMode = state.voteEditMode,
+                            showChangeVoteConfirm = state.showChangeVoteConfirm,
+                            onIntent = onIntent,
+                        )
+                    }
+                }
+            }
+
+            if (meal.votes.isNotEmpty()) {
+                item { Box(sectionModifier.padding(top = Spacing.lg)) { VotersCard(meal, state.scoreStyle) } }
+            }
+
+            // Comments — heading is a fixed item; the rows virtualize via items(key = stable id).
+            item {
+                Box(sectionModifier.padding(top = Spacing.lg)) {
+                    FrEyebrow(
+                        text = resolve(FeedStringKey.CommentsTitle).uppercase(),
+                        color = StructuralColors.foreground.copy(alpha = 0.85f),
+                    )
+                }
+            }
+            // FIREST-2: "load older comments" sits ABOVE the comment rows (older = above) and only
+            // appears once the visible rows fill the current window. Tapping it expands the listener.
+            if (canLoadOlder) {
+                item {
+                    Box(sectionModifier.padding(top = Spacing.md), contentAlignment = Alignment.Center) {
+                        FrGlassButton(
+                            label = resolve(FeedStringKey.LoadOlderComments),
+                            onClick = { onIntent(MealDetailIntent.LoadOlderComments) },
+                            tone = FrButtonTone.Glass,
+                            compact = true,
+                        )
+                    }
+                }
+            }
+            when {
+                state.commentsLoading && state.commentRows.isEmpty() ->
+                    item { Box(sectionModifier.padding(top = Spacing.md)) { CommentsLoadingSkeleton() } }
+                state.commentRows.isEmpty() && state.commentReadError == null ->
+                    item {
+                        Box(sectionModifier.padding(top = Spacing.md)) {
+                            FrText(
+                                text = resolve(FeedStringKey.CommentsEmpty),
+                                style = StructuralType.body,
+                                color = StructuralColors.foreground.copy(alpha = 0.6f),
+                            )
+                        }
+                    }
+                state.commentReadError != null ->
+                    item {
+                        Box(sectionModifier.padding(top = Spacing.md)) {
+                            FrText(
+                                text = resolve(state.commentReadError.toStringKey()),
+                                style = StructuralType.body,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                else -> items(state.commentRows, key = { it.id.value }) { c ->
+                    val editing = state.editingCommentId == c.id
+                    Box(sectionModifier.padding(top = Spacing.md)) {
+                        StructuralCommentRow(
+                            isOwn = c.isOwnComment,
+                            displayName = c.displayName,
+                            avatarUrl = c.avatarUrl,
+                            text = c.text,
+                            relative = c.relative,
+                            loading = c.loading,
+                            isDeleted = c.isDeleted,
+                            isEdited = c.isEdited,
+                            canDelete = c.canDelete,
+                            onDelete = { pendingDeleteCommentId = c.id },
+                            canEdit = c.canEdit,
+                            onEdit = { onIntent(MealDetailIntent.StartEditComment(c.id)) },
+                            canModerate = c.canModerate,
+                            onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Comment(c.id))) },
+                            onBlock = { onRequestBlockCommentAuthor(c.authorId) },
+                            editing = editing,
+                            editInput = state.commentEditInput,
+                            isSavingEdit = state.isEditingComment,
+                            editError = if (editing) state.commentEditError?.let { resolve(it.toStringKey()) } else null,
+                            onEditInputChange = { onIntent(MealDetailIntent.EditCommentInputChanged(it)) },
+                            onEditSave = { onIntent(MealDetailIntent.SubmitEditComment) },
+                            onEditCancel = { onIntent(MealDetailIntent.CancelEditComment) },
+                        )
+                    }
+                }
+            }
+            if (state.commentWriteError != null) {
+                item {
+                    Box(sectionModifier.padding(top = Spacing.md)) {
+                        FrText(
+                            text = resolve(state.commentWriteError.toStringKey()),
+                            style = StructuralType.body,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            }
+
+            // Final item: clears the sticky composer so the last comment is never hidden behind it.
+            item { Spacer(Modifier.height(COMPOSER_CLEARANCE)) }
         }
 
         // Floating chrome over the plate (fixed; always tappable).
@@ -869,67 +986,9 @@ private fun VoterScoreBadge(score: Int, scoreStyle: FrScoreStyle) {
 // ----------------------------------------------------------------------------------------------
 // Comments
 // ----------------------------------------------------------------------------------------------
-
-@Composable
-private fun CommentsSection(
-    state: MealDetailState,
-    onRequestDeleteComment: (MealCommentId) -> Unit,
-    onIntent: (MealDetailIntent) -> Unit,
-    onRequestBlockCommentAuthor: (String) -> Unit = {},
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-        FrEyebrow(text = resolve(FeedStringKey.CommentsTitle).uppercase(), color = StructuralColors.foreground.copy(alpha = 0.85f))
-        when {
-            state.commentsLoading && state.commentRows.isEmpty() -> CommentsLoadingSkeleton()
-            state.commentRows.isEmpty() && state.commentReadError == null ->
-                FrText(
-                    text = resolve(FeedStringKey.CommentsEmpty),
-                    style = StructuralType.body,
-                    color = StructuralColors.foreground.copy(alpha = 0.6f),
-                )
-            state.commentReadError != null ->
-                FrText(
-                    text = resolve(state.commentReadError.toStringKey()),
-                    style = StructuralType.body,
-                    color = MaterialTheme.colorScheme.error,
-                )
-            else -> state.commentRows.forEach { c ->
-                val editing = state.editingCommentId == c.id
-                StructuralCommentRow(
-                    isOwn = c.isOwnComment,
-                    displayName = c.displayName,
-                    avatarUrl = c.avatarUrl,
-                    text = c.text,
-                    relative = c.relative,
-                    loading = c.loading,
-                    isDeleted = c.isDeleted,
-                    isEdited = c.isEdited,
-                    canDelete = c.canDelete,
-                    onDelete = { onRequestDeleteComment(c.id) },
-                    canEdit = c.canEdit,
-                    onEdit = { onIntent(MealDetailIntent.StartEditComment(c.id)) },
-                    canModerate = c.canModerate,
-                    onReport = { onIntent(MealDetailIntent.OpenReport(ReportTargetUi.Comment(c.id))) },
-                    onBlock = { onRequestBlockCommentAuthor(c.authorId) },
-                    editing = editing,
-                    editInput = state.commentEditInput,
-                    isSavingEdit = state.isEditingComment,
-                    editError = if (editing) state.commentEditError?.let { resolve(it.toStringKey()) } else null,
-                    onEditInputChange = { onIntent(MealDetailIntent.EditCommentInputChanged(it)) },
-                    onEditSave = { onIntent(MealDetailIntent.SubmitEditComment) },
-                    onEditCancel = { onIntent(MealDetailIntent.CancelEditComment) },
-                )
-            }
-        }
-        if (state.commentWriteError != null) {
-            FrText(
-                text = resolve(state.commentWriteError.toStringKey()),
-                style = StructuralType.body,
-                color = MaterialTheme.colorScheme.error,
-            )
-        }
-    }
-}
+// The comments section is no longer a single composable: RENDER-3 dissolved it into the body's
+// LazyColumn (heading item + items(state.commentRows, key = id)) so the list virtualizes/recycles.
+// StructuralCommentRow below is the per-row stratum, called verbatim from those items.
 
 // Chat-bubble width split: the bubble takes 5 parts, a flexible gutter on the opposite side takes 1,
 // so each comment occupies ~4/5 of the row and clearly hugs its side.

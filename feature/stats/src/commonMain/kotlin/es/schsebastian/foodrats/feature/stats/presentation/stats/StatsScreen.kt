@@ -14,10 +14,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -162,65 +165,73 @@ private fun StatsContent(
     onShareAward: (String) -> Unit,
 ) {
     val snap = state.snapshot!!
-    Column(
+    // Selected window.
+    val window: WindowStats? = when (state.selectedTab) {
+        Tab.Week -> snap.week
+        Tab.Month -> snap.month
+        Tab.Historic -> snap.historic
+    }
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .statusBarsPadding()
             .frSafeHorizontalPadding()
             .padding(horizontal = Spacing.lg),
+        // The old Column applied statusBarsPadding INSIDE the scroll (it scrolled away); carry it as
+        // scroll-away contentPadding to match that inset behavior exactly. Horizontal insets stay on
+        // the modifier (they don't scroll). The media floor stays a sibling in the parent Box.
+        contentPadding = WindowInsets.statusBars.asPaddingValues(),
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
-        Spacer(Modifier.height(Spacing.xs))
+        item(key = "top-spacer") { Spacer(Modifier.height(Spacing.xs)) }
 
         // Header — eyebrow + oversized title + (share streak when there is one).
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                FrEyebrow(text = resolve(StatsStringKey.YourStatsEyebrow).uppercase())
-                FrText(text = resolve(StatsStringKey.Title), style = StructuralType.titleXl, color = StructuralColors.foreground)
-            }
-            if (snap.hero.personalStreak.days > 0) {
-                FrGlassCircleButton(
-                    icon = FrIcons.Share,
-                    onClick = onShareStreak,
-                    contentDescription = resolve(StatsStringKey.ShareAward),
-                )
+        item(key = "header") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    FrEyebrow(text = resolve(StatsStringKey.YourStatsEyebrow).uppercase())
+                    FrText(text = resolve(StatsStringKey.Title), style = StructuralType.titleXl, color = StructuralColors.foreground)
+                }
+                if (snap.hero.personalStreak.days > 0) {
+                    FrGlassCircleButton(
+                        icon = FrIcons.Share,
+                        onClick = onShareStreak,
+                        contentDescription = resolve(StatsStringKey.ShareAward),
+                    )
+                }
             }
         }
 
         // Weekly-recap entry (roadmap §2.4).
-        FrGlassButton(
-            label = resolve(StatsStringKey.WeeklyRecapCta),
-            onClick = onOpenRecap,
-            tone = FrButtonTone.Ghost,
-            fillWidth = true,
-        )
+        item(key = "weekly-recap") {
+            FrGlassButton(
+                label = resolve(StatsStringKey.WeeklyRecapCta),
+                onClick = onOpenRecap,
+                tone = FrButtonTone.Ghost,
+                fillWidth = true,
+            )
+        }
 
         // The one loud element — the ember streak hero.
-        StreakHero(hero = snap.hero)
+        item(key = "streak-hero") { StreakHero(hero = snap.hero) }
 
         // Structural tab strip.
-        StatTabStrip(selected = state.selectedTab, onSelect = onSelectTab)
+        item(key = "tab-strip") { StatTabStrip(selected = state.selectedTab, onSelect = onSelectTab) }
 
-        // Selected window.
-        val window: WindowStats? = when (state.selectedTab) {
-            Tab.Week -> snap.week
-            Tab.Month -> snap.month
-            Tab.Historic -> snap.historic
-        }
         if (window == null) {
-            val historicError = state.historicError
-            if (state.selectedTab == Tab.Historic && historicError != null) {
-                FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
-            } else {
-                HistoricLoading()
+            item(key = "window-loading") {
+                val historicError = state.historicError
+                if (state.selectedTab == Tab.Historic && historicError != null) {
+                    FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                } else {
+                    HistoricLoading()
+                }
             }
         } else {
-            TabBody(
+            tabBody(
                 window = window,
                 scoreStyle = state.scoreStyle,
                 sharePreparing = state.isPreparingShare,
@@ -228,7 +239,7 @@ private fun StatsContent(
             )
         }
 
-        Spacer(Modifier.height(DOCK_CLEARANCE))
+        item(key = "dock-clearance") { Spacer(Modifier.height(DOCK_CLEARANCE)) }
     }
 }
 
@@ -293,25 +304,27 @@ private fun TabChip(label: String, selected: Boolean, onClick: () -> Unit) {
 // Tab body
 // ----------------------------------------------------------------------------------------------
 
-@Composable
-private fun TabBody(
+private fun LazyListScope.tabBody(
     window: WindowStats,
     scoreStyle: FrScoreStyle,
     sharePreparing: Boolean,
     onShareAward: (String) -> Unit,
 ) {
     if (window.totalMeals == 0) {
-        FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth().height(160.dp)) {
-            Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
-                FrText(text = resolve(emptyKeyFor(window.window.tab)), style = StructuralType.titleLg, color = StructuralColors.foreground)
-                Spacer(Modifier.height(Spacing.xs))
-                FrText(text = resolve(StatsStringKey.EmptySubtext), style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.7f))
+        item(key = "tab-empty") {
+            FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth().height(160.dp)) {
+                Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.Center) {
+                    FrText(text = resolve(emptyKeyFor(window.window.tab)), style = StructuralType.titleLg, color = StructuralColors.foreground)
+                    Spacer(Modifier.height(Spacing.xs))
+                    FrText(text = resolve(StatsStringKey.EmptySubtext), style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.7f))
+                }
             }
         }
         return
     }
-    Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-        // Two big metrics — plates + per day.
+
+    // Two big metrics — plates + per day.
+    item(key = "tab-metrics") {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.fillMaxWidth()) {
             MetricTile(
                 value = window.totalMeals.toString(),
@@ -326,25 +339,32 @@ private fun TabBody(
                 modifier = Modifier.weight(1f),
             )
         }
+    }
 
-        // Awards.
-        window.bestMeal?.let { award ->
-            FrEyebrow(text = resolve(StatsStringKey.AwardsEyebrow).uppercase())
-            AwardPlateTile(
-                award = award,
-                titleLabel = resolve(StatsStringKey.BestPlateTitle),
-                metric = scoreHeadline(award.score, scoreStyle),
-                tone = FrChipTone.Ember,
-            )
-            FrGlassButton(
-                label = resolve(StatsStringKey.ShareAward),
-                onClick = { onShareAward(award.mealId.value) },
-                tone = FrButtonTone.Glass,
-                enabled = !sharePreparing,
-                compact = true,
-            )
+    // Awards — eyebrow + best-plate tile + share button move together as one item to keep their
+    // Spacing.md gaps identical (the LazyColumn's spacedBy supplies the same gap between items).
+    window.bestMeal?.let { award ->
+        item(key = "award-best") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                FrEyebrow(text = resolve(StatsStringKey.AwardsEyebrow).uppercase())
+                AwardPlateTile(
+                    award = award,
+                    titleLabel = resolve(StatsStringKey.BestPlateTitle),
+                    metric = scoreHeadline(award.score, scoreStyle),
+                    tone = FrChipTone.Ember,
+                )
+                FrGlassButton(
+                    label = resolve(StatsStringKey.ShareAward),
+                    onClick = { onShareAward(award.mealId.value) },
+                    tone = FrButtonTone.Glass,
+                    enabled = !sharePreparing,
+                    compact = true,
+                )
+            }
         }
-        window.mostVotedMeal?.let { award ->
+    }
+    window.mostVotedMeal?.let { award ->
+        item(key = "award-most-voted") {
             AwardPlateTile(
                 award = award,
                 titleLabel = resolve(StatsStringKey.MostVotedPlateTitle),
@@ -353,12 +373,16 @@ private fun TabBody(
                 tone = FrChipTone.Glass,
             )
         }
+    }
 
-        // Cooks.
-        if (window.bestCook != null || window.mostProlific != null || window.mostCriticized != null) {
+    // Cooks.
+    if (window.bestCook != null || window.mostProlific != null || window.mostCriticized != null) {
+        item(key = "cooks-eyebrow") {
             FrEyebrow(text = resolve(StatsStringKey.CooksSectionTitle).uppercase())
         }
-        window.bestCook?.let { cook ->
+    }
+    window.bestCook?.let { cook ->
+        item(key = "cook-best") {
             CookTile(
                 title = resolve(StatsStringKey.BestCookTitle),
                 name = cook.displayName,
@@ -367,7 +391,9 @@ private fun TabBody(
                 tone = FrTileTone.Olive,
             )
         }
-        window.mostProlific?.let { cook ->
+    }
+    window.mostProlific?.let { cook ->
+        item(key = "cook-prolific") {
             CookTile(
                 title = resolve(StatsStringKey.MostProlificTitle),
                 name = cook.displayName,
@@ -376,19 +402,25 @@ private fun TabBody(
                 tone = FrTileTone.Glass,
             )
         }
-        window.mostCriticized?.let { roast ->
-            FrEyebrow(text = resolve(StatsStringKey.RoastSectionTitle).uppercase())
-            CookTile(
-                title = resolve(StatsStringKey.MostCriticizedTitle),
-                name = roast.displayName,
-                avatarUrl = roast.avatarUrl,
-                metric = roastMetric(roast, scoreStyle),
-                tone = FrTileTone.Ember,
-            )
+    }
+    window.mostCriticized?.let { roast ->
+        item(key = "cook-roast") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                FrEyebrow(text = resolve(StatsStringKey.RoastSectionTitle).uppercase())
+                CookTile(
+                    title = resolve(StatsStringKey.MostCriticizedTitle),
+                    name = roast.displayName,
+                    avatarUrl = roast.avatarUrl,
+                    metric = roastMetric(roast, scoreStyle),
+                    tone = FrTileTone.Ember,
+                )
+            }
         }
+    }
 
-        // Ingredients — crew-wide most-used, hidden when absent (same guard as the matte cards).
-        window.mostUsedIngredient?.let { usage ->
+    // Ingredients — crew-wide most-used, hidden when absent (same guard as the matte cards).
+    window.mostUsedIngredient?.let { usage ->
+        item(key = "ingredient-most-used") {
             FrGlassTile(depth = FrTileDepth.Default, tone = FrTileTone.Olive, modifier = Modifier.fillMaxWidth()) {
                 FrEyebrow(text = resolve(StatsStringKey.MostUsedIngredientTitle).uppercase(), color = StructuralColors.foreground)
                 Spacer(Modifier.height(Spacing.xs))
@@ -404,41 +436,49 @@ private fun TabBody(
                 )
             }
         }
+    }
 
-        // Per-member signature ingredient — hidden when the list is empty (same guard as HEAD).
-        if (window.topByMember.isNotEmpty()) {
-            FrEyebrow(text = resolve(StatsStringKey.TopIngredientByMemberTitle).uppercase())
-            FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth()) {
-                window.topByMember.forEach { member ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                    ) {
-                        FrGlassAvatar(
-                            initials = member.displayName,
-                            image = member.avatarUrl?.let { rememberAsyncImagePainter(it) },
-                            ring = FrAvatarRing.None,
-                            size = 36.dp,
-                        )
-                        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-                            FrText(
-                                text = member.displayName,
-                                style = StructuralType.titleMd,
-                                color = StructuralColors.foreground,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+    // Per-member signature ingredient — hidden when the list is empty (same guard as HEAD).
+    // Kept as a SINGLE keyed item wrapping the shared FrGlassTile + forEach rather than
+    // `items(window.topByMember)`: the rows share one frosted card, so splitting them into per-row
+    // items would dissolve that card into N cards (a visual/behavior change). The list is
+    // crew-bounded (one row per member), so a single item is the faithful, behavior-preserving form.
+    if (window.topByMember.isNotEmpty()) {
+        item(key = "member-ingredients") {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
+                FrEyebrow(text = resolve(StatsStringKey.TopIngredientByMemberTitle).uppercase())
+                FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth()) {
+                    window.topByMember.forEach { member ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                        ) {
+                            FrGlassAvatar(
+                                initials = member.displayName,
+                                image = member.avatarUrl?.let { rememberAsyncImagePainter(it) },
+                                ring = FrAvatarRing.None,
+                                size = 36.dp,
                             )
-                            FrText(
-                                text = resolvePlural(
-                                    StatsPluralKey.MemberTopIngredientMetric,
-                                    member.mealCount,
-                                    member.ingredientName,
-                                    member.mealCount,
-                                ),
-                                style = StructuralType.micro,
-                                color = StructuralColors.foreground.copy(alpha = 0.85f),
-                            )
+                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                                FrText(
+                                    text = member.displayName,
+                                    style = StructuralType.titleMd,
+                                    color = StructuralColors.foreground,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                FrText(
+                                    text = resolvePlural(
+                                        StatsPluralKey.MemberTopIngredientMetric,
+                                        member.mealCount,
+                                        member.ingredientName,
+                                        member.mealCount,
+                                    ),
+                                    style = StructuralType.micro,
+                                    color = StructuralColors.foreground.copy(alpha = 0.85f),
+                                )
+                            }
                         }
                     }
                 }
