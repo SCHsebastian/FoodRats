@@ -12,6 +12,8 @@ import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientDataS
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientFirestoreDataSource
 import es.schsebastian.foodrats.feature.ingredient.data.firebase.IngredientRepository
 import es.schsebastian.foodrats.feature.ingredient.data.local.CatalogCache
+import es.schsebastian.foodrats.feature.ingredient.data.local.CuisineCache
+import es.schsebastian.foodrats.feature.ingredient.data.local.CuisineCatalogCache
 import es.schsebastian.foodrats.feature.ingredient.data.local.IngredientCatalogCache
 import es.schsebastian.foodrats.feature.ingredient.domain.usecase.ObserveCatalogUseCase
 import es.schsebastian.foodrats.feature.ingredient.domain.usecase.SearchIngredientsUseCase
@@ -26,15 +28,16 @@ import org.koin.core.qualifier.named
 import org.koin.dsl.bind
 import org.koin.dsl.module
 
-/** App-lifetime scope that keeps the catalog snapshot listener warm across screens. */
+/** App-lifetime scope that keeps the cache-backed catalog `StateFlow` warm across screens. */
 private val AppScope = named("appScope")
 
 /**
  * Wires the ingredient catalog + picker. The `IngredientRepository` is the single
- * `IngredientReadPort`; it owns an app-lifetime [AppScope] so the Firestore snapshot
- * listener survives navigation. `SelectIngredientsViewModel` reads/writes the draft
- * through `MealDraftIngredientsPort` (bound by `mealModule`), so this module never
- * touches `:feature:meal`.
+ * `IngredientReadPort`; it owns an app-lifetime [AppScope] that keeps the cache-backed
+ * catalog `StateFlow` warm and hosts the one-shot `get()` refresh (the catalog is static,
+ * admin-seeded, so it's read once per launch into a DataStore cache — no warm Firestore
+ * listener). `SelectIngredientsViewModel` reads/writes the draft through
+ * `MealDraftIngredientsPort` (bound by `mealModule`), so this module never touches `:feature:meal`.
  */
 val ingredientModule = module {
     single<CoroutineScope>(AppScope) { CoroutineScope(SupervisorJob() + Dispatchers.Default) }
@@ -76,11 +79,13 @@ val ingredientModule = module {
  */
 val cuisineModule = module {
     single<CuisineDataSource> { CuisineFirestoreDataSource(get()) }
+    single<CuisineCache> { CuisineCatalogCache(prefs = get(), json = get()) }
     single {
         val language = get<LocalePort>().locale
             .map { locale -> if (locale == AppLocale.System) deviceLanguageTag() else locale.tag }
         CuisineRepository(
             datasource = get(),
+            cache = get(),
             dispatchers = get(),
             language = language,
             scope = get(AppScope),

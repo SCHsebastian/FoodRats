@@ -67,7 +67,7 @@ class FakeMealCommentPort : MealCommentPort {
     val editCalls = mutableListOf<Pair<String, String>>()
     var nextEdit: Result<Unit, CommentError.Edit> = Result.success(Unit)
 
-    override fun observe(crewId: CrewId, mealId: MealId): Flow<Result<List<MealComment>, CommentError.Read>> = flow
+    override fun observe(crewId: CrewId, mealId: MealId, limit: Int): Flow<Result<List<MealComment>, CommentError.Read>> = flow
     override suspend fun post(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Write> =
         Result.success(Unit)
     override suspend fun edit(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Edit> {

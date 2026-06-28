@@ -336,10 +336,12 @@ class CrewFirestoreDataSource(
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
 
-    override suspend fun setBannerPath(crewId: CrewId, path: String): Result<Unit, CrewError> =
+    override suspend fun setBannerPath(crewId: CrewId, path: String, token: String): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
-                crewsCol.document(crewId.value).update("bannerPath" to path)
+                // Both fields are written together — the Firestore rule arm enforces the
+                // ['bannerPath','bannerToken'] hasOnly constraint server-side.
+                crewsCol.document(crewId.value).update("bannerPath" to path, "bannerToken" to token)
                 Result.success(Unit)
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }
@@ -347,7 +349,7 @@ class CrewFirestoreDataSource(
     override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
-                crewsCol.document(crewId.value).update("bannerPath" to null)
+                crewsCol.document(crewId.value).update("bannerPath" to null, "bannerToken" to null)
                 Result.success(Unit)
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }

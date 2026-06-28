@@ -89,6 +89,9 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
             scoreStyle = scoreStyle,
             // bannerPath: absent/null in old docs → null (no migration needed, tolerant deserialization).
             bannerPath = bannerPath?.ifBlank { null },
+            // bannerToken: absent/null in old docs (incl. legacy fixed-path banners) → null, so the
+            // banner is treated as MUTABLE. Non-null only for content-versioned banners set post-IMAGE-2.
+            bannerToken = bannerToken?.ifBlank { null },
             // bannerFocalY: absent/null → 0.5 (center); clamped to the valid 0..1 range defensively.
             bannerFocalY = bannerFocalY?.toFloat()?.coerceIn(0f, 1f) ?: 0.5f,
         ),

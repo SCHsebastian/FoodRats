@@ -104,4 +104,27 @@ class CrewMapperTest {
         assertIs<Result.Ok<Crew>>(r)
         assertEquals(null, r.value.tagline)   // silently ignored
     }
+
+    // IMAGE-2 — banner content-version token.
+    @Test fun toDomain_defaults_bannerToken_to_null_when_absent() {
+        val r = validDto.toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(null, r.value.bannerToken)
+    }
+
+    @Test fun toDomain_maps_bannerPath_and_bannerToken_when_set() {
+        val r = validDto.copy(
+            bannerPath = "crew_banners/c-1/9f3c1a2b.jpg",
+            bannerToken = "9f3c1a2b",
+        ).toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals("crew_banners/c-1/9f3c1a2b.jpg", r.value.bannerPath)
+        assertEquals("9f3c1a2b", r.value.bannerToken)
+    }
+
+    @Test fun toDomain_treats_blank_bannerToken_as_null() {
+        val r = validDto.copy(bannerToken = "").toDomain()
+        assertIs<Result.Ok<Crew>>(r)
+        assertEquals(null, r.value.bannerToken)
+    }
 }

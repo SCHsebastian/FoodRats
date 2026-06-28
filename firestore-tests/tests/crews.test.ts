@@ -111,6 +111,7 @@ describe("crews — create + read posture", () => {
         weeklyChallengeSetAtMillis: null,
         scoreStyle: "stars",
         bannerPath: null,
+        bannerToken: null,
         bannerFocalY: null,
       }),
     );
@@ -138,6 +139,7 @@ const fullCrewDoc = (memberIds: string[], extra: Record<string, unknown> = {}) =
   weeklyChallengeSetAtMillis: null,
   scoreStyle: "stars",
   bannerPath: null,
+  bannerToken: null,
   bannerFocalY: null,
   ...extra,
 });

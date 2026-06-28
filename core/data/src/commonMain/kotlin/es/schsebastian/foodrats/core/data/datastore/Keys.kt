@@ -49,6 +49,14 @@ object Keys {
     val IngredientCatalogJson = StoreKey(stringPreferencesKey("ingredient_catalog_json"))
 
     /**
+     * Disk cache of the static, admin-seeded cuisine catalog (JSON array of `CuisineDto`). Mirrors
+     * [IngredientCatalogJson]: a single one-shot Firestore read per app launch hydrates it, and the
+     * `CuisineReadPort` flow serves from here instead of a warm snapshot listener (FIREST-4). Owned by
+     * `:feature:ingredient`'s `CuisineCatalogCache`.
+     */
+    val CuisineCatalogJson = StoreKey(stringPreferencesKey("cuisine_catalog_json"))
+
+    /**
      * The durable write outbox (offline-first P2): a JSON array of queued
      * rate / comment / reaction / crew-admin mutations (each with its
      * lifecycle status + attempt count), so a process death or airplane-mode
@@ -112,4 +120,15 @@ object Keys {
      * [es.schsebastian.foodrats.core.data.preferences.WelcomeDismissalRepository].
      */
     val DismissedWelcomes = StoreKey(stringPreferencesKey("dismissed_welcomes"))
+
+    /**
+     * Persisted signed-image-URL cache: JSON `{ "<objectPath>": { url, freshUntilMs } }` for
+     * IMMUTABLE paths only (per-meal plates + content-versioned avatars). Lets a cold start reuse a
+     * still-valid signed URL instead of re-calling `mintPlateUrls` — and, because the URL string is
+     * stable, lets Coil serve the cached image instead of re-downloading it. The fixed-path crew
+     * banner is deliberately NOT persisted (a banner change must surface fast). Account-scoped:
+     * cleared on sign-out so the next account doesn't inherit a prior account's entries. Owned by
+     * [es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver].
+     */
+    val PlateUrlCacheJson = StoreKey(stringPreferencesKey("plate_url_cache_json"))
 }

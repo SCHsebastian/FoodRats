@@ -39,7 +39,12 @@ sealed interface CommentError {
 }
 
 interface MealCommentPort {
-    fun observe(crewId: CrewId, mealId: MealId): Flow<Result<List<MealComment>, CommentError.Read>>
+    /**
+     * Live comments for a meal, oldest first. [limit] bounds the listener to the newest [limit] docs
+     * (FIREST-2) so a popular meal doesn't stream its entire comment subcollection; raise it to page
+     * in older comments. Chronological (ascending) display order is unchanged regardless of [limit].
+     */
+    fun observe(crewId: CrewId, mealId: MealId, limit: Int): Flow<Result<List<MealComment>, CommentError.Read>>
     suspend fun post(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Write>
     suspend fun edit(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Edit>
     suspend fun delete(crewId: CrewId, mealId: MealId, commentId: MealCommentId): Result<Unit, CommentError.Delete>

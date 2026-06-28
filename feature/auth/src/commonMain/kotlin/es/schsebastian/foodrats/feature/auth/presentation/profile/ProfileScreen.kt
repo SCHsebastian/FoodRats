@@ -44,7 +44,6 @@ import es.schsebastian.foodrats.core.designsystem.structural.FrGlassCircleButton
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassTile
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassToggle
 import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
-import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
 import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralChip
 import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralRow
 import es.schsebastian.foodrats.core.designsystem.structural.FrTileDepth
@@ -129,7 +128,12 @@ fun ProfileScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        FrMediaFloor(brush = StructuralColors.stageFloor, blur = StructuralBlur.Soft, scrim = FrScrimStyle.Even)
+        // Chrome-only settings surface — there is no photo here. The default `dim` (0.38) and the
+        // `Even` scrim exist for white-on-photo legibility; over an atmospheric `stageFloor` they only
+        // crush the Iron & Ember charcoal to near-black (the "settings is always black" report). Drop
+        // both so the charcoal floor actually shows; white `foreground` clears AA over it comfortably.
+        // Light mode already dropped the wash (FrMediaFloor.keepDarkWash), so this only affects dark.
+        FrMediaFloor(brush = StructuralColors.stageFloor, blur = StructuralBlur.Soft, dim = 0f, scrim = null)
         Column(
             modifier = Modifier
                 .fillMaxSize()

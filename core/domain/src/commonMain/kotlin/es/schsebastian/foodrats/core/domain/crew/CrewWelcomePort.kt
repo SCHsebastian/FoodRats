@@ -52,6 +52,19 @@ interface CrewWelcomePort {
     fun observeBannerImageUrl(crewId: CrewId): Flow<String?>
 
     /**
+     * Emits the STABLE Storage object path to use as a Coil cache key for the banner (IMAGE-2), or
+     * `""` when no banner is set, the banner is a legacy fixed-path one, or the crew is unreadable.
+     *
+     * A content-versioned banner path (`crew_banners/{c}/{token}.jpg`) is upload-immutable, so keying
+     * Coil's disk + memory caches on it lets the cached bytes serve every future re-signed URL —
+     * the same trick the feed uses for plates. The signed URL from [observeBannerImageUrl] rotates
+     * (at most) once per server TTL; keying on the stable path survives that rotation. A legacy fixed
+     * `crew_banners/{c}/banner.jpg` is overwritten in place (mutable), so it emits `""` and the caller
+     * falls back to URL-derived keying. Never emits `null`, mirroring [observeBannerFocalY].
+     */
+    fun observeBannerCacheKey(crewId: CrewId): Flow<String>
+
+    /**
      * Emits the crew's banner vertical focal point (C9) in `0f..1f` — `0` anchors the crop to the
      * top of the image, `0.5` centers it, `1` anchors the bottom. Owner-set via the crew settings
      * reposition control; lets the fixed-height feed crop show the part of the image the owner chose.

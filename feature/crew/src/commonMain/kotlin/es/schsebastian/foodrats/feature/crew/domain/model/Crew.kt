@@ -75,6 +75,15 @@ data class Crew(
      */
     val bannerPath: String? = null,
     /**
+     * Content-version token of the current banner (IMAGE-2). `null` means no banner is set, or the
+     * banner is a legacy fixed-path one (`crew_banners/{crewId}/banner.jpg`) from a crew predating
+     * versioning — such a path is overwritten in place, so it is NOT upload-immutable. Non-null means
+     * [bannerPath] is the content-versioned, upload-immutable path `crew_banners/{crewId}/{token}.jpg`,
+     * which lets the image resolver persist a long-lived signed URL and the UI key Coil on the stable
+     * path (mirroring `avatars/{uid}/{token}.jpg`). Set/cleared together with [bannerPath].
+     */
+    val bannerToken: String? = null,
+    /**
      * Vertical focal point for the banner crop (C9), in `0f..1f`: `0` shows the top of the image,
      * `0.5` centers (default), `1` shows the bottom. Lets the owner pick what the fixed-height feed
      * crop reveals (the image overflows vertically). Owner-settable via
@@ -118,7 +127,8 @@ data class Crew(
             weeklyChallengeSetAt: Instant? = null,
             scoreStyle: CrewScoreStyle = CrewScoreStyle.Stars,
             bannerPath: String? = null,
+            bannerToken: String? = null,
             bannerFocalY: Float = 0.5f,
-        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle, bannerPath, bannerFocalY)
+        ): Crew = Crew(id, name, code, ownerId, createdAt, members, blindVoting, tagline, welcomeMessage, weeklyChallenge, weeklyChallengeSetAt, scoreStyle, bannerPath, bannerToken, bannerFocalY)
     }
 }

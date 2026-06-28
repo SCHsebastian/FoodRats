@@ -47,8 +47,10 @@ class SetCrewBannerUseCaseTest {
         val useCase = SetCrewBannerUseCase(repo, FakeSessionForBanner(session))
         val r = useCase(crewId, byteArrayOf(1, 2, 3))
         assertIs<Result.Ok<Unit>>(r)
-        // FakeCrewRepository.setBanner sets bannerPath to a known pattern.
-        assertNotNull(repo.crews.value.first { it.id == crewId }.bannerPath)
+        // FakeCrewRepository.setBanner sets a content-versioned bannerPath + matching token (IMAGE-2).
+        val updated = repo.crews.value.first { it.id == crewId }
+        assertNotNull(updated.bannerPath)
+        assertNotNull(updated.bannerToken)
     }
 
     @Test fun non_owner_is_rejected() = runTest {

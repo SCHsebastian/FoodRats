@@ -40,6 +40,7 @@ import es.schsebastian.foodrats.feature.notifications.platform.NotificationChann
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
+import org.koin.core.logger.Level
 import org.koin.dsl.module
 import org.koin.mp.KoinPlatform
 
@@ -56,7 +57,7 @@ class FoodRatsApplication : Application() {
         ForegroundActivityHolder.install(this)
 
         startKoin {
-            androidLogger()
+            androidLogger(level = if (BuildConfig.DEBUG) Level.INFO else Level.NONE)
             androidContext(this@FoodRatsApplication)
             modules(
                 appModules + listOf(

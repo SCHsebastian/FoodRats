@@ -25,7 +25,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -355,7 +357,7 @@ private fun String.pascalToSnakeCase(): String = buildString {
     }
 }
 
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, ExperimentalComposeUiApi::class)
 @Composable
 private fun MainScaffold(rootController: NavHostController) {
     // The two tabs (Feed/Stats) are a flat switch, NOT a nested NavHost. A NavHost nested inside an
@@ -378,6 +380,21 @@ private fun MainScaffold(rootController: NavHostController) {
             },
         ),
     ) { mutableStateOf(MainTab.Feed) }
+
+    // Back inside the main scaffold never leaves the app: from any non-Feed tab it returns to Feed,
+    // and on Feed it is consumed (a no-op). The only way out is the OS home gesture + the app switcher
+    // — matching the product intent that the app is "always on" once you're past sign-in. This is safe
+    // for deeper destinations (Profile, MealDetail, CrewSettings, CrewPicker, …): they're pushed on
+    // top of Main through the root controller, so MainScaffold is out of composition while they're
+    // visible and their own back/popBackStack behaviour is untouched. `enabled = true` always, so the
+    // gesture is always intercepted here rather than reaching the Activity (which would exit, since
+    // navigateTopLevel leaves Main as the sole back-stack entry).
+    BackHandler(enabled = true) {
+        if (selectedTab != MainTab.Feed) {
+            selectedTab = MainTab.Feed
+        }
+    }
+
     val analytics = koinInject<AnalyticsPort>()
     var previousTab: MainTab? by remember { mutableStateOf(null) }
     LaunchedEffect(selectedTab) {
@@ -419,13 +436,39 @@ private fun MainScaffold(rootController: NavHostController) {
     // edge-to-edge FrMediaFloor and fills the whole Box (drawing behind the dock); the screen adds its
     // own bottom padding so its last content clears the floating dock. The dock's 4th item ("You")
     // pushes Profile rather than switching an in-scaffold tab (Profile keeps its own back-stack entry).
-    val dockItems = listOf(
-        FrDockItem(FrIcons.Restaurant, resolve(SharedStringKey.NavTabFeed)),
-        FrDockItem(FrIcons.Trophy, resolve(SharedStringKey.NavTabPassport)),
-        FrDockItem(FrIcons.Stats, resolve(SharedStringKey.NavTabStats)),
-        FrDockItem(FrIcons.Person, resolve(SharedStringKey.NavProfileCta)),
-    )
+    // resolve() is @Composable so the labels are read here, then the immutable item list is
+    // memoized on them — MainScaffold recomposes on activeCrewId/topBarAvatar/crewName/captureNudge,
+    // and rebuilding the list each time handed FrDock a fresh (unstable) List on every recomposition.
+    val feedLabel = resolve(SharedStringKey.NavTabFeed)
+    val passportLabel = resolve(SharedStringKey.NavTabPassport)
+    val statsLabel = resolve(SharedStringKey.NavTabStats)
+    val profileLabel = resolve(SharedStringKey.NavProfileCta)
+    val dockItems = remember(feedLabel, passportLabel, statsLabel, profileLabel) {
+        listOf(
+            FrDockItem(FrIcons.Restaurant, feedLabel),
+            FrDockItem(FrIcons.Trophy, passportLabel),
+            FrDockItem(FrIcons.Stats, statsLabel),
+            FrDockItem(FrIcons.Person, profileLabel),
+        )
+    }
     val selectedIndex = selectedTab.dockIndex
+
+    // Keep the dock callbacks identity-stable across the chrome recompositions above. Both only
+    // capture rootController (onSelect also writes the remembered selectedTab MutableState, which is
+    // itself stable), so keying on rootController is sufficient.
+    val onSelect = remember(rootController) {
+        { index: Int ->
+            when (index) {
+                0 -> selectedTab = MainTab.Feed
+                1 -> selectedTab = MainTab.Passport
+                2 -> selectedTab = MainTab.Stats
+                else -> rootController.navigate(Route.Profile) { launchSingleTop = true }
+            }
+        }
+    }
+    val onFabClick = remember(rootController) {
+        { rootController.navigate(Route.CaptureMeal) { launchSingleTop = true } }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Smooth tab switching: slide + fade between the three main tabs so changing tabs feels like
@@ -482,15 +525,8 @@ private fun MainScaffold(rootController: NavHostController) {
         FrDock(
             items = dockItems,
             selectedIndex = selectedIndex,
-            onSelect = { index ->
-                when (index) {
-                    0 -> selectedTab = MainTab.Feed
-                    1 -> selectedTab = MainTab.Passport
-                    2 -> selectedTab = MainTab.Stats
-                    else -> rootController.navigate(Route.Profile) { launchSingleTop = true }
-                }
-            },
-            onFabClick = { rootController.navigate(Route.CaptureMeal) { launchSingleTop = true } },
+            onSelect = onSelect,
+            onFabClick = onFabClick,
             fabIcon = FrIcons.Camera,
             fabContentDescription = resolve(SharedStringKey.NavCaptureCta),
             fabPulsing = !captureNudge.hasPostedToday,

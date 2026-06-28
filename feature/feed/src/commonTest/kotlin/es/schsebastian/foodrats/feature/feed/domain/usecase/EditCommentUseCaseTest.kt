@@ -21,7 +21,7 @@ private class EditRecordingCommentPort : MealCommentPort {
     val editCalls = mutableListOf<EditCall>()
     var nextEdit: Result<Unit, CommentError.Edit> = Result.success(Unit)
 
-    override fun observe(crewId: CrewId, mealId: MealId): Flow<Result<List<MealComment>, CommentError.Read>> =
+    override fun observe(crewId: CrewId, mealId: MealId, limit: Int): Flow<Result<List<MealComment>, CommentError.Read>> =
         flowOf(Result.success(emptyList()))
 
     override suspend fun post(

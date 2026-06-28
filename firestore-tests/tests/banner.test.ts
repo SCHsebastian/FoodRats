@@ -16,6 +16,9 @@ const STORAGE_RULES = readFileSync(resolve(here, "..", "..", "storage.rules"), "
 const FIRESTORE_RULES = readFileSync(resolve(here, "..", "..", "firestore.rules"), "utf8");
 
 const BANNER = "crew_banners/c1/banner.jpg";
+// IMAGE-2 — content-versioned banner object name (`{token}.jpg`).
+const VERSIONED_BANNER = "crew_banners/c1/9f3c1a2b.jpg";
+const VERSIONED_TOKEN = "9f3c1a2b";
 const jpeg = (n = 16) => new Uint8Array(n).fill(1);
 
 let env: RulesTestEnvironment;
@@ -51,6 +54,7 @@ beforeEach(async () => {
       weeklyChallengeSetAtMillis: null,
       scoreStyle: "stars",
       bannerPath: null,
+      bannerToken: null,
       bannerFocalY: null,
     });
   });
@@ -83,6 +87,28 @@ describe("storage.rules — crew banner upload (C9)", () => {
       uploadBytes(ref(storage, BANNER), jpeg(2 * 1024 * 1024 + 1), { contentType: "image/jpeg" }),
     );
   });
+
+  // IMAGE-2 — content-versioned object name `{token}.jpg`.
+  it("the crew OWNER can upload a content-versioned banner (IMAGE-2)", async () => {
+    const storage = env.authenticatedContext("alice").storage();
+    await assertSucceeds(
+      uploadBytes(ref(storage, VERSIONED_BANNER), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("a non-owner member CANNOT upload a content-versioned banner", async () => {
+    const storage = env.authenticatedContext("bob").storage();
+    await assertFails(
+      uploadBytes(ref(storage, VERSIONED_BANNER), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("rejects an oversized (>2MB) content-versioned banner", async () => {
+    const storage = env.authenticatedContext("alice").storage();
+    await assertFails(
+      uploadBytes(ref(storage, VERSIONED_BANNER), jpeg(2 * 1024 * 1024 + 1), { contentType: "image/jpeg" }),
+    );
+  });
 });
 
 describe("firestore.rules — crew bannerPath field (C9)", () => {
@@ -99,6 +125,28 @@ describe("firestore.rules — crew bannerPath field (C9)", () => {
   it("the owner can clear bannerPath (remove banner)", async () => {
     const db = env.authenticatedContext("alice").firestore();
     await assertSucceeds(updateDoc(doc(db, "crews/c1"), { bannerPath: null }));
+  });
+
+  // IMAGE-2 — bannerPath + bannerToken are written together.
+  it("the owner can set bannerPath + bannerToken together (IMAGE-2)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/c1"), { bannerPath: VERSIONED_BANNER, bannerToken: VERSIONED_TOKEN }),
+    );
+  });
+
+  it("a non-owner member CANNOT set bannerPath + bannerToken", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/c1"), { bannerPath: VERSIONED_BANNER, bannerToken: VERSIONED_TOKEN }),
+    );
+  });
+
+  it("the owner can clear bannerPath + bannerToken together (remove versioned banner)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/c1"), { bannerPath: null, bannerToken: null }),
+    );
   });
 });
 
@@ -133,6 +181,7 @@ const bigCrew = (owner: string) => {
     weeklyChallengeSetAtMillis: 1700000000000,
     scoreStyle: "emoji",
     bannerPath: null,
+    bannerToken: null,
     bannerFocalY: 0.5,
   };
 };
@@ -148,6 +197,16 @@ describe("firestore.rules — owner banner write at production scale (8 members)
     const db = env.authenticatedContext("alice").firestore();
     await assertSucceeds(
       updateDoc(doc(db, "crews/big"), { bannerPath: "crew_banners/big/banner.jpg" }),
+    );
+  });
+
+  it("the OWNER can set bannerPath + bannerToken on a full 8-member crew (IMAGE-2, no 1000-expr cap)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/big"), {
+        bannerPath: "crew_banners/big/9f3c1a2b.jpg",
+        bannerToken: "9f3c1a2b",
+      }),
     );
   });
 });

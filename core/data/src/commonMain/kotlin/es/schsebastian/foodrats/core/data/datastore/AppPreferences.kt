@@ -6,12 +6,21 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 
 class AppPreferences(private val store: DataStore<Preferences>) {
+    /**
+     * Observes a single key. `DataStore.data` re-emits the *whole* preferences snapshot on a write to
+     * **any** key in the shared store (theme, locale, consent, sync timestamps, …). Mapping to one key
+     * and then [distinctUntilChanged] collapses those unrelated re-emissions, so a consumer of one key
+     * only sees a value when *that* key actually changes — otherwise every preference write fans out a
+     * redundant emission into every observer (→ redundant state updates → recompositions app-wide).
+     */
     fun <T : Any> observe(key: StoreKey<T>): Flow<T?> = store.data
         .map { prefs -> prefs[key.prefs] }
+        .distinctUntilChanged()
         .onEach { v ->
             FrLog.d(FrLog.Tags.Prefs) { "observe(${key.prefs.name}) emit=${v ?: "null"}" }
         }

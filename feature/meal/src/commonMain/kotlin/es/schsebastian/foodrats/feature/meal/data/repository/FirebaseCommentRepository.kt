@@ -45,8 +45,9 @@ internal class FirebaseCommentRepository(
     override fun observe(
         crewId: CrewId,
         mealId: MealId,
+        limit: Int,
     ): Flow<Result<List<MealComment>, CommentError.Read>> =
-        ds.observe(crewId, mealId)
+        ds.observe(crewId, mealId, limit)
             .map<List<CommentDto>, Result<List<MealComment>, CommentError.Read>> { dtos ->
                 Result.success(
                     dtos.mapNotNull { dto -> (dto.toDomain(crewId, mealId) as? Result.Ok)?.value }

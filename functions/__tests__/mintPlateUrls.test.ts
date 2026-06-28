@@ -62,7 +62,7 @@ describe("authorizedPaths — crew-scoped allow-list (#15)", () => {
     expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(["avatars/alice.jpg"]);
   });
 
-  // C9 — crew banner image
+  // C9 — crew banner image (legacy fixed path)
   it("allows the crew banner path for a member", () => {
     const paths = ["crew_banners/c1/banner.jpg"];
     expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(paths);
@@ -70,6 +70,23 @@ describe("authorizedPaths — crew-scoped allow-list (#15)", () => {
 
   it("drops another crew's banner path", () => {
     const paths = ["crew_banners/c2/banner.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
+  });
+
+  // IMAGE-2 — content-versioned crew banner `crew_banners/{crewId}/{token}.jpg`
+  it("allows this crew's content-versioned banner path for a member", () => {
+    const paths = ["crew_banners/c1/9f3c1a2b.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(paths);
+  });
+
+  it("drops another crew's content-versioned banner path", () => {
+    const paths = ["crew_banners/c2/9f3c1a2b.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
+  });
+
+  it("drops a banner path that smuggles an extra subfolder segment", () => {
+    // `{token}` must be a single object-name segment — a nested path is not a real banner object.
+    const paths = ["crew_banners/c1/evil/9f3c1a2b.jpg"];
     expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
   });
 });
@@ -97,7 +114,7 @@ describe("ownAvatarPaths — self-avatar allow-list (H2)", () => {
 });
 
 describe("buildSignedUrls — membership-checked minting (#15)", () => {
-  it("signs the authorized subset for a member, with a 15-min TTL", async () => {
+  it("signs the authorized subset for a member, with a 6-day TTL", async () => {
     const res = await buildSignedUrls(deps, "alice", {
       crewId: "c1",
       paths: [
@@ -108,7 +125,8 @@ describe("buildSignedUrls — membership-checked minting (#15)", () => {
     });
 
     expect(res.expiresAtMs).toBe(NOW + URL_TTL_MS);
-    expect(res.expiresAtMs - NOW).toBe(15 * 60 * 1000);
+    // 6 days, safely under the GCS V4 7-day signed-URL ceiling.
+    expect(res.expiresAtMs - NOW).toBe(6 * 24 * 60 * 60 * 1000);
     expect(Object.keys(res.urls).sort()).toEqual([
       "avatars/bob.jpg",
       "crews/c1/meals/c1_bob_2026-06-14_dinner.jpg",

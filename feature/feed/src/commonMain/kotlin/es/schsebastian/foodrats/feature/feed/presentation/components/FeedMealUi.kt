@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
+import androidx.compose.runtime.Immutable
 import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
@@ -9,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import kotlinx.datetime.toLocalDateTime
 
+@Immutable
 data class RaterVoteUi(
     val raterName: String,
     val raterAvatarUrl: String?,
@@ -53,6 +55,14 @@ private fun platePathOf(crewId: String, mealId: String): String =
 private fun thumbPathOf(crewId: String, mealId: String): String =
     "crews/$crewId/meals/${mealId}_thumb.jpg"
 
+/**
+ * Marked [Immutable] so Compose can skip recomposing a meal tile whose props are unchanged while the
+ * feed state churns for unrelated reasons (sync counters, toasts, day-strip flags). The promise holds:
+ * every field is a `val`, the `List` fields ([votes], [ingredients]) are built once via `map`/`copy`
+ * and never mutated in place, and updates always produce a fresh instance (see [withReactions]). The
+ * compiler would otherwise infer this type UNSTABLE purely because it exposes `List<…>` properties.
+ */
+@Immutable
 data class FeedMealUi(
     val mealId: String,
     val authorId: String,

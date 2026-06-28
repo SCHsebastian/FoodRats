@@ -87,7 +87,10 @@ val coreDataModule = module {
     single { Firebase.storage }
     // Resolves Storage object paths → membership-checked V4 signed URLs via the
     // mintPlateUrls callable. Consumed by the meal-feed enrichment + AccountReadPort impl.
-    single<ImageUrlPort> { FirebaseImageUrlResolver(dispatchers = get(), clock = get()) }
+    // Persists immutable-path URLs (prefs) so cold starts reuse them instead of re-minting.
+    single<ImageUrlPort> {
+        FirebaseImageUrlResolver(dispatchers = get(), clock = get(), prefs = get(), json = get())
+    }
     // JSON serializer shared across features (MealDraftLocalStore + others).
     single { Json { ignoreUnknownKeys = true; isLenient = true } }
 }

@@ -61,7 +61,10 @@ service firebase.storage {
                     && !filename.matches('.*_thumb\\.jpg');
     }
 
-    // Crew banner images (C9). Path: `crew_banners/{crewId}/banner.jpg` — one image per crew.
+    // Crew banner images (C9). Path is content-versioned: `crew_banners/{crewId}/{token}.jpg`
+    // (IMAGE-2), where the token is a content hash so a re-upload changes the path and its signed
+    // URL stops rotating every ~10 min. A legacy fixed `crew_banners/{crewId}/banner.jpg` from a
+    // crew predating versioning is still permitted (the `.jpg` filename match covers both).
     // Only the crew OWNER may upload or delete. The banner object's path does NOT embed the
     // owner uid (unlike avatars/plates, which encode the uid in the filename), so we MUST read
     // the crew doc's `ownerId` cross-service to authorize the write/delete. The client-side
@@ -76,11 +79,11 @@ service firebase.storage {
       }
       allow read: if false;
       allow write: if isCrewOwner()
-                   && filename == "banner.jpg"
+                   && filename.matches('.*\\.jpg')
                    && request.resource.size < 2 * 1024 * 1024
                    && request.resource.contentType.matches('image/jpe?g');
       allow delete: if isCrewOwner()
-                    && filename == "banner.jpg";
+                    && filename.matches('.*\\.jpg');
     }
 
     // GDPR data-export archives (Art. 20). Written ONLY by the `exportMyData` callable via the

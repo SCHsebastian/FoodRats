@@ -79,6 +79,7 @@
     <string name="feed_comments_relative_days">hace %1$d d</string>
     <string name="feed_comments_title">Comentarios</string>
     <string name="feed_comments_empty">Aún no hay comentarios. Sé el primero.</string>
+    <string name="feed_load_older_comments">Cargar comentarios anteriores</string>
     <string name="feed_comments_input_placeholder">Escribe un comentario…</string>
     <string name="feed_comments_send_cta">Enviar</string>
     <string name="feed_comments_error_blank">El comentario está vacío</string>

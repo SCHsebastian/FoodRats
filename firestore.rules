@@ -117,6 +117,7 @@ service cloud.firestore {
           && request.resource.data.get('weeklyChallengeSetAtMillis', null) == resource.data.get('weeklyChallengeSetAtMillis', null)
           && request.resource.data.get('scoreStyle', 'stars') == resource.data.get('scoreStyle', 'stars')
           && request.resource.data.get('bannerPath', null) == resource.data.get('bannerPath', null)
+          && request.resource.data.get('bannerToken', null) == resource.data.get('bannerToken', null)
           && request.resource.data.get('bannerFocalY', null) == resource.data.get('bannerFocalY', null);
       }
       function onlyMembershipUnchanged() {
@@ -162,8 +163,12 @@ service cloud.firestore {
               && (request.resource.data.weeklyChallengeSetAtMillis == null || request.resource.data.weeklyChallengeSetAtMillis is int))
           || (changed().hasOnly(['scoreStyle'])
               && request.resource.data.scoreStyle in ['stars', 'emoji', 'numeric'])
-          || (changed().hasOnly(['bannerPath'])
-              && (request.resource.data.bannerPath == null || request.resource.data.bannerPath is string))
+          // Banner set/clear writes bannerPath + bannerToken TOGETHER (IMAGE-2). hasOnly admits the
+          // single-field bannerPath shape too (subset), so legacy clients stay compatible. .get(…)
+          // tolerates a crew doc that predates bannerToken.
+          || (changed().hasOnly(['bannerPath', 'bannerToken'])
+              && (request.resource.data.get('bannerPath', null) == null || request.resource.data.get('bannerPath', null) is string)
+              && (request.resource.data.get('bannerToken', null) == null || request.resource.data.get('bannerToken', null) is string))
           || (changed().hasOnly(['bannerFocalY'])
               && request.resource.data.bannerFocalY is number
               && request.resource.data.bannerFocalY >= 0
@@ -242,7 +247,7 @@ service cloud.firestore {
                     && request.resource.data.keys().hasOnly([
                          'id', 'name', 'code', 'ownerId', 'createdAtEpochMs', 'memberIds', 'members',
                          'blindVoting', 'tagline', 'welcomeMessage', 'weeklyChallenge',
-                         'weeklyChallengeSetAtMillis', 'scoreStyle', 'bannerPath', 'bannerFocalY'
+                         'weeklyChallengeSetAtMillis', 'scoreStyle', 'bannerPath', 'bannerToken', 'bannerFocalY'
                        ])
                     && request.resource.data.name is string
                     && request.resource.data.name.size() >= 1

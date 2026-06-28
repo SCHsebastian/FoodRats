@@ -63,7 +63,12 @@ import kotlinx.coroutines.sync.withLock
  */
 class OutboxRunner(
     private val outbox: OutboxPort,
-    private val handlers: List<OutboxCommandHandler>,
+    // STARTUP-1: lazily resolves the feature-owned handler graph (Koin
+    // getAll<OutboxCommandHandler>()). Dereferenced once per drain pass INSIDE runOnce — which
+    // runs on the app scope / WorkManager worker (Dispatchers.Default) — NOT at construction time.
+    // The createdAtStart binding must not force the Meal/Crew/Auth handler graph onto the main
+    // thread at startKoin.
+    private val handlersProvider: () -> List<OutboxCommandHandler>,
     private val connectivity: ConnectivityPort,
     private val policy: OutboxRetryPolicy = OutboxRetryPolicy(),
     // Reserved for future replay telemetry (mirrors DraftRetryRunner). Default Noop keeps
@@ -158,6 +163,9 @@ class OutboxRunner(
      * another group.
      */
     suspend fun runOnce(scope: CoroutineScope? = null): Boolean = mutex.withLock {
+        // STARTUP-1: resolve the feature handler graph here, on the drain path (app scope /
+        // WorkManager worker = Dispatchers.Default), not at construction time.
+        val handlers = handlersProvider()
         val entries = outbox.observePending().first().filter { it.status is OutboxEntryStatus.Pending }
 
         // H2: group by aggregateKey, preserving FIFO createdAt order within each group.
@@ -170,7 +178,7 @@ class OutboxRunner(
 
         for ((_, group) in groups) {
             for (entry in group) {
-                val outcome = attempt(entry, scope)
+                val outcome = attempt(entry, scope, handlers)
                 // Halt this group on a retryable failure — a later command in the same
                 // aggregate cannot apply before the earlier one succeeds.
                 // Terminal and Skipped do NOT halt the group.
@@ -192,7 +200,11 @@ class OutboxRunner(
         remaining == 0
     }
 
-    private suspend fun attempt(entry: OutboxEntry, scope: CoroutineScope?): AttemptOutcome {
+    private suspend fun attempt(
+        entry: OutboxEntry,
+        scope: CoroutineScope?,
+        handlers: List<OutboxCommandHandler>,
+    ): AttemptOutcome {
         // H1: CAS claim — only proceed if we actually transitioned the entry from Pending.
         when (val claimed = outbox.markUploading(entry.id)) {
             is Result.Err -> {

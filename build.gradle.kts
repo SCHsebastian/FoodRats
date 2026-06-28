@@ -24,6 +24,21 @@ plugins {
 // play-services-basement 18.4.0) are intentionally NOT forced so we never
 // downgrade them. Versions verified published on Maven Central 2026-06-21.
 subprojects {
+    // Compose-compiler stability config + reports, applied build-wide WITHOUT any source
+    // change (keeps the no-Compose-in-:core:domain rule intact). Configures every subproject
+    // that applies the Compose compiler plugin; the compiler reads the conf during normal
+    // compilation, so the gate is just `assembleDebug`. The plugin class is on the root
+    // buildscript classpath via `alias(libs.plugins.composeCompiler) apply false` above.
+    plugins.withId("org.jetbrains.kotlin.plugin.compose") {
+        extensions.configure<org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension> {
+            stabilityConfigurationFiles.add(
+                rootProject.layout.projectDirectory.file("compose_stability.conf"),
+            )
+            reportsDestination.set(layout.buildDirectory.dir("compose_compiler"))
+            metricsDestination.set(layout.buildDirectory.dir("compose_compiler"))
+        }
+    }
+
     configurations.configureEach {
         resolutionStrategy {
             // Netty — keep ONE consistent version across the whole family so

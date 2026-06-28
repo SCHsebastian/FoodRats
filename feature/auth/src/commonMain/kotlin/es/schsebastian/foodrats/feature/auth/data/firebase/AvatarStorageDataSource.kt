@@ -4,6 +4,13 @@ import dev.gitlive.firebase.storage.FirebaseStorage
 import dev.gitlive.firebase.storage.storageMetadata
 import es.schsebastian.foodrats.core.domain.model.AccountId
 
+/**
+ * `Cache-Control` for the immutable, content-versioned avatar object (30-day max-age + `immutable`).
+ * Safe because the avatar path embeds a content-derived token (`avatars/{uid}/{token}.jpg`), so the
+ * bytes at a given path never change — a new image is a new path, so caching can't serve a stale one.
+ */
+private const val IMMUTABLE_AVATAR_CACHE_CONTROL = "public, max-age=2592000, immutable"
+
 class AvatarStorageDataSource(private val storage: FirebaseStorage) {
 
     /**
@@ -31,7 +38,12 @@ class AvatarStorageDataSource(private val storage: FirebaseStorage) {
         val path = "avatars/${accountId.value}/$token.jpg"
         storage.reference(path).putData(
             data = bytes.toStorageData(),
-            metadata = storageMetadata { contentType = "image/jpeg" },
+            metadata = storageMetadata {
+                contentType = "image/jpeg"
+                // Content-versioned path ⇒ immutable bytes; let a memory-evicted avatar serve from
+                // the HTTP/disk cache instead of re-downloading (IMAGE-6).
+                cacheControl = IMMUTABLE_AVATAR_CACHE_CONTROL
+            },
         )
         return path
     }

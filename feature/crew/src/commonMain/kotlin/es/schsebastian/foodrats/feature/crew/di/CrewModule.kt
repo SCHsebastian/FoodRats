@@ -192,6 +192,17 @@ val crewModule = module {
                     }
                 }
 
+            // IMAGE-2: stable Coil cache key for the banner. Emits the content-versioned bannerPath
+            // (upload-immutable) when a bannerToken is present, else "" — a legacy fixed-path banner
+            // (or none / unreadable crew) is mutable, so the caller falls back to URL-derived keying.
+            override fun observeBannerCacheKey(crewId: CrewId): Flow<String> =
+                repo.observeCrew(crewId).map { r ->
+                    when (r) {
+                        is Result.Ok -> if (r.value.bannerToken != null) r.value.bannerPath.orEmpty() else ""
+                        is Result.Err -> ""
+                    }
+                }
+
             // C9: live banner focal point per crew. Defaults to 0.5 (center) on read failure or
             // absent field. Never emits null — the feed crop can unconditionally apply it.
             override fun observeBannerFocalY(crewId: CrewId): Flow<Float> =

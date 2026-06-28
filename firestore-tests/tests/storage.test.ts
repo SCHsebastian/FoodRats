@@ -16,6 +16,7 @@ const STORAGE_RULES = readFileSync(resolve(here, "..", "..", "storage.rules"), "
 const PLATE = "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg";
 const AVATAR = "avatars/alice.jpg";
 const BANNER = "crew_banners/c1/banner.jpg";
+const VERSIONED_BANNER = "crew_banners/c1/9f3c1a2b.jpg";
 
 let env: RulesTestEnvironment;
 
@@ -66,5 +67,11 @@ describe("storage.rules — direct reads are denied (#15)", () => {
     await seed(BANNER);
     const storage = env.authenticatedContext("alice").storage();
     await assertFails(getBytes(ref(storage, BANNER)));
+  });
+
+  it("denies a direct read of a content-versioned crew banner object (IMAGE-2)", async () => {
+    await seed(VERSIONED_BANNER);
+    const storage = env.authenticatedContext("alice").storage();
+    await assertFails(getBytes(ref(storage, VERSIONED_BANNER)));
   });
 });

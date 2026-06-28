@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -52,8 +54,8 @@ import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
 import es.schsebastian.foodrats.core.designsystem.molecules.scoreToEmoji
 import es.schsebastian.foodrats.core.designsystem.structural.FrAvatarRing
-import es.schsebastian.foodrats.core.designsystem.structural.FrBentoGrid
 import es.schsebastian.foodrats.core.designsystem.structural.FrBentoItem
+import es.schsebastian.foodrats.core.designsystem.structural.frBentoItems
 import es.schsebastian.foodrats.core.designsystem.structural.FrChipTone
 import es.schsebastian.foodrats.core.designsystem.structural.FrEyebrow
 import es.schsebastian.foodrats.core.designsystem.structural.FrGlassAvatar
@@ -97,7 +99,7 @@ private val DOCK_CLEARANCE = 104.dp
  * Structural Feed — the flagship of the "structural" look. A continuous edge-to-edge [FrMediaFloor]
  * (the crew banner, else the day's top plate, else a warm Iron & Ember brush) sits behind a
  * zero-chrome scrolling content plane: an oversized crew switcher, a floating day strip, and an
- * asymmetric [FrBentoGrid] of meals where tile size = score rank. Header chrome (crew name + avatar)
+ * asymmetric bento of meals (emitted lazily via [frBentoItems]) where tile size = score rank. Header chrome (crew name + avatar)
  * is supplied by the Main scaffold so this feature gains no new cross-context dependency.
  *
  * Tapping a tile opens the meal detail (where rate / react / report / block live). The feed-level
@@ -122,11 +124,14 @@ fun FeedScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Z0 — edge-to-edge media floor. Crew banner wins (the owner's deliberate hero); else the
-        // day's highest-scoring plate; else a warm atmospheric brush.
-        val heroMeal = meals.filter { it.feedImageUrl.isNotBlank() }
-            .maxByOrNull { it.averageScore ?: -1.0 }
+        // day's highest-scoring plate; else a warm atmospheric brush. Memoized on `meals` so the
+        // filter+max only re-runs when the day's meals actually change, not on every feed-state churn.
+        val heroMeal = remember(meals) {
+            meals.filter { it.feedImageUrl.isNotBlank() }
+                .maxByOrNull { it.averageScore ?: -1.0 }
+        }
         val floorModel = when {
-            state.bannerImageUrl != null -> stablePlateRequest(state.bannerImageUrl!!, "")
+            state.bannerImageUrl != null -> stablePlateRequest(state.bannerImageUrl!!, state.bannerCacheKey)
             heroMeal != null -> stablePlateRequest(heroMeal.feedImageUrl, heroMeal.feedImageCacheKey)
             else -> null
         }
@@ -150,116 +155,154 @@ fun FeedScreen(
             NoCrewPlane(onPickCrewClick = onPickCrewClick)
         } else {
             val refreshState = rememberPullToRefreshState()
+
+            // Bento boundary lambdas + day-strip labels, hoisted above the lazy list. The lambdas are
+            // memoized so they stay stable across feed-state churn/scroll — fresh lambdas every
+            // recomposition mark the (now @Immutable) tiles unstable and block recomposition-skipping.
+            // `onTileClick` re-keys on the current day so taps still navigate with the correct dayIso.
+            val dayIso = state.day?.day?.date?.toString().orEmpty()
+            val onTileClick = remember(onMealClick, dayIso) { { id: String -> onMealClick(id, dayIso) } }
+            val onTileReact = remember(vm) { { id: String -> vm.onIntent(FeedIntent.ReactMeal(id)) } }
+            val bentoItems = feedBentoItems(meals, state.scoreStyle, onTileClick, onTileReact)
+
+            val date = state.day?.day?.date
+            val today = state.today
+            val isToday = date != null && date == today
+            val isYesterday = date != null && today != null &&
+                date == today.minus(DatePeriod(days = 1))
+            val dayPrimary = when {
+                isToday -> resolve(FeedStringKey.Title)
+                isYesterday -> resolve(FeedStringKey.Yesterday)
+                else -> date?.toString().orEmpty()
+            }
+            val daySecondary = if (isToday || isYesterday) date?.toString().orEmpty() else ""
+
             PullToRefreshBox(
                 isRefreshing = state.isRefreshing,
                 onRefresh = { vm.onIntent(FeedIntent.Refresh) },
                 state = refreshState,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                Column(
+                // Lazy content plane: the header, day strip, challenge, welcome banner AND each bento
+                // row are all LazyColumn items, so OFF-SCREEN bento rows (and their tile image decodes)
+                // are never composed. The prior `Column(verticalScroll)` composed and decoded every
+                // tile of the day at once. Inter-item spacing (Spacing.sm) matches the old Column's
+                // `spacedBy` and the bento's verticalGap, so the layout is unchanged.
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .statusBarsPadding()
                         .frSafeHorizontalPadding()
                         .frContentWidth(Breakpoints.contentMax)
                         .padding(horizontal = Spacing.md),
+                    // The status-bar inset is CONTENT padding, not a viewport modifier, so content
+                    // scrolls immersively under the translucent status bar over the edge-to-edge media
+                    // floor — exactly as the old `verticalScroll().statusBarsPadding()` (inset inside the
+                    // scroll) did. A viewport `statusBarsPadding()` would instead clip scrolling at the
+                    // status bar and break the zero-chrome feel.
+                    contentPadding = WindowInsets.statusBars.asPaddingValues(),
                     verticalArrangement = Arrangement.spacedBy(Spacing.sm),
                 ) {
-                    Spacer(Modifier.height(Spacing.xs))
+                    item(key = "top-spacer") { Spacer(Modifier.height(Spacing.xs)) }
 
-                    FeedHeader(
-                        crewName = crewName,
-                        avatarInitials = avatarInitials,
-                        avatarUrl = avatarUrl,
-                        onMediaFloor = onPhotoFloor,
-                        onPickCrewClick = onPickCrewClick,
-                        onProfileClick = onProfileClick,
-                        onCrewSettingsClick = onCrewSettingsClick,
-                    )
+                    item(key = "header") {
+                        FeedHeader(
+                            crewName = crewName,
+                            avatarInitials = avatarInitials,
+                            avatarUrl = avatarUrl,
+                            onMediaFloor = onPhotoFloor,
+                            onPickCrewClick = onPickCrewClick,
+                            onProfileClick = onProfileClick,
+                            onCrewSettingsClick = onCrewSettingsClick,
+                        )
+                    }
 
                     // C9 — crew banner hero: the owner's cover image shown sharp (the media floor
                     // already carries a blurred echo of it). Honors the owner's vertical focal point;
                     // tap opens the full-screen viewer. Hidden when no banner is set.
                     state.bannerImageUrl?.let { url ->
-                        CrewBannerHero(
-                            url = url,
-                            focalY = state.bannerFocalY,
-                            onClick = { bannerToView = url },
+                        item(key = "banner") {
+                            CrewBannerHero(
+                                url = url,
+                                cacheKey = state.bannerCacheKey,
+                                focalY = state.bannerFocalY,
+                                onClick = { bannerToView = url },
+                            )
+                        }
+                    }
+
+                    item(key = "day-strip") {
+                        FeedDayStrip(
+                            primary = dayPrimary,
+                            secondary = daySecondary,
+                            canGoPrev = state.canGoPrev,
+                            canGoNext = state.canGoNext,
+                            onMediaFloor = onPhotoFloor,
+                            onPrev = { vm.onIntent(FeedIntent.PrevDay) },
+                            onNext = { vm.onIntent(FeedIntent.NextDay) },
                         )
                     }
 
-                    val date = state.day?.day?.date
-                    val today = state.today
-                    val isToday = date != null && date == today
-                    val isYesterday = date != null && today != null &&
-                        date == today.minus(DatePeriod(days = 1))
-                    val dayPrimary = when {
-                        isToday -> resolve(FeedStringKey.Title)
-                        isYesterday -> resolve(FeedStringKey.Yesterday)
-                        else -> date?.toString().orEmpty()
+                    item(key = "challenge") {
+                        FeedChallengeRow(challenge = state.weeklyChallenge, plateCount = meals.size, onMediaFloor = onPhotoFloor)
                     }
-                    val daySecondary = if (isToday || isYesterday) date?.toString().orEmpty() else ""
-                    FeedDayStrip(
-                        primary = dayPrimary,
-                        secondary = daySecondary,
-                        canGoPrev = state.canGoPrev,
-                        canGoNext = state.canGoNext,
-                        onMediaFloor = onPhotoFloor,
-                        onPrev = { vm.onIntent(FeedIntent.PrevDay) },
-                        onNext = { vm.onIntent(FeedIntent.NextDay) },
-                    )
-
-                    FeedChallengeRow(challenge = state.weeklyChallenge, plateCount = meals.size, onMediaFloor = onPhotoFloor)
 
                     // Offline-first indicators + transient errors, kept functional over the floor.
                     state.error?.let { err ->
                         if (err !is FeedError.Session.NoActiveCrew) {
-                            FrText(
-                                text = resolve(err.toStringKey()),
-                                style = StructuralType.body,
-                                color = MaterialTheme.colorScheme.error,
-                            )
+                            item(key = "feed-error") {
+                                FrText(
+                                    text = resolve(err.toStringKey()),
+                                    style = StructuralType.body,
+                                    color = MaterialTheme.colorScheme.error,
+                                )
+                            }
                         }
                     }
-                    state.rateError?.let { FrText(resolve(it.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error) }
-                    state.reactError?.let { FrText(resolve(it.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error) }
+                    state.rateError?.let { err ->
+                        item(key = "rate-error") {
+                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    state.reactError?.let { err ->
+                        item(key = "react-error") {
+                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
 
                     // C6 — pinned crew welcome message.
                     state.welcomeMessage?.let { msg ->
-                        FrGlassTile(depth = FrTileDepth.Near) {
-                            FrText(text = msg, style = StructuralType.body, color = StructuralColors.foreground)
-                            Spacer(Modifier.height(Spacing.sm))
-                            FrGlassButton(
-                                label = resolve(FeedStringKey.WelcomeDismiss),
-                                onClick = { vm.onIntent(FeedIntent.DismissWelcomeBanner) },
-                                tone = FrButtonTone.Ghost,
-                                compact = true,
-                            )
+                        item(key = "welcome") {
+                            FrGlassTile(depth = FrTileDepth.Near) {
+                                FrText(text = msg, style = StructuralType.body, color = StructuralColors.foreground)
+                                Spacer(Modifier.height(Spacing.sm))
+                                FrGlassButton(
+                                    label = resolve(FeedStringKey.WelcomeDismiss),
+                                    onClick = { vm.onIntent(FeedIntent.DismissWelcomeBanner) },
+                                    tone = FrButtonTone.Ghost,
+                                    compact = true,
+                                )
+                            }
                         }
                     }
 
                     when {
-                        state.isLoading && meals.isEmpty() -> FeedSkeleton()
-                        meals.isEmpty() -> EmptyDayTile(
-                            viewingToday = state.today == null || state.day?.day?.date == state.today,
-                        )
-                        else -> FeedBento(
-                            meals = meals,
-                            scoreStyle = state.scoreStyle,
-                            onMealClick = { id -> onMealClick(id, state.day?.day?.date?.toString().orEmpty()) },
-                            onReactClick = { id -> vm.onIntent(FeedIntent.ReactMeal(id)) },
-                        )
+                        state.isLoading && meals.isEmpty() -> item(key = "skeleton") { FeedSkeleton() }
+                        meals.isEmpty() -> item(key = "empty") {
+                            EmptyDayTile(
+                                viewingToday = state.today == null || state.day?.day?.date == state.today,
+                            )
+                        }
+                        else -> frBentoItems(bentoItems)
                     }
 
-                    Spacer(Modifier.height(DOCK_CLEARANCE))
+                    item(key = "dock-clearance") { Spacer(Modifier.height(DOCK_CLEARANCE)) }
                 }
             }
         }
 
         // C9 — full-screen crew-banner viewer, opened by tapping the banner hero.
         bannerToView?.let { url ->
-            CrewBannerViewer(url = url, onDismiss = { bannerToView = null })
+            CrewBannerViewer(url = url, cacheKey = state.bannerCacheKey, onDismiss = { bannerToView = null })
         }
     }
 }
@@ -403,16 +446,22 @@ private fun FeedChallengeRow(challenge: String?, plateCount: Int, onMediaFloor: 
 // Bento + meal tiles
 // ----------------------------------------------------------------------------------------------
 
+/**
+ * Builds the bento items for the day's meals: sort by score so tile size = rank (the top plate is the
+ * wide hero, the lowest the narrow tile). Returned to [FeedScreen] and emitted as lazy rows via
+ * [frBentoItems] so off-screen tiles never compose. The sort is memoized; the `FrBentoItem` list (with
+ * its composable tile-content lambdas) is built each recomposition, exactly as the prior `FeedBento`
+ * did — emitting it lazily, not memoizing the list, is what avoids composing off-screen tiles.
+ */
 @Composable
-private fun FeedBento(
+private fun feedBentoItems(
     meals: List<FeedMealUi>,
     scoreStyle: FrScoreStyle,
     onMealClick: (mealId: String) -> Unit,
     onReactClick: (mealId: String) -> Unit,
-) {
-    // Sort by score so size = rank: the top plate is the wide hero, the lowest is the narrow tile.
-    val ranked = meals.sortedByDescending { it.averageScore ?: -1.0 }
-    val items = ranked.mapIndexed { index, ui ->
+): List<FrBentoItem> {
+    val ranked = remember(meals) { meals.sortedByDescending { it.averageScore ?: -1.0 } }
+    return ranked.mapIndexed { index, ui ->
         val span = when (index) {
             0 -> 6
             1 -> 4
@@ -429,6 +478,10 @@ private fun FeedBento(
                 ui = ui,
                 heightDp = tileHeight,
                 isHero = index == 0,
+                // IMAGE-1 — only the wide tiles (hero span-6 + the span-4 #2) render large enough to
+                // need the full 1280px plate; the narrow tiles (span < 4) load the 512px server
+                // thumbnail instead, cutting their image egress + decode without a visible quality hit.
+                wide = span >= 4,
                 // B4 — the narrowest (sub-3-span) tile has no room for the dish name; at <3 cols it
                 // collapses to ~3 chars + an unreadable ellipsis ("Pla…"). Drop the name there — the
                 // photo, slot chip, score, and cook avatar already identify the plate; the wider
@@ -440,7 +493,6 @@ private fun FeedBento(
             )
         }
     }
-    FrBentoGrid(items = items, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable
@@ -452,6 +504,9 @@ private fun StructuralMealTile(
     scoreStyle: FrScoreStyle,
     onClick: () -> Unit,
     onReactClick: () -> Unit,
+    // IMAGE-1 — wide tiles (span >= 4) load the full plate; narrow tiles the 512px thumb. Defaults
+    // to `true` so any other caller keeps the full-plate behaviour.
+    wide: Boolean = true,
 ) {
     val avg = ui.averageScore
     val hasVotes = avg != null && ui.ratingCount > 0
@@ -471,11 +526,15 @@ private fun StructuralMealTile(
             .background(dishBrushFor(ui.slot))
             .clickable(onClick = onClick),
     ) {
-        if (ui.bentoImageUrl.isNotBlank()) {
+        // IMAGE-1 — wide tiles render large, so they load the FULL plate (bentoImageUrl) for crisp
+        // edges; narrow tiles (span < 4) are small enough that the 512px server thumbnail
+        // (feedImageUrl) is indistinguishable while costing far less egress + decode. The cache keys
+        // differ (thumb path vs plate path), so the detail screen's full-plate load is unaffected.
+        val imageUrl = if (wide) ui.bentoImageUrl else ui.feedImageUrl
+        val imageCacheKey = if (wide) ui.bentoImageCacheKey else ui.feedImageCacheKey
+        if (imageUrl.isNotBlank()) {
             AsyncImage(
-                // Full plate (not the 512px thumbnail) — the bento tiles render large and the thumb
-                // looks soft scaled up to fill them. See FeedMealUi.bentoImageUrl.
-                model = stablePlateRequest(ui.bentoImageUrl, ui.bentoImageCacheKey),
+                model = stablePlateRequest(imageUrl, imageCacheKey),
                 contentDescription = ui.dishName,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
@@ -677,9 +736,9 @@ private fun NoCrewPlane(onPickCrewClick: () -> Unit) {
  * owner's chosen vertical focal point ([focalY] 0=top..1=bottom); tap opens the full-screen viewer.
  */
 @Composable
-private fun CrewBannerHero(url: String, focalY: Float, onClick: () -> Unit) {
+private fun CrewBannerHero(url: String, cacheKey: String, focalY: Float, onClick: () -> Unit) {
     AsyncImage(
-        model = stablePlateRequest(url, ""),
+        model = stablePlateRequest(url, cacheKey),
         contentDescription = resolve(FeedStringKey.CrewBannerCd),
         contentScale = ContentScale.Crop,
         alignment = BiasAlignment(horizontalBias = 0f, verticalBias = focalY * 2f - 1f),
@@ -694,10 +753,11 @@ private fun CrewBannerHero(url: String, focalY: Float, onClick: () -> Unit) {
 /**
  * Full-screen crew-banner viewer: the banner fitted on a near-opaque scrim, dismissed by tapping the
  * backdrop, the close button, or system back ([Dialog] consumes back). [url] is the already-resolved
- * signed URL from the feed hero.
+ * signed URL from the feed hero; [cacheKey] keys Coil on the stable versioned path so the viewer
+ * reuses the hero's already-decoded bytes instead of re-downloading.
  */
 @Composable
-private fun CrewBannerViewer(url: String, onDismiss: () -> Unit) {
+private fun CrewBannerViewer(url: String, cacheKey: String, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(
             modifier = Modifier
@@ -712,7 +772,7 @@ private fun CrewBannerViewer(url: String, onDismiss: () -> Unit) {
             contentAlignment = Alignment.Center,
         ) {
             AsyncImage(
-                model = stablePlateRequest(url, ""),
+                model = stablePlateRequest(url, cacheKey),
                 contentDescription = resolve(FeedStringKey.CrewBannerCd),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),

@@ -13,6 +13,11 @@
 # instead of looking it up by bundle id. Public (it's the id in the App Store URL), not a secret.
 ASC_APP_ID = "6781682875".freeze
 
+# Drives the Crashlytics dSYM upload (it reads the Google App ID / API key from here).
+GSP_PATH = "iosApp/iosApp/GoogleService-Info.plist".freeze
+
+IOS_BUNDLE_ID = "es.schsebastian.foodrats".freeze
+
 default_platform(:android)
 
 # ---------------------------------------------------------------------------
@@ -62,7 +67,27 @@ platform :ios do
   before_all do
     # On CI, create an ephemeral keychain so match can import the cert without
     # polluting (or being blocked by) the machine's login keychain.
-    setup_ci if ENV["CI"]
+    if ENV["CI"]
+      # The runner is a *persistent* self-hosted Mac. setup_ci makes the
+      # ephemeral fastlane_tmp_keychain the machine's DEFAULT keychain, and
+      # fastlane never restores it on teardown. Left that way, the temp
+      # keychain (which auto-locks on sleep / after 1h) keeps prompting
+      # "security wants to use the fastlane_tmp_keychain-db keychain — enter
+      # the keychain password" for every app that touches the default
+      # keychain. So remember the real default here and restore it after the
+      # lane (after_all + error below). See docs/cicd-runbook.md.
+      ENV["FR_PREV_DEFAULT_KEYCHAIN"] =
+        `security default-keychain -d user`.strip.delete('"')
+      setup_ci
+    end
+  end
+
+  after_all do |_lane|
+    teardown_ci_keychain
+  end
+
+  error do |_lane, _exception|
+    teardown_ci_keychain
   end
 
   desc "Build and upload to TestFlight"
@@ -108,11 +133,56 @@ platform :ios do
     asc_api_key
     sync_code_signing(
       type: "appstore",
-      app_identifier: "es.schsebastian.foodrats",
+      app_identifier: IOS_BUNDLE_ID,
       readonly: false,
       force: true,
       api_key: lane_context[SharedValues::APP_STORE_CONNECT_API_KEY],
     )
+  end
+
+  desc "Clear a Crashlytics 'missing dSYM' warning for an already-shipped build by downloading " \
+       "its dSYMs from App Store Connect and uploading them to Crashlytics. Defaults to the build " \
+       "that reported the warning (1.10.2 / 10031); override with `version:` / `build_number:`, or " \
+       "pass `latest:true` to grab the newest processed build.\n\n" \
+       "Why this is needed: the in-archive Crashlytics `run` build phase does not reliably upload " \
+       "dSYMs from a `gym` archive, so a shipped build can land on TestFlight/App Store without " \
+       "its symbols. The beta/release lanes now upload dSYMs on every build (build_ios), so this " \
+       "lane is only for retroactively fixing builds made before that wiring existed.\n\n" \
+       "Example: bundle exec fastlane ios refresh_dsyms version:1.10.2 build_number:10031"
+  lane :refresh_dsyms do |options|
+    asc_api_key
+    download_dsyms(
+      api_key: lane_context[SharedValues::APP_STORE_CONNECT_API_KEY],
+      app_identifier: IOS_BUNDLE_ID,
+      version: options[:latest] ? nil : (options[:version] || "1.10.2"),
+      build_number: options[:latest] ? nil : (options[:build_number] || "10031"),
+      latest: options[:latest] || false,
+    )
+    paths = lane_context[SharedValues::DSYM_PATHS]
+    if paths.nil? || paths.empty?
+      UI.user_error!(
+        "App Store Connect returned no dSYMs for the requested build. The build may still be " \
+        "processing, or it was uploaded without symbols. Check the version/build_number.",
+      )
+    end
+    upload_dsyms_to_crashlytics(dsym_paths: paths)
+  end
+
+  # Undo setup_ci's keychain mutation on the persistent self-hosted runner:
+  # restore the default keychain it swapped and delete the ephemeral keychain,
+  # leaving the machine exactly as it was. Runs on both success (after_all) and
+  # failure (error). No-op when not on CI.
+  def teardown_ci_keychain
+    return unless ENV["CI"]
+
+    prev = ENV["FR_PREV_DEFAULT_KEYCHAIN"].to_s
+    unless prev.empty?
+      sh("security default-keychain -s '#{prev}'")
+      sh("security list-keychains -d user -s '#{prev}'")
+    end
+    delete_keychain(name: "fastlane_tmp_keychain")
+  rescue StandardError => e
+    UI.important("Keychain teardown skipped: #{e.message}")
   end
 
   def asc_api_key
@@ -172,9 +242,55 @@ platform :ios do
       ].join(" "),
       export_options: {
         provisioningProfiles: {
-          "es.schsebastian.foodrats" => profile,
+          IOS_BUNDLE_ID => profile,
         },
       },
     )
+    # Upload the just-built dSYMs to Crashlytics. The in-archive Crashlytics `run`
+    # build phase does not reliably emit symbols from a gym archive, so do it
+    # explicitly here. Non-fatal: a symbol-upload hiccup must not abort a release
+    # whose binary already built — the TestFlight/App Store upload still runs.
+    upload_dsyms_to_crashlytics
+  end
+
+  # Upload dSYMs to Crashlytics via Firebase's upload-symbols tool. With no
+  # dsym_paths, uploads the dSYM gym just produced (lane_context DSYM_OUTPUT_PATH).
+  # Firebase is integrated via SPM, so the upload-symbols binary isn't at the
+  # CocoaPods path fastlane probes by default — locate it in the SPM checkout.
+  def upload_dsyms_to_crashlytics(dsym_paths: nil)
+    paths = (dsym_paths || [lane_context[SharedValues::DSYM_OUTPUT_PATH]])
+            .compact.uniq.select { |p| File.exist?(p) }
+    if paths.empty?
+      UI.important("No dSYMs found to upload to Crashlytics; skipping.")
+      return
+    end
+    binary = crashlytics_upload_binary
+    paths.each do |path|
+      upload_symbols_to_crashlytics(
+        dsym_path: path,
+        gsp_path: GSP_PATH,
+        binary_path: binary,
+      )
+    end
+  rescue StandardError => e
+    UI.important("Crashlytics dSYM upload failed (non-fatal): #{e.message}")
+  end
+
+  # Resolve Firebase's `upload-symbols` binary from the SPM checkout. gym's
+  # DerivedData hash isn't stable, so glob both the default DerivedData location
+  # and the in-repo build dirs and take the freshest hit.
+  def crashlytics_upload_binary
+    rel = "SourcePackages/checkouts/firebase-ios-sdk/Crashlytics/upload-symbols"
+    candidates =
+      Dir.glob(File.expand_path("~/Library/Developer/Xcode/DerivedData/iosApp-*/#{rel}")) +
+      Dir.glob("iosApp/**/#{rel}")
+    binary = candidates.select { |p| File.file?(p) }.max_by { |p| File.mtime(p) }
+    unless binary
+      UI.user_error!(
+        "Crashlytics upload-symbols not found. Build the iOS app first so SPM resolves " \
+        "firebase-ios-sdk, then re-run.",
+      )
+    end
+    binary
   end
 end

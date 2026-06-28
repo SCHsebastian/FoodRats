@@ -1,8 +1,10 @@
 # Food-101 classifier model
 
-`src/commonMain/composeResources/files/food101.tflite` is the on-device dish
+`src/androidMain/composeResources/files/food101.tflite` is the on-device dish
 classifier loaded by `MediaPipeMealClassifier` (Android) via MediaPipe Tasks
-Vision `ImageClassifier`.
+Vision `ImageClassifier`. It lives in `androidMain` (not `commonMain`) so the
+~1 MB asset is not aggregated into the iOS framework — iOS loads the
+byte-identical `iosApp/iosApp/food101.tflite` from `Bundle.main` instead.
 
 ## Source
 

@@ -79,6 +79,7 @@
     <string name="feed_comments_relative_days">%1$d d ago</string>
     <string name="feed_comments_title">Comments</string>
     <string name="feed_comments_empty">No comments yet. Be the first.</string>
+    <string name="feed_load_older_comments">Load older comments</string>
     <string name="feed_comments_input_placeholder">Write a comment…</string>
     <string name="feed_comments_send_cta">Send</string>
     <string name="feed_comments_error_blank">Comment is empty</string>

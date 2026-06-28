@@ -65,8 +65,9 @@ class LocalAccountDataEraserTest {
         // blindVoting is stored as INTEGER (Long) by SQLDelight; 0 = false.
         database.crewQueries.upsert("c1", "Saturday Brunch", "alice", 0L, "alice,bob", 1L)
         database.mealQueries.upsertRating("m1", "alice", 5L, 1L, 0L, 0L)
-        // Account-scoped pref + a device-scoped pref that must SURVIVE sign-out.
+        // Account-scoped prefs + a device-scoped pref that must SURVIVE sign-out.
         prefs.set(Keys.ActiveCrewId, "c1")
+        prefs.set(Keys.PlateUrlCacheJson, """{"crews/c1/meals/m.jpg":{"url":"u","freshUntilMs":9}}""")
         prefs.set(Keys.ThemeMode, "dark")
 
         assertTrue(database.crewQueries.selectAll().executeAsList().isNotEmpty())
@@ -75,6 +76,7 @@ class LocalAccountDataEraserTest {
 
         assertTrue(database.crewQueries.selectAll().executeAsList().isEmpty(), "cached crews wiped")
         assertEquals(null, prefs.observe(Keys.ActiveCrewId).first(), "active crew (account-scoped) cleared")
+        assertEquals(null, prefs.observe(Keys.PlateUrlCacheJson).first(), "signed-URL cache (account-scoped) cleared")
         assertEquals("dark", prefs.observe(Keys.ThemeMode).first(), "theme (device-scoped) preserved")
     }
 }

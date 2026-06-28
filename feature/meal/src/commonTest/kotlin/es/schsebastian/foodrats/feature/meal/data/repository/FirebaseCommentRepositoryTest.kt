@@ -37,7 +37,7 @@ private class FakeCommentFirestore(
     var lastDeletedId: String? = null
     private var nextId = 0
 
-    override fun observe(crewId: CrewId, mealId: MealId): Flow<List<CommentDto>> =
+    override fun observe(crewId: CrewId, mealId: MealId, limit: Int): Flow<List<CommentDto>> =
         flow {
             failWith?.let { throw it }
             docs.collect { emit(it) }
@@ -112,7 +112,7 @@ class FirebaseCommentRepositoryTest {
         )
         val repo = repository(fake)
 
-        val emitted = repo.observe(crewId, mealId).first()
+        val emitted = repo.observe(crewId, mealId, limit = 50).first()
         assertTrue(emitted is Result.Ok)
         val comments = (emitted as Result.Ok).value
         assertEquals(2, comments.size)
@@ -132,7 +132,7 @@ class FirebaseCommentRepositoryTest {
         )
         val repo = repository(fake)
 
-        val comments = (repo.observe(crewId, mealId).first() as Result.Ok).value
+        val comments = (repo.observe(crewId, mealId, limit = 50).first() as Result.Ok).value
         assertEquals(1, comments.size)
         assertEquals("ok", comments[0].id.value)
     }
@@ -141,7 +141,7 @@ class FirebaseCommentRepositoryTest {
         val fake = FakeCommentFirestore(failWith = RuntimeException("network unreachable"))
         val repo = repository(fake)
 
-        val emitted = repo.observe(crewId, mealId).first()
+        val emitted = repo.observe(crewId, mealId, limit = 50).first()
         assertTrue(emitted is Result.Err)
         assertEquals(CommentError.Read.Unavailable, (emitted as Result.Err).error)
     }

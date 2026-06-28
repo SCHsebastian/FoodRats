@@ -12,7 +12,7 @@ import es.schsebastian.foodrats.feature.ingredient.data.local.CatalogCache
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -25,15 +25,12 @@ import kotlin.test.assertEquals
 class IngredientRepositoryTest {
 
     @Test
-    fun observeCatalog_emits_live_snapshot() = runTest {
-        // replay=1 so the emission is buffered before the stateIn collector subscribes
-        val liveFlow = MutableSharedFlow<List<IngredientDto>>(replay = 1)
-        liveFlow.emit(listOf(IngredientDto("tomato", mapOf("en" to "Tomato"), "Vegetable")))
-        val repo = repoWith(live = liveFlow)
+    fun observeCatalog_emits_seeded_catalog() = runTest {
+        // FIREST-4: subscribing triggers the one-shot get() → cache hydration → public flow.
+        val repo = repoWith(catalog = listOf(IngredientDto("tomato", mapOf("en" to "Tomato"), "Vegetable")))
         repo.observeCatalog().test {
-            // Consume initial emptyMap if present, then find the non-empty item
             var snapshot = awaitItem()
-            if (snapshot.isEmpty()) snapshot = awaitItem()
+            while (snapshot.isEmpty()) snapshot = awaitItem()
             assertEquals(setOf(IngredientSlug.of("tomato").getOrNull()!!), snapshot.keys)
             cancelAndIgnoreRemainingEvents()
         }
@@ -41,17 +38,15 @@ class IngredientRepositoryTest {
 
     @Test
     fun observeCatalog_skips_dto_with_blank_slug() = runTest {
-        val liveFlow = MutableSharedFlow<List<IngredientDto>>(replay = 1)
-        liveFlow.emit(
-            listOf(
+        val repo = repoWith(
+            catalog = listOf(
                 IngredientDto("", mapOf("en" to "Invalid"), "Vegetable"),
                 IngredientDto("carrot", mapOf("en" to "Carrot"), "Vegetable"),
             ),
         )
-        val repo = repoWith(live = liveFlow)
         repo.observeCatalog().test {
             var result = awaitItem()
-            if (result.isEmpty()) result = awaitItem()
+            while (result.isEmpty()) result = awaitItem()
             assertEquals(setOf(IngredientSlug.of("carrot").getOrNull()!!), result.keys)
             cancelAndIgnoreRemainingEvents()
         }
@@ -74,14 +69,11 @@ class IngredientRepositoryTest {
     @Test
     fun suggestForDish_returns_empty_when_datasource_throws() = runTest {
         val throwingDs = object : IngredientDataSource {
-            override fun observeCatalog(): Flow<List<IngredientDto>> = MutableSharedFlow()
+            override suspend fun loadCatalog(): List<IngredientDto> = emptyList()
             override suspend fun loadDishMap(dishSlug: String): DishIngredientMapDto? =
                 throw RuntimeException("network error")
         }
-        val cache = object : CatalogCache {
-            override fun observe(): Flow<List<IngredientDto>> = flowOf(emptyList())
-            override suspend fun save(catalog: List<IngredientDto>) {}
-        }
+        val cache = InMemoryCatalogCache()
         val testDispatcher = UnconfinedTestDispatcher(testScheduler)
         val dispatchers = object : DispatcherProvider {
             override val main: CoroutineDispatcher = testDispatcher
@@ -101,17 +93,14 @@ class IngredientRepositoryTest {
 
     @Test
     fun findBySlugs_returns_matching_ingredients_from_catalog() = runTest {
-        val liveFlow = MutableSharedFlow<List<IngredientDto>>(replay = 1)
-        liveFlow.emit(
-            listOf(
+        val repo = repoWith(
+            catalog = listOf(
                 IngredientDto("tomato", mapOf("en" to "Tomato"), "Vegetable"),
                 IngredientDto("onion", mapOf("en" to "Onion"), "Vegetable"),
             ),
         )
-        val repo = repoWith(live = liveFlow)
-        // Allow the stateIn to collect the live emission
+        // Subscribe so the one-shot hydration runs and the catalog warms.
         repo.observeCatalog().test {
-            // consume until we have both slugs
             var snap = awaitItem()
             while (snap.size < 2) snap = awaitItem()
             cancelAndIgnoreRemainingEvents()
@@ -123,19 +112,24 @@ class IngredientRepositoryTest {
 
     // ---- helpers ----
 
+    private class InMemoryCatalogCache : CatalogCache {
+        private val state = MutableStateFlow<List<IngredientDto>>(emptyList())
+        override fun observe(): Flow<List<IngredientDto>> = state
+        override suspend fun save(catalog: List<IngredientDto>) {
+            state.value = catalog
+        }
+    }
+
     private fun TestScope.repoWith(
-        live: MutableSharedFlow<List<IngredientDto>> = MutableSharedFlow(replay = 0),
+        catalog: List<IngredientDto> = emptyList(),
         dishMap: Map<String, List<String>> = emptyMap(),
     ): IngredientRepository {
         val ds = object : IngredientDataSource {
-            override fun observeCatalog(): Flow<List<IngredientDto>> = live
+            override suspend fun loadCatalog(): List<IngredientDto> = catalog
             override suspend fun loadDishMap(dishSlug: String): DishIngredientMapDto? =
                 dishMap[dishSlug]?.let { DishIngredientMapDto(dishSlug, dishSlug, it) }
         }
-        val cache = object : CatalogCache {
-            override fun observe(): Flow<List<IngredientDto>> = flowOf(emptyList())
-            override suspend fun save(catalog: List<IngredientDto>) { /* no-op */ }
-        }
+        val cache = InMemoryCatalogCache()
         val testDispatcher = UnconfinedTestDispatcher(testScheduler)
         val dispatchers = object : DispatcherProvider {
             override val main: CoroutineDispatcher = testDispatcher

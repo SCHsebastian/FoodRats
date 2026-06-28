@@ -314,15 +314,29 @@ internal class FirebaseCrewRepository(
         val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
         val storage = bannerStorage ?: return Result.failure(CrewError.Banner.UploadFailed)
+        // The banner PATH is content-versioned (`crew_banners/{crewId}/{token}.jpg`), so a NEW image
+        // produces a NEW path; we reclaim the PREVIOUS object after the pointer write lands (the old
+        // fixed path overwrote in place and needed no reclaim). Read the prior path before uploading.
+        val previousPath = crew.bannerPath
         val path = runCatching { withContext(dispatchers.io) { storage.upload(crewId, bytes) } }
             .getOrElse { return Result.failure(CrewError.Banner.UploadFailed) }
-        return when (val written = dataSource.setBannerPath(crewId, path)) {
-            is Result.Ok -> written
+        // The token is the versioned object's filename stem: crew_banners/{crewId}/{token}.jpg.
+        val token = path.substringAfterLast('/').substringBeforeLast('.')
+        return when (val written = dataSource.setBannerPath(crewId, path, token)) {
+            is Result.Ok -> {
+                // Best-effort: reclaim the previous version's object so old banners don't accumulate.
+                // Skipped when unchanged (same image → identical token → identical path) or absent. A
+                // failure here must not fail the update (leaves a harmless orphan, never a dangle).
+                if (previousPath != null && previousPath != path) {
+                    runCatching { withContext(dispatchers.io) { storage.delete(previousPath) } }
+                }
+                written
+            }
             is Result.Err -> {
                 // The object landed but the Firestore pointer write was rejected (e.g. a rules
-                // denial). Best-effort orphan cleanup, then surface the REAL cause rather than
-                // masking every post-upload failure as the generic Banner.UploadFailed.
-                runCatching { withContext(dispatchers.io) { storage.delete(crewId) } }
+                // denial). Best-effort orphan cleanup of the JUST-uploaded object, then surface the
+                // REAL cause rather than masking every post-upload failure as the generic UploadFailed.
+                runCatching { withContext(dispatchers.io) { storage.delete(path) } }
                 written
             }
         }
@@ -335,6 +349,8 @@ internal class FirebaseCrewRepository(
         val crew = dataSource.fetchOnce(crewId) ?: return Result.failure(CrewError.Membership.NotFound)
         if (crew.ownerId != requestedBy) return Result.failure(CrewError.Authorization.NotOwner)
         val storage = bannerStorage ?: return Result.failure(CrewError.Banner.DeleteFailed)
+        // The object to reclaim is whatever the pointer currently names (versioned or legacy fixed).
+        val currentPath = crew.bannerPath
         // Clear the Firestore pointer FIRST — it is the source of truth for "is there a banner". A
         // transient Storage delete error must NOT strand a dangling pointer (the old order deleted
         // Storage first, so a non-NOT_FOUND Storage error left `bannerPath` pointing at an object the
@@ -342,7 +358,9 @@ internal class FirebaseCrewRepository(
         // (NOT_FOUND-tolerant; a leftover Storage object is harmless).
         return when (val cleared = dataSource.clearBannerPath(crewId)) {
             is Result.Ok -> {
-                runCatching { withContext(dispatchers.io) { storage.delete(crewId) } }
+                if (currentPath != null) {
+                    runCatching { withContext(dispatchers.io) { storage.delete(currentPath) } }
+                }
                 cleared
             }
             // Surface the real cause (permission / unknown) instead of the generic DeleteFailed.

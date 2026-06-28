@@ -69,6 +69,18 @@ Según `CLAUDE.md` (sección iOS), antes del primer build de release iOS:
 - Enlaza `CoreLocation.framework` (ImagePickerKMP).
 - Añade el producto SPM **FirebaseCrashlytics** + el Run Script de subida de dSYM.
 
+> **dSYMs en Crashlytics.** El Run Script en el archive no sube los símbolos de forma fiable
+> (por eso 1.10.2 / 10031 quedó con un dSYM faltante). Las lanes `ios beta`/`ios release` ya
+> suben los dSYM en **cada** build (`build_ios` → `upload_dsyms_to_crashlytics`, localizando
+> `upload-symbols` en el checkout SPM de `firebase-ios-sdk`). Para un build ya publicado que
+> reporte "missing dSYM", usa la lane de remediación (descarga los dSYM de App Store Connect y
+> los sube a Crashlytics):
+> ```bash
+> ASC_KEY_ID=<key-id> ASC_ISSUER_ID=<issuer-id> ASC_KEY_PATH=</ruta/AuthKey_XXX.p8> \
+>   bundle exec fastlane ios refresh_dsyms version:1.10.2 build_number:10031
+> ```
+> (sin argumentos usa 1.10.2/10031 por defecto; `latest:true` toma el último build procesado).
+
 ### 3. Self-hosted runner en tu Mac
 
 1. GitHub → repo → **Settings → Actions → Runners → New self-hosted runner** → macOS / arm64. Sigue el instalador.

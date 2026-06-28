@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   classifyPlateObject,
+  IMMUTABLE_CACHE_CONTROL,
   isGeneratedThumbnail,
   processPlateImage,
   runPlatePipeline,
@@ -110,14 +111,23 @@ function mealStore(status: MealStatus): { store: MealStore; written: unknown[] }
   };
 }
 
-function blobStore(): { store: PlateBlobStore; uploads: { path: string }[] } {
-  const uploads: { path: string }[] = [];
+function blobStore(): {
+  store: PlateBlobStore;
+  uploads: { path: string; cacheControl: string }[];
+  cacheControlSet: { path: string; cacheControl: string }[];
+} {
+  const uploads: { path: string; cacheControl: string }[] = [];
+  const cacheControlSet: { path: string; cacheControl: string }[] = [];
   return {
     uploads,
+    cacheControlSet,
     store: {
       download: async () => Buffer.from("ORIGINAL"),
-      uploadThumbnail: async (path) => {
-        uploads.push({ path });
+      uploadThumbnail: async (path, _bytes, cacheControl) => {
+        uploads.push({ path, cacheControl });
+      },
+      setCacheControl: async (path, cacheControl) => {
+        cacheControlSet.push({ path, cacheControl });
       },
     },
   };
@@ -140,12 +150,41 @@ describe("runPlatePipeline — orchestration", () => {
     );
 
     expect(outcome).toBe("processed");
-    expect(b.uploads).toEqual([{ path: "crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg" }]);
+    expect(b.uploads).toEqual([
+      {
+        path: "crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg",
+        cacheControl: IMMUTABLE_CACHE_CONTROL,
+      },
+    ]);
     expect(m.written).toHaveLength(1);
     const w = m.written[0] as { crewId: string; mealId: string; fields: { thumbHash: string; thumbnailPath: string } };
     expect(w.crewId).toBe("c1");
     expect(w.fields.thumbnailPath).toBe("crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg");
     expect(w.fields.thumbHash.length).toBeGreaterThan(0);
+  });
+
+  it("stamps the immutable cache-control on BOTH the plate and the thumbnail (IMAGE-6)", async () => {
+    const m = mealStore({ kind: "unprocessed" });
+    const b = blobStore();
+
+    const outcome = await runPlatePipeline(
+      { meals: m.store, blobs: b.store, imageOps: okImageOps },
+      plateObject,
+    );
+
+    expect(outcome).toBe("processed");
+    expect(IMMUTABLE_CACHE_CONTROL).toBe("public, max-age=2592000, immutable");
+    // Thumbnail: cache header set atomically on upload (the new content-addressed object).
+    expect(b.uploads).toEqual([
+      {
+        path: "crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg",
+        cacheControl: IMMUTABLE_CACHE_CONTROL,
+      },
+    ]);
+    // Plate: cache header back-filled on the already-uploaded original.
+    expect(b.cacheControlSet).toEqual([
+      { path: PLATE, cacheControl: IMMUTABLE_CACHE_CONTROL },
+    ]);
   });
 
   it("no-ops when the meal is missing (deleted before trigger fired)", async () => {

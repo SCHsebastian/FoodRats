@@ -1,9 +1,6 @@
 package es.schsebastian.foodrats.core.designsystem.structural
 
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,7 +27,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -132,20 +130,24 @@ fun FrDock(
             contentAlignment = Alignment.Center,
         ) {
             if (fabPulsing) {
-                val transition = rememberInfiniteTransition(label = "fabPulse")
-                val t by transition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 1f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(Motion.pulse, easing = Motion.Standard),
-                        repeatMode = RepeatMode.Restart,
-                    ),
-                    label = "fabPulseT",
-                )
+                // Finite attention pulse: a few cycles when the nudge appears, then settle to rest
+                // (t = 1f → alpha 0 → invisible) so the render thread can idle. No infinite loop.
+                val pulse = remember { Animatable(1f) }
+                LaunchedEffect(fabPulsing) {
+                    repeat(3) {
+                        pulse.snapTo(0f)
+                        pulse.animateTo(
+                            targetValue = 1f,
+                            animationSpec = tween(Motion.pulse, easing = Motion.Standard),
+                        )
+                    }
+                    pulse.snapTo(1f) // rest: 1f scale / 0 alpha ring
+                }
                 Box(
                     Modifier
                         .size(58.dp)
                         .graphicsLayer {
+                            val t = pulse.value
                             scaleX = 1f + 0.2f * t
                             scaleY = 1f + 0.2f * t
                             alpha = 0.7f * (1f - t)

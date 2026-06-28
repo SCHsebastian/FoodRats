@@ -34,7 +34,8 @@ class LocalAccountDataEraser(
                 database.outboxQueries.deleteAllOutbox()
             }
             // 2. Account-scoped DataStore keys (cached drafts, publish/write queues, audience, sync
-            //    stamps, dismissals, active crew, one-shot permission flag, legacy outbox JSON).
+            //    stamps, dismissals, active crew, one-shot permission flag, legacy outbox JSON,
+            //    persisted signed-image-URL cache).
             prefs.clearAll(
                 Keys.SessionToken,
                 Keys.ActiveCrewId,
@@ -43,10 +44,12 @@ class LocalAccountDataEraser(
                 Keys.MealUploadPending,
                 Keys.DraftQueueJson,
                 Keys.IngredientCatalogJson,
+                Keys.CuisineCatalogJson,
                 Keys.OutboxJson,
                 Keys.MealSyncTimestamps,
                 Keys.DefaultAudienceCrewIds,
                 Keys.DismissedWelcomes,
+                Keys.PlateUrlCacheJson,
             )
             FrLog.d(FrLog.Tags.SignOut) { "local account data erased (cache + scoped prefs)" }
         }

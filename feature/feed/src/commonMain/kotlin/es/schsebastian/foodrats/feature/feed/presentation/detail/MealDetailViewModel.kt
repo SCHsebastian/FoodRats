@@ -246,12 +246,16 @@ class MealDetailViewModel(
             CommentRbac(viewerId, ownerId, blocked)
         }
 
-        val commentsFlow = activeCrew.current
-            .flatMapLatest { crewId ->
+        // FIREST-2: the live comment listener is bounded by the page size held in state. Raising it
+        // (LoadOlderComments) re-subscribes with a larger limit. The limit lives ONLY in state and is
+        // fed here as a derived flow (mirrors FeedViewModel.day) — never a parallel MutableStateFlow.
+        val limitFlow = state.map { it.commentLimit }.distinctUntilChanged()
+        val commentsFlow = combine(activeCrew.current, limitFlow) { crewId, limit -> crewId to limit }
+            .flatMapLatest { (crewId, limit) ->
                 if (crewId == null) flowOf<Result<List<MealComment>, CommentError.Read>>(
                     Result.failure(CommentError.Read.Unauthorized)
                 )
-                else commentPort.observe(crewId, parsedMealId)
+                else commentPort.observe(crewId, parsedMealId, limit)
             }
 
         // flatMapLatest so each new comment batch supersedes the previous identity-join
@@ -365,6 +369,9 @@ class MealDetailViewModel(
             it.copy(commentInput = intent.value, commentWriteError = null)
         }
         MealDetailIntent.PostComment               -> postComment()
+        MealDetailIntent.LoadOlderComments         -> update {
+            it.copy(commentLimit = it.commentLimit + MEAL_DETAIL_COMMENT_PAGE_SIZE)
+        }
         is MealDetailIntent.StartEditComment       -> startEditComment(intent.id)
         is MealDetailIntent.EditCommentInputChanged -> update {
             it.copy(commentEditInput = intent.value, commentEditError = null)
@@ -684,5 +691,6 @@ private object NoopMealDetailWelcomePort : CrewWelcomePort {
     ): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
     override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
     override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
+    override fun observeBannerCacheKey(crewId: CrewId): Flow<String> = flowOf("")
     override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
 }

@@ -15,13 +15,17 @@ internal class CommentFirestoreDataSource(
     private val firestore: FirebaseFirestore,
 ) : CommentFirestore {
 
-    override fun observe(crewId: CrewId, mealId: MealId): Flow<List<CommentDto>> =
+    // FIREST-2: bound the live listener to the newest [limit] comments. The query orders DESCENDING +
+    // .limit so Firestore returns the most recent page (not the whole subcollection); the page is then
+    // reversed back to ascending so chronological display order is unchanged.
+    override fun observe(crewId: CrewId, mealId: MealId, limit: Int): Flow<List<CommentDto>> =
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId.value)
             .collection("comments")
-            .orderBy("createdAtEpochMs", Direction.ASCENDING)
+            .orderBy("createdAtEpochMs", Direction.DESCENDING)
+            .limit(limit)
             .snapshots
-            .map { snap -> snap.documents.map { d -> d.data<CommentDto>().copy(id = d.id) } }
+            .map { snap -> snap.documents.map { d -> d.data<CommentDto>().copy(id = d.id) }.reversed() }
 
     override suspend fun create(crewId: CrewId, mealId: MealId, dto: CommentDto) {
         firestore.collection("crews").document(crewId.value)

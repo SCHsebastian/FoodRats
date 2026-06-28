@@ -56,6 +56,20 @@ export const THUMBNAIL_MAX_EDGE = 512;
 export const THUMBNAIL_QUALITY = 75;
 
 /**
+ * `Cache-Control` stamped on the IMMUTABLE, content-addressed plate + thumbnail objects (IMAGE-6).
+ *
+ * Plate paths (`crews/{c}/meals/{mealId}.jpg`, `mealId` = photo-hash token) and the `_thumb.jpg`
+ * we derive from them are content-addressed: a different image yields a different path, so the bytes
+ * at a given path NEVER change. `immutable` + a 30-day `max-age` lets a memory-evicted image serve
+ * from the HTTP/disk cache (Coil, the CDN) instead of re-downloading — pure egress savings.
+ *
+ * DELIBERATELY NOT applied to the FIXED-path crew banner (`crew_banners/{c}/banner.jpg`): that path
+ * is reused on every re-upload, so an `immutable` header there would pin a stale banner. The banner
+ * is owned by a separate track; this trigger never touches it.
+ */
+export const IMMUTABLE_CACHE_CONTROL = "public, max-age=2592000, immutable";
+
+/**
  * Max edge (px) fed to ThumbHash. ThumbHash REQUIRES width*height be small (≤ 100 per side);
  * a larger buffer overflows its DCT and throws. 100 is its documented practical cap.
  */
@@ -196,8 +210,17 @@ export interface MealStore {
 /** Storage side the pipeline needs, behind an interface for testing. */
 export interface PlateBlobStore {
   download(path: string): Promise<Buffer>;
-  /** Uploads bytes; MUST stamp the [THUMBNAIL_METADATA_MARKER] so the upload doesn't re-trigger. */
-  uploadThumbnail(path: string, bytes: Buffer): Promise<void>;
+  /**
+   * Uploads bytes; MUST stamp the [THUMBNAIL_METADATA_MARKER] so the upload doesn't re-trigger, and
+   * sets `cacheControl` on the new thumbnail object (it is immutable — see [IMMUTABLE_CACHE_CONTROL]).
+   */
+  uploadThumbnail(path: string, bytes: Buffer, cacheControl: string): Promise<void>;
+  /**
+   * Sets `cacheControl` on an EXISTING object (the original plate, already uploaded by the client).
+   * A metadata-only PATCH — it raises a `metadataUpdated` event, NOT `finalize`, so it can never
+   * re-trigger this function.
+   */
+  setCacheControl(path: string, cacheControl: string): Promise<void>;
 }
 
 /** Discrete outcomes of [runPlatePipeline] — makes the loop-guard / no-op branches assertable. */
@@ -228,7 +251,10 @@ export async function runPlatePipeline(
 
   const original = await deps.blobs.download(plate.platePath);
   const derived = await processPlateImage(original, deps.imageOps);
-  await deps.blobs.uploadThumbnail(plate.thumbnailPath, derived.thumbnail);
+  await deps.blobs.uploadThumbnail(plate.thumbnailPath, derived.thumbnail, IMMUTABLE_CACHE_CONTROL);
+  // Both the plate and its thumbnail are content-addressed (immutable) — backfill the plate's
+  // cache header too, so older client uploads that didn't set it still serve from cache (IMAGE-6).
+  await deps.blobs.setCacheControl(plate.platePath, IMMUTABLE_CACHE_CONTROL);
   await deps.meals.writeDerivatives(plate.crewId, plate.mealId, {
     thumbHash: derived.thumbHash,
     thumbnailPath: plate.thumbnailPath,
@@ -266,12 +292,21 @@ export const onPlateImageFinalized = onObjectFinalized(
         const [buf] = await bucket.file(path).download();
         return buf;
       },
-      async uploadThumbnail(path, bytes) {
-        // Stamp the loop-guard marker so this object's own finalize is ignored.
+      async uploadThumbnail(path, bytes, cacheControl) {
+        // Stamp the loop-guard marker so this object's own finalize is ignored, and set the
+        // immutable cache header on the new (content-addressed) thumbnail object.
         await bucket.file(path).save(bytes, {
           contentType: "image/jpeg",
-          metadata: { metadata: { [THUMBNAIL_METADATA_MARKER]: "true" } },
+          metadata: {
+            cacheControl,
+            metadata: { [THUMBNAIL_METADATA_MARKER]: "true" },
+          },
         });
+      },
+      async setCacheControl(path, cacheControl) {
+        // Metadata-only PATCH on the already-uploaded plate; raises `metadataUpdated`, not
+        // `finalize`, so it never re-triggers this function.
+        await bucket.file(path).setMetadata({ cacheControl });
       },
     };
 

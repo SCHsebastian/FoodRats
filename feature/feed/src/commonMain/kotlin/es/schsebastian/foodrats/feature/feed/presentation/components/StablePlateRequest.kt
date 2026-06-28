@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -25,14 +26,22 @@ import coil3.request.crossfade
  * discriminator to force re-invalidation on replace.
  */
 @Composable
-internal fun stablePlateRequest(url: String, cacheKey: String): ImageRequest =
-    ImageRequest.Builder(LocalPlatformContext.current)
-        .data(url)
-        .apply {
-            if (cacheKey.isNotBlank()) {
-                diskCacheKey(cacheKey)
-                memoryCacheKey(cacheKey)
+internal fun stablePlateRequest(url: String, cacheKey: String): ImageRequest {
+    // `remember` keyed on the inputs: without it, every recomposition of an image-bearing tile
+    // allocated a fresh ImageRequest (the feed bento recomposes on any unrelated feed-state change),
+    // which can re-trigger Coil's request pipeline. The request is a pure function of (url, cacheKey,
+    // context), so memoizing it is safe and removes the per-recomposition allocation.
+    val context = LocalPlatformContext.current
+    return remember(url, cacheKey, context) {
+        ImageRequest.Builder(context)
+            .data(url)
+            .apply {
+                if (cacheKey.isNotBlank()) {
+                    diskCacheKey(cacheKey)
+                    memoryCacheKey(cacheKey)
+                }
             }
-        }
-        .crossfade(true)
-        .build()
+            .crossfade(true)
+            .build()
+    }
+}
