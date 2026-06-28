@@ -140,7 +140,7 @@ fun ComposePlateScreen(
                 .frContentWidth(Breakpoints.formMax)
                 .padding(horizontal = Spacing.lg),
         ) {
-            Spacer(Modifier.height(64.dp)) // clear the floating chrome row
+            Spacer(Modifier.height(Spacing.lg)) // breathing room below the status bar
 
             FrEyebrow(text = resolve(MealStringKey.ComposeEyebrow).uppercase(), color = onFloorColor.copy(alpha = 0.85f))
             Spacer(Modifier.height(Spacing.xs))
@@ -374,14 +374,24 @@ fun ComposePlateScreen(
             }
 
             Spacer(Modifier.height(Spacing.xl))
+            // Clear the bottom action bar (Close · Continue) so the last content
+            // (e.g. the error banner) is never hidden behind it.
+            Spacer(Modifier.height(104.dp))
             Spacer(Modifier.navigationBarsPadding())
         }
 
-        // Floating chrome — close (left) · publish (right), hovering over the plate floor.
+        // Action bar — back/close (left) · continue (right). Pinned to the BOTTOM and
+        // lifted above the soft keyboard via imePadding() so it stays visible while the
+        // user types the dish title/description. A TOP bar gets shoved off-screen when
+        // the iOS keyboard pans the scene (CMP 1.11 has no onFocusBehavior to disable
+        // that); a bottom bar with imePadding() rides just above the keyboard instead —
+        // the same pattern the MealDetail comment composer uses.
         Row(
             modifier = Modifier
+                .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
                 .frSafeHorizontalPadding()
                 .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.SpaceBetween,
