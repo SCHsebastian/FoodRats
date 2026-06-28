@@ -48,6 +48,11 @@ platform :android do
       skip_upload_metadata: true,
       skip_upload_images: true,
       skip_upload_screenshots: true,
+      # A staged rollout MUST be `inProgress`. Without this, supply defaults
+      # release_status to "completed" and sends completed + userFraction 0.2 —
+      # a contradiction (completed = 100%) that the Play API rejects with
+      # "Invalid request - Precondition check failed." (the v1.10.3 prod fail).
+      release_status: "inProgress",
       rollout: "0.2",
     )
   end
@@ -109,7 +114,12 @@ platform :ios do
     build_ios
     upload_to_app_store(
       api_key: lane_context[SharedValues::APP_STORE_CONNECT_API_KEY],
-      apple_id: ASC_APP_ID,
+      # `upload_to_app_store` (deliver) resolves the app from `app_identifier`
+      # (set in the Appfile) + the API key; it does NOT accept `apple_id` in
+      # fastlane 2.230.x (only `upload_to_testflight`/pilot does — that's why
+      # the beta lane works). Passing it errored: "Could not find option
+      # 'apple_id' in the list of available options".
+      app_identifier: "es.schsebastian.foodrats",
       submit_for_review: true,
       phased_release: true,
       precheck_include_in_app_purchases: false,
