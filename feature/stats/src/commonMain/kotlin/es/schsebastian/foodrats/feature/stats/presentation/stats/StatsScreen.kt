@@ -221,15 +221,16 @@ private fun StatsContent(
         // Structural tab strip.
         item(key = "tab-strip") { StatTabStrip(selected = state.selectedTab, onSelect = onSelectTab) }
 
-        if (window == null) {
-            item(key = "window-loading") {
-                val historicError = state.historicError
-                if (state.selectedTab == Tab.Historic && historicError != null) {
-                    FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
-                } else {
-                    HistoricLoading()
-                }
+        val historicError = state.historicError
+        if (state.selectedTab == Tab.Historic && historicError != null) {
+            item(key = "window-error") {
+                FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
             }
+        } else if (window == null || state.historicLoading) {
+            // `historicLoading` is the VM's explicit "Historic is being pulled/recomputed" flag —
+            // without it, a tab switch would keep rendering the previous tab's stale numbers with
+            // no indication (reading as wrong data). Shimmer skeletons stand in for the tab body.
+            item(key = "window-loading") { HistoricLoading() }
         } else {
             tabBody(
                 window = window,
@@ -619,11 +620,27 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
     }
 }
 
+/**
+ * Skeleton for the tab body while a historic window (Month/All-time) is pulled/recomputed —
+ * shimmering placeholders mirroring the two metric tiles + the award plate, on the same frosted
+ * strata (structural look) the loaded body uses.
+ */
 @Composable
 private fun HistoricLoading() {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.fillMaxWidth()) {
-        FrGlassTile(depth = FrTileDepth.Deep, modifier = Modifier.fillMaxWidth().height(124.dp)) {}
-        FrGlassTile(depth = FrTileDepth.Deep, modifier = Modifier.fillMaxWidth().height(188.dp)) {}
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.fillMaxWidth()) {
+            ShimmerTile(modifier = Modifier.weight(1f).height(124.dp))
+            ShimmerTile(modifier = Modifier.weight(1f).height(124.dp))
+        }
+        ShimmerTile(modifier = Modifier.fillMaxWidth().height(188.dp))
+    }
+}
+
+/** A deep frosted tile whose body shimmers — the structural stand-in for a loading section. */
+@Composable
+private fun ShimmerTile(modifier: Modifier = Modifier) {
+    FrGlassTile(depth = FrTileDepth.Deep, modifier = modifier) {
+        FrShimmerBox(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(Radius.sm))
     }
 }
 

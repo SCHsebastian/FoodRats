@@ -84,6 +84,8 @@ import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
 import es.schsebastian.foodrats.feature.feed.i18n.FeedPluralKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.FrSyncStatusBar
+import es.schsebastian.foodrats.feature.feed.presentation.components.FrUploadQueueBar
 import es.schsebastian.foodrats.feature.feed.presentation.components.MealSlotUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.stablePlateRequest
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
@@ -298,6 +300,37 @@ fun FeedScreen(
                     item(key = "dock-clearance") { Spacer(Modifier.height(DOCK_CLEARANCE)) }
                 }
             }
+        }
+
+        // Offline-first indicators, PINNED over the content plane (mirrors StatsScreen's
+        // FrUploadProgressBar overlay): the publish-queue bar (spinner pill the instant a publish
+        // upload starts + danger tile for terminal-failed drafts) and the write-outbox sync bar.
+        // Overlay — not a list item — so the feedback is visible immediately when the user lands on
+        // the feed right after tapping publish, at any scroll position, and even on the no-crew plane.
+        // Both bars render nothing when idle.
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .frSafeHorizontalPadding()
+                .frContentWidth(Breakpoints.contentMax)
+                .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            FrUploadQueueBar(
+                pending = state.queuedPending,
+                failed = state.queuedFailed,
+                uploading = state.isUploadActive,
+                onRetry = { vm.onIntent(FeedIntent.RetryQueuedDrafts) },
+                onDismiss = { vm.onIntent(FeedIntent.DismissQueuedDrafts) },
+            )
+            FrSyncStatusBar(
+                pending = state.syncPending,
+                failed = state.syncFailed,
+                onRetry = { vm.onIntent(FeedIntent.RetrySyncOutbox) },
+                onDismiss = { vm.onIntent(FeedIntent.DismissSyncOutbox) },
+            )
         }
 
         // C9 — full-screen crew-banner viewer, opened by tapping the banner hero.

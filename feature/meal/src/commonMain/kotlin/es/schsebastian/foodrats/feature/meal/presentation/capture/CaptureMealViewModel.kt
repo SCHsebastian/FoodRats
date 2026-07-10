@@ -58,6 +58,11 @@ class CaptureMealViewModel(
                 }
             }
             is CaptureMealIntent.PhotoTaken -> {
+                // Each intent runs in its own coroutine (MviViewModel.onIntent launches per
+                // intent), so a duplicate PhotoTaken dispatched while the first photo is still
+                // being persisted would interleave at the suspension point below and double-save
+                // the draft / double-emit NavigateToCompose. Drop re-entries while capturing.
+                if (currentState.isCapturing) return
                 update { it.copy(isCapturing = true, error = null) }
                 val r = updateDraft(UpdateMealDraftCommand.SetPhoto(Plate(intent.bytes)))
                 update { it.copy(isCapturing = false) }

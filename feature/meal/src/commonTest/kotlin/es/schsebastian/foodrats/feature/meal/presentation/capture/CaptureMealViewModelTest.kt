@@ -16,14 +16,18 @@ import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
+import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
+import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.test.FakeMealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -32,7 +36,9 @@ import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -191,6 +197,40 @@ class CaptureMealViewModelTest {
             val draft = awaitItem()
             assertEquals(setOf(crew), draft?.audienceCrewIds)
         }
+    }
+
+    @Test fun photo_taken_reentry_while_capturing_is_dropped() = runTest {
+        val repo = FakeMealRepository()
+        val gate = CompletableDeferred<Unit>()
+        // Suspend ONLY the photo-carrying save (Start's initial draft save has no plate) so a
+        // second PhotoTaken can arrive while the first is still persisting.
+        val gatedRepo = object : MealRepository by repo {
+            override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {
+                if (draft.plate != null) gate.await()
+                return repo.saveDraft(draft)
+            }
+        }
+        val vm = CaptureMealViewModel(
+            startDraft = StartMealDraftUseCase(gatedRepo, clock, zone),
+            updateDraft = UpdateMealDraftUseCase(gatedRepo),
+            sessionProvider = FakeSessionProvider(Session(account, crew)),
+            crewMembership = FakeCrewMembership(listOf(crew)),
+            defaultAudience = FakeDefaultAudiencePort(),
+            analytics = analytics,
+        )
+        vm.onIntent(CaptureMealIntent.Start)
+        vm.effects.test {
+            vm.onIntent(CaptureMealIntent.PhotoTaken(byteArrayOf(1)))
+            assertTrue(vm.state.value.isCapturing)
+            // Re-entry while the first photo is still being persisted must be a no-op.
+            vm.onIntent(CaptureMealIntent.PhotoTaken(byteArrayOf(2)))
+            gate.complete(Unit)
+            assertEquals(CaptureMealEffect.NavigateToCompose, awaitItem())
+            expectNoEvents() // exactly ONE navigation — the duplicate was dropped
+        }
+        assertEquals(false, vm.state.value.isCapturing)
+        // The persisted plate is the FIRST photo; the duplicate never overwrote it.
+        assertContentEquals(byteArrayOf(1), repo.observeDraft().first()?.plate?.photoBytes)
     }
 
     @Test fun no_active_crew_saved_default_outside_current_crews_falls_back_to_all_crews() = runTest {

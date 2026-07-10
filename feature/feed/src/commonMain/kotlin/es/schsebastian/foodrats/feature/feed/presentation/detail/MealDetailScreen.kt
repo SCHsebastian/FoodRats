@@ -657,13 +657,20 @@ private fun MealDetailBody(
                     contentDescription = resolve(FeedStringKey.BlockAuthorCta),
                 )
             }
-            if (state.canDeleteMeal && !state.isDeletingMeal) {
-                FrGlassCircleButton(
-                    icon = FrIcons.Delete,
-                    onClick = onRequestDeleteMeal,
-                    contentDescription = resolve(FeedStringKey.DeleteMealCta),
-                    danger = true,
-                )
+            if (state.canDeleteMeal) {
+                // While the delete write is in flight the CTA swaps for a spinner (mirrors the
+                // isPreparingShare slot above) — before this, deleting showed nothing until the
+                // meal disappeared, and the CTA silently vanishing read as a broken button.
+                if (state.isDeletingMeal) {
+                    FrProgressIndicator()
+                } else {
+                    FrGlassCircleButton(
+                        icon = FrIcons.Delete,
+                        onClick = onRequestDeleteMeal,
+                        contentDescription = resolve(FeedStringKey.DeleteMealCta),
+                        danger = true,
+                    )
+                }
             }
         }
 

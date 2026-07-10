@@ -60,6 +60,10 @@ class CrewPickerViewModel(
 
     private suspend fun doCreate() {
         val state = currentState
+        // Re-entry guard: intents are handled concurrently (each onIntent launches), so a rapid
+        // double-tap on the submit button would otherwise fire two Firestore writes and create
+        // two crews. Ignore SubmitCreate while a create is already in flight.
+        if (state.isCreating) return
         val account = session.current.first()?.accountId
             ?: return update { it.copy(error = CrewError.Session.NotSignedIn) }
         update { it.copy(isCreating = true, error = null) }
@@ -76,6 +80,8 @@ class CrewPickerViewModel(
 
     private suspend fun doJoin() {
         val state = currentState
+        // Re-entry guard: mirrors doCreate — a double-tap must not file duplicate join requests.
+        if (state.isJoining) return
         val account = session.current.first()?.accountId
             ?: return update { it.copy(error = CrewError.Session.NotSignedIn) }
         update { it.copy(isJoining = true, error = null) }

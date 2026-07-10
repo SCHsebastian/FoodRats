@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrLogo
+import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
@@ -194,13 +195,13 @@ fun CrewPickerScreen(
                             value = state.createInput,
                             onValueChange = { vm.onIntent(CrewPickerIntent.CreateInputChanged(it)) },
                             label = resolve(CrewStringKey.CreateNameLabel).uppercase(),
+                            enabled = !state.isCreating,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        FrGlassButton(
+                        SubmitRow(
                             label = resolve(CrewStringKey.CreateSubmit),
+                            inFlight = state.isCreating,
                             onClick = { vm.onIntent(CrewPickerIntent.SubmitCreate) },
-                            tone = FrButtonTone.Primary,
-                            fillWidth = true,
                         )
                     }
                 }
@@ -212,13 +213,13 @@ fun CrewPickerScreen(
                             label = resolve(CrewStringKey.JoinCodeLabel).uppercase(),
                             // Invite codes are 6 uppercase chars — capitalize all input so it matches.
                             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters),
+                            enabled = !state.isJoining,
                             modifier = Modifier.fillMaxWidth(),
                         )
-                        FrGlassButton(
+                        SubmitRow(
                             label = resolve(CrewStringKey.JoinSubmit),
+                            inFlight = state.isJoining,
                             onClick = { vm.onIntent(CrewPickerIntent.SubmitJoin) },
-                            tone = FrButtonTone.Primary,
-                            fillWidth = true,
                         )
                     }
                 }
@@ -296,6 +297,37 @@ private fun CrewRow(
                 tint = StructuralColors.foreground.copy(alpha = 0.4f),
                 modifier = Modifier.size(Sizes.iconMd),
             )
+        }
+    }
+}
+
+/**
+ * Full-width Primary submit pill for the inline forms. While [inFlight] the button is disabled
+ * (dimmed pill, click severed) and a small spinner sits beside it — the same in-progress affordance
+ * CrewSettings uses for its `isSaving*` flags. The disabled state is belt-and-braces: the ViewModel
+ * also ignores Submit re-entry while a write is in flight.
+ */
+@Composable
+private fun SubmitRow(
+    label: String,
+    inFlight: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        FrGlassButton(
+            label = label,
+            onClick = onClick,
+            tone = FrButtonTone.Primary,
+            enabled = !inFlight,
+            fillWidth = true,
+            modifier = Modifier.weight(1f),
+        )
+        if (inFlight) {
+            FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
         }
     }
 }
