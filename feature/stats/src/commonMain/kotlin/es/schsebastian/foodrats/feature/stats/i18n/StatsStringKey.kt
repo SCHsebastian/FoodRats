@@ -6,10 +6,7 @@ import foodrats.feature.stats.generated.resources.stats_best_cook_metric_format
 import foodrats.feature.stats.generated.resources.stats_best_cook_metric_format_glyph_free
 import foodrats.feature.stats.generated.resources.stats_best_cook_title
 import foodrats.feature.stats.generated.resources.stats_best_plate_author_format
-import foodrats.feature.stats.generated.resources.stats_best_plate_score_format
 import foodrats.feature.stats.generated.resources.stats_best_plate_title
-import foodrats.feature.stats.generated.resources.stats_cook_award_needs_more_plural
-import foodrats.feature.stats.generated.resources.stats_cook_award_needs_more_singular
 import foodrats.feature.stats.generated.resources.stats_cooks_section_title
 import foodrats.feature.stats.generated.resources.stats_empty_headline
 import foodrats.feature.stats.generated.resources.stats_empty_subtext
@@ -97,7 +94,6 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     PlatePhotoFormat(Res.string.stats_plate_photo_format),
 
     BestPlateTitle(Res.string.stats_best_plate_title),
-    BestPlateScoreFormat(Res.string.stats_best_plate_score_format),
     BestPlateAuthorFormat(Res.string.stats_best_plate_author_format),
 
     MostVotedPlateTitle(Res.string.stats_most_voted_plate_title),
@@ -118,8 +114,6 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     MostUsedIngredientTitle(Res.string.stats_most_used_ingredient_title),
     TopIngredientByMemberTitle(Res.string.stats_top_ingredient_by_member_title),
 
-    CookAwardNeedsMoreSingular(Res.string.stats_cook_award_needs_more_singular),
-    CookAwardNeedsMorePlural(Res.string.stats_cook_award_needs_more_plural),
 
     CollectionTitle(Res.string.stats_collection_title),
 

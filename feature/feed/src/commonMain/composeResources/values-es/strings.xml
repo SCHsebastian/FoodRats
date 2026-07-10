@@ -43,7 +43,6 @@
     <string name="feed_reaction_error_unauthorized">No puedes reaccionar a este plato</string>
     <string name="feed_reaction_error_meal_not_found">Este plato ya no está aquí.</string>
     <string name="feed_reaction_error_unavailable">No se pudo reaccionar. Inténtalo de nuevo.</string>
-    <string name="feed_average_heading">Promedio</string>
     <string name="feed_rate_this_meal">Puntúa este plato</string>
     <string name="feed_change_vote_cta">Cambiar mi voto</string>
     <string name="feed_change_vote_confirm_title">¿Cambiar tu voto?</string>
@@ -51,19 +50,13 @@
     <string name="feed_change_vote_confirm_cta">Cambiar voto</string>
     <string name="feed_your_vote">Tu voto: %1$d ★</string>
     <string name="feed_your_vote_locked">Tu voto · bloqueado</string>
-    <string name="feed_your_vote_glyph_free">Tu voto: %1$s</string>
     <string name="feed_rating_summary">%1$s ★ · %2$d</string>
-    <string name="feed_voter_score">%1$s: %2$d ★</string>
-    <string name="feed_votes_heading">Votos</string>
     <string name="feed_voters_label">Votantes</string>
     <string name="feed_voter_score_compact">%1$d ★</string>
     <string name="feed_crew_score_label">Puntuación de la cuadrilla</string>
     <string name="feed_location_label">Ubicación</string>
     <string name="feed_location_map_cta">Abrir ubicación en mapas</string>
-    <string name="feed_ingredients_heading">Ingredientes</string>
-    <string name="feed_ingredient_separator">,</string>
     <!-- Chip de desbordamiento en la tira compacta de ingredientes de la fila del feed. -->
-    <string name="feed_more_ingredients">+%1$d</string>
     <string name="feed_rate_error_cannot_rate_own_meal">No puedes puntuar tu propio plato</string>
     <string name="feed_rate_error_already_rated">Ya votaste</string>
     <string name="feed_rate_error_window_closed">Ya pasó la ventana de voto</string>
@@ -71,7 +64,6 @@
     <string name="feed_rate_error_unavailable">No se pudo enviar tu voto. Inténtalo de nuevo.</string>
     <string name="feed_rate_error_offline">Sin conexión. Vuelve a intentarlo cuando tengas internet.</string>
     <string name="feed_detail_back_cta">Atrás</string>
-    <string name="feed_detail_title">Comida</string>
     <string name="feed_detail_not_found">Esta comida ya no está aquí.</string>
     <string name="feed_comments_relative_just_now">ahora mismo</string>
     <string name="feed_comments_relative_minutes">hace %1$d min</string>
@@ -125,6 +117,7 @@
     <string name="feed_share_meal">Compartir</string>
     <!-- Indicador de la cola de publicación offline en la barra superior del feed (roadmap §5.2). -->
     <string name="feed_queue_pending">%1$d esperando para publicar</string>
+    <string name="feed_queue_publishing">Publicando…</string>
     <string name="feed_queue_failed">%1$d no se pudieron publicar</string>
     <string name="feed_queue_retry_cta">Reintentar</string>
     <string name="feed_queue_dismiss_cta">Descartar</string>
@@ -132,7 +125,6 @@
     <string name="feed_sync_pending">%1$d esperando sincronizar</string>
     <string name="feed_sync_failed">%1$d no se pudieron sincronizar</string>
     <!-- Línea de frescura del feed en caché (offline-first P4-T2). %1$s es un tiempo relativo como "ahora mismo" / "hace 5 min". -->
-    <string name="feed_synced_ago">Sincronizado %1$s</string>
     <!-- Menú de desbordamiento de tarjeta de feed (cumplimiento UGC §4/§5). -->
     <string name="feed_overflow_menu_cd">Más opciones</string>
     <!-- Etiquetas de envío del formulario de reporte por tipo de objetivo (cumplimiento UGC §4 punto 5). -->
@@ -155,7 +147,6 @@
         <item quantity="other">%1$s · %2$d votos</item>
     </plurals>
     <!-- C8b — puntuación del votante sin glifo cuando scoreStyle ≠ Stars. %1$s = valor prerenderizado. -->
-    <string name="feed_voter_score_glyph_free">%1$s</string>
     <!-- C9 — imagen de cabecera de la cuadrilla en la parte superior del feed. La descripción de contenido
          sirve también de etiqueta para ampliar; la de cerrar es para el botón del visor a pantalla completa. -->
     <string name="feed_crew_banner_cd">Imagen de la cuadrilla — toca para verla a pantalla completa</string>

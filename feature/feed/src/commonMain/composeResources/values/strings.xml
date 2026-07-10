@@ -43,7 +43,6 @@
     <string name="feed_reaction_error_unauthorized">You can't react to this meal</string>
     <string name="feed_reaction_error_meal_not_found">This meal is no longer here.</string>
     <string name="feed_reaction_error_unavailable">Couldn't react. Try again.</string>
-    <string name="feed_average_heading">Average</string>
     <string name="feed_rate_this_meal">Rate this meal</string>
     <string name="feed_change_vote_cta">Change my vote</string>
     <string name="feed_change_vote_confirm_title">Change your vote?</string>
@@ -51,19 +50,13 @@
     <string name="feed_change_vote_confirm_cta">Change vote</string>
     <string name="feed_your_vote">Your vote: %1$d ★</string>
     <string name="feed_your_vote_locked">Your vote · locked</string>
-    <string name="feed_your_vote_glyph_free">Your vote: %1$s</string>
     <string name="feed_rating_summary">%1$s ★ · %2$d</string>
-    <string name="feed_voter_score">%1$s: %2$d ★</string>
-    <string name="feed_votes_heading">Votes</string>
     <string name="feed_voters_label">Voters</string>
     <string name="feed_voter_score_compact">%1$d ★</string>
     <string name="feed_crew_score_label">Crew score</string>
     <string name="feed_location_label">Location</string>
     <string name="feed_location_map_cta">Open location in maps</string>
-    <string name="feed_ingredients_heading">Ingredients</string>
-    <string name="feed_ingredient_separator">,</string>
     <!-- Overflow chip in the feed row's compact ingredient strip: "+3" beyond the first few shown. -->
-    <string name="feed_more_ingredients">+%1$d</string>
     <string name="feed_rate_error_cannot_rate_own_meal">You can't rate your own meal</string>
     <string name="feed_rate_error_already_rated">You've already voted</string>
     <string name="feed_rate_error_window_closed">Voting is closed</string>
@@ -71,7 +64,6 @@
     <string name="feed_rate_error_unavailable">Couldn't submit your vote. Please try again.</string>
     <string name="feed_rate_error_offline">No internet connection. Try again when you're back online.</string>
     <string name="feed_detail_back_cta">Back</string>
-    <string name="feed_detail_title">Meal</string>
     <string name="feed_detail_not_found">This meal is no longer here.</string>
     <string name="feed_comments_relative_just_now">just now</string>
     <string name="feed_comments_relative_minutes">%1$d min ago</string>
@@ -125,6 +117,7 @@
     <string name="feed_share_meal">Share</string>
     <!-- Offline-first publish queue indicator in the feed top bar (roadmap §5.2). -->
     <string name="feed_queue_pending">%1$d waiting to publish</string>
+    <string name="feed_queue_publishing">Publishing…</string>
     <string name="feed_queue_failed">%1$d failed to post</string>
     <string name="feed_queue_retry_cta">Retry</string>
     <string name="feed_queue_dismiss_cta">Dismiss</string>
@@ -132,7 +125,6 @@
     <string name="feed_sync_pending">%1$d waiting to sync</string>
     <string name="feed_sync_failed">%1$d failed to sync</string>
     <!-- Cached-feed freshness line (offline-first P4-T2). %1$s is a relative time like "just now" / "5 min ago". -->
-    <string name="feed_synced_ago">Synced %1$s</string>
     <!-- Feed card overflow menu (UGC compliance §4/§5). -->
     <string name="feed_overflow_menu_cd">More options</string>
     <!-- Report-sheet submit labels per target type (UGC compliance §4 Item 5). -->
@@ -155,7 +147,6 @@
         <item quantity="other">%1$s · %2$d votes</item>
     </plurals>
     <!-- C8b — glyph-free voter-row score used when scoreStyle ≠ Stars. %1$s = pre-rendered value. -->
-    <string name="feed_voter_score_glyph_free">%1$s</string>
     <!-- C9 — crew banner hero at the top of the feed. The content description doubles as the
          tap-to-expand label; the close label is for the full-screen viewer's dismiss button. -->
     <string name="feed_crew_banner_cd">Crew banner — tap to view full screen</string>

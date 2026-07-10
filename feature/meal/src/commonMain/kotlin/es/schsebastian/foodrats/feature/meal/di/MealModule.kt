@@ -49,7 +49,6 @@ import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftRetryPolicy
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
-import es.schsebastian.foodrats.feature.meal.domain.usecase.DiscardMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
@@ -200,7 +199,6 @@ val mealModule = module {
     factoryOf(::StartMealDraftUseCase)
     factoryOf(::UpdateMealDraftUseCase)
     factoryOf(::PublishMealUseCase)
-    factoryOf(::DiscardMealDraftUseCase)
     // Resolves MealClassifierPort (bound by :feature:meal-ai) + IngredientReadPort
     // (bound by :feature:ingredient) at app composition — see shared/ aggregator.
     factoryOf(::ClassifyDraftPlateUseCase)

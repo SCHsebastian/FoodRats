@@ -5,6 +5,7 @@ import foodrats.feature.meal.generated.resources.Res
 import foodrats.feature.meal.generated.resources.meal_capture_draft_failed
 import foodrats.feature.meal.generated.resources.meal_capture_no_crews
 import foodrats.feature.meal.generated.resources.meal_capture_photo_failed
+import foodrats.feature.meal.generated.resources.meal_capture_saving_plate
 import foodrats.feature.meal.generated.resources.meal_capture_session_error
 import foodrats.feature.meal.generated.resources.meal_classifier_load_failed
 import foodrats.feature.meal.generated.resources.meal_classifier_no_detection
@@ -17,7 +18,6 @@ import foodrats.feature.meal.generated.resources.meal_compose_coordinates_format
 import foodrats.feature.meal.generated.resources.meal_compose_counter_a11y
 import foodrats.feature.meal.generated.resources.meal_compose_description_counter
 import foodrats.feature.meal.generated.resources.meal_compose_description_label
-import foodrats.feature.meal.generated.resources.meal_compose_description_placeholder
 import foodrats.feature.meal.generated.resources.meal_compose_dish_counter
 import foodrats.feature.meal.generated.resources.meal_compose_dish_label
 import foodrats.feature.meal.generated.resources.meal_compose_eyebrow
@@ -52,7 +52,6 @@ import foodrats.feature.meal.generated.resources.meal_publish_confirm_cta
 import foodrats.feature.meal.generated.resources.meal_publish_confirm_message
 import foodrats.feature.meal.generated.resources.meal_publish_confirm_title
 import foodrats.feature.meal.generated.resources.meal_publish_no_slot
-import foodrats.feature.meal.generated.resources.meal_publish_title
 import foodrats.feature.meal.generated.resources.meal_slot_breakfast
 import foodrats.feature.meal.generated.resources.meal_slot_brunch
 import foodrats.feature.meal.generated.resources.meal_slot_dinner
@@ -68,7 +67,6 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ComposeSlotOptional(Res.string.meal_compose_slot_optional),
     ComposeDishLabel(Res.string.meal_compose_dish_label),
     ComposeDescriptionLabel(Res.string.meal_compose_description_label),
-    ComposeDescriptionPlaceholder(Res.string.meal_compose_description_placeholder),
     ComposeDescriptionCounter(Res.string.meal_compose_description_counter),
     ComposeDishCounter(Res.string.meal_compose_dish_counter),
     ComposeCounterA11y(Res.string.meal_compose_counter_a11y),
@@ -80,7 +78,6 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     ComposeLocating(Res.string.meal_compose_locating),
     ComposeClearLocation(Res.string.meal_compose_clear_location),
     ComposeCoordinatesFormat(Res.string.meal_compose_coordinates_format),
-    PublishTitle(Res.string.meal_publish_title),
     PublishConfirmTitle(Res.string.meal_publish_confirm_title),
     PublishConfirmMessage(Res.string.meal_publish_confirm_message),
     PublishConfirmCta(Res.string.meal_publish_confirm_cta),
@@ -120,4 +117,5 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     CaptureNoCrews(Res.string.meal_capture_no_crews),
     CaptureDraftFailed(Res.string.meal_capture_draft_failed),
     CapturePhotoFailed(Res.string.meal_capture_photo_failed),
+    CaptureSavingPlate(Res.string.meal_capture_saving_plate),
 }

@@ -55,7 +55,6 @@ import foodrats.feature.feed.generated.resources.feed_delete_meal_cta
 import foodrats.feature.feed.generated.resources.feed_delete_meal_error_not_found
 import foodrats.feature.feed.generated.resources.feed_delete_meal_error_unauthorized
 import foodrats.feature.feed.generated.resources.feed_delete_meal_error_unavailable
-import foodrats.feature.feed.generated.resources.feed_average_heading
 import foodrats.feature.feed.generated.resources.feed_blind_author
 import foodrats.feature.feed.generated.resources.feed_reaction_count
 import foodrats.feature.feed.generated.resources.feed_reaction_cta
@@ -65,13 +64,9 @@ import foodrats.feature.feed.generated.resources.feed_reaction_error_unauthorize
 import foodrats.feature.feed.generated.resources.feed_reaction_error_unavailable
 import foodrats.feature.feed.generated.resources.feed_detail_back_cta
 import foodrats.feature.feed.generated.resources.feed_detail_not_found
-import foodrats.feature.feed.generated.resources.feed_detail_title
 import foodrats.feature.feed.generated.resources.feed_empty_headline
 import foodrats.feature.feed.generated.resources.feed_empty_subtext
 import foodrats.feature.feed.generated.resources.feed_empty_subtext_past
-import foodrats.feature.feed.generated.resources.feed_ingredient_separator
-import foodrats.feature.feed.generated.resources.feed_ingredients_heading
-import foodrats.feature.feed.generated.resources.feed_more_ingredients
 import foodrats.feature.feed.generated.resources.feed_error_crew_not_found
 import foodrats.feature.feed.generated.resources.feed_error_not_signed_in
 import foodrats.feature.feed.generated.resources.feed_error_unauthorized
@@ -85,12 +80,12 @@ import foodrats.feature.feed.generated.resources.feed_prev_day
 import foodrats.feature.feed.generated.resources.feed_queue_dismiss_cta
 import foodrats.feature.feed.generated.resources.feed_queue_failed
 import foodrats.feature.feed.generated.resources.feed_queue_pending
+import foodrats.feature.feed.generated.resources.feed_queue_publishing
 import foodrats.feature.feed.generated.resources.feed_queue_retry_cta
 import foodrats.feature.feed.generated.resources.feed_rating_summary
 import foodrats.feature.feed.generated.resources.feed_share_meal
 import foodrats.feature.feed.generated.resources.feed_sync_failed
 import foodrats.feature.feed.generated.resources.feed_sync_pending
-import foodrats.feature.feed.generated.resources.feed_synced_ago
 import foodrats.feature.feed.generated.resources.feed_slot_breakfast
 import foodrats.feature.feed.generated.resources.feed_slot_brunch
 import foodrats.feature.feed.generated.resources.feed_slot_dinner
@@ -99,7 +94,6 @@ import foodrats.feature.feed.generated.resources.feed_slot_merienda
 import foodrats.feature.feed.generated.resources.feed_slot_snack
 import foodrats.feature.feed.generated.resources.feed_time_of_day
 import foodrats.feature.feed.generated.resources.feed_yesterday
-import foodrats.feature.feed.generated.resources.feed_voter_score
 import foodrats.feature.feed.generated.resources.feed_rate_error_already_rated
 import foodrats.feature.feed.generated.resources.feed_rate_error_cannot_rate_own_meal
 import foodrats.feature.feed.generated.resources.feed_rate_error_offline
@@ -114,7 +108,6 @@ import foodrats.feature.feed.generated.resources.feed_change_vote_confirm_cta
 import foodrats.feature.feed.generated.resources.feed_title
 import foodrats.feature.feed.generated.resources.feed_your_crew_eyebrow
 import foodrats.feature.feed.generated.resources.feed_crew_settings_cd
-import foodrats.feature.feed.generated.resources.feed_votes_heading
 import foodrats.feature.feed.generated.resources.feed_voters_label
 import foodrats.feature.feed.generated.resources.feed_voter_score_compact
 import foodrats.feature.feed.generated.resources.feed_crew_score_label
@@ -124,12 +117,10 @@ import foodrats.feature.feed.generated.resources.feed_welcome_dismiss
 import foodrats.feature.feed.generated.resources.feed_weekly_challenge_label
 import foodrats.feature.feed.generated.resources.feed_your_vote
 import foodrats.feature.feed.generated.resources.feed_your_vote_locked
-import foodrats.feature.feed.generated.resources.feed_your_vote_glyph_free
 import foodrats.feature.feed.generated.resources.feed_badge_first
 import foodrats.feature.feed.generated.resources.feed_badge_ten
 import foodrats.feature.feed.generated.resources.feed_badge_fifty
 import foodrats.feature.feed.generated.resources.feed_badge_hundred
-import foodrats.feature.feed.generated.resources.feed_voter_score_glyph_free
 import foodrats.feature.feed.generated.resources.feed_crew_banner_cd
 import foodrats.feature.feed.generated.resources.feed_crew_banner_close_cd
 import foodrats.feature.feed.generated.resources.feed_meal_photo_cd
@@ -169,7 +160,6 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     ReactionErrorUnauthorized(Res.string.feed_reaction_error_unauthorized),
     ReactionErrorMealNotFound(Res.string.feed_reaction_error_meal_not_found),
     ReactionErrorUnavailable(Res.string.feed_reaction_error_unavailable),
-    AverageHeading(Res.string.feed_average_heading),
     RateThisMeal(Res.string.feed_rate_this_meal),
     ChangeVoteCta(Res.string.feed_change_vote_cta),
     ChangeVoteConfirmTitle(Res.string.feed_change_vote_confirm_title),
@@ -178,16 +168,11 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     YourVote(Res.string.feed_your_vote),
     YourVoteLockedEyebrow(Res.string.feed_your_vote_locked),
     RatingSummary(Res.string.feed_rating_summary),
-    VoterScore(Res.string.feed_voter_score),
-    VotesHeading(Res.string.feed_votes_heading),
     VotersLabel(Res.string.feed_voters_label),
     VoterScoreCompact(Res.string.feed_voter_score_compact),
     CrewScoreLabel(Res.string.feed_crew_score_label),
     LocationLabel(Res.string.feed_location_label),
     LocationMapCta(Res.string.feed_location_map_cta),
-    IngredientsHeading(Res.string.feed_ingredients_heading),
-    IngredientSeparator(Res.string.feed_ingredient_separator),
-    MoreIngredients(Res.string.feed_more_ingredients),
     RateErrorCannotRateOwnMeal(Res.string.feed_rate_error_cannot_rate_own_meal),
     RateErrorAlreadyRated(Res.string.feed_rate_error_already_rated),
     RateErrorWindowClosed(Res.string.feed_rate_error_window_closed),
@@ -196,7 +181,6 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     RateErrorUnavailable(Res.string.feed_rate_error_unavailable),
     ShareMeal(Res.string.feed_share_meal),
     DetailBackCta(Res.string.feed_detail_back_cta),
-    DetailTitle(Res.string.feed_detail_title),
     DetailNotFound(Res.string.feed_detail_not_found),
     CommentsTitle(Res.string.feed_comments_title),
     CommentsEmpty(Res.string.feed_comments_empty),
@@ -252,12 +236,12 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     DeleteConfirmCta(Res.string.feed_delete_confirm_cta),
     DeleteCancelCta(Res.string.feed_delete_cancel_cta),
     QueuePending(Res.string.feed_queue_pending),
+    QueuePublishing(Res.string.feed_queue_publishing),
     QueueFailed(Res.string.feed_queue_failed),
     QueueRetryCta(Res.string.feed_queue_retry_cta),
     QueueDismissCta(Res.string.feed_queue_dismiss_cta),
     SyncPending(Res.string.feed_sync_pending),
     SyncFailed(Res.string.feed_sync_failed),
-    SyncedAgo(Res.string.feed_synced_ago),
     // Feed card overflow menu (UGC compliance §4/§5).
     OverflowMenuCd(Res.string.feed_overflow_menu_cd),
     // Report-sheet submit labels per target type (UGC compliance §4 Item 5).
@@ -275,11 +259,9 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     BadgeHundred(Res.string.feed_badge_hundred),
     // C8b — glyph-free voter-row score used when scoreStyle ≠ Stars on the detail screen.
     // Takes %1$s = pre-rendered score string (e.g. "😋", "3").
-    VoterScoreGlyphFree(Res.string.feed_voter_score_glyph_free),
     // C8b — glyph-free "your vote" used on the feed card when scoreStyle ≠ Stars, so the
     // viewer's own vote doesn't render a ★ next to the crew's emoji/numeric style.
     // Takes %1$s = pre-rendered score string (e.g. "😍", "4").
-    YourVoteGlyphFree(Res.string.feed_your_vote_glyph_free),
     // C9 — clickable crew banner hero + the close button of its full-screen viewer.
     CrewBannerCd(Res.string.feed_crew_banner_cd),
     CrewBannerCloseCd(Res.string.feed_crew_banner_close_cd),

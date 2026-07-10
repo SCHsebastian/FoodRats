@@ -45,7 +45,6 @@
     <string name="auth_profile_danger_zone_section">Zona peligrosa</string>
     <string name="auth_profile_danger_zone_subtitle">Acciones irreversibles. Léelas con cuidado.</string>
     <string name="auth_profile_display_name_label">Nombre</string>
-    <string name="auth_profile_signed_in_as_label">Sesión iniciada como</string>
     <string name="auth_profile_save">Guardar</string>
     <string name="auth_profile_change_avatar_cta">Toca para cambiar avatar</string>
     <string name="auth_profile_avatar_uploading">Subiendo…</string>

@@ -7,7 +7,6 @@ import foodrats.feature.achievements.generated.resources.achievements_best_cook_
 import foodrats.feature.achievements.generated.resources.achievements_best_cook_title
 import foodrats.feature.achievements.generated.resources.achievements_celebration_ack
 import foodrats.feature.achievements.generated.resources.achievements_celebration_title
-import foodrats.feature.achievements.generated.resources.achievements_detail_close_cta
 import foodrats.feature.achievements.generated.resources.achievements_detail_how_earned_label
 import foodrats.feature.achievements.generated.resources.achievements_detail_how_to_earn_label
 import foodrats.feature.achievements.generated.resources.achievements_detail_locked_label
@@ -49,7 +48,6 @@ import foodrats.feature.achievements.generated.resources.achievements_streak_per
 import foodrats.feature.achievements.generated.resources.achievements_streak_personal_30_title
 import foodrats.feature.achievements.generated.resources.achievements_streak_personal_7_desc
 import foodrats.feature.achievements.generated.resources.achievements_streak_personal_7_title
-import foodrats.feature.achievements.generated.resources.achievements_unlocked_toast
 import org.jetbrains.compose.resources.StringResource
 
 /**
@@ -64,13 +62,11 @@ enum class AchievementStringKey(override val resourceId: StringResource) : Strin
     LockedSectionTitle(Res.string.achievements_locked_section_title),
     ProgressFormat(Res.string.achievements_progress_format),
     EarnedOnFormat(Res.string.achievements_earned_on_format),
-    UnlockedToast(Res.string.achievements_unlocked_toast),
     CelebrationTitle(Res.string.achievements_celebration_title),
     CelebrationAck(Res.string.achievements_celebration_ack),
     DetailLockedLabel(Res.string.achievements_detail_locked_label),
     DetailHowEarnedLabel(Res.string.achievements_detail_how_earned_label),
     DetailHowToEarnLabel(Res.string.achievements_detail_how_to_earn_label),
-    DetailCloseCta(Res.string.achievements_detail_close_cta),
     BackCta(Res.string.achievements_back_cta),
     EmptySubtext(Res.string.achievements_empty_subtext),
 

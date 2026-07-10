@@ -43,7 +43,6 @@
 
     <!-- Best plate -->
     <string name="stats_best_plate_title">Top plate</string>
-    <string name="stats_best_plate_score_format">%1$s ★</string>
     <string name="stats_best_plate_author_format">by %1$s</string>
 
     <!-- Most-voted plate -->
@@ -85,8 +84,6 @@
     </plurals>
 
     <!-- Threshold hint -->
-    <string name="stats_cook_award_needs_more_singular">%1$d more plate to qualify</string>
-    <string name="stats_cook_award_needs_more_plural">%1$d more plates to qualify</string>
 
     <!-- Collection tab (cuisine passport + ingredient pokédex) -->
     <string name="stats_collection_title">Collection</string>

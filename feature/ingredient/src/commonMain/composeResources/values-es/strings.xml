@@ -7,8 +7,6 @@
     <string name="ingredient_selection_full">Máximo 30 ingredientes</string>
     <string name="ingredient_catalog_load_failed">No pudimos cargar el catálogo</string>
     <string name="ingredient_catalog_empty">Catálogo no disponible</string>
-    <string name="ingredient_retry_action">Reintentar</string>
-    <string name="ingredient_unknown">Ingrediente desconocido</string>
     <string name="ingredient_category_vegetable">Verduras</string>
     <string name="ingredient_category_fruit">Frutas</string>
     <string name="ingredient_category_meat">Carnes</string>

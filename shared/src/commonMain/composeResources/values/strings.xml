@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="nav_capture_cta">Add today's meal</string>
-    <string name="nav_settings_cta">Settings</string>
     <string name="nav_tab_feed">Feed</string>
     <string name="nav_tab_stats">Stats</string>
     <string name="nav_tab_passport">Passport</string>

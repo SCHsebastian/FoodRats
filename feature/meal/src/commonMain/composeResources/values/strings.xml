@@ -5,7 +5,6 @@
     <string name="meal_compose_slot_label">Slot</string>
     <string name="meal_compose_dish_label">Dish</string>
     <string name="meal_compose_description_label">Description</string>
-    <string name="meal_publish_title">Review and publish</string>
 
     <string name="meal_ingredients_classifying">Analyzing ingredients…</string>
     <string name="meal_classifier_no_detection">Couldn't detect ingredients</string>
@@ -29,7 +28,6 @@
     <string name="meal_error_validation_no_photo">Snap a photo first.</string>
     <string name="meal_error_validation_description_too_long">Description is too long (max %1$d characters).</string>
     <string name="meal_error_validation_too_many_ingredients">Too many ingredients (max 30).</string>
-    <string name="meal_compose_description_placeholder">What did you eat? (optional)</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
     <string name="meal_compose_dish_counter">%1$d / %2$d</string>
     <string name="meal_compose_counter_a11y">%1$d of %2$d characters used</string>
@@ -65,4 +63,5 @@
     <string name="meal_capture_no_crews">Join or create a crew before posting a meal.</string>
     <string name="meal_capture_draft_failed">Couldn't start your meal. Try again.</string>
     <string name="meal_capture_photo_failed">Couldn't save your photo. Try again.</string>
+    <string name="meal_capture_saving_plate">Saving your plate…</string>
 </resources>

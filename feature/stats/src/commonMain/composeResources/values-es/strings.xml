@@ -37,7 +37,6 @@
     <string name="stats_plate_photo_format">Foto de %1$s</string>
 
     <string name="stats_best_plate_title">Mejor plato</string>
-    <string name="stats_best_plate_score_format">%1$s ★</string>
     <string name="stats_best_plate_author_format">de %1$s</string>
 
     <string name="stats_most_voted_plate_title">Plato más votado</string>
@@ -74,8 +73,6 @@
         <item quantity="other">%1$s · %2$d comidas</item>
     </plurals>
 
-    <string name="stats_cook_award_needs_more_singular">Falta %1$d plato para entrar</string>
-    <string name="stats_cook_award_needs_more_plural">Faltan %1$d platos para entrar</string>
 
     <string name="stats_collection_title">Colección</string>
 

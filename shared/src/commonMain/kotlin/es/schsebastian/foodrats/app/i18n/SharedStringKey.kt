@@ -46,7 +46,6 @@ import foodrats.shared.generated.resources.consent_title
 import foodrats.shared.generated.resources.nav_capture_cta
 import foodrats.shared.generated.resources.offline_banner
 import foodrats.shared.generated.resources.nav_profile_cta
-import foodrats.shared.generated.resources.nav_settings_cta
 import foodrats.shared.generated.resources.nav_tab_feed
 import foodrats.shared.generated.resources.nav_tab_passport
 import foodrats.shared.generated.resources.nav_tab_stats
@@ -78,7 +77,6 @@ import org.jetbrains.compose.resources.StringResource
 
 enum class SharedStringKey(override val resourceId: StringResource) : StringKey {
     NavCaptureCta(Res.string.nav_capture_cta),
-    NavSettingsCta(Res.string.nav_settings_cta),
     NavTabFeed(Res.string.nav_tab_feed),
     NavTabPassport(Res.string.nav_tab_passport),
     NavTabStats(Res.string.nav_tab_stats),

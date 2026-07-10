@@ -45,7 +45,6 @@
     <string name="auth_profile_danger_zone_section">Danger Zone</string>
     <string name="auth_profile_danger_zone_subtitle">Irreversible actions. Read carefully.</string>
     <string name="auth_profile_display_name_label">Display name</string>
-    <string name="auth_profile_signed_in_as_label">Signed in as</string>
     <string name="auth_profile_save">Save</string>
     <string name="auth_profile_change_avatar_cta">Tap to change avatar</string>
     <string name="auth_profile_avatar_uploading">Uploading…</string>
