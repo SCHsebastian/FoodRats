@@ -1,9 +1,16 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
+import androidx.compose.runtime.Immutable
 import es.schsebastian.foodrats.core.i18n.StringKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import kotlin.time.Instant
 
+/**
+ * Marked [Immutable]: [StringKey] is an interface so Compose infers it unstable, but every leaf is an
+ * enum entry / data object — the promise is sound, and it keeps [CommentRowUi] (and [FeedMealUi]'s
+ * consumers) skippable.
+ */
+@Immutable
 data class RelativeTimestamp(val key: StringKey, val amount: Int)
 
 fun Instant.toRelative(now: Instant): RelativeTimestamp {

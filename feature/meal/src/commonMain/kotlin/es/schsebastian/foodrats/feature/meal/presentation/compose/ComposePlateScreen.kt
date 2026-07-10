@@ -28,10 +28,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -76,7 +78,16 @@ import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.presentation.components.decodeImageBitmap
 import es.schsebastian.foodrats.feature.meal.presentation.toStringKey
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.koin.compose.viewmodel.koinViewModel
+
+/**
+ * Longest-side cap for the composer's decoded plate preview. The upload bytes stay at full
+ * resolution (2048px); only the on-screen decode is downsampled — Android via
+ * `BitmapFactory.inSampleSize` (2048 → 1024, a 4x smaller bitmap), iOS via a post-decode scale.
+ */
+private const val PLATE_DECODE_MAX_DIMENSION = 1024
 
 /**
  * Structural "compose your plate" screen: the captured plate IS the blurred floor; a zero-chrome
@@ -112,7 +123,22 @@ fun ComposePlateScreen(
     }
 
     val bytes = state.photoBytes
-    val plate = remember(bytes) { bytes?.let { decodeImageBitmap(it) } }
+    // Decode OFF the main thread: the synchronous full-res decode (bytes are capped at 2048px,
+    // ~16 MB of ARGB) used to run in composition and froze the first frame on every entry and
+    // recapture. produceState keys on the photo's content hash (recomposition can hand an
+    // equal-but-distinct array — same convention as the classification LaunchedEffect above)
+    // and shows the theme-adaptive field floor / no hero until the bitmap lands.
+    // Dispatchers.Default is used directly rather than DispatcherProvider because this is a
+    // presentation-layer CPU-bound decode, not a data-layer IO boundary (the house
+    // one-withContext-per-repository-method rule governs repositories), and Default exists on
+    // every KMP target. The decode is also downsampled to display size (PLATE_DECODE_MAX_DIMENSION):
+    // the sharp copy is a 300dp-tall crop and the floor copy is heavily blurred, so 1024px is
+    // more than enough and quarters the retained bitmap.
+    val plateState by produceState<ImageBitmap?>(initialValue = null, bytes?.contentHashCode()) {
+        value = bytes?.let { withContext(Dispatchers.Default) { decodeImageBitmap(it, PLATE_DECODE_MAX_DIMENSION) } }
+    }
+    // Plain local so the null-checks below smart-cast (a delegated property can't).
+    val plate = plateState
     val floorPainter = remember(plate) { plate?.let { BitmapPainter(it) } }
 
     // When a photo is present the floor is always dark-scrimmed (photo dim+scrim), so white onMedia

@@ -35,12 +35,15 @@ import es.schsebastian.foodrats.feature.stats.domain.error.StatsError
 import es.schsebastian.foodrats.feature.stats.domain.model.StatsSnapshot
 import es.schsebastian.foodrats.feature.stats.domain.model.StatsWindow
 import es.schsebastian.foodrats.feature.stats.domain.model.Tab
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.LocalDate
@@ -60,6 +63,15 @@ class ObserveStatsUseCase(
     // C8b — active crew's Score vocabulary so the stats leaderboard cards render Stars/Emoji/Numeric.
     // DEFAULTED so all existing use-case tests stay green without constructor changes.
     private val welcomePort: CrewWelcomePort = NoopStatsWelcomePort,
+    // CONSCIOUS EXCEPTION to "dispatchers live in repositories only" (root CLAUDE.md §6): `compose()`
+    // re-runs the full week+month+365-day-historic computation (streaks, leaderboards, passport,
+    // bingo over up to a year of MealWithRatings) inside the combine transform below, which would
+    // otherwise execute on the collector's dispatcher — the ViewModel's Main. That is pure CPU
+    // compute over already-fetched domain data, NOT I/O, so the repository boundary doesn't cover
+    // it; hopping inside the MealReadPort impl instead would push presentation-shaped compute into
+    // the data layer. Injectable (defaulted to Default) only so tests can pass a test dispatcher
+    // and stay deterministic.
+    private val computeDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     @OptIn(ExperimentalCoroutinesApi::class)
     operator fun invoke(
@@ -115,6 +127,9 @@ class ObserveStatsUseCase(
                                 )
                             }
                         }
+                            // Keeps the heavy `compose()` transform off the ViewModel's Main —
+                            // see the `computeDispatcher` constructor comment for the rationale.
+                            .flowOn(computeDispatcher)
                     }
                 }
             }

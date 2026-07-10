@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealReadPort
 import es.schsebastian.foodrats.core.domain.meal.MealUploadProgressPort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.datetime.TimeZone
 import org.koin.core.annotation.KoinExperimentalAPI
 import org.koin.test.verify.verify
@@ -47,6 +48,9 @@ class StatsModuleVerifyTest {
                 AnalyticsPort::class,
                 // C8b — crew's score style, so leaderboard cards render Stars/Emoji/Numeric.
                 CrewWelcomePort::class,
+                // ObserveStatsUseCase's defaulted computeDispatcher (Dispatchers.Default) — the
+                // off-main hop for the heavy stats compute; not a graph binding.
+                CoroutineDispatcher::class,
             ),
         )
     }

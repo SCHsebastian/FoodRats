@@ -1,7 +1,14 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
+import androidx.compose.runtime.Immutable
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 
+/**
+ * Marked [Immutable] so Compose can skip recomposing an unchanged comment row (mirrors [FeedMealUi]):
+ * without it the row is inferred UNSTABLE via [RelativeTimestamp.key]'s [es.schsebastian.foodrats.core.i18n.StringKey]
+ * interface type. All fields are values or immutable value objects.
+ */
+@Immutable
 data class CommentRowUi(
     val id: MealCommentId,
     val displayName: String,

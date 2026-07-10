@@ -56,7 +56,10 @@ import kotlin.test.assertNull
 @OptIn(ExperimentalCoroutinesApi::class)
 class StatsViewModelTest {
 
-    @BeforeTest fun setUp() = Dispatchers.setMain(UnconfinedTestDispatcher())
+    /** Shared with the use case's `computeDispatcher` so `flowOn` stays synchronous in tests. */
+    private val mainDispatcher = UnconfinedTestDispatcher()
+
+    @BeforeTest fun setUp() = Dispatchers.setMain(mainDispatcher)
     @AfterTest fun tearDown() = Dispatchers.resetMain()
 
     private val zone = TimeZone.UTC
@@ -170,7 +173,10 @@ class StatsViewModelTest {
             override val queue = MealUploadProgressPort.DEFAULT_QUEUE
         }
         return StatsViewModel(
-            observeStats = ObserveStatsUseCase(active, session, read, ingredientRead, cuisineRead, blockedAccounts, clock, zone),
+            observeStats = ObserveStatsUseCase(
+                active, session, read, ingredientRead, cuisineRead, blockedAccounts, clock, zone,
+                computeDispatcher = mainDispatcher,
+            ),
             uploadProgress = uploadProgress,
             storyShareController = shareController,
             clock = clock,

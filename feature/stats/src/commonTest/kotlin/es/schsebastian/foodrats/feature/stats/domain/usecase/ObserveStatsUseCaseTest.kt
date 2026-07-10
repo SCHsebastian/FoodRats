@@ -34,6 +34,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.time.Instant
 import kotlinx.datetime.LocalDate
@@ -146,7 +147,7 @@ class ObserveStatsUseCaseTest {
     private fun slug(raw: String) = (IngredientSlug.of(raw) as Result.Ok).value
 
     @Test fun emits_NotSignedIn_when_no_session() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), FakeBlockedAccountsPort(), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(crewId), FakeSession(null), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), FakeBlockedAccountsPort(), clock, zone, computeDispatcher = UnconfinedTestDispatcher(testScheduler))
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NotSignedIn), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -154,7 +155,7 @@ class ObserveStatsUseCaseTest {
     }
 
     @Test fun emits_NoActiveCrew_when_no_crew() = runTest {
-        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), FakeBlockedAccountsPort(), clock, zone)
+        val uc = ObserveStatsUseCase(FakeActive(null), FakeSession(Session(me, null)), FakeRead(emptyList()), FakeIngredientRead(), FakeCuisineRead(), FakeBlockedAccountsPort(), clock, zone, computeDispatcher = UnconfinedTestDispatcher(testScheduler))
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Session.NoActiveCrew), awaitItem())
             cancelAndIgnoreRemainingEvents()
@@ -172,6 +173,8 @@ class ObserveStatsUseCaseTest {
             FakeBlockedAccountsPort(),
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(flowOf(false), flowOf(0)).test {
             val r = awaitItem()
@@ -197,6 +200,8 @@ class ObserveStatsUseCaseTest {
             FakeBlockedAccountsPort(),
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(historicFlag, flowOf(0)).test {
             // first emission: historic null
@@ -224,6 +229,8 @@ class ObserveStatsUseCaseTest {
             FakeBlockedAccountsPort(),
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(flowOf(false), epochFlow).test {
             val r1 = awaitItem()
@@ -257,6 +264,8 @@ class ObserveStatsUseCaseTest {
             FakeBlockedAccountsPort(),
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(flowOf(false), flowOf(0)).test {
             val r = awaitItem()
@@ -282,6 +291,8 @@ class ObserveStatsUseCaseTest {
             FakeBlockedAccountsPort(),
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(flowOf(false), flowOf(0)).test {
             val r = awaitItem()
@@ -305,6 +316,8 @@ class ObserveStatsUseCaseTest {
             blocks,
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(flowOf(false), flowOf(0)).test {
             val r = awaitItem()
@@ -325,6 +338,8 @@ class ObserveStatsUseCaseTest {
             FakeBlockedAccountsPort(),
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(flowOf(false), flowOf(0)).test {
             assertEquals(Result.failure(StatsError.Read.Unauthorized), awaitItem())
@@ -349,6 +364,8 @@ class ObserveStatsUseCaseTest {
             FakeBlockedAccountsPort(),
             clock,
             zone,
+            // Shares the runTest scheduler so the use case's `flowOn` compute hop stays deterministic.
+            computeDispatcher = UnconfinedTestDispatcher(testScheduler),
         )
         uc(historicFlag, flowOf(0)).test {
             val r1 = awaitItem()
