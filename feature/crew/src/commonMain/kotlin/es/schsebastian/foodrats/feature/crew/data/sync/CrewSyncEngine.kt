@@ -74,7 +74,18 @@ internal class CrewSyncEngine(
                 if (jobs[accountId]?.isActive == true) return@withLock
                 jobs[accountId] = appScope.launch {
                     dataSource.observeMyCrews(accountId)
-                        .onEach { dtos -> local.replaceAll(dtos) }
+                        .onEach { dtos ->
+                            // A local persistence failure (disk I/O, corruption, …) is not a
+                            // transient Firestore error. If it were allowed to propagate,
+                            // `retryWhen` below would loop forever redriving the SAME snapshot into
+                            // the SAME failing write (isPermissionDenied never matches it). Contain
+                            // it here instead: report and skip this snapshot.
+                            try {
+                                local.replaceAll(dtos)
+                            } catch (t: Throwable) {
+                                FrLog.w("CrewSync", t) { "account ${accountId.value} local replaceAll failed, skipping snapshot: ${t.message}" }
+                            }
+                        }
                         // H4: auto-retry transient errors with capped exponential backoff (1s→…→64s) so a
                         // momentary network/Firestore glitch doesn't kill live crew-list sync until the
                         // next session emission. PERMISSION_DENIED (sign-out) stays terminal — see below.

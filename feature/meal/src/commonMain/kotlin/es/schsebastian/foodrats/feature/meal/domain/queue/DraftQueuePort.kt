@@ -59,8 +59,17 @@ interface DraftQueuePort {
      */
     suspend fun updateStatus(id: QueueEntryId, status: QueuedDraftStatus): Result<Unit, MealError>
 
-    /** Convenience transition to [QueuedDraftStatus.Uploading] before a publish attempt. */
-    suspend fun markUploading(id: QueueEntryId): Result<Unit, MealError>
+    /**
+     * Convenience transition to [QueuedDraftStatus.Uploading] before a publish attempt.
+     *
+     * @param draft when non-null, ALSO overwrites the entry's persisted [QueuedDraft.draft]
+     *   with this value before the transition. The runner uses this to re-stamp a stale
+     *   `MealDraft.day` (composed just before midnight, drained after) the one time it's
+     *   safe to do so (`attemptCount == 0`) — persisting it here means every subsequent
+     *   retry of THIS entry sees the corrected day too, so a partial multi-crew fan-out
+     *   never straddles two different days' deterministic `MealId`s.
+     */
+    suspend fun markUploading(id: QueueEntryId, draft: MealDraft? = null): Result<Unit, MealError>
 
     /**
      * Record a failed attempt: set [QueuedDraftStatus.Failed] with [errorKey] and

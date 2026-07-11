@@ -20,6 +20,9 @@ import kotlinx.coroutines.flow.first
  * connectivity-class error ([CrewError.Backend.Network] / [CrewError.Backend.Unavailable]) —
  * the rename is durably parked in the [OutboxPort] and the use case returns [Result.Ok]; the
  * `OutboxRunner` replays it (idempotently — rename sets the name) when connectivity returns.
+ * If the durable enqueue itself fails (e.g. local persistence unavailable), the rename is NOT
+ * silently reported as accepted — [Result.Err] with [CrewError.Backend.Unavailable] is returned
+ * so the UI surfaces the failure instead of confirming a rename that will never happen.
  */
 class RenameCrewUseCase(
     private val repository: CrewRepository,
@@ -52,7 +55,9 @@ class RenameCrewUseCase(
         requestedBy: AccountId,
         newName: String,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.RenameCrew(crewId, requestedBy, newName))
-        return Result.success(Unit)
+        return when (outbox.enqueue(PendingCommand.RenameCrew(crewId, requestedBy, newName))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

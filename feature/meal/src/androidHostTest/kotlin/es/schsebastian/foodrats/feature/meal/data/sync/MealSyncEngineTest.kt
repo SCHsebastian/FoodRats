@@ -8,24 +8,30 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.RatingEntryDto
 import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -355,6 +361,137 @@ class MealSyncEngineTest {
             assertEquals(clock.now(), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // --- BUG 3: lastSyncedAt read-modify-write must be atomic across concurrent crews ------
+
+    @Test
+    fun concurrent_snapshots_for_two_crews_never_lose_either_stamp() = runTest {
+        // Best-effort regression guard: syncCrew launches one long-lived per-crew job on the
+        // REAL multi-threaded appScope (Dispatchers.Default) in production, so two crews' onEach
+        // blocks can genuinely race on the shared `lastSyncedAt` map. Before the fix
+        // (`lastSyncedAt.value = lastSyncedAt.value + ...`), two writers landing "at the same
+        // instant" could both read the map before either wrote, and the loser's stamp vanished.
+        // This drives BOTH crews off a SINGLE broadcast snapshot (FakeSyncFirestore's emissions
+        // are shared across every subscriber) on real threads to maximize the chance of overlap.
+        // Uses a no-op local store (not the real SQLDelight one) so the ONLY thing under real
+        // concurrency is `lastSyncedAt` itself — a live SQLite driver hit from two real threads
+        // at once would confound the result with unrelated DB-level contention.
+        val realDispatchers = object : DispatcherProvider {
+            override val main: CoroutineDispatcher = Dispatchers.Default
+            override val io: CoroutineDispatcher = Dispatchers.Default
+            override val default: CoroutineDispatcher = Dispatchers.Default
+        }
+        val noopStore = NoopLocalStore(FoodRatsDatabase(driver), realDispatchers)
+        val realAppScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        val crewA = (CrewId.of("crew-a") as Result.Ok).value
+        val crewB = (CrewId.of("crew-b") as Result.Ok).value
+        val firestore = FakeSyncFirestore()
+        val engine = MealSyncEngine(
+            firestore = firestore,
+            local = noopStore,
+            activeCrew = FakeActiveCrewProvider(initial = null),
+            clock = clock,
+            zone = zone,
+            appScope = realAppScope,
+        )
+        engine.syncCrew(crewA)
+        engine.syncCrew(crewB)
+
+        withContext(Dispatchers.Default) {
+            firestore.emit(listOf(dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)))
+            // Real (non-virtual) wait: both crews' async stamp must land.
+            withTimeout(5_000) {
+                while (
+                    engine.lastSyncedAt(crewA).first() == null ||
+                    engine.lastSyncedAt(crewB).first() == null
+                ) {
+                    delay(10)
+                }
+            }
+        }
+
+        assertEquals(clock.now(), engine.lastSyncedAt(crewA).first(), "crew A's stamp must not be lost")
+        assertEquals(clock.now(), engine.lastSyncedAt(crewB).first(), "crew B's stamp must not be lost")
+    }
+
+    // --- BUG 4: a deterministic local-write failure must not retry forever -----------------
+
+    @Test
+    fun local_write_failure_is_contained_reported_and_never_reaches_retryWhen() = runTest {
+        // Before the fix, a throw from local.replaceCrewWindow propagated into retryWhen, which
+        // only treats PERMISSION_DENIED as terminal — a genuinely deterministic local failure
+        // (schema mismatch, disk-full) would be retried with capped-exponential backoff FOREVER,
+        // since resubscribing just re-delivers the same replayed snapshot into the same failing
+        // write. If that regressed, `advanceUntilIdle()` below would never terminate (it drains
+        // every scheduled virtual-time backoff delay, and the retry loop never gives up).
+        val throwingStore = ThrowingLocalStore(FoodRatsDatabase(driver), dispatchers)
+        val firestore = FakeSyncFirestore()
+        val recordedTags = mutableListOf<String?>()
+        val fakeCrashReporter = object : CrashReporter {
+            override fun recordNonFatal(throwable: Throwable, tag: String?) {
+                recordedTags += tag
+            }
+            override fun log(message: String) = Unit
+        }
+        val engine = MealSyncEngine(
+            firestore = firestore,
+            local = throwingStore,
+            activeCrew = FakeActiveCrewProvider(crew),
+            clock = clock,
+            zone = zone,
+            appScope = appScope,
+            crashReporter = fakeCrashReporter,
+        )
+        engine.syncCrew(crew)
+        firestore.emit(listOf(dto("m1", dayKey = "2026-06-19", publishedAtEpochMs = 1L)))
+        advanceUntilIdle()
+
+        assertEquals(
+            1,
+            throwingStore.attempts,
+            "the failure must be contained inside the snapshot handler, never handed to " +
+                "retryWhen — a second attempt here would mean it retried instead of giving up",
+        )
+        assertTrue(recordedTags.contains("meal-sync-local-write"), "the contained failure must be reported")
+        engine.lastSyncedAt(crew).test {
+            assertEquals(null, awaitItem(), "a failed window write must not advance the freshness stamp")
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+}
+
+/** [MealLocalStore] whose [replaceCrewWindow] is a no-op — used by the BUG 3 concurrency test so
+ *  the only thing under real concurrent load is `lastSyncedAt` itself, not the SQLite driver. */
+private class NoopLocalStore(
+    database: FoodRatsDatabase,
+    dispatchers: DispatcherProvider,
+) : MealLocalStore(database, dispatchers) {
+    override suspend fun replaceCrewWindow(
+        crewId: String,
+        fromKey: String,
+        toKey: String,
+        dtos: List<MealDto>,
+    ) = Unit
+}
+
+/** [MealLocalStore] whose [replaceCrewWindow] always throws — simulates a deterministic local
+ *  write failure (schema mismatch, disk-full) for BUG 4's regression test. */
+private class ThrowingLocalStore(
+    database: FoodRatsDatabase,
+    dispatchers: DispatcherProvider,
+) : MealLocalStore(database, dispatchers) {
+    var attempts = 0
+        private set
+
+    override suspend fun replaceCrewWindow(
+        crewId: String,
+        fromKey: String,
+        toKey: String,
+        dtos: List<MealDto>,
+    ) {
+        attempts++
+        throw IllegalStateException("simulated local write failure")
     }
 }
 

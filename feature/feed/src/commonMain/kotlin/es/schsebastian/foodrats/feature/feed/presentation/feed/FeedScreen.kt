@@ -34,6 +34,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -44,6 +46,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
@@ -123,6 +126,10 @@ fun FeedScreen(
     val meals = state.meals
     // C9 — signed banner URL to open in the full-screen viewer (null = closed).
     var bannerToView by remember { mutableStateOf<String?>(null) }
+    // BUG FIX (2026-07-12): the FeedHeader's measured height, so the pinned upload/sync overlay
+    // below can reserve exactly that much space instead of drawing on top of it (see the overlay's
+    // own comment further down for the full story).
+    var headerHeightPx by remember { mutableIntStateOf(0) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Z0 — edge-to-edge media floor. Crew banner wins (the owner's deliberate hero); else the
@@ -164,7 +171,10 @@ fun FeedScreen(
             // `onTileClick` re-keys on the current day so taps still navigate with the correct dayIso.
             val dayIso = state.day?.day?.date?.toString().orEmpty()
             val onTileClick = remember(onMealClick, dayIso) { { id: String -> onMealClick(id, dayIso) } }
-            val onTileReact = remember(vm) { { id: String -> vm.onIntent(FeedIntent.ReactMeal(id)) } }
+            // BUG FIX (2026-07-12): crewId is threaded through from the tapped tile's FeedMealUi
+            // (see feedBentoItems below), not re-read from the live active-crew provider — see
+            // FeedIntent.RateMeal's kdoc for why.
+            val onTileReact = remember(vm) { { id: String, crewId: String -> vm.onIntent(FeedIntent.ReactMeal(id, crewId)) } }
             val bentoItems = feedBentoItems(meals, state.scoreStyle, onTileClick, onTileReact)
 
             val date = state.day?.day?.date
@@ -215,6 +225,8 @@ fun FeedScreen(
                             onPickCrewClick = onPickCrewClick,
                             onProfileClick = onProfileClick,
                             onCrewSettingsClick = onCrewSettingsClick,
+                            // BUG FIX (2026-07-12): measured so the pinned overlay below can clear it.
+                            modifier = Modifier.onGloballyPositioned { headerHeightPx = it.size.height },
                         )
                     }
 
@@ -307,30 +319,55 @@ fun FeedScreen(
         // upload starts + danger tile for terminal-failed drafts) and the write-outbox sync bar.
         // Overlay — not a list item — so the feedback is visible immediately when the user lands on
         // the feed right after tapping publish, at any scroll position, and even on the no-crew plane.
-        // Both bars render nothing when idle.
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .frSafeHorizontalPadding()
-                .frContentWidth(Breakpoints.contentMax)
-                .padding(horizontal = Spacing.md, vertical = Spacing.xs),
-            verticalArrangement = Arrangement.spacedBy(Spacing.xs),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            FrUploadQueueBar(
-                pending = state.queuedPending,
-                failed = state.queuedFailed,
-                uploading = state.isUploadActive,
-                onRetry = { vm.onIntent(FeedIntent.RetryQueuedDrafts) },
-                onDismiss = { vm.onIntent(FeedIntent.DismissQueuedDrafts) },
-            )
-            FrSyncStatusBar(
-                pending = state.syncPending,
-                failed = state.syncFailed,
-                onRetry = { vm.onIntent(FeedIntent.RetrySyncOutbox) },
-                onDismiss = { vm.onIntent(FeedIntent.DismissSyncOutbox) },
-            )
+        //
+        // BUG FIX (2026-07-12): this overlay used to sit at the SAME on-screen rect as the
+        // FeedHeader (both start ~4dp below the status bar), so a just-published terminal failure's
+        // Retry/Dismiss buttons could steal taps meant for the crew switcher / Settings gear / profile
+        // avatar underneath. Fixed two ways: (1) it's now composed at all ONLY while at least one bar
+        // has something to show — idle means it's absent from the tree, not just invisible; (2) while
+        // present it reserves the FeedHeader's MEASURED height (via `headerHeightPx`, set by
+        // `onGloballyPositioned` on the header item — the header can wrap to more than one line
+        // depending on crew-name length) plus the LazyColumn's own top-spacer + inter-item gap, so the
+        // two rectangles never intersect. The header itself doesn't scroll away fast enough to make
+        // re-tracking scroll offset worthwhile — a fixed reservation is the simplest correct fix and
+        // matches the audit's recommended remedy.
+        val anyIndicatorVisible = state.isUploadActive || state.queuedPending > 0 || state.queuedFailed > 0 ||
+            state.syncPending > 0 || state.syncFailed > 0
+        if (anyIndicatorVisible) {
+            // No FeedHeader exists on the no-crew plane, so nothing to clear there — otherwise a
+            // stale measurement from a prior crew-having render would leave an empty gap up top.
+            val headerHeightDp = if (state.error is FeedError.Session.NoActiveCrew) {
+                0.dp
+            } else {
+                with(LocalDensity.current) { headerHeightPx.toDp() }
+            }
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    // Clears the LazyColumn's top-spacer (Spacing.xs) + the spacedBy gap before the
+                    // header item (Spacing.sm) + the header's own measured height.
+                    .padding(top = Spacing.xs + Spacing.sm + headerHeightDp)
+                    .frSafeHorizontalPadding()
+                    .frContentWidth(Breakpoints.contentMax)
+                    .padding(horizontal = Spacing.md, vertical = Spacing.xs),
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                FrUploadQueueBar(
+                    pending = state.queuedPending,
+                    failed = state.queuedFailed,
+                    uploading = state.isUploadActive,
+                    onRetry = { vm.onIntent(FeedIntent.RetryQueuedDrafts) },
+                    onDismiss = { vm.onIntent(FeedIntent.DismissQueuedDrafts) },
+                )
+                FrSyncStatusBar(
+                    pending = state.syncPending,
+                    failed = state.syncFailed,
+                    onRetry = { vm.onIntent(FeedIntent.RetrySyncOutbox) },
+                    onDismiss = { vm.onIntent(FeedIntent.DismissSyncOutbox) },
+                )
+            }
         }
 
         // C9 — full-screen crew-banner viewer, opened by tapping the banner hero.
@@ -353,12 +390,13 @@ private fun FeedHeader(
     onPickCrewClick: () -> Unit,
     onProfileClick: () -> Unit,
     onCrewSettingsClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     // Over a photo/banner floor the header sits on dark media → white; over the light atmospheric floor
     // (empty feed in light mode) it must flip to dark ink.
     val planeFg = if (onMediaFloor) StructuralColors.onMedia else StructuralColors.foreground
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -491,7 +529,7 @@ private fun feedBentoItems(
     meals: List<FeedMealUi>,
     scoreStyle: FrScoreStyle,
     onMealClick: (mealId: String) -> Unit,
-    onReactClick: (mealId: String) -> Unit,
+    onReactClick: (mealId: String, crewId: String) -> Unit,
 ): List<FrBentoItem> {
     val ranked = remember(meals) { meals.sortedByDescending { it.averageScore ?: -1.0 } }
     return ranked.mapIndexed { index, ui ->
@@ -522,7 +560,7 @@ private fun feedBentoItems(
                 showDishName = span >= 3,
                 scoreStyle = scoreStyle,
                 onClick = { onMealClick(ui.mealId) },
-                onReactClick = { onReactClick(ui.mealId) },
+                onReactClick = { onReactClick(ui.mealId, ui.crewId) },
             )
         }
     }

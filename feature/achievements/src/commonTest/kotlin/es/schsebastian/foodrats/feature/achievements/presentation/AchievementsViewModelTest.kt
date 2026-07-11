@@ -24,6 +24,7 @@ import es.schsebastian.foodrats.feature.achievements.domain.acct
 import es.schsebastian.foodrats.feature.achievements.domain.crew
 import es.schsebastian.foodrats.feature.achievements.domain.meal
 import es.schsebastian.foodrats.feature.achievements.domain.usecase.ObserveAchievementsUseCase
+import es.schsebastian.foodrats.feature.achievements.i18n.AchievementStringKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -128,20 +129,33 @@ class AchievementsViewModelTest {
         val progress = FakeProgress(initial = emptyMap())
         val analytics = RecordingAnalyticsTracker()
         val (vm, _) = makeVm(listOf(meal("m1", "me")), progress, analytics)
-        vm.effects.test {
-            testScheduler.advanceUntilIdle()
-            val effect = awaitItem()
-            assertTrue(effect is AchievementsEffect.Unlocked)
-            // persisted exactly the newly-met id
-            assertTrue(progress.recorded.any { "first_plate" in it.keys })
-            // tracked the analytics event AFTER the Ok write
-            assertTrue(
-                analytics.events.any {
-                    it is AnalyticsEvent.AchievementUnlocked && it.achievementId == "first_plate"
-                },
-            )
+        testScheduler.advanceUntilIdle()
+        // BUG FIX (2026-07-12): the celebration lives in state now, not a one-shot effect (see
+        // AchievementsState.celebration's kdoc) — it must survive rotation/process recreation.
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(AchievementStringKey.FirstPlateTitle, s.celebration)
             cancelAndIgnoreRemainingEvents()
         }
+        // persisted exactly the newly-met id
+        assertTrue(progress.recorded.any { "first_plate" in it.keys })
+        // tracked the analytics event AFTER the Ok write
+        assertTrue(
+            analytics.events.any {
+                it is AnalyticsEvent.AchievementUnlocked && it.achievementId == "first_plate"
+            },
+        )
+    }
+
+    @Test
+    fun dismiss_celebration_intent_clears_state() = runTest {
+        val progress = FakeProgress(initial = emptyMap())
+        val (vm, _) = makeVm(listOf(meal("m1", "me")), progress)
+        testScheduler.advanceUntilIdle()
+        assertEquals(AchievementStringKey.FirstPlateTitle, vm.state.value.celebration)
+        vm.onIntent(AchievementsIntent.DismissCelebration)
+        testScheduler.advanceUntilIdle()
+        assertEquals(null, vm.state.value.celebration)
     }
 
     @Test

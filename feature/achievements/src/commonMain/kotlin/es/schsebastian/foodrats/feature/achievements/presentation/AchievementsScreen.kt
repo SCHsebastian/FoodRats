@@ -30,9 +30,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -73,17 +71,6 @@ fun AchievementsScreen(
     vm: AchievementsViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-
-    // Celebration overlay driven by the Unlocked effect (spec §8.3). Holds the most recent
-    // unlocked title key; cleared when the user dismisses.
-    var celebration by remember { mutableStateOf<AchievementStringKey?>(null) }
-    LaunchedEffect(vm) {
-        vm.effects.collect { effect ->
-            when (effect) {
-                is AchievementsEffect.Unlocked -> celebration = effect.titleKey
-            }
-        }
-    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft, dim = 0.32f, scrim = FrScrimStyle.Even)
@@ -135,11 +122,13 @@ fun AchievementsScreen(
         }
     }
 
-    celebration?.let { titleKey ->
+    // BUG FIX (2026-07-12): celebration is read straight from state (survives rotation/process
+    // recreation — see AchievementsState.celebration's kdoc) instead of a plain Composable `remember`.
+    state.celebration?.let { titleKey ->
         // Bespoke firework celebration (see AchievementCelebration.kt) — tap anywhere to dismiss.
         AchievementUnlockedCelebration(
             titleKey = titleKey,
-            onDismiss = { celebration = null },
+            onDismiss = { vm.onIntent(AchievementsIntent.DismissCelebration) },
         )
     }
 }

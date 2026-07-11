@@ -152,6 +152,34 @@ class CrewSyncEngineTest {
         assertEquals(1, source.subscriptions)
     }
 
+    @Test fun a_local_write_failure_is_contained_not_retried_forever() = runTest {
+        val source = FakeCrewListSource()
+        val failingStore = ThrowingOnceCrewLocalStore(FoodRatsDatabase(driver), dispatchers)
+        val engine = CrewSyncEngine(
+            session = FakeSessionProvider(Session(account, activeCrewId = null)),
+            dataSource = source,
+            local = failingStore,
+            appScope = appScope,
+        )
+        engine.syncAccount(account)
+
+        // First snapshot: the local write throws (e.g. disk I/O). If uncontained, retryWhen would
+        // treat this as transient and loop forever redriving the SAME snapshot into the SAME
+        // failing write. Contained: it's reported and skipped, the collector stays alive, and a
+        // later, successful snapshot lands normally with no unbounded retry storm.
+        source.emit(listOf(dto("c1", createdAtEpochMs = 1L)))
+        advanceUntilIdle()
+        assertEquals(1, failingStore.attempts, "the failing write must not be retried")
+
+        source.emit(listOf(dto("c2", createdAtEpochMs = 2L)))
+        advanceUntilIdle()
+
+        failingStore.observeMyCrews().test {
+            assertEquals(listOf("c2"), awaitItem().map { it.id })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     // --- H3: Mutex guards jobs map -----------------------------------------------
 
     @Test fun syncAccount_while_job_is_active_does_not_corrupt_jobs_map() = runTest {
@@ -220,6 +248,25 @@ private class FakeCrewListSource : CrewDataSource {
     override suspend fun setBannerPath(crewId: CrewId, path: String, token: String): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> = Result.success(Unit)
     override suspend fun setBannerFocalY(crewId: CrewId, focalY: Float): Result<Unit, CrewError> = Result.success(Unit)
+}
+
+/**
+ * Throws on the FIRST [replaceAll] call (simulating a one-off local persistence fault) and delegates
+ * to the real implementation thereafter, so a test can assert the engine contains the failure instead
+ * of retrying it forever.
+ */
+private class ThrowingOnceCrewLocalStore(
+    database: FoodRatsDatabase,
+    dispatchers: DispatcherProvider,
+) : CrewLocalStore(database, dispatchers) {
+    var attempts = 0
+        private set
+
+    override suspend fun replaceAll(crews: List<CrewDto>) {
+        attempts++
+        if (attempts == 1) throw RuntimeException("disk I/O error")
+        super.replaceAll(crews)
+    }
 }
 
 /** Minimal [SessionProvider] backed by a [MutableStateFlow] the test flips. */

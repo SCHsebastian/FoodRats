@@ -65,6 +65,15 @@ private fun thumbPathOf(crewId: String, mealId: String): String =
 @Immutable
 data class FeedMealUi(
     val mealId: String,
+    /**
+     * The crew this meal belongs to, captured at map time. BUG FIX (2026-07-12): actions dispatched
+     * from a tile (rate/react/report) must target THIS crew, not whatever [es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider]
+     * happens to report at the moment the user taps — the viewer may have switched the active crew
+     * between render and tap (or a queued intent may land after a switch), which would otherwise
+     * write to the wrong crew's meal path. Defaults to `""` only for pre-existing test fixtures that
+     * don't exercise crew-scoped actions; [toFeedUi] always populates the real value.
+     */
+    val crewId: String = "",
     val authorId: String,
     val authorName: String,
     val authorAvatarUrl: String?,
@@ -236,6 +245,7 @@ fun MealWithRatings.toFeedUi(
     )
     return FeedMealUi(
         mealId = meal.id.value,
+        crewId = meal.crewId.value,
         authorId = meal.author.accountId.value,
         authorName = meal.author.displayName,
         authorAvatarUrl = meal.author.avatarUrl,

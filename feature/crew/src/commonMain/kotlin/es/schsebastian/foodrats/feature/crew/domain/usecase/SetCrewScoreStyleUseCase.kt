@@ -57,7 +57,10 @@ class SetCrewScoreStyleUseCase(
         requestedBy: AccountId,
         style: CrewScoreStyle,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.SetCrewScoreStyle(crewId, requestedBy, style.key))
-        return Result.success(Unit)
+        val cmd = PendingCommand.SetCrewScoreStyle(crewId, requestedBy, style.key)
+        return when (outbox.enqueue(cmd)) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

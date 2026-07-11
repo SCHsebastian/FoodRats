@@ -73,7 +73,10 @@ class SetCrewWeeklyChallengeUseCase(
         challenge: String?,
         setAtMillis: Long?,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.SetCrewWeeklyChallenge(crewId, requestedBy, challenge, setAtMillis))
-        return Result.success(Unit)
+        val cmd = PendingCommand.SetCrewWeeklyChallenge(crewId, requestedBy, challenge, setAtMillis)
+        return when (outbox.enqueue(cmd)) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

@@ -355,8 +355,8 @@ class FeedViewModel(
         FeedIntent.PrevDay      -> { navigatePrev(); Unit }
         FeedIntent.NextDay      -> { navigateNext(); Unit }
         FeedIntent.DismissError -> update { it.copy(error = null, rateError = null, reactError = null, feedBlockError = null) }
-        is FeedIntent.RateMeal  -> rate(intent.mealId, intent.score)
-        is FeedIntent.ReactMeal -> react(intent.mealId)
+        is FeedIntent.RateMeal  -> rate(intent.mealId, intent.score, intent.crewId)
+        is FeedIntent.ReactMeal -> react(intent.mealId, intent.crewId)
         FeedIntent.RetryQueuedDrafts   -> queuedUploadActions.retryFailed()
         FeedIntent.DismissQueuedDrafts -> queuedUploadActions.dismissFailed()
         FeedIntent.RetrySyncOutbox     -> retrySyncOutbox()
@@ -509,16 +509,20 @@ class FeedViewModel(
     /** Submits the feed report against the pending [FeedState.feedReportTarget] (UGC compliance §4). */
     private suspend fun submitFeedReport(reasonOption: FrReportReasonOption) {
         val target = currentState.feedReportTarget ?: return
-        // A4: session/crew lost mid-use → close the sheet instead of leaving it frozen open. (This
+        // A4: session lost mid-use → close the sheet instead of leaving it frozen open. (This
         // report path surfaces only success today; full failure surfacing on the feed overflow is a
         // pre-existing gap — the detail screen's report DOES show reportError.)
-        val crewId = activeCrew.current.first()
-            ?: return update { it.copy(feedReportTarget = null) }
         val reporter = session.current.first()?.accountId
             ?: return update { it.copy(feedReportTarget = null) }
         val parsedMealId = MealId.of(target.mealId).getOrElse { return }
         val domainTarget: ReportTarget = when (target) {
-            is FeedReportTarget.Meal   -> ReportTarget.Meal(parsedMealId, crewId)
+            // BUG FIX (2026-07-12): crewId comes from FeedReportTarget.Meal.crewId, captured when the
+            // overflow menu was opened (from the tile's FeedMealUi.crewId) — NOT re-read from
+            // ActiveCrewProvider here, which could have moved on to a different crew by submit time.
+            is FeedReportTarget.Meal   -> ReportTarget.Meal(
+                parsedMealId,
+                CrewId.of(target.crewId).getOrElse { return update { it.copy(feedReportTarget = null) } },
+            )
             is FeedReportTarget.Author -> ReportTarget.Account(
                 AccountId.of(target.authorId).getOrElse { return },
             )
@@ -549,10 +553,12 @@ class FeedViewModel(
         }
     }
 
-    private suspend fun rate(mealIdRaw: String, scoreRaw: Int) {
-        // A4: session/crew lost mid-use → surface a typed error instead of a silent dead tap.
-        val crewId = activeCrew.current.first()
-            ?: return update { it.copy(rateError = RateError.Unauthorized) }
+    private suspend fun rate(mealIdRaw: String, scoreRaw: Int, crewIdRaw: String) {
+        // BUG FIX (2026-07-12): crewId comes from the tapped tile (FeedMealUi.crewId), captured at
+        // map time — NOT re-read from ActiveCrewProvider here. Re-reading it at action time meant a
+        // crew switch between render and tap (or a queued intent landing after a switch) would rate
+        // the meal against the NEW active crew's path instead of the one it actually belongs to.
+        val crewId = CrewId.of(crewIdRaw).getOrElse { return update { it.copy(rateError = RateError.Unauthorized) } }
         val raterId = session.current.first()?.accountId
             ?: return update { it.copy(rateError = RateError.Unauthorized) }
         val mealId = MealId.of(mealIdRaw).getOrElse { return }
@@ -568,10 +574,10 @@ class FeedViewModel(
         }
     }
 
-    private suspend fun react(mealIdRaw: String) {
-        // A4: session/crew lost mid-use → surface a typed error instead of a silent dead tap.
-        val crewId = activeCrew.current.first()
-            ?: return update { it.copy(reactError = ReactionError.Toggle.Unauthorized) }
+    private suspend fun react(mealIdRaw: String, crewIdRaw: String) {
+        // BUG FIX (2026-07-12): crewId comes from the tapped tile (FeedMealUi.crewId) — see rate()'s
+        // comment above for why this must NOT be re-read from ActiveCrewProvider here.
+        val crewId = CrewId.of(crewIdRaw).getOrElse { return update { it.copy(reactError = ReactionError.Toggle.Unauthorized) } }
         val reactorId = session.current.first()?.accountId
             ?: return update { it.copy(reactError = ReactionError.Toggle.Unauthorized) }
         val mealId = MealId.of(mealIdRaw).getOrElse { return }

@@ -117,4 +117,18 @@ class RenameCrewUseCaseTest {
         assertEquals(Result.failure(CrewError.Validation.NameBlank), r)
         assertTrue(outbox.enqueued.isEmpty())
     }
+
+    @Test fun offline_surfaces_error_when_the_durable_enqueue_fails() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val outbox = RecordingOutboxPort(failEnqueue = true)
+        val r = useCase(repo, session, connectivity = FakeConnectivityPort(online = false), outbox = outbox)(
+            crewId, "New Name",
+        )
+        assertEquals(
+            Result.failure(CrewError.Backend.Unavailable),
+            r,
+            "a failed durable enqueue must not be reported as a successful rename",
+        )
+        assertTrue(outbox.enqueued.isEmpty())
+    }
 }

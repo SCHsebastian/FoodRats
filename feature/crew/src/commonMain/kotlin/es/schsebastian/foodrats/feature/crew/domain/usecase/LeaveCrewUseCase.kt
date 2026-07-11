@@ -47,7 +47,9 @@ class LeaveCrewUseCase(
     }
 
     private suspend fun enqueue(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.LeaveCrew(crewId, leaver))
-        return Result.success(Unit)
+        return when (outbox.enqueue(PendingCommand.LeaveCrew(crewId, leaver))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

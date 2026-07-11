@@ -68,11 +68,17 @@ class DraftQueueRepository(
             .fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("updateStatus", it) })
     }
 
-    override suspend fun markUploading(id: QueueEntryId): Result<Unit, MealError> =
+    override suspend fun markUploading(id: QueueEntryId, draft: MealDraft?): Result<Unit, MealError> =
         withContext(dispatchers.io) {
             val now = clock.now()
             runCatching {
-                store.update(id) { it.copy(status = QueuedDraftStatus.Uploading, lastAttemptAt = now) }
+                store.update(id) {
+                    it.copy(
+                        status = QueuedDraftStatus.Uploading,
+                        lastAttemptAt = now,
+                        draft = draft ?: it.draft,
+                    )
+                }
             }.fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("markUploading", it) })
         }
 

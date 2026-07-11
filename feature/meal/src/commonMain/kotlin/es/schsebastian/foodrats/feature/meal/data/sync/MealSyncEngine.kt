@@ -4,7 +4,9 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.core.domain.telemetry.NoopCrashReporter
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
 import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -58,6 +61,7 @@ internal class MealSyncEngine(
     private val zone: TimeZone,
     private val appScope: CoroutineScope,
     private val timestampStore: SyncTimestampPort? = null,  // null in tests; real store in prod
+    private val crashReporter: CrashReporter = NoopCrashReporter,
 ) : FeedSyncStatusPort {
     // One running collector per crew, so re-driving the same crew (e.g. the active-crew flow
     // re-emits the same id) never spawns a duplicate listener.
@@ -110,14 +114,35 @@ internal class MealSyncEngine(
                 jobs[crewId] = appScope.launch {
                     firestore.observeForRange(crewId, from, today)
                         .onEach { dtos ->
-                            local.replaceCrewWindow(crewId.value, fromKey, toKey, dtos)
-                            // Stamp freshness AFTER the window write commits — the feed's "synced X ago"
-                            // must only advance once the local store actually reflects this snapshot.
-                            val now = clock.now()
-                            val newMap = lastSyncedAt.value + (crewId.value to now)
-                            lastSyncedAt.value = newMap
-                            // L3: persist the updated stamp — timestampStore owns withContext(io).
-                            timestampStore?.save(newMap)
+                            // A local-store failure (e.g. schema mismatch, malformed DTO, disk-full) is
+                            // NOT a transient Firestore hiccup — retryWhen below only classifies
+                            // PERMISSION_DENIED as terminal, so letting this throw propagate would have
+                            // it retried forever: resubscribing just re-delivers the SAME snapshot into
+                            // the SAME local write, which fails identically every time. Contain it here
+                            // instead: report + skip this snapshot, reserving the retry budget below for
+                            // genuine Firestore-side transient errors.
+                            val wrote = try {
+                                local.replaceCrewWindow(crewId.value, fromKey, toKey, dtos)
+                                true
+                            } catch (t: Throwable) {
+                                FrLog.w("MealSync", t) {
+                                    "crew ${crewId.value} local window write failed, skipping snapshot: ${t.message}"
+                                }
+                                crashReporter.recordNonFatal(t, tag = "meal-sync-local-write")
+                                false
+                            }
+                            if (wrote) {
+                                // Stamp freshness AFTER the window write commits — the feed's "synced X
+                                // ago" must only advance once the local store actually reflects this
+                                // snapshot. `updateAndGet` is an atomic CAS loop: syncCrew launches one
+                                // long-lived job per crew on the multi-threaded appScope (Dispatchers
+                                // .Default), so ≥2 crews' snapshots landing at the same instant must not
+                                // race a plain read-modify-write and silently drop one crew's stamp.
+                                val now = clock.now()
+                                val newMap = lastSyncedAt.updateAndGet { it + (crewId.value to now) }
+                                // L3: persist the updated stamp — timestampStore owns withContext(io).
+                                timestampStore?.save(newMap)
+                            }
                         }
                         // H4: auto-retry on transient errors; PERMISSION_DENIED stays terminal.
                         .retryWhen { cause, attempt ->

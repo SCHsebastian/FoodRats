@@ -11,12 +11,19 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.time.Instant
 
-/** Records [enqueue] calls so tests can assert the offline fallback parked the right command. */
-class RecordingOutboxPort : OutboxPort {
+/**
+ * Records [enqueue] calls so tests can assert the offline fallback parked the right command.
+ *
+ * [failEnqueue] simulates a durable-persistence failure (e.g. disk pressure) at the outbox
+ * boundary: [enqueue] returns [Result.Err] without recording the command, so a use case that
+ * forwards the failure (instead of discarding it) can be regression-tested.
+ */
+class RecordingOutboxPort(private val failEnqueue: Boolean = false) : OutboxPort {
     val enqueued = mutableListOf<PendingCommand>()
     private var seq = 0
 
     override suspend fun enqueue(cmd: PendingCommand): Result<OutboxEntry, OutboxError> {
+        if (failEnqueue) return Result.failure(OutboxError.PersistenceUnavailable)
         enqueued += cmd
         return Result.success(
             OutboxEntry(

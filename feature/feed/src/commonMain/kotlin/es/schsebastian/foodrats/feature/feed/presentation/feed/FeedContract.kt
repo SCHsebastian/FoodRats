@@ -130,7 +130,14 @@ sealed interface FeedReportTarget {
     val mealId: String
     val authorId: String
 
-    data class Meal(override val mealId: String, override val authorId: String) : FeedReportTarget
+    /**
+     * [crewId] is captured from the reported
+     * [es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi] at the moment the
+     * overflow menu is opened — NOT re-resolved from [es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider]
+     * at submit time, so a crew switch between opening the sheet and tapping submit can't misfile
+     * the report against the wrong crew's meal path.
+     */
+    data class Meal(override val mealId: String, override val authorId: String, val crewId: String) : FeedReportTarget
     data class Author(override val mealId: String, override val authorId: String) : FeedReportTarget
 }
 
@@ -138,10 +145,16 @@ sealed interface FeedIntent : MviIntent {
     data object PrevDay : FeedIntent
     data object NextDay : FeedIntent
     data object DismissError : FeedIntent
-    data class RateMeal(val mealId: String, val score: Int) : FeedIntent
 
-    /** Toggle the viewer's daily-emote reaction on the meal. */
-    data class ReactMeal(val mealId: String) : FeedIntent
+    /**
+     * [crewId] is the meal's OWNING crew, captured on the [es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi]
+     * at map time — NOT re-resolved from the active crew at action time (see [FeedMealUi.crewId]
+     * kdoc). Prevents a mid-air crew switch from misdirecting the write.
+     */
+    data class RateMeal(val mealId: String, val score: Int, val crewId: String) : FeedIntent
+
+    /** Toggle the viewer's daily-emote reaction on the meal. [crewId] — see [RateMeal]'s kdoc. */
+    data class ReactMeal(val mealId: String, val crewId: String) : FeedIntent
 
     /** Re-arm the terminal-failed queued drafts so the runner drains them again. */
     data object RetryQueuedDrafts : FeedIntent

@@ -19,7 +19,9 @@ import es.schsebastian.foodrats.core.domain.outbox.OutboxRetryPolicy
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrNull
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.time.FixedClock
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +37,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -623,5 +626,150 @@ class OutboxRunnerTest {
         assertEquals(1, row.attemptCount, "M1: attemptCount must be preserved — re-issue does not reset the retry budget")
         assertEquals(OutboxEntryStatus.Pending, row.status, "M1: status reset to Pending on re-issue")
         assertEquals(5, (row.command as PendingCommand.RateMeal).score.value, "M1: payload updated to new score")
+    }
+
+    // ── BUG FIX: orphaned Uploading entries ───────────────────────────────────
+
+    /**
+     * A row can be left durably [OutboxEntryStatus.Uploading] forever if the process (or the
+     * coroutine carrying [OutboxCommandHandler.execute]) dies right after the CAS claim
+     * ([OutboxPort.markUploading]) committed but before the outcome was recorded. Only
+     * [OutboxEntryStatus.Pending] entries are ever picked up by a drain, so without a boot-time
+     * reconciliation the entry — and the write it represents — is silently lost. [start] must
+     * flip such a row back to Pending so it is retried on the very next drain.
+     */
+    @Test
+    fun start_reconciles_a_stale_uploading_row_to_pending_and_drains_it() = runTest(StandardTestDispatcher()) {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        // Simulate a previous process dying mid-execute: the CAS claim committed the row to
+        // Uploading, but no outcome (markFailed / remove) ever followed.
+        box.markUploading(id)
+        assertEquals(
+            OutboxEntryStatus.Uploading,
+            box.observePending().first().single { it.id == id }.status,
+            "sanity: entry is stuck Uploading before start()",
+        )
+
+        val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Success))
+        // Stays offline throughout — isolates the reconciliation/pending-count trigger from the
+        // connectivity trigger.
+        val conn = FlowConnectivity()
+        val runner = OutboxRunner(box, { listOf(handler) }, conn, OutboxRetryPolicy())
+
+        runner.start(backgroundScope)
+        advanceTimeBy(100)
+        advanceUntilIdle()
+
+        assertEquals(1, handler.executeCount, "the reconciled entry must actually be retried, not stuck forever")
+        assertTrue(box.observePending().first().isEmpty(), "reconciled entry drains normally once un-stuck")
+    }
+
+    /**
+     * If [OutboxCommandHandler.execute] throws an unexpected [Throwable] (a feature-handler bug,
+     * not a modeled [OutboxExecuteResult]), the entry must not be left claimed
+     * [OutboxEntryStatus.Uploading] forever — it must be treated exactly like a modeled
+     * [OutboxExecuteResult.Retryable] and flow through the normal backoff/retry machinery.
+     * Uses the in-process path (`scope != null`) so the post-attempt status is directly
+     * observable as [OutboxEntryStatus.Failed]`(retryable = true)` (the worker path re-arms
+     * straight to Pending instead — see `worker_path_retryable_rearmed_to_pending_and_returns_false`).
+     */
+    @Test
+    fun handler_throwing_leaves_the_entry_retryable_not_stuck_uploading() = runTest {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        val handler = object : OutboxCommandHandler {
+            override fun handles(cmd: PendingCommand): Boolean = cmd is PendingCommand.RateMeal
+            override suspend fun execute(cmd: PendingCommand): OutboxExecuteResult =
+                throw IllegalStateException("boom")
+        }
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy(maxAttempts = 5))
+
+        val drained = runner.runOnce(scope = this) // in-process path — see doc above
+
+        assertFalse(drained, "a thrown handler must not look like a fully drained outbox")
+        val entry = box.observePending().first().single { it.id == id }
+        assertNotEquals(
+            OutboxEntryStatus.Uploading,
+            entry.status,
+            "must not stay claimed Uploading after a thrown execute — that's the bug this fixes",
+        )
+        val status = entry.status
+        assertTrue(status is OutboxEntryStatus.Failed, "a thrown execute must be treated as a retryable failure")
+        assertTrue(status.retryable, "budget not exhausted yet — must remain retryable")
+        assertEquals(1, entry.attemptCount)
+    }
+
+    /**
+     * A [CancellationException] thrown out of [OutboxCommandHandler.execute] (the coroutine
+     * carrying the drain being cancelled mid-call, e.g. a lifecycle-scoped `scope` tearing down)
+     * must restore the entry to Pending — never left claimed Uploading — and must propagate,
+     * never be swallowed as a modeled failure.
+     */
+    @Test
+    fun handler_cancellation_restores_pending_and_rethrows() = runTest {
+        val box = outbox()
+        val id = (box.enqueue(rateCommand()) as Result.Ok).value.id
+        val handler = object : OutboxCommandHandler {
+            override fun handles(cmd: PendingCommand): Boolean = cmd is PendingCommand.RateMeal
+            override suspend fun execute(cmd: PendingCommand): OutboxExecuteResult =
+                throw CancellationException("cancelled")
+        }
+        val runner = OutboxRunner(box, { listOf(handler) }, FakeConnectivity(), OutboxRetryPolicy())
+
+        var rethrew = false
+        try {
+            runner.runOnce(scope = null)
+        } catch (e: CancellationException) {
+            rethrew = true
+        }
+
+        assertTrue(rethrew, "CancellationException must propagate, never be swallowed")
+        val entry = box.observePending().first().single { it.id == id }
+        assertEquals(
+            OutboxEntryStatus.Pending,
+            entry.status,
+            "must be restored to Pending, not left stuck Uploading, when the drain is cancelled mid-execute",
+        )
+    }
+
+    // ── BUG FIX: ignored status-write Results now reported ────────────────────
+
+    /**
+     * A failed [OutboxPort.markFailed] write used to be silently ignored, desyncing the queue
+     * with nothing observable. It must now be reported via the injected [CrashReporter].
+     */
+    @Test
+    fun failed_status_write_is_reported_to_the_crash_reporter() = runTest {
+        val box = outbox()
+        box.enqueue(rateCommand())
+        val handler = ScriptedRateHandler(listOf(OutboxExecuteResult.Retryable("rate.offline")))
+        val recordedTags = mutableListOf<String?>()
+        val fakeCrashReporter = object : CrashReporter {
+            override fun recordNonFatal(throwable: Throwable, tag: String?) {
+                recordedTags += tag
+            }
+            override fun log(message: String) = Unit
+        }
+        // A port wrapper that fails every markFailed write, simulating a persistence hiccup right
+        // after a successful CAS claim.
+        val failingWritesPort = object : OutboxPort by box {
+            override suspend fun markFailed(
+                id: OutboxEntryId,
+                errorKey: String,
+                retryable: Boolean,
+            ): Result<Unit, OutboxError> = Result.Err(OutboxError.PersistenceUnavailable)
+        }
+        val runner = OutboxRunner(
+            failingWritesPort,
+            { listOf(handler) },
+            FakeConnectivity(),
+            OutboxRetryPolicy(maxAttempts = 5),
+            crashReporter = fakeCrashReporter,
+        )
+
+        runner.runOnce(scope = null)
+
+        assertTrue(recordedTags.contains("Outbox"), "a failed status write must be reported, not silently swallowed")
     }
 }
