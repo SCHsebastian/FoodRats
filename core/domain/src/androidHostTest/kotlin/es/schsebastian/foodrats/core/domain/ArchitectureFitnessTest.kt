@@ -48,12 +48,15 @@ class ArchitectureFitnessTest {
 
     // ---------------------------------------------------------------------------------------------
     // Rule 2 — Dispatcher boundary (the unambiguous half).
-    // ZERO `withContext(` in any file under a `...domain.usecase` package or a `...presentation`
-    // package — i.e. use cases and ViewModels never switch dispatchers; that boundary lives in
-    // repositories only. (We deliberately do NOT enforce "exactly one withContext per repo
-    // method": that half must special-case Flow-returning methods and the legit nested
-    // `IngredientRepository` cache write, which is too brittle to encode reliably — see report.)
-    // Preview/sample composables are excluded.
+    // ZERO `withContext(` in any file under a `...domain.usecase` package or in any ViewModel —
+    // use cases and ViewModels never switch dispatchers; that boundary lives in repositories
+    // only. Other presentation files (screens/components) may hop to `Dispatchers.Default` ONLY,
+    // for CPU-bound image decode/resize off the main thread (the ComposePlateScreen /
+    // CaptureMealScreen precedent from the 2026-06-26 perf pass) — any other dispatcher (IO
+    // especially) stays banned there, so the IO boundary can't leak into the UI. (We deliberately
+    // do NOT enforce "exactly one withContext per repo method": that half must special-case
+    // Flow-returning methods and the legit nested `IngredientRepository` cache write, which is
+    // too brittle to encode reliably — see report.) Preview/sample composables are excluded.
     // ---------------------------------------------------------------------------------------------
     @Test
     fun usecases_and_viewmodels_do_not_switch_dispatchers() {
@@ -62,9 +65,12 @@ class ArchitectureFitnessTest {
             .filterNot(::isNonSourceSnapshot)
             .filter { file -> file.hasPackage("..domain.usecase..") || file.hasPackage("..presentation..") }
             .assertFalse { file ->
+                val strictLayer =
+                    file.hasPackage("..domain.usecase..") || file.name.endsWith("ViewModel")
+                val banned = if (strictLayer) WITH_CONTEXT_CALL else NON_DEFAULT_WITH_CONTEXT_CALL
                 file.functions(includeNested = true, includeLocal = true)
                     .filterNot(::isPreviewOrSample)
-                    .any { fn -> WITH_CONTEXT_CALL.containsMatchIn(fn.text) }
+                    .any { fn -> banned.containsMatchIn(fn.text) }
             }
     }
 
@@ -262,6 +268,10 @@ class ArchitectureFitnessTest {
 
         /** `withContext(` — the dispatcher-switch call we forbid in use cases / ViewModels. */
         private val WITH_CONTEXT_CALL = Regex("""\bwithContext\s*\(""")
+
+        /** Any `withContext(…)` whose argument is not exactly `Dispatchers.Default`. */
+        private val NON_DEFAULT_WITH_CONTEXT_CALL =
+            Regex("""\bwithContext\s*\((?!\s*Dispatchers\.Default\b)""")
 
         /** `Text("…")` or `FrText("…")` with a non-empty string literal first argument. */
         private val TEXT_STRING_LITERAL = Regex("""\b(Fr)?Text\s*\(\s*"[^"]""")
