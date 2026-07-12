@@ -38,7 +38,7 @@
     <string name="meal_slot_breakfast">Desayuno</string>
     <string name="meal_slot_brunch">Brunch</string>
     <string name="meal_slot_lunch">Almuerzo</string>
-    <string name="meal_slot_snack">Snack</string>
+    <string name="meal_slot_snack">Tentempié</string>
     <string name="meal_slot_merienda">Merienda</string>
     <string name="meal_slot_dinner">Cena</string>
     <string name="meal_compose_slot_optional">Opcional</string>

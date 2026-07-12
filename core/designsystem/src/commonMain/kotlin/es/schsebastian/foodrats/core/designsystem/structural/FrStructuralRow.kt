@@ -23,6 +23,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
@@ -74,7 +77,9 @@ fun FrStructuralRow(
             )
             .then(
                 if (onClick != null) {
-                    Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                    Modifier
+                        .clickable(interactionSource = interaction, indication = null, onClick = onClick)
+                        .semantics(mergeDescendants = true) { role = Role.Button }
                 } else {
                     Modifier
                 },

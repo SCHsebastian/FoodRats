@@ -56,7 +56,7 @@
         <item quantity="other">%1$d platos</item>
     </plurals>
 
-    <string name="stats_roast_section_title">Roast</string>
+    <string name="stats_roast_section_title">Pullas</string>
     <string name="stats_most_criticized_title">El más criticado</string>
     <string name="stats_most_criticized_metric_format">%1$s ★ media · ay</string>
     <!-- C8b — sin glifo: %1$s = puntuación pre-renderizada (emoji o número). -->
