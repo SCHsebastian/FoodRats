@@ -26,7 +26,7 @@ FoodRats is for small circles — 3 to 8 friends, family, or colleagues — who 
 | Navigation | Jetpack Navigation Compose (type-safe routes) |
 | Backend (MVP) | Firebase — Auth, Firestore, Storage, Messaging, Crashlytics — via [GitLive](https://github.com/GitLiveApp/firebase-kotlin-sdk) KMP bindings |
 | Push backend | Cloud Functions (TypeScript, `europe-west3`) |
-| Images | Coil 3 (loading), ImagePickerKMP (camera/gallery) |
+| Images | Coil 3 (loading), in-house native camera + system photo picker (`rememberPhotoPicker`, `:core:presentation`) |
 | On-device AI | MediaPipe Tasks Vision + TensorFlow Lite (Food-101) |
 | Design system | Atomic Design (`Fr*` components), standalone catalog app |
 

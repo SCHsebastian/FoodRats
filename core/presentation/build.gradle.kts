@@ -25,6 +25,12 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtimeCompose)
             implementation(libs.kotlinx.coroutines.core)
         }
+        androidMain.dependencies {
+            implementation(libs.compose.ui) // LocalContext
+            implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx) // FileProvider
+            implementation(libs.androidx.exifinterface)
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.turbine)

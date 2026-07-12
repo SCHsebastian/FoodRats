@@ -67,13 +67,18 @@
             </intent-filter>
         </service>
 
-        <!-- FileProvider for the shareable story-card PNG (StoryShareLauncherAndroid). Exposes only
-             the app's own cache dir; read permission is granted per-share via
-             FLAG_GRANT_READ_URI_PERMISSION. Authority must match
-             ShareCardFiles.fileProviderAuthority = "${applicationId}.fileprovider". (Spec §6.1.) -->
+        <!-- Single FileProvider (the same component class can't be declared twice) with two
+             authorities:
+             - "${applicationId}.fileprovider": shareable story-card PNG (StoryShareLauncherAndroid);
+               must match ShareCardFiles.fileProviderAuthority. Read permission is granted per-share
+               via FLAG_GRANT_READ_URI_PERMISSION. (Spec §6.1.)
+             - "${applicationId}.photopicker": native camera captures (rememberPhotoPicker →
+               TakePicture); must match the authority built in PhotoPicker.android.kt. The system
+               camera writes the capture through the granted content:// URI.
+             Both expose only the app's own cache subdirs listed in @xml/file_paths. -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="${applicationId}.fileprovider"
+            android:authorities="${applicationId}.fileprovider;${applicationId}.photopicker"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

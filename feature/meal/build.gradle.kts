@@ -34,8 +34,6 @@ kotlin {
             implementation(libs.bundles.feature.ui)
             implementation(libs.bundles.firebase.gitlive)
             implementation(libs.bundles.kotlinx.common)
-            implementation(libs.okio)
-            implementation(libs.imagepickerkmp)
             // SQLDelight runtime types (FoodRatsDatabase/MealQueries) + the asFlow/mapToList
             // reactive extensions the MealLocalStore reads return. :core:database exposes these
             // `implementation` (not api), so feature/meal declares them directly.

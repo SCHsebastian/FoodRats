@@ -18,8 +18,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
@@ -62,13 +62,13 @@ import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
+import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
-import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
-import io.github.ismoy.imagepickerkmp.domain.models.MimeType
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.LocalTime
-import kotlinx.io.readByteArray
 import org.koin.compose.viewmodel.koinViewModel
 
 /**
@@ -90,25 +90,18 @@ fun ProfileScreen(
     vm: ProfileViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val picker = rememberImagePickerKMP()
-
-    LaunchedEffect(picker.result) {
-        when (val r = picker.result) {
-            is ImagePickerResult.Success -> {
-                val photo = r.first
-                if (photo != null) {
-                    val bytes = photo.asSource().readByteArray().resizeAvatarForUpload()
-                    vm.onIntent(ProfileIntent.AvatarPicked(bytes))
-                }
-                picker.reset()
+    val scope = rememberCoroutineScope()
+    val picker = rememberPhotoPicker { result ->
+        when (result) {
+            is PhotoPickResult.Picked -> scope.launch {
+                // Resize is CPU-bound — hop off the main thread so the UI keeps painting.
+                val bytes = withContext(Dispatchers.Default) { result.bytes.resizeAvatarForUpload() }
+                vm.onIntent(ProfileIntent.AvatarPicked(bytes))
             }
-            is ImagePickerResult.Error -> {
-                FrLog.w(FrLog.Tags.Auth) { "[ProfileScreen] avatar picker error: ${r.exception.message}" }
-                picker.reset()
+            is PhotoPickResult.Failed -> {
+                FrLog.w(FrLog.Tags.Auth) { "[ProfileScreen] avatar picker error: ${result.message}" }
             }
-            is ImagePickerResult.Dismissed,
-            is ImagePickerResult.Loading,
-            is ImagePickerResult.Idle -> Unit
+            PhotoPickResult.Cancelled -> Unit
         }
     }
 
@@ -147,12 +140,7 @@ fun ProfileScreen(
             ProfileHeader(onBack = onBack)
             GeneralSection(
                 state, vm,
-                onPickAvatar = {
-                    picker.launchGallery(
-                        allowMultiple = false,
-                        mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG),
-                    )
-                },
+                onPickAvatar = { picker.launchGallery() },
             )
             PreferencesSection(state, vm)
             AchievementsSection(onOpenAchievements)

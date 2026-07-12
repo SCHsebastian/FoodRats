@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -26,14 +30,13 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
+import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.presentation.components.resizeForUpload
-import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.io.readByteArray
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
@@ -44,7 +47,34 @@ fun CaptureMealScreen(
     vm: CaptureMealViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val picker = rememberImagePickerKMP()
+    val scope = rememberCoroutineScope()
+    var processing by remember { mutableStateOf(false) }
+    val picker = rememberPhotoPicker { result ->
+        when (result) {
+            is PhotoPickResult.Picked -> {
+                // Gate on !processing && !isCapturing: while a photo is already being persisted,
+                // a duplicate picker result must not start a second resize+save (the VM has the
+                // same guard; this one also skips the wasted resize work).
+                if (!processing && !state.isCapturing) {
+                    processing = true
+                    scope.launch {
+                        // Resize is CPU-bound and can take hundreds of ms on a 12MP shot.
+                        // Hop off the main thread so the processing overlay below actually gets a
+                        // frame instead of the screen freezing. Dispatchers.Default directly (not
+                        // DispatcherProvider) because this is presentation-layer image work, not a
+                        // data-layer IO boundary — the one-withContext-per-repository-method rule
+                        // governs repositories, and Default exists on every KMP target.
+                        val bytes = withContext(Dispatchers.Default) {
+                            result.bytes.resizeForUpload()
+                        }
+                        vm.onIntent(CaptureMealIntent.PhotoTaken(bytes))
+                    }
+                }
+            }
+            PhotoPickResult.Cancelled -> onCancelled()
+            is PhotoPickResult.Failed -> onCancelled()
+        }
+    }
 
     LaunchedEffect(Unit) {
         vm.onIntent(CaptureMealIntent.Start)
@@ -60,45 +90,12 @@ fun CaptureMealScreen(
         }
     }
 
-    LaunchedEffect(picker.result) {
-        when (val r = picker.result) {
-            is ImagePickerResult.Success -> {
-                val photo = r.first ?: return@LaunchedEffect
-                // Gate on !isCapturing: while a photo is already being persisted, a duplicate
-                // picker result must not start a second resize+save (the VM has the same guard;
-                // this one also skips the wasted resize work).
-                if (!state.isCapturing) {
-                    // Read + resize is CPU-bound and can take hundreds of ms on a 12MP shot.
-                    // Hop off the main thread so the isCapturing overlay below actually gets a
-                    // frame instead of the screen freezing. Dispatchers.Default directly (not
-                    // DispatcherProvider) because this is presentation-layer image work, not a
-                    // data-layer IO boundary — the one-withContext-per-repository-method rule
-                    // governs repositories, and Default exists on every KMP target.
-                    val bytes = withContext(Dispatchers.Default) {
-                        photo.asSource().readByteArray().resizeForUpload()
-                    }
-                    vm.onIntent(CaptureMealIntent.PhotoTaken(bytes))
-                }
-                picker.reset()
-            }
-            is ImagePickerResult.Dismissed -> {
-                picker.reset()
-                onCancelled()
-            }
-            is ImagePickerResult.Error -> {
-                picker.reset()
-                onCancelled()
-            }
-            is ImagePickerResult.Loading, is ImagePickerResult.Idle -> Unit
-        }
-    }
-
     // Between the camera handing the shot back and NavigateToCompose firing, the photo is
     // resized + persisted into the draft. Without feedback the screen read as frozen and
     // invited re-taps — cover the wait with a structural field floor + progress indicator.
-    // picker.result is part of the condition so the overlay is already up during the resize
-    // step (before the VM flips isCapturing).
-    val processingPhoto = state.isCapturing || picker.result is ImagePickerResult.Success
+    // `processing` flips synchronously in the picker callback so the overlay is already up
+    // during the resize step (before the VM flips isCapturing).
+    val processingPhoto = processing || state.isCapturing
     if (processingPhoto) {
         Box(modifier = Modifier.fillMaxSize()) {
             FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft, tone = FrFloorTone.Adaptive)

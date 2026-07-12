@@ -87,17 +87,14 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
+import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.LeaveCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
-import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
-import io.github.ismoy.imagepickerkmp.domain.models.MimeType
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
 import kotlinx.coroutines.delay
-import kotlinx.io.readByteArray
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -892,19 +889,11 @@ private fun BannerSection(
     onReposition: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val picker = rememberImagePickerKMP()
-    LaunchedEffect(picker.result) {
-        when (val r = picker.result) {
-            is ImagePickerResult.Success -> {
-                val photo = r.first ?: return@LaunchedEffect
-                val bytes = photo.asSource().readByteArray()
-                onPicked(bytes)
-                picker.reset()
-            }
-            is ImagePickerResult.Error,
-            is ImagePickerResult.Dismissed,
-            is ImagePickerResult.Loading,
-            is ImagePickerResult.Idle,
+    val picker = rememberPhotoPicker { result ->
+        when (result) {
+            is PhotoPickResult.Picked -> onPicked(result.bytes)
+            PhotoPickResult.Cancelled,
+            is PhotoPickResult.Failed,
             -> Unit
         }
     }
@@ -927,7 +916,7 @@ private fun BannerSection(
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             FrGlassButton(
                 label = resolve(CrewStringKey.SettingsBannerChange),
-                onClick = { picker.launchGallery(allowMultiple = false, mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG)) },
+                onClick = { picker.launchGallery() },
                 tone = FrButtonTone.Glass,
                 leadingIcon = FrIcons.GalleryImport,
                 enabled = !saving,
