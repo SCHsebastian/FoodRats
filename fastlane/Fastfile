@@ -18,6 +18,12 @@ GSP_PATH = "iosApp/iosApp/GoogleService-Info.plist".freeze
 
 IOS_BUNDLE_ID = "es.schsebastian.foodrats".freeze
 
+# Dedicated keychain for CI code signing (see platform :ios before_all). The
+# password is local-only and NOT a secret — the signing assets themselves are
+# protected by the match repo's MATCH_PASSWORD encryption.
+KEYCHAIN_NAME = "fastlane_tmp_keychain".freeze
+KEYCHAIN_PASSWORD = "fastlane".freeze
+
 default_platform(:android)
 
 # ---------------------------------------------------------------------------
@@ -70,21 +76,20 @@ end
 # ---------------------------------------------------------------------------
 platform :ios do
   before_all do
-    # On CI, create an ephemeral keychain so match can import the cert without
-    # polluting (or being blocked by) the machine's login keychain.
-    if ENV["CI"]
-      # The runner is a *persistent* self-hosted Mac. setup_ci makes the
-      # ephemeral fastlane_tmp_keychain the machine's DEFAULT keychain, and
-      # fastlane never restores it on teardown. Left that way, the temp
-      # keychain (which auto-locks on sleep / after 1h) keeps prompting
-      # "security wants to use the fastlane_tmp_keychain-db keychain — enter
-      # the keychain password" for every app that touches the default
-      # keychain. So remember the real default here and restore it after the
-      # lane (after_all + error below). See docs/cicd-runbook.md.
-      ENV["FR_PREV_DEFAULT_KEYCHAIN"] =
-        `security default-keychain -d user`.strip.delete('"')
-      setup_ci
-    end
+    # On CI, import signing assets into a dedicated keychain.
+    #
+    # We deliberately do NOT call fastlane's `setup_ci` here. setup_ci is built
+    # for *ephemeral* CI hosts (GitHub-hosted runners destroyed after the job):
+    # it makes the temp keychain the session DEFAULT and gives it a 1h auto-lock
+    # plus lock-on-sleep. On our *persistent* self-hosted Mac that produced the
+    # recurring "security wants to use the fastlane_tmp_keychain-db keychain —
+    # enter the keychain password" prompt: every GUI app got redirected to the
+    # temp default keychain, and the keychain locked mid-build / on sleep so a
+    # plain `security`/`codesign` call had nothing to unlock it with.
+    # setup_signing_keychain below creates the keychain WITHOUT hijacking the
+    # default and WITHOUT any auto-lock, so it never prompts. See
+    # docs/cicd-runbook.md.
+    setup_signing_keychain if ENV["CI"]
   end
 
   after_all do |_lane|
@@ -178,19 +183,39 @@ platform :ios do
     upload_dsyms_to_crashlytics(dsym_paths: paths)
   end
 
-  # Undo setup_ci's keychain mutation on the persistent self-hosted runner:
-  # restore the default keychain it swapped and delete the ephemeral keychain,
-  # leaving the machine exactly as it was. Runs on both success (after_all) and
-  # failure (error). No-op when not on CI.
+  # Create the dedicated signing keychain used by match/gym on CI. Unlike
+  # setup_ci it (a) does NOT become the session default — so GUI apps keep using
+  # the login keychain and are never redirected here — and (b) has NO auto-lock
+  # and NO lock-on-sleep, so a `security`/`codesign` call mid-build never finds
+  # it locked and never prompts. Recreated fresh each run so an interrupted
+  # prior run can't leave a stale/locked keychain behind.
+  def setup_signing_keychain
+    path = File.expand_path("~/Library/Keychains/#{KEYCHAIN_NAME}-db")
+    delete_keychain(name: KEYCHAIN_NAME) if File.exist?(path)
+    create_keychain(
+      name: KEYCHAIN_NAME,
+      password: KEYCHAIN_PASSWORD,
+      default_keychain: false,  # do NOT hijack the GUI session's default keychain
+      unlock: true,
+      timeout: 0,               # 0 = never auto-lock (setup_ci uses 3600)
+      lock_when_sleeps: false,  # do NOT lock on sleep
+      add_to_search_list: true, # codesign/gym still find the identity via the search list
+    )
+    # Point match at this keychain (it would otherwise import into login.keychain).
+    # match also sets the key partition list on import, so codesign signs
+    # non-interactively without the separate "codesign wants to use key" prompt.
+    ENV["MATCH_KEYCHAIN_NAME"] = KEYCHAIN_NAME
+    ENV["MATCH_KEYCHAIN_PASSWORD"] = KEYCHAIN_PASSWORD
+  end
+
+  # Tear down the signing keychain created in before_all: delete it (which also
+  # drops it from the search list). We never touched the session's default
+  # keychain, so there is nothing to restore. Runs on both success (after_all)
+  # and failure (error). No-op when not on CI.
   def teardown_ci_keychain
     return unless ENV["CI"]
 
-    prev = ENV["FR_PREV_DEFAULT_KEYCHAIN"].to_s
-    unless prev.empty?
-      sh("security default-keychain -s '#{prev}'")
-      sh("security list-keychains -d user -s '#{prev}'")
-    end
-    delete_keychain(name: "fastlane_tmp_keychain")
+    delete_keychain(name: KEYCHAIN_NAME)
   rescue StandardError => e
     UI.important("Keychain teardown skipped: #{e.message}")
   end
