@@ -29,6 +29,13 @@ const validMeal = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+/** N well-formed multi-photo plate entries — the ordered `{path, source}` shape the client publishes. */
+const platesOf = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    path: `crews/${CREW}/meals/${ID}_${i}.jpg`,
+    source: i % 2 === 0 ? "camera" : "gallery",
+  }));
+
 beforeAll(async () => {
   env = await makeEnv();
 });
@@ -140,6 +147,58 @@ describe("meals create — award-aggregate self-stuffing (the P1 fix)", () => {
   it("REJECTS create with an unknown field (field whitelist)", async () => {
     const db = env.authenticatedContext("alice").firestore();
     await assertFails(setDoc(doc(db, PATH), validMeal({ photoUrl: "https://x/p.jpg" })));
+  });
+});
+
+describe("meals create — multi-photo plates (Wave 2 whitelist addition)", () => {
+  it("publishes with plates: [] (new clients send the empty list)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal({ plates: [] })));
+  });
+
+  it("publishes with plates: null (encodeDefaults null case)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal({ plates: null })));
+  });
+
+  it("publishes with 10 well-formed plate entries (at the cap)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal({ plates: platesOf(10) })));
+  });
+
+  it("REJECTS 11 plate entries (over the cap)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(db, PATH), validMeal({ plates: platesOf(11) })));
+  });
+
+  it("REJECTS plates as a non-list value", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(db, PATH), validMeal({ plates: "not-a-list" })));
+  });
+
+  it("publishes a legacy-shaped meal with NO plates key at all (old behavior locked)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal()));
+  });
+});
+
+describe("meals update — plates is immutable post-create", () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), PATH), validMeal({ plates: platesOf(2) }));
+    });
+  });
+
+  it("REJECTS an update that changes plates alongside an otherwise-valid rating write", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 5 } },
+        ratingSum: 5,
+        voterCount: 1,
+        plates: platesOf(3),
+      }),
+    );
   });
 });
 
