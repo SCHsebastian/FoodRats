@@ -160,6 +160,48 @@ describe("exportMyDataCore — assembly + signed URL (§0.4)", () => {
     expect(archive.meals).toEqual([]);
     expect(archive.plates).toEqual([]);
   });
+
+  it("skips plate signing for meals with a null or empty platePath (no delete-at-guessed-path)", async () => {
+    const r = recordingDeps({
+      authoredMeals: async () => [
+        { path: "crews/c1/meals/m1", platePath: null, data: {} },
+        { path: "crews/c1/meals/m2", platePath: "", data: {} },
+        { path: "crews/c1/meals/m3", platePath: "crews/c1/meals/m3.jpg", data: {} },
+      ],
+    });
+    await exportMyDataCore(r.deps, UID, {});
+    // Only the real plate + the archive itself get signed — never "" or a guessed path.
+    expect(r.signed).toEqual(["crews/c1/meals/m3.jpg", `exports/${UID}/export.json`]);
+    const archive = JSON.parse(r.uploaded[0]);
+    expect(archive.plates.map((p: { path: string }) => p.path)).toEqual([
+      "crews/c1/meals/m3.jpg",
+    ]);
+    // The meals themselves still export, plate or not.
+    expect(archive.meals).toHaveLength(3);
+  });
+
+  it("signs a duplicated platePath only ONCE (de-dup before the signing fan-out)", async () => {
+    const r = recordingDeps({
+      authoredMeals: async () => [
+        { path: "crews/c1/meals/m1", platePath: "crews/c1/meals/shared.jpg", data: {} },
+        { path: "crews/c1/meals/m2", platePath: "crews/c1/meals/shared.jpg", data: {} },
+      ],
+    });
+    await exportMyDataCore(r.deps, UID, {});
+    expect(r.signed.filter((p) => p === "crews/c1/meals/shared.jpg")).toHaveLength(1);
+    const archive = JSON.parse(r.uploaded[0]);
+    expect(archive.plates).toHaveLength(1);
+  });
+
+  it("a failing gather dependency propagates (the callable wrapper maps it to 'internal')", async () => {
+    const r = recordingDeps({
+      authoredMeals: async () => {
+        throw new Error("firestore down");
+      },
+    });
+    await expect(exportMyDataCore(r.deps, UID, {})).rejects.toThrow("firestore down");
+    expect(r.uploaded).toEqual([]); // nothing uploaded when the gather fails.
+  });
 });
 
 describe("exportMyDataCore — excludes other members' PII (§0.4)", () => {
@@ -211,6 +253,8 @@ describe("buildExportArchive — pure projection (§0.4)", () => {
       "crews/c1/meals/m1.jpg",
       "crews/c2/meals/m2.jpg",
     ]);
+    // First-seen entry wins — the duplicate's URL is discarded, not merged.
+    expect(archive.plates[0].url).toBe("u1");
   });
 
   it("stamps the schema version + an ISO export timestamp", () => {

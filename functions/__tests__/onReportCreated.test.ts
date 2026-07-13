@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  onReportCreated,
   processReport,
   moderationActionId,
   reconstructTargetKey,
@@ -9,6 +10,14 @@ import {
   type ReportDeps,
   type ReportDoc,
 } from "../src/triggers/onReportCreated";
+
+// Every processReport test injects its own ReportDeps; only the trigger-level malformed-event
+// tests below can reach firestoreDeps(), and they must NOT — getFirestore throwing proves it.
+vi.mock("firebase-admin/firestore", () => ({
+  getFirestore: () => {
+    throw new Error("getFirestore must not be reached for malformed reports");
+  },
+}));
 
 const CREW = "c1";
 const MEAL = "c1_alice_2026-06-14_lunch";
@@ -232,6 +241,50 @@ describe("reconstructTargetKey", () => {
   it("returns null when required fields are missing", () => {
     expect(reconstructTargetKey({ reporterId: "u1", targetType: "meal", targetKey: MEAL_KEY })).toBeNull();
   });
+
+  it("returns null for each partially-populated variant", () => {
+    // meal with only crewId
+    expect(
+      reconstructTargetKey({ reporterId: "u1", targetType: "meal", targetKey: MEAL_KEY, crewId: CREW }),
+    ).toBeNull();
+    // comment missing commentId
+    expect(
+      reconstructTargetKey({
+        reporterId: "u1",
+        targetType: "comment",
+        targetKey: COMMENT_KEY,
+        crewId: CREW,
+        mealId: MEAL,
+      }),
+    ).toBeNull();
+    // account missing accountId
+    expect(
+      reconstructTargetKey({ reporterId: "u1", targetType: "account", targetKey: ACCOUNT_KEY }),
+    ).toBeNull();
+  });
+
+  it("returns null for an unrecognized targetType", () => {
+    expect(
+      reconstructTargetKey({
+        reporterId: "u1",
+        targetType: "crew" as unknown as ReportDoc["targetType"],
+        targetKey: "crew|c1",
+        crewId: CREW,
+      }),
+    ).toBeNull();
+  });
+
+  it("returns null for empty-string typed fields (falsy, not just absent)", () => {
+    expect(
+      reconstructTargetKey({
+        reporterId: "u1",
+        targetType: "meal",
+        targetKey: MEAL_KEY,
+        crewId: "",
+        mealId: MEAL,
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("processReport — refuses a report whose fields don't reconstruct targetKey (#6)", () => {
@@ -251,6 +304,38 @@ describe("processReport — refuses a report whose fields don't reconstruct targ
     expect(outcome.thresholdReached).toBe(false);
     expect(r.removedMeals).toEqual([]);
     expect(r.actioned).toEqual([]);
+    expect(r.auditDocs.size).toBe(0);
+  });
+
+  it("refuses an account report whose accountId is desynced from targetKey", async () => {
+    const r = recorder(new Set(["u1", "u2", "u3"]));
+    const forged: ReportDoc = {
+      reporterId: "u3",
+      targetType: "account",
+      targetKey: ACCOUNT_KEY, // account|bob
+      accountId: "carol",
+    };
+    const outcome = await processReport(forged, r.deps);
+    expect(outcome.action).toBe("below_threshold");
+    expect(r.actioned).toEqual([]);
+    expect(r.auditDocs.size).toBe(0);
+  });
+
+  it("the guard also blocks a CHILD-SAFETY escalation on an inconsistent report", async () => {
+    // Escalation must never outrank the self-validation: a forged child_safety report with
+    // desynced fields is refused BEFORE the escalate flag is even considered.
+    const r = recorder(new Set(["u1"]), { reasons: [CHILD_SAFETY_REASON] });
+    const forged: ReportDoc = {
+      reporterId: "u1",
+      targetType: "meal",
+      targetKey: MEAL_KEY,
+      crewId: "otherCrew",
+      mealId: MEAL,
+      reason: CHILD_SAFETY_REASON,
+    };
+    const outcome = await processReport(forged, r.deps);
+    expect(outcome.action).toBe("below_threshold");
+    expect(r.removedMeals).toEqual([]);
     expect(r.auditDocs.size).toBe(0);
   });
 });
@@ -854,6 +939,33 @@ describe("processReport — configurable threshold (env var)", () => {
     expect((await processReport(mealReport("u3"), atThree.deps)).thresholdReached).toBe(true);
   });
 
+  it("ignores a zero, negative, or empty override (must be a positive integer)", async () => {
+    for (const bad of ["0", "-1", ""]) {
+      process.env.MODERATION_REPORT_THRESHOLD = bad;
+      const r = recorder(new Set(["u1", "u2", "u3"]));
+      const outcome = await processReport(mealReport("u3"), r.deps);
+      expect(outcome.thresholdReached, `override "${bad}"`).toBe(true); // default 3 applies
+    }
+  });
+
+  it("honors MODERATION_REPORT_THRESHOLD=1 — a single report triggers the takedown", async () => {
+    process.env.MODERATION_REPORT_THRESHOLD = "1";
+    const r = recorder(new Set(["u1"]));
+    const outcome = await processReport(mealReport("u1"), r.deps);
+    expect(outcome.thresholdReached).toBe(true);
+    expect(r.removedMeals).toHaveLength(1);
+    expect(r.auditDocs.get(moderationActionId(MEAL_KEY))!.threshold).toBe(1);
+  });
+
+  it("accepts the exact clamp boundary MODERATION_REPORT_THRESHOLD=50 unclamped", async () => {
+    process.env.MODERATION_REPORT_THRESHOLD = "50";
+    const fifty = new Set(Array.from({ length: 50 }, (_, i) => `u${i}`));
+    const r = recorder(fifty);
+    const outcome = await processReport(mealReport("u0"), r.deps);
+    expect(outcome.thresholdReached).toBe(true);
+    expect(r.auditDocs.get(moderationActionId(MEAL_KEY))!.threshold).toBe(50);
+  });
+
   it("clamps MODERATION_REPORT_THRESHOLD=999 to 50 (M4: misconfig guard)", async () => {
     process.env.MODERATION_REPORT_THRESHOLD = "999";
     // With 50 distinct reporters the clamped threshold should be reached.
@@ -872,5 +984,141 @@ describe("processReport — configurable threshold (env var)", () => {
     // The audit doc records the clamped threshold (50), not 999.
     const doc = r50.auditDocs.get(moderationActionId(MEAL_KEY))!;
     expect(doc.threshold).toBe(50);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Error-path coverage — the claim protocol's non-happy branches
+// ---------------------------------------------------------------------------
+
+describe("processReport — claim-protocol error paths", () => {
+  it("an UNEXPECTED writeAuditDoc error (not ALREADY_EXISTS) propagates so the trigger retries", async () => {
+    const r = recorder(new Set(["u1", "u2", "u3"]));
+    const deps: ReportDeps = {
+      ...r.deps,
+      writeAuditDoc: async () => {
+        const err = new Error("deadline exceeded") as Error & { code: number };
+        err.code = 4; // gRPC DEADLINE_EXCEEDED — must NOT be treated as the lock signal
+        throw err;
+      },
+    };
+    await expect(processReport(mealReport("u3"), deps)).rejects.toThrow("deadline exceeded");
+    expect(r.removedMeals).toEqual([]);
+    expect(r.actioned).toEqual([]);
+  });
+
+  it("recognizes the string 'already-exists' code as the lock signal", async () => {
+    const r = recorder(new Set(["u1", "u2", "u3"]));
+    const deps: ReportDeps = {
+      ...r.deps,
+      writeAuditDoc: async () => {
+        const err = new Error("exists") as Error & { code: string };
+        err.code = "already-exists";
+        throw err;
+      },
+      getAuditDoc: async () => ({ completed: true }),
+    };
+    const outcome = await processReport(mealReport("u3"), deps);
+    expect(outcome.alreadyActioned).toBe(true);
+    expect(r.removedMeals).toEqual([]);
+  });
+
+  it("recognizes HTTP status 409 as the lock signal", async () => {
+    const r = recorder(new Set(["u1", "u2", "u3"]));
+    const deps: ReportDeps = {
+      ...r.deps,
+      writeAuditDoc: async () => {
+        const err = new Error("conflict") as Error & { status: number };
+        err.status = 409;
+        throw err;
+      },
+      getAuditDoc: async () => ({ completed: true }),
+    };
+    const outcome = await processReport(mealReport("u3"), deps);
+    expect(outcome.alreadyActioned).toBe(true);
+  });
+
+  it("ALREADY_EXISTS but the doc has vanished (getAuditDoc null) short-circuits as alreadyActioned", async () => {
+    // Documented behavior: `existing === null || existing.completed === true` → short-circuit.
+    // A null read after a create-conflict is only reachable if the claim doc was deleted between
+    // the two calls — treated as done rather than re-running an unverifiable takedown.
+    const r = recorder(new Set(["u1", "u2", "u3"]));
+    const deps: ReportDeps = {
+      ...r.deps,
+      writeAuditDoc: async () => {
+        const err = new Error("exists") as Error & { code: number };
+        err.code = 6;
+        throw err;
+      },
+      getAuditDoc: async () => null,
+    };
+    const outcome = await processReport(mealReport("u3"), deps);
+    expect(outcome.alreadyActioned).toBe(true);
+    expect(r.removedMeals).toEqual([]);
+    expect(r.actioned).toEqual([]);
+  });
+
+  it("a meal report with valid targetKey but a removeMeal failure propagates AFTER the claim", async () => {
+    const r = recorder(new Set(["u1", "u2", "u3"]));
+    const deps: ReportDeps = {
+      ...r.deps,
+      removeMeal: async () => {
+        throw new Error("delete failed");
+      },
+    };
+    await expect(processReport(mealReport("u3"), deps)).rejects.toThrow("delete failed");
+    // The claim doc was written (completed:false) — the retry will RESUME, not skip.
+    const doc = r.auditDocs.get(moderationActionId(MEAL_KEY))!;
+    expect(doc.completed).toBe(false);
+    expect(r.auditDocUpdates.size).toBe(0); // never flipped to completed
+    expect(r.actioned).toEqual([]); // markActioned never reached
+  });
+
+  it("no reasons on the open reports → an empty reasonHistogram on the audit doc", async () => {
+    const r = recorder(new Set(["u1", "u2", "u3"]), { reasons: [] });
+    await processReport(mealReport("u3"), r.deps);
+    expect(r.auditDocs.get(moderationActionId(MEAL_KEY))!.reasonHistogram).toEqual({});
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Trigger-level guards — malformed report docs never reach Firestore
+// (getFirestore is mocked to throw; these events must return before touching it)
+// ---------------------------------------------------------------------------
+
+type ReportEvent = Parameters<typeof onReportCreated.run>[0];
+
+function reportEvent(data: Record<string, unknown> | undefined): ReportEvent {
+  return {
+    data: data === undefined ? undefined : { data: () => data },
+    params: { reportId: "r1" },
+  } as unknown as ReportEvent;
+}
+
+describe("onReportCreated trigger — malformed-event guards", () => {
+  it("ignores an event with no snapshot (re-delivery of a deleted doc)", async () => {
+    await expect(onReportCreated.run(reportEvent(undefined))).resolves.toBeUndefined();
+  });
+
+  it("ignores a report missing its targetKey", async () => {
+    await expect(
+      onReportCreated.run(reportEvent({ reporterId: "u1", targetType: "meal" })),
+    ).resolves.toBeUndefined();
+  });
+
+  it("ignores a report with an unknown targetType", async () => {
+    await expect(
+      onReportCreated.run(
+        reportEvent({ reporterId: "u1", targetType: "crew", targetKey: "crew|c1" }),
+      ),
+    ).resolves.toBeUndefined();
+  });
+
+  it("ignores a report with an empty-string targetKey", async () => {
+    await expect(
+      onReportCreated.run(
+        reportEvent({ reporterId: "u1", targetType: "meal", targetKey: "" }),
+      ),
+    ).resolves.toBeUndefined();
   });
 });

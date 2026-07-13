@@ -196,6 +196,84 @@ describe("processBadgeMilestone — canonical key extraction", () => {
   });
 });
 
+describe("processBadgeMilestone — edge cases", () => {
+  it("falls back to the FULL mealId as canonical key when the crewId prefix is absent", async () => {
+    const { deps, marked } = fakeDeps({ mealCount: 0, newCount: 1 });
+    const malformedId = "no-prefix-meal-id";
+    const result = await processBadgeMilestone(UID, CREW, malformedId, deps);
+
+    expect(result).toBe("first");
+    expect(marked).toEqual([`${UID}/${malformedId}`]);
+  });
+
+  it("does NOT strip a crewId that merely prefixes without the '_' separator", async () => {
+    const { deps, marked } = fakeDeps({ mealCount: 0, newCount: 1 });
+    // Starts with CREW but not CREW + "_" → treated as a full canonical key.
+    const oddId = `${CREW}x_rest`;
+    await processBadgeMilestone(UID, CREW, oddId, deps);
+    expect(marked).toEqual([`${UID}/${oddId}`]);
+  });
+
+  it("a multi-tier jump (0 → 10, e.g. after a counter repair) awards the HIGHEST earned tier", async () => {
+    const { deps, badges } = fakeDeps({ mealCount: 0, newCount: 10 });
+    const result = await processBadgeMilestone(UID, CREW, MEAL_ID, deps);
+
+    expect(result).toBe("ten");
+    expect(badges).toEqual([{ uid: UID, badgeId: "ten" }]);
+  });
+
+  it("does NOT rewrite the badge when the count moves within the 'ten' tier (10 → 11)", async () => {
+    const { deps, badges } = fakeDeps({ mealCount: 10, newCount: 11 });
+    expect(await processBadgeMilestone(UID, CREW, MEAL_ID, deps)).toBeNull();
+    expect(badges).toHaveLength(0);
+  });
+
+  it("does NOT write when the increment anomalously returns the same count (no tier change)", async () => {
+    const { deps, badges } = fakeDeps({ mealCount: 5, newCount: 5 });
+    expect(await processBadgeMilestone(UID, CREW, MEAL_ID, deps)).toBeNull();
+    expect(badges).toHaveLength(0);
+  });
+
+  it("marks the dedup key BEFORE incrementing (current ordering — crash between the two loses the count)", async () => {
+    // BUG(potential): markCounted runs before incrementMealCount. A crash in between leaves the
+    // canonical key marked but never counted — that publish is then permanently uncountable
+    // (the retry short-circuits on isAlreadyCounted). Documented here as the current behavior.
+    const order: string[] = [];
+    const deps: BadgeDeps = {
+      readMealCount: async () => 0,
+      isAlreadyCounted: async () => {
+        order.push("isAlreadyCounted");
+        return false;
+      },
+      markCounted: async () => {
+        order.push("markCounted");
+      },
+      incrementMealCount: async () => {
+        order.push("increment");
+        return 1;
+      },
+      writeBadge: async () => {
+        order.push("writeBadge");
+      },
+    };
+    await processBadgeMilestone(UID, CREW, MEAL_ID, deps);
+    expect(order).toEqual(["isAlreadyCounted", "markCounted", "increment", "writeBadge"]);
+  });
+
+  it("propagates a writeBadge failure to the caller (onMealCreated swallows it there)", async () => {
+    const { deps } = fakeDeps({ mealCount: 0, newCount: 1 });
+    const failing: BadgeDeps = {
+      ...deps,
+      writeBadge: async () => {
+        throw new Error("firestore down");
+      },
+    };
+    await expect(processBadgeMilestone(UID, CREW, MEAL_ID, failing)).rejects.toThrow(
+      "firestore down",
+    );
+  });
+});
+
 describe("processBadgeMilestone — idempotency", () => {
   it("is idempotent: the same canonical key counted twice awards the badge only once", async () => {
     let callCount = 0;

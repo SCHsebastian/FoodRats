@@ -109,4 +109,41 @@ describe("dish-ingredient map seed", () => {
       }
     }
   });
+
+  it("no dish lists the same default ingredient twice", () => {
+    for (const d of dishes) {
+      expect(
+        new Set(d.defaultIngredients).size,
+        `${d.dishSlug} has duplicate defaultIngredients`,
+      ).toBe(d.defaultIngredients.length);
+    }
+  });
+});
+
+describe("ingredient catalog seed — deeper integrity", () => {
+  it("every aliases field is an array of non-empty strings with no duplicates", () => {
+    for (const i of catalog) {
+      expect(Array.isArray(i.aliases), `${i.slug}.aliases`).toBe(true);
+      expect(new Set(i.aliases).size, `${i.slug} duplicate aliases`).toBe(i.aliases.length);
+      for (const a of i.aliases) {
+        expect(typeof a, `${i.slug} alias type`).toBe("string");
+        expect(a.trim().length, `${i.slug} blank alias`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("en/es names are non-blank after trimming (no whitespace-only names)", () => {
+    for (const i of catalog) {
+      expect(i.names.en.trim().length, `${i.slug}.names.en blank`).toBeGreaterThan(0);
+      expect(i.names.es.trim().length, `${i.slug}.names.es blank`).toBeGreaterThan(0);
+    }
+  });
+
+  it("catalog document ids (slugs) are Firestore-safe (no '/', '.', or empty)", () => {
+    for (const i of catalog) {
+      expect(i.slug.includes("/"), `${i.slug} contains /`).toBe(false);
+      expect(i.slug.includes("."), `${i.slug} contains .`).toBe(false);
+      expect(i.slug.length).toBeGreaterThan(0);
+    }
+  });
 });

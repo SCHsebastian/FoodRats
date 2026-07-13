@@ -55,6 +55,24 @@ describe("mealStoragePaths — path resolution", () => {
       thumbnailPath: THUMB,
     });
   });
+
+  it("mixes a derived plate path with a stored thumbnail path (thumb present, plate absent)", () => {
+    expect(mealStoragePaths(CREW, MEAL, { thumbnailPath: "stored/thumb.jpg" })).toEqual({
+      platePath: PLATE,
+      thumbnailPath: "stored/thumb.jpg",
+    });
+  });
+
+  it("an EMPTY-STRING stored path is used verbatim, not treated as missing (documented behavior)", () => {
+    // NOTE: `?? fallback` only catches null/undefined — a doc that persisted platePath: "" keeps
+    // the empty string, so the delete targets "" (a no-op/failed delete that is logged and
+    // swallowed by reclaimMealObjects). deleteAccount's platePathOf treats "" as missing instead;
+    // this asymmetry is deliberate to document here.
+    expect(mealStoragePaths(CREW, MEAL, { platePath: "", thumbnailPath: "" })).toEqual({
+      platePath: "",
+      thumbnailPath: "",
+    });
+  });
 });
 
 describe("reclaimMealObjects — plate + thumbnail reclaim", () => {

@@ -49,6 +49,23 @@ describe("classifyPlateObject — path filter (§5.1)", () => {
     // nested path under meals/ is not a direct child → no match
     expect(classifyPlateObject("crews/c1/meals/sub/x.jpg", "image/jpeg")).toBeNull();
   });
+
+  it("ignores a bare '_thumb.jpg' stem and a stem that merely ends in _thumb", () => {
+    expect(classifyPlateObject("crews/c1/meals/_thumb.jpg", "image/jpeg")).toBeNull();
+    expect(classifyPlateObject("crews/c1/meals/dinner_thumb.jpg", "image/jpeg")).toBeNull();
+  });
+
+  it("ignores paths with empty crew or meal segments", () => {
+    expect(classifyPlateObject("crews//meals/x.jpg", "image/jpeg")).toBeNull();
+    expect(classifyPlateObject("crews/c1/meals/.jpg", "image/jpeg")).toBeNull();
+  });
+
+  it("extension and content-type checks are lowercase-only (documented current behavior)", () => {
+    // GCS content types + client uploads are lowercase, so the strict match is fine in practice —
+    // but an uppercase variant IS rejected today. Documented so a future relaxation is deliberate.
+    expect(classifyPlateObject("crews/c1/meals/x.JPG", "image/jpeg")).toBeNull();
+    expect(classifyPlateObject(PLATE, "image/JPEG")).toBeNull();
+  });
 });
 
 describe("isGeneratedThumbnail — loop guard by metadata marker", () => {
@@ -250,6 +267,65 @@ describe("runPlatePipeline — orchestration", () => {
     );
 
     expect(outcome).toBe("ignored-not-plate");
+    expect(m.written).toEqual([]);
+  });
+
+  it("side-effect order: thumbnail upload → plate cache backfill → doc write LAST", async () => {
+    // The doc write is the durable "processed" signal (readStatus checks thumbHash) — it must land
+    // only after both Storage effects, so a crash mid-pipeline re-runs instead of stranding.
+    const order: string[] = [];
+    const meals: MealStore = {
+      readStatus: async () => ({ kind: "unprocessed" }),
+      writeDerivatives: async () => {
+        order.push("writeDerivatives");
+      },
+    };
+    const blobs: PlateBlobStore = {
+      download: async () => {
+        order.push("download");
+        return Buffer.from("ORIGINAL");
+      },
+      uploadThumbnail: async () => {
+        order.push("uploadThumbnail");
+      },
+      setCacheControl: async () => {
+        order.push("setCacheControl");
+      },
+    };
+
+    await runPlatePipeline({ meals, blobs, imageOps: okImageOps }, plateObject);
+    expect(order).toEqual(["download", "uploadThumbnail", "setCacheControl", "writeDerivatives"]);
+  });
+
+  it("a thumbnail-upload failure propagates and the meal doc is NOT marked processed", async () => {
+    const m = mealStore({ kind: "unprocessed" });
+    const failing: PlateBlobStore = {
+      download: async () => Buffer.from("ORIGINAL"),
+      uploadThumbnail: async () => {
+        throw new Error("gcs write failed");
+      },
+      setCacheControl: async () => undefined,
+    };
+
+    await expect(
+      runPlatePipeline({ meals: m.store, blobs: failing, imageOps: okImageOps }, plateObject),
+    ).rejects.toThrow("gcs write failed");
+    // No doc write → the retry sees "unprocessed" and re-runs the whole pipeline.
+    expect(m.written).toEqual([]);
+  });
+
+  it("a download failure propagates before any upload or doc write", async () => {
+    const m = mealStore({ kind: "unprocessed" });
+    const b = blobStore();
+    b.store.download = async () => {
+      throw new Error("object gone");
+    };
+
+    await expect(
+      runPlatePipeline({ meals: m.store, blobs: b.store, imageOps: okImageOps }, plateObject),
+    ).rejects.toThrow("object gone");
+    expect(b.uploads).toEqual([]);
+    expect(b.cacheControlSet).toEqual([]);
     expect(m.written).toEqual([]);
   });
 });
