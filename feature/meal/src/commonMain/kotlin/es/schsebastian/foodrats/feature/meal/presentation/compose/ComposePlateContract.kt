@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.ClassifierError
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
@@ -33,6 +34,8 @@ data class ComposePlateState(
     /** True when every selected crew is at the daily cap; gates `canContinue` and shows a banner. */
     val dailyLimitReached: Boolean = false,
     val photoBytes: ByteArray? = null,
+    /** How the current [photoBytes] was captured — drives the non-removable "Gallery" marker chip. */
+    val plateSource: PlateSource = PlateSource.Camera,
     val coordinates: Coordinates? = null,
     val locating: Boolean = false,
     val showConfirm: Boolean = false,
@@ -63,6 +66,7 @@ data class ComposePlateState(
             error == other.error &&
             selectedSlot == other.selectedSlot &&
             dailyLimitReached == other.dailyLimitReached &&
+            plateSource == other.plateSource &&
             coordinates == other.coordinates &&
             locating == other.locating &&
             showConfirm == other.showConfirm &&
@@ -86,6 +90,7 @@ data class ComposePlateState(
         result = 31 * result + (error?.hashCode() ?: 0)
         result = 31 * result + (selectedSlot?.hashCode() ?: 0)
         result = 31 * result + dailyLimitReached.hashCode()
+        result = 31 * result + plateSource.hashCode()
         result = 31 * result + (coordinates?.hashCode() ?: 0)
         result = 31 * result + locating.hashCode()
         result = 31 * result + showConfirm.hashCode()
@@ -107,7 +112,7 @@ data class ComposePlateState(
             "descriptionTooLong=$descriptionTooLong, descriptionWarning=$descriptionWarning, " +
             "dishWarning=$dishWarning, error=$error, selectedSlot=$selectedSlot, " +
             "dailyLimitReached=$dailyLimitReached, photoBytes=${photoBytes?.size?.let { "${it}B" }}, " +
-            "coordinates=$coordinates, locating=$locating, showConfirm=$showConfirm, " +
+            "plateSource=$plateSource, coordinates=$coordinates, locating=$locating, showConfirm=$showConfirm, " +
             "canContinue=$canContinue, classifying=$classifying, draftIngredients=$draftIngredients, " +
             "detectedIngredients=$detectedIngredients, classifierError=$classifierError, " +
             "availableCrews=$availableCrews, selectedCrewIds=$selectedCrewIds)"

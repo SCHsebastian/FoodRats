@@ -19,6 +19,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealKind
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -163,6 +164,48 @@ class FirebaseMealRepositoryTest {
     // ---------------------------------------------------------------------------------
     // publish
     // ---------------------------------------------------------------------------------
+
+    /** Provenance: the published DTO carries the draft plate's source ("gallery"). */
+    @Test fun publish_stamps_plate_source_from_draft_plate() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(
+            draft(plate = Plate(photoBytes = byteArrayOf(1, 2, 3), source = PlateSource.Gallery)),
+        )
+
+        assertTrue(result is Result.Ok)
+        assertEquals("gallery", f.firestore.writes.single().dto.plateSource)
+        // The representative Meal returned to the caller carries it too.
+        assertEquals(PlateSource.Gallery, result.value.plateSource)
+    }
+
+    /** A camera plate (the default) stamps "camera" — never null — on fresh publishes. */
+    @Test fun publish_stamps_camera_plate_source_by_default() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(draft())
+
+        assertTrue(result is Result.Ok)
+        assertEquals("camera", f.firestore.writes.single().dto.plateSource)
+    }
+
+    /** Fan-out: every per-crew copy of a gallery plate carries the marker. */
+    @Test fun publish_fan_out_stamps_plate_source_on_every_per_crew_copy() = runTest {
+        val crew2 = (CrewId.of("crew-2") as Result.Ok).value
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(
+            draft(plate = Plate(photoBytes = byteArrayOf(1, 2, 3), source = PlateSource.Gallery))
+                .copy(audienceCrewIds = setOf(crew, crew2)),
+        )
+
+        assertTrue(result is Result.Ok)
+        assertEquals(2, f.firestore.writes.size)
+        assertTrue(f.firestore.writes.all { it.dto.plateSource == "gallery" })
+    }
 
     /** #5 invariant: persists ONLY user-confirmed `ingredients`, never the AI detections. */
     @Test fun publish_persists_only_confirmed_ingredients_not_detected() = runTest {

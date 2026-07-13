@@ -126,6 +126,8 @@ import foodrats.feature.feed.generated.resources.feed_crew_banner_close_cd
 import foodrats.feature.feed.generated.resources.feed_meal_photo_cd
 import foodrats.feature.feed.generated.resources.feed_meal_photo_close_cd
 import foodrats.feature.feed.generated.resources.feed_meal_photo_open_cd
+import foodrats.feature.feed.generated.resources.feed_gallery_chip_label
+import foodrats.feature.feed.generated.resources.feed_gallery_chip_cd
 import org.jetbrains.compose.resources.StringResource
 
 enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
@@ -268,4 +270,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     MealPhotoOpenCd(Res.string.feed_meal_photo_open_cd),
     MealPhotoCd(Res.string.feed_meal_photo_cd),
     MealPhotoCloseCd(Res.string.feed_meal_photo_close_cd),
+    // Gallery-sourced plate provenance marker — permanent, non-removable chip on the feed tile
+    // + meal detail (see PlateSourceUi in FeedMealUi.kt).
+    GalleryChipLabel(Res.string.feed_gallery_chip_label),
+    GalleryChipCd(Res.string.feed_gallery_chip_cd),
 }

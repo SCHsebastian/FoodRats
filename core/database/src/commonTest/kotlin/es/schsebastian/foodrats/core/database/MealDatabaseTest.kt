@@ -49,6 +49,7 @@ class MealDatabaseTest {
         classifierVersion = null,
         cuisine = null,
         kind = "solo",
+        plateSource = null,
         pending = pending,
         idempotencyKey = null,
     )
@@ -90,6 +91,7 @@ class MealDatabaseTest {
             classifierVersion = "v1",
             cuisine = "italian",
             kind = "solo",
+            plateSource = "gallery",
             pending = 0L,
             idempotencyKey = null,
         )
@@ -99,6 +101,8 @@ class MealDatabaseTest {
         assertEquals("Pizza", rows.single().dishName)
         assertEquals(8L, rows.single().ratingSum)
         assertEquals("cheese,tomato", rows.single().ingredientsCsv)
+        // The plateSource column round-trips (NULL default on the first insert, replaced here).
+        assertEquals("gallery", rows.single().plateSource)
     }
 
     @Test fun select_range_by_crew_is_inclusive_on_both_ends() {

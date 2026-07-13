@@ -6,6 +6,8 @@ import es.schsebastian.foodrats.core.domain.analytics.CaptureSource
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.preferences.DefaultAudienceError
@@ -15,6 +17,8 @@ import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoMetadata
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
@@ -248,5 +252,80 @@ class CaptureMealViewModelTest {
             // Intersection is empty → fall back to all current crews.
             assertEquals(setOf(crew), draft?.audienceCrewIds)
         }
+    }
+
+    // ── gallery provenance + EXIF prefill ────────────────────────────────
+
+    /** 2026-05-16T13:30Z — 13:30 in the test's UTC zone → MealSlot.forHour(13) = Lunch. */
+    private val lunchTakenAtMs = Instant.parse("2026-05-16T13:30:00Z").toEpochMilliseconds()
+
+    @Test fun gallery_photo_with_metadata_prefills_slot_and_coordinates_when_unset() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        vm.onIntent(
+            CaptureMealIntent.PhotoTaken(
+                bytes = byteArrayOf(1),
+                source = PhotoSource.Gallery,
+                metadata = PhotoMetadata(takenAtEpochMs = lunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+            ),
+        )
+        val draft = repo.observeDraft().first()!!
+        assertEquals(PlateSource.Gallery, draft.plate?.source)
+        assertEquals(MealSlot.Lunch, draft.slot)
+        assertEquals(41.4, draft.coordinates?.latitude)
+        assertEquals(2.17, draft.coordinates?.longitude)
+    }
+
+    @Test fun gallery_prefill_does_not_overwrite_a_user_set_slot() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        // The user already tagged the draft Dinner before the photo landed.
+        repo.saveDraft(repo.observeDraft().first()!!.copy(slot = MealSlot.Dinner))
+        vm.onIntent(
+            CaptureMealIntent.PhotoTaken(
+                bytes = byteArrayOf(1),
+                source = PhotoSource.Gallery,
+                metadata = PhotoMetadata(takenAtEpochMs = lunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+            ),
+        )
+        val draft = repo.observeDraft().first()!!
+        // The 13:30 EXIF timestamp must NOT clobber the user's Dinner choice…
+        assertEquals(MealSlot.Dinner, draft.slot)
+        // …while the unset coordinates are still prefilled.
+        assertEquals(41.4, draft.coordinates?.latitude)
+    }
+
+    @Test fun gallery_prefill_ignores_out_of_range_gps_and_never_fails_the_flow() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        vm.effects.test {
+            vm.onIntent(
+                CaptureMealIntent.PhotoTaken(
+                    bytes = byteArrayOf(1),
+                    source = PhotoSource.Gallery,
+                    metadata = PhotoMetadata(takenAtEpochMs = null, latitude = 123.0, longitude = 999.0),
+                ),
+            )
+            // Best-effort: the invalid pair is dropped and navigation still fires.
+            assertEquals(CaptureMealEffect.NavigateToCompose, awaitItem())
+        }
+        val draft = repo.observeDraft().first()!!
+        assertEquals(null, draft.coordinates)
+        assertEquals(null, draft.slot)
+        assertEquals(null, vm.state.value.error)
+    }
+
+    @Test fun camera_photo_prefills_nothing_and_keeps_camera_source() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        vm.onIntent(CaptureMealIntent.PhotoTaken(byteArrayOf(1), source = PhotoSource.Camera))
+        val draft = repo.observeDraft().first()!!
+        assertEquals(PlateSource.Camera, draft.plate?.source)
+        assertEquals(null, draft.slot)
+        assertEquals(null, draft.coordinates)
     }
 }

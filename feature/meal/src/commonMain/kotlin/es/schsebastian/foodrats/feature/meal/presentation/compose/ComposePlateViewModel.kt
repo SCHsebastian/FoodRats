@@ -13,6 +13,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealValueObjectError
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationVerdict
@@ -68,6 +69,7 @@ class ComposePlateViewModel(
             update {
                 it.copy(
                     photoBytes = draft?.plate?.photoBytes,
+                    plateSource = draft?.plate?.source ?: PlateSource.Camera,
                     coordinates = draft?.coordinates,
                     draftIngredients = draft?.ingredients ?: emptyList(),
                     detectedIngredients = draft?.detectedIngredients ?: emptyList(),

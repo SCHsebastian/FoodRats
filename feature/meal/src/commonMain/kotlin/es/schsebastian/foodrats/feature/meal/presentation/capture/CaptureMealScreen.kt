@@ -19,16 +19,20 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrProgressIndicator
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.molecules.FrErrorBanner
+import es.schsebastian.foodrats.core.designsystem.structural.FrButtonTone
 import es.schsebastian.foodrats.core.designsystem.structural.FrFloorTone
+import es.schsebastian.foodrats.core.designsystem.structural.FrGlassButton
 import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
 import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
@@ -49,6 +53,10 @@ fun CaptureMealScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     var processing by remember { mutableStateOf(false) }
+    // True once the camera has been dismissed WITHOUT a photo (the user cancelled, or the platform
+    // picker failed): rather than bouncing straight to onCancelled, offer a retry alongside a
+    // gallery fallback so a dismissed camera isn't a dead end.
+    var awaitingChoice by remember { mutableStateOf(false) }
     val picker = rememberPhotoPicker { result ->
         when (result) {
             is PhotoPickResult.Picked -> {
@@ -56,6 +64,7 @@ fun CaptureMealScreen(
                 // a duplicate picker result must not start a second resize+save (the VM has the
                 // same guard; this one also skips the wasted resize work).
                 if (!processing && !state.isCapturing) {
+                    awaitingChoice = false
                     processing = true
                     scope.launch {
                         // Resize is CPU-bound and can take hundreds of ms on a 12MP shot.
@@ -67,12 +76,12 @@ fun CaptureMealScreen(
                         val bytes = withContext(Dispatchers.Default) {
                             result.bytes.resizeForUpload()
                         }
-                        vm.onIntent(CaptureMealIntent.PhotoTaken(bytes))
+                        vm.onIntent(CaptureMealIntent.PhotoTaken(bytes, result.source, result.metadata))
                     }
                 }
             }
-            PhotoPickResult.Cancelled -> onCancelled()
-            is PhotoPickResult.Failed -> onCancelled()
+            PhotoPickResult.Cancelled -> awaitingChoice = true
+            is PhotoPickResult.Failed -> awaitingChoice = true
         }
     }
 
@@ -112,6 +121,48 @@ fun CaptureMealScreen(
                     text = resolve(MealStringKey.CaptureSavingPlate),
                     style = StructuralType.body,
                     color = StructuralColors.foreground,
+                )
+            }
+        }
+    } else if (awaitingChoice) {
+        // The camera was dismissed without a photo. Offer a retry alongside the gallery pick —
+        // the entry point for choosing a plate photo from the device's library — instead of
+        // silently bouncing the user out via onCancelled.
+        Box(modifier = Modifier.fillMaxSize()) {
+            FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft, tone = FrFloorTone.Adaptive)
+            Column(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(Spacing.lg)
+                    // Announce the fallback choice to TalkBack/VoiceOver as soon as it appears.
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.md),
+            ) {
+                FrText(
+                    text = resolve(MealStringKey.CaptureFallbackTitle),
+                    style = StructuralType.titleMd,
+                    color = StructuralColors.foreground,
+                )
+                FrGlassButton(
+                    label = resolve(MealStringKey.CaptureRetryCamera),
+                    onClick = { awaitingChoice = false; picker.launchCamera() },
+                    tone = FrButtonTone.Primary,
+                    fillWidth = true,
+                )
+                FrGlassButton(
+                    label = resolve(MealStringKey.CaptureChooseFromGallery),
+                    onClick = { awaitingChoice = false; picker.launchGallery() },
+                    tone = FrButtonTone.Glass,
+                    leadingIcon = FrIcons.GalleryImport,
+                    fillWidth = true,
+                )
+                FrGlassButton(
+                    label = resolve(CommonStringKey.Cancel),
+                    onClick = onCancelled,
+                    tone = FrButtonTone.Ghost,
+                    fillWidth = true,
                 )
             }
         }

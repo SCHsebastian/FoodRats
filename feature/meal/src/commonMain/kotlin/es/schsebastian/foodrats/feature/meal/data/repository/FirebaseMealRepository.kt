@@ -257,6 +257,8 @@ internal class FirebaseMealRepository(
                         // Stamp Solo — the draft carries no kind yet (spec §4.3); every published
                         // meal is Solo. Branch on draft.kind only when the Together build ships.
                         kind = MealKind.Solo.toDiscriminator(),
+                        // Provenance marker: every per-crew copy carries the plate's capture source.
+                        plateSource = plate.source.key(),
                     )
                     // Idempotent retry / double-fire: this exact post already reached this crew.
                     // Don't set a representative — a skip is not a fresh publish; if NOTHING is

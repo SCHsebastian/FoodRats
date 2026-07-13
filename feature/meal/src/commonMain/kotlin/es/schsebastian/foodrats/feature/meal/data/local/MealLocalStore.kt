@@ -253,6 +253,7 @@ open class MealLocalStore(
             classifierVersion = classifierVersion,
             cuisine = cuisine,
             kind = kind,
+            plateSource = plateSource,
             pending = pending,
             idempotencyKey = idempotencyKey,
         )
@@ -294,6 +295,7 @@ private fun MealRow.toLocalMeal(ratings: List<MealRatingRow>): LocalMeal = Local
     classifierVersion = classifierVersion,
     cuisine = cuisine,
     kind = kind,
+    plateSource = plateSource,
     pending = pending,
     idempotencyKey = idempotencyKey,
     ratings = ratings.map {

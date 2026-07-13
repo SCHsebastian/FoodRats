@@ -329,7 +329,7 @@ service cloud.firestore {
                         'id', 'authorId', 'authorName', 'crewId', 'dayKey', 'slot', 'platePath',
                         'dishName', 'description', 'latitude', 'longitude', 'publishedAtEpochMs',
                         'ratings', 'ratingSum', 'voterCount', 'ingredients', 'classifierVersion',
-                        'cuisine', 'kind', 'thumbHash', 'thumbnailPath'
+                        'cuisine', 'kind', 'thumbHash', 'thumbnailPath', 'plateSource'
                       ])
                       // Server-owned: a client may only send these as null (or omit them).
                       && (!('thumbHash' in request.resource.data) || request.resource.data.thumbHash == null)

@@ -154,4 +154,8 @@
     <string name="feed_meal_photo_open_cd">Ver la foto completa</string>
     <string name="feed_meal_photo_cd">Foto del plato — pellizca o toca dos veces para ampliar</string>
     <string name="feed_meal_photo_close_cd">Cerrar foto</string>
+    <!-- Marcador de procedencia del plato de galería (permanente, no se puede quitar) — se
+         muestra en la miniatura del feed y en el detalle cuando Meal.plateSource es Gallery. -->
+    <string name="feed_gallery_chip_label">Galería</string>
+    <string name="feed_gallery_chip_cd">Foto de la galería</string>
 </resources>

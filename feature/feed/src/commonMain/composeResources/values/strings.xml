@@ -154,4 +154,8 @@
     <string name="feed_meal_photo_open_cd">View full photo</string>
     <string name="feed_meal_photo_cd">Meal photo — pinch or double-tap to zoom</string>
     <string name="feed_meal_photo_close_cd">Close photo</string>
+    <!-- Gallery-sourced plate provenance marker (permanent, non-removable) — shown on the feed
+         tile and meal detail whenever Meal.plateSource is Gallery. -->
+    <string name="feed_gallery_chip_label">Gallery</string>
+    <string name="feed_gallery_chip_cd">Photo from gallery</string>
 </resources>

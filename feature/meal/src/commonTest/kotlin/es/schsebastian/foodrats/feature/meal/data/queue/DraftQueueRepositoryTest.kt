@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -91,6 +92,23 @@ class DraftQueueRepositoryTest {
         assertEquals(true, r.draft.plate?.overlayApplied)
         assertEquals(entry.draft.audienceCrewIds, r.draft.audienceCrewIds)
         assertEquals(MealSlot.Lunch, r.draft.slot)
+    }
+
+    @Test
+    fun gallery_plate_source_survives_a_fresh_store_instance() = runTest {
+        // Provenance is permanent: a gallery-sourced plate queued offline must still stamp
+        // "gallery" when the durable queue drains after a process restart.
+        val backing = SharedDataStore()
+        val clock = FixedClock(Instant.parse("2026-06-14T10:00:00Z"))
+        val repo1 = DraftQueueRepository(DraftQueueLocalStore(AppPreferences(backing)), clock, dispatchers())
+        val galleryDraft = draft().copy(
+            plate = Plate(byteArrayOf(1, 2, 3, 4, 5), overlayApplied = true, source = PlateSource.Gallery),
+        )
+        assertTrue(repo1.enqueue(galleryDraft) is Result.Ok)
+
+        val repo2 = DraftQueueRepository(DraftQueueLocalStore(AppPreferences(backing)), clock, dispatchers())
+        val restored = repo2.observe().first().single()
+        assertEquals(PlateSource.Gallery, restored.draft.plate?.source)
     }
 
     @Test

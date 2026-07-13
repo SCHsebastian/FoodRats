@@ -36,6 +36,8 @@ data class LocalMeal(
     val classifierVersion: String?,
     val cuisine: String?,
     val kind: String,
+    /** PlateSource.key() ("camera"/"gallery"); `null` (rows synced pre-marker) reads back as camera. */
+    val plateSource: String? = null,
     val pending: Long,
     val idempotencyKey: String?,
     val ratings: List<LocalRating>,
@@ -79,6 +81,7 @@ fun LocalMeal.toMealDto(): MealDto = MealDto(
     classifierVersion = classifierVersion,
     cuisine = cuisine,
     kind = kind,
+    plateSource = plateSource,
 )
 
 /**
@@ -108,6 +111,8 @@ data class MealUpsert(
     val classifierVersion: String?,
     val cuisine: String?,
     val kind: String,
+    /** PlateSource.key() ("camera"/"gallery"); `null` mirrors a doc without the marker. */
+    val plateSource: String? = null,
     val pending: Long,
     val idempotencyKey: String?,
     val ratings: List<LocalRating>,
@@ -134,6 +139,7 @@ fun MealDto.toLocalUpsert(): MealUpsert = MealUpsert(
     classifierVersion = classifierVersion,
     cuisine = cuisine,
     kind = kind,
+    plateSource = plateSource,
     pending = 0L,
     idempotencyKey = null,
     ratings = ratings.map { (raterId, entry) ->

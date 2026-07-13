@@ -142,9 +142,32 @@ class DraftRetryRunnerTest {
             ingredientCount = 0,
             hasDescription = false,
             audienceCrewCount = 1,
-            source = PublishSource.UNKNOWN,
+            // Stamped from the draft plate's provenance (this draft's plate is camera-sourced).
+            source = PublishSource.CAMERA,
         )
         assertEquals(expected, analytics.events.single())
+    }
+
+    /** A gallery-sourced plate stamps `source = gallery` on the true publish-outcome event. */
+    @Test
+    fun successful_drain_stamps_gallery_publish_source_from_the_plate() = runTest {
+        val q = queue()
+        q.enqueue(
+            draft().copy(
+                plate = es.schsebastian.foodrats.feature.meal.domain.model.Plate(
+                    byteArrayOf(9, 8, 7),
+                    source = es.schsebastian.foodrats.core.domain.meal.PlateSource.Gallery,
+                ),
+            ),
+        )
+        val analytics = RecordingAnalyticsTracker()
+        val repo = ScriptedPublishRepository(ArrayDeque(listOf(Result.Ok(true))))
+        val runner = DraftRetryRunner(q, repo, AlwaysOnline(), DraftRetryPolicy(), analytics, clock = sameDayClock, zone = zone)
+
+        runner.runOnce(scope = null)
+
+        val event = analytics.events.single() as AnalyticsEvent.MealPublished
+        assertEquals(PublishSource.GALLERY, event.source)
     }
 
     /** AlreadyPostedToday is idempotency-success: the draft's slot is already published (e.g. the

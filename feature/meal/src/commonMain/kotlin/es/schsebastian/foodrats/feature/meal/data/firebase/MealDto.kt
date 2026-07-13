@@ -52,6 +52,11 @@ data class MealDto(
     // to Solo until the deferred Together build adds the explicit "together" arm + its fields.
     // Future (DEFERRED, §5): val coAuthorIds: List<String> = emptyList()
     val kind: String = "solo",
+    // Plate-photo provenance: PlateSource.key() ("camera"/"gallery"). Null — legacy docs published
+    // before the marker existed — reads back as camera (every pre-existing meal was shot live).
+    // Listed in the firestore.rules meal-create hasOnly whitelist (GitLive encodeDefaults=true
+    // sends this field, even as null, on every publish).
+    val plateSource: String? = null,
 ) {
     companion object
 }

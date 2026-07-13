@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -45,6 +46,8 @@ private data class MealDraftJson(
     val detectedIngredients: List<String> = emptyList(),
     val detectedDishSlug: String? = null,
     val classifierVersion: String? = null,
+    // PlateSource.key(); null (legacy persisted drafts) reads back as camera.
+    val plateSource: String? = null,
 )
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -69,7 +72,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
         val acc  = AccountId.of(authorId).getOrElse { return null }
         val day  = runCatching { LocalDate.parse(dayIso) }.getOrNull() ?: return null
         val zone = runCatching { TimeZone.of(zoneId) }.getOrNull() ?: TimeZone.UTC
-        val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied) }
+        val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied, PlateSource.fromKey(plateSource)) }
         val d = dish?.let { DishName.of(it).getOrElse { return null } }
         val desc = Description.of(description).getOrElse { Description.EMPTY }
         val coords = if (latitude != null && longitude != null) {
@@ -109,6 +112,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             detectedIngredients = d.detectedIngredients.map { it.value },
             detectedDishSlug = d.detectedDishSlug,
             classifierVersion = d.classifierVersion,
+            plateSource = d.plate?.source?.key(),
         )
     }
 }

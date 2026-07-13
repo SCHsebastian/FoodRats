@@ -3,7 +3,6 @@ package es.schsebastian.foodrats.feature.meal.data.queue
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
-import es.schsebastian.foodrats.core.domain.analytics.PublishSource
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealUploadQueueSnapshot
@@ -11,6 +10,7 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.domain.time.SystemClock
+import es.schsebastian.foodrats.feature.meal.data.upload.toPublishSource
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.QueueEntryId
@@ -197,7 +197,7 @@ class DraftRetryRunner(
                 ingredientCount = draft.ingredients.size,
                 hasDescription = draft.description.value.isNotBlank(),
                 audienceCrewCount = draft.audienceCrewIds.size,
-                source = PublishSource.UNKNOWN,
+                source = draft.plate.toPublishSource(),
             ),
         )
     }

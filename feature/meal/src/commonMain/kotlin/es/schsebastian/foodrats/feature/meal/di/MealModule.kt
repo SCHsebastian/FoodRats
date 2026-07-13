@@ -260,6 +260,8 @@ val mealModule = module {
             startDraft = get(), updateDraft = get(),
             sessionProvider = get(), crewMembership = get(),
             defaultAudience = get<DefaultAudiencePort>(),
+            // Device zone for the gallery EXIF slot prefill (same binding the draft/compose VMs use).
+            zone = get(),
             analytics = get(),
         )
     }

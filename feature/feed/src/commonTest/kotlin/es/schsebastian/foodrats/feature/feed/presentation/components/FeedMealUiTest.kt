@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealRating
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -211,6 +212,19 @@ class FeedMealUiTest {
         val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
         assertEquals("", ui.thumbnailUrl)
         assertEquals("crews/c1/meals/m1.jpg", ui.feedImageCacheKey)
+    }
+
+    @Test fun camera_plate_source_maps_to_camera_ui_and_no_gallery_marker() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(PlateSourceUi.Camera, ui.plateSource)
+        assertFalse(ui.plateSource.isGallery)
+    }
+
+    @Test fun gallery_plate_source_maps_to_gallery_ui_marker() {
+        val galleryMeal = sampleMeal.copy(plateSource = PlateSource.Gallery)
+        val ui = MealWithRatings(galleryMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(PlateSourceUi.Gallery, ui.plateSource)
+        assertTrue(ui.plateSource.isGallery)
     }
 
     @Test fun average_computed_from_ratings() {

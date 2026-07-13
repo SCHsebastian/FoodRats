@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.crew.BlindVotingPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -38,6 +39,20 @@ private fun MealSlot.toUi(): MealSlotUi = when (this) {
     MealSlot.Snack -> MealSlotUi.Snack
     MealSlot.Merienda -> MealSlotUi.Merienda
     MealSlot.Dinner -> MealSlotUi.Dinner
+}
+
+/** Presentation mirror of [PlateSource] so the row never imports a domain type. */
+enum class PlateSourceUi {
+    Camera, Gallery;
+
+    /** `true` when the plate was picked from the gallery — the marker chip renders only then. */
+    val isGallery: Boolean
+        get() = this == Gallery
+}
+
+private fun PlateSource.toUi(): PlateSourceUi = when (this) {
+    PlateSource.Camera -> PlateSourceUi.Camera
+    PlateSource.Gallery -> PlateSourceUi.Gallery
 }
 
 /**
@@ -108,6 +123,13 @@ data class FeedMealUi(
     val description: String,
     /** Optional "meal moment" label — `null` when the author tagged none (slot is optional). */
     val slot: MealSlotUi?,
+    /**
+     * How the plate photo was captured. Gallery-sourced plates carry a permanent, non-removable
+     * marker chip on the feed tile and meal detail (never on the composer preview — that's
+     * `:feature:meal`'s surface). Defaults to [PlateSourceUi.Camera] for pre-existing test
+     * fixtures; [toFeedUi] always maps the real value off [Meal.plateSource].
+     */
+    val plateSource: PlateSourceUi = PlateSourceUi.Camera,
     val publishedAtEpochMs: Long,
     /** Local hour-of-day (0..23) the meal was published, in the feed's zone. */
     val publishedHour: Int,
@@ -261,6 +283,7 @@ fun MealWithRatings.toFeedUi(
         dishName = meal.dish.value,
         description = meal.description.value,
         slot = meal.slot?.toUi(),
+        plateSource = meal.plateSource.toUi(),
         publishedAtEpochMs = meal.publishedAt.toEpochMilliseconds(),
         publishedHour = publishedLocal.hour,
         publishedMinute = publishedLocal.minute,

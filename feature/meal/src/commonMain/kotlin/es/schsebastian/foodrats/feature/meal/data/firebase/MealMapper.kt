@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealKind
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -70,6 +71,8 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             // unparseable cuisine just becomes "unstamped", never a read failure.
             cuisine = cuisine?.let { CuisineSlug.of(it).getOrNull() },
             kind = mealKind,
+            // Tolerant provenance read: null (legacy) or an unknown key collapses to Camera.
+            plateSource = PlateSource.fromKey(plateSource),
         )
     )
 }
@@ -107,6 +110,7 @@ fun MealDto.Companion.from(meal: Meal): MealDto = MealDto(
     classifierVersion = meal.classifierVersion,
     cuisine = meal.cuisine?.value,
     kind = meal.kind.toDiscriminator(),
+    plateSource = meal.plateSource.key(),
 )
 
 /** Drops blanks and any slug that fails [IngredientSlug]'s invariants; unknown-but-valid slugs survive. */

@@ -16,8 +16,10 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.domain.telemetry.NoopCrashReporter
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
 import es.schsebastian.foodrats.feature.meal.data.queue.uploadErrorKey
+import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraftStatus
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
@@ -285,7 +287,7 @@ class BackgroundMealUploadCoordinator(
                         ingredientCount = draft.ingredients.size,
                         hasDescription = draft.description.value.isNotBlank(),
                         audienceCrewCount = draft.audienceCrewIds.size,
-                        source = PublishSource.UNKNOWN,
+                        source = draft.plate.toPublishSource(),
                     ),
                 )
                 // No local streak nudge is scheduled here. The server-side `streakNudge` Cloud
@@ -317,4 +319,15 @@ class BackgroundMealUploadCoordinator(
         const val ERROR_UNKNOWN = "meal.upload.unknown"
         const val ERROR_NO_DRAFT = "meal.upload.no_draft"
     }
+}
+
+/**
+ * Maps the draft plate's provenance onto the `meal_published` [PublishSource] dimension.
+ * A null plate can't happen on a successful publish (the repo rejects photo-less drafts), but the
+ * draft type allows it — UNKNOWN keeps the mapping total without inventing a source.
+ */
+internal fun Plate?.toPublishSource(): PublishSource = when (this?.source) {
+    PlateSource.Camera -> PublishSource.CAMERA
+    PlateSource.Gallery -> PublishSource.GALLERY
+    null -> PublishSource.UNKNOWN
 }

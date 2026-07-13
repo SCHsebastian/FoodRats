@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -141,6 +142,8 @@ class DraftQueueLocalStore(
         val detectedIngredients: List<String> = emptyList(),
         val detectedDishSlug: String? = null,
         val classifierVersion: String? = null,
+        // PlateSource.key(); null (entries queued before the marker existed) reads back as camera.
+        val plateSource: String? = null,
     )
 
     private fun QueuedDraft.toJson() = QueuedDraftJson(
@@ -175,6 +178,7 @@ class DraftQueueLocalStore(
         detectedIngredients = detectedIngredients.map { it.value },
         detectedDishSlug = detectedDishSlug,
         classifierVersion = classifierVersion,
+        plateSource = plate?.source?.key(),
     )
 
     private fun QueuedDraftJson.toDomain(): QueuedDraft? {
@@ -205,7 +209,7 @@ class DraftQueueLocalStore(
         val acc = AccountId.of(authorId).getOrElse { return null }
         val day = runCatching { LocalDate.parse(dayIso) }.getOrNull() ?: return null
         val zone = runCatching { TimeZone.of(zoneId) }.getOrNull() ?: TimeZone.UTC
-        val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied) }
+        val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied, PlateSource.fromKey(plateSource)) }
         val d = dish?.let { DishName.of(it).getOrElse { return null } }
         val desc = Description.of(description).getOrElse { Description.EMPTY }
         val coords = if (latitude != null && longitude != null) {

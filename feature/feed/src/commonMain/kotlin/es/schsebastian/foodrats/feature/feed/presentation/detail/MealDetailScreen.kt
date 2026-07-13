@@ -390,6 +390,7 @@ private fun MealDetailBody(
     onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     val meal = state.meal ?: return
+    val galleryChipCd = resolve(FeedStringKey.GalleryChipCd)
     val headHeight = rememberHeadHeight()
     // FIREST-2: the live comment listener is bounded to the newest [commentLimit] comments. When the
     // visible rows fill that window there are (probably) older ones beyond it, so offer "load older".
@@ -468,9 +469,24 @@ private fun MealDetailBody(
                         modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
                         verticalArrangement = Arrangement.Bottom,
                     ) {
-                        // Slot chip — only when tagged (slot is optional).
-                        meal.slot?.let { slot ->
-                            FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
+                        // Slot chip (only when tagged) + gallery-provenance chip (permanent,
+                        // non-removable, only when the plate was picked from the gallery).
+                        val hasLeadingChip = meal.slot != null || meal.plateSource.isGallery
+                        if (hasLeadingChip) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                                meal.slot?.let { slot ->
+                                    FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
+                                }
+                                if (meal.plateSource.isGallery) {
+                                    FrStructuralChip(
+                                        label = resolve(FeedStringKey.GalleryChipLabel).uppercase(),
+                                        leadingIcon = FrIcons.GalleryImport,
+                                        modifier = Modifier.semantics(mergeDescendants = true) {
+                                            contentDescription = galleryChipCd
+                                        },
+                                    )
+                                }
+                            }
                             Spacer(Modifier.height(Spacing.sm))
                         }
                         FrText(

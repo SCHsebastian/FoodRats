@@ -5,16 +5,25 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.CaptureSource
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.location.Coordinates
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoMetadata
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
+import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftCommand
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlin.time.Instant
 
 class CaptureMealViewModel(
     private val startDraft: StartMealDraftUseCase,
@@ -23,6 +32,10 @@ class CaptureMealViewModel(
     private val crewMembership: CrewMembershipPort,
     // Noop default (null) keeps existing tests green; the Koin binding passes the real port.
     private val defaultAudience: DefaultAudiencePort? = null,
+    // Device zone for interpreting an EXIF capture timestamp (gallery prefill only). Defaulted so
+    // existing tests that don't care about prefill keep compiling; the Koin binding passes the
+    // app-wide zone (the same one StartMealDraftUseCase/ComposePlateViewModel use).
+    private val zone: TimeZone = TimeZone.UTC,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<CaptureMealState, CaptureMealIntent, CaptureMealEffect>(CaptureMealState()) {
 
@@ -64,12 +77,52 @@ class CaptureMealViewModel(
                 // the draft / double-emit NavigateToCompose. Drop re-entries while capturing.
                 if (currentState.isCapturing) return
                 update { it.copy(isCapturing = true, error = null) }
-                val r = updateDraft(UpdateMealDraftCommand.SetPhoto(Plate(intent.bytes)))
+                val plateSource = intent.source.toPlateSource()
+                val r = updateDraft(UpdateMealDraftCommand.SetPhoto(Plate(intent.bytes, source = plateSource)))
+                if (r is Result.Ok && plateSource == PlateSource.Gallery) {
+                    // Best-effort EXIF prefill: a captured timestamp suggests a MealSlot, GPS
+                    // suggests Coordinates — only for fields the user hasn't already set. Camera
+                    // picks carry no metadata (live shot, nothing to prefill from). Never surfaces
+                    // an error and never blocks the NavigateToCompose effect below.
+                    applyExifPrefill(r.value, intent.metadata)
+                }
                 update { it.copy(isCapturing = false) }
                 if (r is Result.Ok) emit(CaptureMealEffect.NavigateToCompose)
                 else if (r is Result.Err) update { it.copy(error = MealStringKey.CapturePhotoFailed) }
             }
             CaptureMealIntent.OpenSettings -> emit(CaptureMealEffect.OpenAppSettings)
+        }
+    }
+
+    private fun PhotoSource.toPlateSource(): PlateSource = when (this) {
+        PhotoSource.Camera -> PlateSource.Camera
+        PhotoSource.Gallery -> PlateSource.Gallery
+    }
+
+    /**
+     * Applies the EXIF-derived slot/coordinates suggestions to [draft] (already carrying the fresh
+     * photo). Both are gated on the corresponding field being unset, so a value the user already
+     * chose is never clobbered. Every failure mode (missing metadata, an unparseable timestamp, an
+     * out-of-range coordinate pair, a `saveDraft` error) is swallowed — this is advisory prefill,
+     * never a blocking step.
+     */
+    private suspend fun applyExifPrefill(draft: MealDraft, metadata: PhotoMetadata?) {
+        if (metadata == null) return
+        if (draft.slot == null) {
+            metadata.takenAtEpochMs?.let { epochMs ->
+                runCatching { Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone).hour }
+                    .getOrNull()
+                    ?.let { hour -> updateDraft(UpdateMealDraftCommand.SetSlot(MealSlot.forHour(hour))) }
+            }
+        }
+        if (draft.coordinates == null) {
+            val lat = metadata.latitude
+            val lon = metadata.longitude
+            if (lat != null && lon != null) {
+                (Coordinates.of(lat, lon) as? Result.Ok)?.value?.let { coords ->
+                    updateDraft(UpdateMealDraftCommand.SetCoordinates(coords))
+                }
+            }
         }
     }
 }

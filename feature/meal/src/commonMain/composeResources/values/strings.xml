@@ -64,4 +64,10 @@
     <string name="meal_capture_draft_failed">Couldn't start your meal. Try again.</string>
     <string name="meal_capture_photo_failed">Couldn't save your photo. Try again.</string>
     <string name="meal_capture_saving_plate">Saving your plate…</string>
+    <string name="meal_capture_fallback_title">Add your plate photo</string>
+    <string name="meal_capture_retry_camera">Take a photo</string>
+    <string name="meal_capture_choose_gallery">Choose from gallery</string>
+
+    <string name="meal_compose_gallery_chip">Gallery</string>
+    <string name="meal_compose_gallery_chip_a11y">Photo picked from the gallery</string>
 </resources>

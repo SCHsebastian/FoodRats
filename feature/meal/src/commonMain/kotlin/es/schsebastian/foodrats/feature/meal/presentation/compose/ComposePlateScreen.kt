@@ -71,6 +71,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.i18n.toFixed
@@ -205,6 +206,21 @@ fun ComposePlateScreen(
                                 .align(Alignment.TopStart)
                                 .padding(Spacing.sm)
                                 .semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    }
+                    // Non-removable provenance marker: a gallery-sourced plate is permanently
+                    // labelled so every crew member can tell it wasn't shot live. No onClick —
+                    // the marker cannot be dismissed or toggled.
+                    if (state.plateSource == PlateSource.Gallery) {
+                        val galleryA11y = resolve(MealStringKey.ComposeGalleryChipA11y)
+                        FrStructuralChip(
+                            label = resolve(MealStringKey.ComposeGalleryChip),
+                            leadingIcon = FrIcons.GalleryImport,
+                            compact = true,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(Spacing.sm)
+                                .semantics { contentDescription = galleryA11y },
                         )
                     }
                 }

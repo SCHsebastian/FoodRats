@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.meal.data.firebase
 
 import es.schsebastian.foodrats.core.domain.meal.MealKind
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -84,6 +85,41 @@ class MealMapperTest {
         val meal = (soloDtoTemplate.copy(id = "m-8").toDomain() as Result.Ok).value
         val dto = MealDto.from(meal)
         assertEquals("solo", dto.kind)
+    }
+
+    // ── plateSource provenance round-trip ────────────────────────────────
+
+    @Test fun plate_source_camera_round_trips() {
+        val dto = soloDtoTemplate.copy(id = "m-9", plateSource = "camera")
+        val r = dto.toDomain()
+        assertTrue(r is Result.Ok)
+        assertEquals(PlateSource.Camera, r.value.plateSource)
+        assertEquals("camera", MealDto.from(r.value).plateSource)
+    }
+
+    @Test fun plate_source_gallery_round_trips() {
+        val dto = soloDtoTemplate.copy(id = "m-10", plateSource = "gallery")
+        val r = dto.toDomain()
+        assertTrue(r is Result.Ok)
+        assertEquals(PlateSource.Gallery, r.value.plateSource)
+        assertEquals("gallery", MealDto.from(r.value).plateSource)
+    }
+
+    @Test fun legacy_doc_without_plate_source_reads_as_camera() {
+        // Docs published before the marker existed carry no plateSource — the DTO default is null.
+        val dto = soloDtoTemplate.copy(id = "m-11")
+        assertEquals(null, dto.plateSource)
+        val r = dto.toDomain()
+        assertTrue(r is Result.Ok)
+        assertEquals(PlateSource.Camera, r.value.plateSource)
+    }
+
+    @Test fun unknown_plate_source_value_collapses_to_camera() {
+        // Forward-tolerance: an unrecognized key must never fail the read.
+        val dto = soloDtoTemplate.copy(id = "m-12", plateSource = "hologram")
+        val r = dto.toDomain()
+        assertTrue(r is Result.Ok)
+        assertEquals(PlateSource.Camera, r.value.plateSource)
     }
 
     private val soloDtoTemplate = MealDto(

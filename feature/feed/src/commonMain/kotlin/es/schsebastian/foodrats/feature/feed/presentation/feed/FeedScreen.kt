@@ -589,6 +589,7 @@ private fun StructuralMealTile(
         scoreStyle == FrScoreStyle.Emoji -> scoreToEmoji(rounded)
         else -> avgRounded
     }
+    val galleryChipCd = resolve(FeedStringKey.GalleryChipCd)
 
     Box(
         modifier = Modifier
@@ -614,17 +615,34 @@ private fun StructuralMealTile(
         }
         FrScrim(style = FrScrimStyle.Photo)
 
-        // Top — slot chip (start) + react pill (end). Top-END keeps the react affordance clear of
-        // the slot chip and the bottom identity/metric row.
+        // Top — slot chip + gallery-provenance chip (start) + react pill (end). Top-END keeps the
+        // react affordance clear of the leading chips and the bottom identity/metric row.
         Row(
             modifier = Modifier.fillMaxWidth().align(Alignment.TopStart).padding(Spacing.sm),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            // Slot chip — only when tagged (slot is optional). The empty Spacer keeps the react
-            // pill at the row's end (SpaceBetween) when there's no chip.
-            ui.slot?.let { FrStructuralChip(label = resolve(it.labelKey()).uppercase(), compact = true) }
-                ?: Spacer(Modifier)
+            // Leading chips — slot (only when tagged) + gallery marker (only when gallery-sourced,
+            // permanent + non-removable). The empty Spacer keeps the react pill at the row's end
+            // (SpaceBetween) when neither chip is present.
+            val hasLeadingChip = ui.slot != null || ui.plateSource.isGallery
+            if (hasLeadingChip) {
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                    ui.slot?.let { FrStructuralChip(label = resolve(it.labelKey()).uppercase(), compact = true) }
+                    if (ui.plateSource.isGallery) {
+                        FrStructuralChip(
+                            label = resolve(FeedStringKey.GalleryChipLabel).uppercase(),
+                            leadingIcon = FrIcons.GalleryImport,
+                            compact = true,
+                            modifier = Modifier.semantics(mergeDescendants = true) {
+                                contentDescription = galleryChipCd
+                            },
+                        )
+                    }
+                }
+            } else {
+                Spacer(Modifier)
+            }
             ReactPill(
                 glyph = ui.dayEmote,
                 count = ui.reactionCount,
