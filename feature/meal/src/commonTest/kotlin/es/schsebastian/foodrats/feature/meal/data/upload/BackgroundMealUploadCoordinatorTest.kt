@@ -4,11 +4,15 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
+import es.schsebastian.foodrats.core.domain.analytics.PublishSource
+import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -168,5 +172,63 @@ class BackgroundMealUploadCoordinatorTest {
             "retryFailed must re-attempt the enqueue against the still-composed draft, " +
                 "landing it in the real queue once the write stops failing",
         )
+    }
+
+    /** The FALLBACK (no durable queue) publisher — `doUpload()` — also stamps `meal_published.source`
+     *  via the same [toPublishSource] mapping the durable [DraftRetryRunner] path uses. This is the
+     *  in-process executor unit tests exercise; production always binds a durable queue, but the
+     *  mapping must stay correct here too since it's shared code (`Plate?.toPublishSource()`). */
+    @Test
+    fun fallback_upload_stamps_gallery_publish_source_from_the_plate() = runTest {
+        val repository = FakeMealRepository()
+        repository.saveDraft(draft().copy(plate = Plate(byteArrayOf(9, 8, 7), source = PlateSource.Gallery)))
+        val analytics = RecordingAnalyticsTracker()
+        val coordinator = BackgroundMealUploadCoordinator(
+            repository = repository,
+            publishMeal = PublishMealUseCase(
+                repository,
+                FixedClock(Instant.parse("2026-06-14T10:00:00Z")),
+                TimeZone.UTC,
+            ),
+            prefs = AppPreferences(FakeDataStore()),
+            scheduler = NoopScheduler(),
+            dispatchers = dispatchers,
+            analytics = analytics,
+            draftQueue = null,
+            retryRunner = null,
+        )
+
+        coordinator.enqueueDraftUpload()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val event = analytics.events.single() as AnalyticsEvent.MealPublished
+        assertEquals(PublishSource.GALLERY, event.source)
+    }
+
+    @Test
+    fun fallback_upload_stamps_camera_publish_source_from_the_plate() = runTest {
+        val repository = FakeMealRepository()
+        repository.saveDraft(draft()) // draft()'s plate defaults to PlateSource.Camera
+        val analytics = RecordingAnalyticsTracker()
+        val coordinator = BackgroundMealUploadCoordinator(
+            repository = repository,
+            publishMeal = PublishMealUseCase(
+                repository,
+                FixedClock(Instant.parse("2026-06-14T10:00:00Z")),
+                TimeZone.UTC,
+            ),
+            prefs = AppPreferences(FakeDataStore()),
+            scheduler = NoopScheduler(),
+            dispatchers = dispatchers,
+            analytics = analytics,
+            draftQueue = null,
+            retryRunner = null,
+        )
+
+        coordinator.enqueueDraftUpload()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val event = analytics.events.single() as AnalyticsEvent.MealPublished
+        assertEquals(PublishSource.CAMERA, event.source)
     }
 }

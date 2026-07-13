@@ -4,6 +4,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import es.schsebastian.foodrats.core.data.datastore.AppPreferences
+import es.schsebastian.foodrats.core.data.datastore.Keys
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.PublishSource
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
@@ -168,6 +169,50 @@ class DraftRetryRunnerTest {
 
         val event = analytics.events.single() as AnalyticsEvent.MealPublished
         assertEquals(PublishSource.GALLERY, event.source)
+    }
+
+    /** Cross-version replay: a queue entry persisted by a pre-marker build (raw JSON, no
+     *  `plateSource` key at all on the nested draft) must still drain and publish — as Camera,
+     *  never crash and never silently drop the entry. */
+    @Test
+    fun legacy_queued_draft_without_plate_source_field_replays_and_publishes_as_camera() = runTest {
+        val backing = FakeDataStore()
+        val prefs = AppPreferences(backing)
+        prefs.set(
+            Keys.DraftQueueJson,
+            """
+            [
+              {
+                "id": "entry-legacy",
+                "draft": {
+                  "audienceCrewIds": ["crew-1"],
+                  "authorId": "acc-1",
+                  "dayIso": "2026-06-14",
+                  "zoneId": "UTC",
+                  "photoBase64": "AQID",
+                  "dish": "Pasta"
+                },
+                "status": {"kind": "pending"},
+                "attemptCount": 0,
+                "createdAtEpochMs": 1000
+              }
+            ]
+            """.trimIndent(),
+        )
+        val q = DraftQueueRepository(DraftQueueLocalStore(prefs), sameDayClock, dispatchers)
+        val analytics = RecordingAnalyticsTracker()
+        val repo = ScriptedPublishRepository(ArrayDeque(listOf(Result.Ok(true))))
+        val runner = DraftRetryRunner(q, repo, AlwaysOnline(), DraftRetryPolicy(), analytics, clock = sameDayClock, zone = zone)
+
+        val drained = runner.runOnce(scope = null)
+
+        assertTrue(drained, "a legacy entry with no plateSource field must still drain successfully")
+        assertEquals(
+            es.schsebastian.foodrats.core.domain.meal.PlateSource.Camera,
+            repo.publishedDrafts.single().plate?.source,
+        )
+        val event = analytics.events.single() as AnalyticsEvent.MealPublished
+        assertEquals(PublishSource.CAMERA, event.source)
     }
 
     /** AlreadyPostedToday is idempotency-success: the draft's slot is already published (e.g. the

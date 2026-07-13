@@ -49,6 +49,9 @@ kotlin {
         val androidHostTest by getting {
             dependencies {
                 implementation(libs.bundles.feature.hosttest)
+                // Robolectric + Compose UI test harness (CaptureMealScreen / ComposePlateScreen
+                // behavior tests) — same stack :feature:feed / :feature:ingredient use.
+                implementation(libs.bundles.compose.hosttest)
                 // In-memory JVM SQLDelight driver for MealLocalStore + repository read-path host tests.
                 implementation(libs.sqldelight.jvm.driver)
                 // In-memory DataStore harness for FirebaseMealRepository's MealDraftLocalStore dep

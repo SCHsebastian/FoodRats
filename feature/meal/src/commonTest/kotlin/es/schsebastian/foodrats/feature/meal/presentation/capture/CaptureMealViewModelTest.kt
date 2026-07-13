@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.analytics.CaptureSource
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
+import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -327,5 +328,79 @@ class CaptureMealViewModelTest {
         assertEquals(PlateSource.Camera, draft.plate?.source)
         assertEquals(null, draft.slot)
         assertEquals(null, draft.coordinates)
+    }
+
+    @Test fun gallery_photo_with_taken_at_but_no_gps_prefills_slot_only() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        vm.onIntent(
+            CaptureMealIntent.PhotoTaken(
+                bytes = byteArrayOf(1),
+                source = PhotoSource.Gallery,
+                metadata = PhotoMetadata(takenAtEpochMs = lunchTakenAtMs, latitude = null, longitude = null),
+            ),
+        )
+        val draft = repo.observeDraft().first()!!
+        assertEquals(MealSlot.Lunch, draft.slot)
+        assertEquals(null, draft.coordinates)
+    }
+
+    @Test fun gallery_photo_with_gps_but_no_taken_at_prefills_coordinates_only() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        vm.onIntent(
+            CaptureMealIntent.PhotoTaken(
+                bytes = byteArrayOf(1),
+                source = PhotoSource.Gallery,
+                metadata = PhotoMetadata(takenAtEpochMs = null, latitude = 41.4, longitude = 2.17),
+            ),
+        )
+        val draft = repo.observeDraft().first()!!
+        assertEquals(null, draft.slot)
+        assertEquals(41.4, draft.coordinates?.latitude)
+        assertEquals(2.17, draft.coordinates?.longitude)
+    }
+
+    @Test fun gallery_prefill_with_only_latitude_out_of_range_drops_the_whole_pair_and_never_fails_the_flow() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        vm.effects.test {
+            vm.onIntent(
+                CaptureMealIntent.PhotoTaken(
+                    bytes = byteArrayOf(1),
+                    source = PhotoSource.Gallery,
+                    // Longitude alone is valid, but Coordinates.of validates the pair atomically —
+                    // one invalid axis rejects both, it doesn't partially apply.
+                    metadata = PhotoMetadata(takenAtEpochMs = null, latitude = 90.1, longitude = 2.17),
+                ),
+            )
+            assertEquals(CaptureMealEffect.NavigateToCompose, awaitItem())
+        }
+        val draft = repo.observeDraft().first()!!
+        assertEquals(null, draft.coordinates)
+        assertEquals(null, vm.state.value.error)
+    }
+
+    @Test fun gallery_prefill_skips_both_fields_already_user_set_and_changes_nothing() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        val userCoords = (Coordinates.of(10.0, 20.0) as Result.Ok).value
+        // The user already picked a slot AND dropped a manual location pin before the photo landed.
+        repo.saveDraft(repo.observeDraft().first()!!.copy(slot = MealSlot.Dinner, coordinates = userCoords))
+        vm.onIntent(
+            CaptureMealIntent.PhotoTaken(
+                bytes = byteArrayOf(1),
+                source = PhotoSource.Gallery,
+                metadata = PhotoMetadata(takenAtEpochMs = lunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+            ),
+        )
+        val draft = repo.observeDraft().first()!!
+        // Neither the EXIF-derived Lunch slot nor the EXIF GPS clobber the user's prior choices.
+        assertEquals(MealSlot.Dinner, draft.slot)
+        assertEquals(userCoords, draft.coordinates)
     }
 }
