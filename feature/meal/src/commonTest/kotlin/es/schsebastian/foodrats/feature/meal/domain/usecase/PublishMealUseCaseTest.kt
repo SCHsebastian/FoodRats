@@ -89,6 +89,34 @@ class PublishMealUseCaseTest {
         assertEquals(0, repo.publishedDrafts.size)
     }
 
+    /** Exactly at the cap (10) must still succeed — the ceiling check is `size > MAX`, not `>=`. */
+    @Test fun publishes_with_exactly_ten_photos_at_the_cap() = runTest {
+        val clock = FixedClock(Instant.parse("2026-05-16T12:00:00Z"))
+        val today = MealDay.today(clock, zone)
+        val exactlyTen = (1..10).map { Plate(byteArrayOf(it.toByte())) }
+        val repo = FakeMealRepository()
+        val useCase = PublishMealUseCase(repo, clock, zone)
+
+        val result = useCase(draftForDay(today).copy(plates = exactlyTen))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(10, repo.publishedDrafts.single().plates.size)
+    }
+
+    /** An empty photo list is rejected with NoPhoto — distinct from (and checked before) the
+     *  TooManyPhotos ceiling. */
+    @Test fun rejects_publish_when_draft_has_no_photos() = runTest {
+        val clock = FixedClock(Instant.parse("2026-05-16T12:00:00Z"))
+        val today = MealDay.today(clock, zone)
+        val repo = FakeMealRepository()
+        val useCase = PublishMealUseCase(repo, clock, zone)
+
+        val result = useCase(draftForDay(today).copy(plates = emptyList()))
+
+        assertEquals(Result.failure(MealError.Validation.NoPhoto), result)
+        assertEquals(0, repo.publishedDrafts.size)
+    }
+
     @Test fun rejects_publish_when_draft_day_is_not_today() = runTest {
         val clock = FixedClock(Instant.parse("2026-05-16T12:00:00Z"))
         val yesterday = MealDay(LocalDate(2026, 5, 15), zone)

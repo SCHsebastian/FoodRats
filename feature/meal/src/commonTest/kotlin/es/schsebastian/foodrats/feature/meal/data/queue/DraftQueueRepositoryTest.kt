@@ -160,4 +160,35 @@ class DraftQueueRepositoryTest {
         assertEquals(listOf(first.id, second.id), ordered.map { it.id })
         assertNull(ordered.first().lastAttemptAt)
     }
+
+    /** FIFO ordering survives when EVERY queued entry itself carries multiple photos — the single
+     *  multi-photo draft cases elsewhere don't exercise several such entries coexisting in the
+     *  queue, ordered, each with its own distinct photo count/order intact. */
+    @Test
+    fun observe_orders_multiple_multi_photo_drafts_by_createdAt_preserving_each_ones_photo_order() = runTest {
+        val backing = SharedDataStore()
+        val clock = FixedClock(Instant.parse("2026-06-14T10:00:00Z"))
+        val repo = DraftQueueRepository(DraftQueueLocalStore(AppPreferences(backing)), clock, dispatchers())
+
+        val draftA = draft().copy(
+            plates = listOf(Plate(byteArrayOf(1, 2)), Plate(byteArrayOf(3, 4)), Plate(byteArrayOf(5, 6))),
+        )
+        val first = (repo.enqueue(draftA) as Result.Ok).value
+        clock.set(Instant.parse("2026-06-14T11:00:00Z"))
+        val draftB = draft().copy(plates = listOf(Plate(byteArrayOf(7, 8)), Plate(byteArrayOf(9, 10))))
+        val second = (repo.enqueue(draftB) as Result.Ok).value
+        clock.set(Instant.parse("2026-06-14T12:00:00Z"))
+        val draftC = draft().copy(plates = listOf(Plate(byteArrayOf(11, 12))))
+        val third = (repo.enqueue(draftC) as Result.Ok).value
+
+        val ordered = repo.observe().first()
+
+        assertEquals(listOf(first.id, second.id, third.id), ordered.map { it.id }, "FIFO order by createdAt")
+        assertEquals(3, ordered[0].draft.plates.size)
+        assertEquals(2, ordered[1].draft.plates.size)
+        assertEquals(1, ordered[2].draft.plates.size)
+        assertEquals(listOf<Byte>(1, 2), ordered[0].draft.plates[0].photoBytes.toList())
+        assertEquals(listOf<Byte>(5, 6), ordered[0].draft.plates[2].photoBytes.toList())
+        assertEquals(listOf<Byte>(9, 10), ordered[1].draft.plates[1].photoBytes.toList())
+    }
 }

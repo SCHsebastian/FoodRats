@@ -124,4 +124,59 @@ class UpdateMealDraftUseCaseTest {
         update(UpdateMealDraftCommand.MovePhoto(fromIndex = 0, toIndex = 5))
         assertEquals(initial.plates, repo.observeDraft().first()!!.plates)
     }
+
+    // ── multi-photo edge cases (2026-07-13 hardening pass) ────────────────
+
+    /** The last successful add before the cap: 9 -> 10 must succeed (the boundary immediately
+     *  below `addPhoto_past_the_cap_fails_with_TooManyPhotos_...`, which locks the 10 -> 11 side). */
+    @Test fun addPhoto_from_nine_photos_reaches_the_cap_at_ten_successfully() = runTest {
+        val nine = (1..9).map { plate(it.toByte()) }
+        val (update, repo) = setup(baseDraft().copy(plates = nine))
+
+        val result = update(UpdateMealDraftCommand.AddPhoto(plate(10)))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(nine + plate(10), repo.observeDraft().first()!!.plates)
+    }
+
+    /** Removing the LAST element (a valid in-bounds index) is a distinct case from the
+     *  out-of-bounds `RemovePhotoAt(size)` no-op covered above — it must actually remove. */
+    @Test fun removePhotoAt_removes_the_last_element_leaving_order_intact() = runTest {
+        val (update, repo) = setup(baseDraft().copy(plates = listOf(plate(1), plate(2), plate(3))))
+        update(UpdateMealDraftCommand.RemovePhotoAt(2))
+        assertEquals(listOf(plate(1), plate(2)), repo.observeDraft().first()!!.plates)
+    }
+
+    @Test fun movePhoto_with_fromIndex_equal_to_toIndex_is_a_noop() = runTest {
+        val initial = baseDraft().copy(plates = listOf(plate(1), plate(2), plate(3)))
+        val (update, repo) = setup(initial)
+
+        update(UpdateMealDraftCommand.MovePhoto(fromIndex = 1, toIndex = 1))
+
+        assertEquals(initial.plates, repo.observeDraft().first()!!.plates)
+    }
+
+    /** Reverse direction of `movePhoto_reorders_from_one_index_to_another` (which moves 0 -> last):
+     *  moving the LAST photo to the front must shift everything else right by one. */
+    @Test fun movePhoto_from_the_last_index_to_zero_moves_it_to_the_front() = runTest {
+        val (update, repo) = setup(baseDraft().copy(plates = listOf(plate(1), plate(2), plate(3))))
+
+        update(UpdateMealDraftCommand.MovePhoto(fromIndex = 2, toIndex = 0))
+
+        assertEquals(listOf(plate(3), plate(1), plate(2)), repo.observeDraft().first()!!.plates)
+    }
+
+    /** Order integrity across a realistic chained sequence of edits: add, move, remove, add again.
+     *  [1,2,3] -> AddPhoto(4) -> [1,2,3,4] -> Move(0,3) -> [2,3,4,1] -> RemoveAt(1) -> [2,4,1]
+     *  -> AddPhoto(5) -> [2,4,1,5]. */
+    @Test fun order_survives_an_add_move_remove_add_sequence() = runTest {
+        val (update, repo) = setup(baseDraft().copy(plates = listOf(plate(1), plate(2), plate(3))))
+
+        update(UpdateMealDraftCommand.AddPhoto(plate(4)))
+        update(UpdateMealDraftCommand.MovePhoto(fromIndex = 0, toIndex = 3))
+        update(UpdateMealDraftCommand.RemovePhotoAt(1))
+        update(UpdateMealDraftCommand.AddPhoto(plate(5)))
+
+        assertEquals(listOf(plate(2), plate(4), plate(1), plate(5)), repo.observeDraft().first()!!.plates)
+    }
 }

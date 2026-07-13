@@ -131,6 +131,32 @@ class MealDraftLocalStoreTest {
         assertContentEquals(byteArrayOf(1, 2, 3), restored.plate?.photoBytes)
     }
 
+    @Test fun round_trips_ten_photos_in_order_with_mixed_sources() = runTest {
+        // Boundary/volume case: the 3-photo round trip above doesn't reach the MAX_PHOTOS_PER_MEAL
+        // cap (10) — lock that a FULL draft round-trips every entry, in order, with per-entry source.
+        val store = MealDraftLocalStore(AppPreferences(FakeDataStore()))
+        val plates = (1..10).map { i ->
+            Plate(byteArrayOf(i.toByte()), source = if (i % 2 == 0) PlateSource.Gallery else PlateSource.Camera)
+        }
+        val draft = MealDraft(
+            audienceCrewIds = setOf((CrewId.of("crew-1") as Result.Ok).value),
+            authorId = (AccountId.of("acc-1") as Result.Ok).value,
+            day = MealDay(LocalDate(2026, 7, 13), TimeZone.UTC),
+            plates = plates,
+            dish = null,
+            description = Description.EMPTY,
+        )
+
+        store.save(draft)
+        val restored = store.observe().first()!!
+
+        assertEquals(10, restored.plates.size)
+        plates.indices.forEach { i ->
+            assertContentEquals(plates[i].photoBytes, restored.plates[i].photoBytes, "photo bytes at index $i")
+            assertEquals(plates[i].source, restored.plates[i].source, "source at index $i")
+        }
+    }
+
     @Test fun legacy_persisted_draft_without_plates_array_reads_as_a_one_item_list() = runTest {
         // A draft persisted before the `plates` array existed: raw JSON with only the legacy
         // single-photo fields, no `plates` key at all. Must read back as a 1-item list.

@@ -215,4 +215,97 @@ class MealMapperTest {
         crewId = "c-1", dayKey = "2026-05-16", platePath = "crews/c-1/meals/m-0.jpg",
         dishName = "Pizza", publishedAtEpochMs = 1731_000_000_000,
     )
+
+    // ── multi-photo edge cases (2026-07-13 hardening pass) ────────────────
+
+    /** A full 10-entry `plates` list round-trips its FULL order and per-entry source, not just a
+     *  2-entry sample. */
+    @Test fun plates_round_trip_all_ten_entries_in_order_with_mixed_sources() {
+        val entries = (0 until 10).map { i ->
+            val path = if (i == 0) "crews/c-1/meals/m-19.jpg" else "crews/c-1/meals/m-19_p$i.jpg"
+            PlateEntryDto(path = path, source = if (i % 2 == 0) "camera" else "gallery")
+        }
+        val dto = soloDtoTemplate.copy(
+            id = "m-19",
+            platePath = entries[0].path,
+            plateSource = entries[0].source,
+            plates = entries,
+        )
+
+        val r = dto.toDomain()
+
+        assertTrue(r is Result.Ok)
+        assertEquals(10, r.value.plates.size)
+        assertEquals(entries.map { it.path }, r.value.plates.map { it.photoUrl })
+        assertEquals(
+            listOf(
+                PlateSource.Camera, PlateSource.Gallery, PlateSource.Camera, PlateSource.Gallery, PlateSource.Camera,
+                PlateSource.Gallery, PlateSource.Camera, PlateSource.Gallery, PlateSource.Camera, PlateSource.Gallery,
+            ),
+            r.value.plates.map { it.source },
+        )
+    }
+
+    /** Forward-tolerance inside the `plates` list mirrors the top-level `plateSource` tolerance
+     *  (`unknown_plate_source_value_collapses_to_camera`): an unrecognized per-entry source key
+     *  must never fail the read. */
+    @Test fun plates_entry_with_unknown_source_string_collapses_to_camera() {
+        val dto = soloDtoTemplate.copy(
+            id = "m-20",
+            plates = listOf(PlateEntryDto(path = "crews/c-1/meals/m-20.jpg", source = "hologram")),
+        )
+
+        val r = dto.toDomain()
+
+        assertTrue(r is Result.Ok)
+        assertEquals(PlateSource.Camera, r.value.plates.single().source)
+    }
+
+    /** The write side always keeps `plates[0]` mirroring `platePath`/`plateSource` by construction
+     *  (see `plates_round_trip_in_order_with_mixed_sources`'s KDoc), but the READ side applies no
+     *  defensive override to reconcile them if a doc is hand-edited/malformed. Locks which field
+     *  wins for each domain property when they diverge: the top-level fields win for
+     *  `photoUrl`/`plateSource`; `plates[0]` is mapped independently straight from its own entry. */
+    @Test fun mismatched_top_level_platepath_and_plates_zero_are_mapped_independently() {
+        val dto = soloDtoTemplate.copy(
+            id = "m-21",
+            platePath = "crews/c-1/meals/top-level.jpg",
+            plateSource = "camera",
+            plates = listOf(PlateEntryDto(path = "crews/c-1/meals/plates-zero.jpg", source = "gallery")),
+        )
+
+        val r = dto.toDomain()
+
+        assertTrue(r is Result.Ok)
+        assertEquals("crews/c-1/meals/top-level.jpg", r.value.photoUrl)
+        assertEquals(PlateSource.Camera, r.value.plateSource)
+        assertEquals(MealPlate("crews/c-1/meals/plates-zero.jpg", PlateSource.Gallery), r.value.plates[0])
+    }
+
+    /** `MealDto.from` on a 10-plate meal emits the EXACT `_p1`..`_p9` suffix strings (never a
+     *  signed URL) — the 2-entry `from_rebuilds_plates_from_ids_never_from_signed_urls` test above
+     *  doesn't reach the double-digit index or prove every suffix in the run. */
+    @Test fun from_emits_p1_through_p9_suffixes_for_a_ten_plate_meal_never_signed_urls() {
+        val enrichedMeal = (soloDtoTemplate.copy(id = "m-22").toDomain() as Result.Ok).value.copy(
+            plates = (0 until 10).map { i ->
+                MealPlate(
+                    "https://signed.example/m-22_$i.jpg?token=abc$i",
+                    if (i % 2 == 0) PlateSource.Camera else PlateSource.Gallery,
+                )
+            },
+        )
+
+        val dto = MealDto.from(enrichedMeal)
+
+        assertEquals(
+            listOf(
+                "crews/c-1/meals/m-22.jpg",
+                "crews/c-1/meals/m-22_p1.jpg", "crews/c-1/meals/m-22_p2.jpg", "crews/c-1/meals/m-22_p3.jpg",
+                "crews/c-1/meals/m-22_p4.jpg", "crews/c-1/meals/m-22_p5.jpg", "crews/c-1/meals/m-22_p6.jpg",
+                "crews/c-1/meals/m-22_p7.jpg", "crews/c-1/meals/m-22_p8.jpg", "crews/c-1/meals/m-22_p9.jpg",
+            ),
+            dto.plates.map { it.path },
+        )
+        assertTrue(dto.plates.none { it.path?.contains("signed.example") == true })
+    }
 }

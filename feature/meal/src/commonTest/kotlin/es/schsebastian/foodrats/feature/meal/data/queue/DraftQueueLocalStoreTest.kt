@@ -134,4 +134,26 @@ class DraftQueueLocalStoreTest {
         assertEquals(listOf<Byte>(1, 2, 3), restored[0].photoBytes.toList())
         assertEquals(listOf<Byte>(4, 5, 6), restored[1].photoBytes.toList())
     }
+
+    @Test
+    fun round_trips_ten_queued_photos_in_order() = runTest {
+        // Boundary/volume case: the 2-photo round trip above doesn't reach MAX_PHOTOS_PER_MEAL (10)
+        // — lock that a FULL queued draft round-trips every entry, in order, with per-entry source.
+        val store = DraftQueueLocalStore(AppPreferences(YieldingDataStore()))
+        val plates = (1..10).map { i ->
+            es.schsebastian.foodrats.feature.meal.domain.model.Plate(
+                byteArrayOf(i.toByte()),
+                source = if (i % 2 == 0) PlateSource.Gallery else PlateSource.Camera,
+            )
+        }
+        store.add(entry(0).copy(draft = draft().copy(plates = plates)))
+
+        val restored = store.read().single().draft.plates
+
+        assertEquals(10, restored.size)
+        plates.indices.forEach { i ->
+            assertEquals(plates[i].photoBytes.toList(), restored[i].photoBytes.toList(), "photo bytes at index $i")
+            assertEquals(plates[i].source, restored[i].source, "source at index $i")
+        }
+    }
 }

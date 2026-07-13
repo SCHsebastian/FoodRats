@@ -135,10 +135,15 @@ internal class FakeMealAuthorIdentity(
 /**
  * Behavioral fake for [ImageUrlPort]. By default resolves each requested path to a
  * deterministic `signed://{path}` URL so callers can assert resolution; set [fail] to model
- * a backend failure (the resolver contract degrades to "no URL" on the consumer side).
+ * a backend failure (the resolver contract degrades to "no URL" on the consumer side), or
+ * populate [missingPaths] to model a PARTIAL resolution failure — those specific paths are
+ * omitted from the returned map while every other requested path still resolves (e.g. an
+ * extra plate whose object never finished uploading server-side, while the primary resolves
+ * fine).
  */
 internal class FakeImageUrlPort(
     var fail: Boolean = false,
+    var missingPaths: Set<String> = emptySet(),
 ) : ImageUrlPort {
     val calls = mutableListOf<Pair<CrewId, List<String>>>()
 
@@ -148,7 +153,7 @@ internal class FakeImageUrlPort(
     ): Result<Map<String, String>, ImageUrlError> {
         calls += crewId to paths
         if (fail) return Result.failure(ImageUrlError.Unavailable)
-        return Result.success(paths.associateWith { "signed://$it" })
+        return Result.success(paths.filterNot { it in missingPaths }.associateWith { "signed://$it" })
     }
 
     override suspend fun resolveOwnAvatar(path: String): Result<String?, ImageUrlError> {

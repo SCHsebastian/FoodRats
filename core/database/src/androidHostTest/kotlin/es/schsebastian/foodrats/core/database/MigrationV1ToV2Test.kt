@@ -267,4 +267,34 @@ class MigrationV1ToV2Test {
 
         driver.close()
     }
+
+    /**
+     * Companion to `migration_does_not_destroy_existing_meal_rows`, which locks that a v1-inserted
+     * row's appended `plateSource` column reads back NULL post-migration. This locks the SAME
+     * contract for the `platesJson` column (5.sqm, one migration further): a row written BEFORE
+     * either multi-photo migration existed must read `platesJson` as NULL after migrating all the
+     * way to the CURRENT version — never a parse crash, never a stray default.
+     */
+    @Test
+    fun migrated_pre_existing_row_reads_plates_json_null() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createV1Schema(driver)
+        driver.execute(
+            null,
+            """
+            INSERT INTO meal(mealId, crewId, authorId, dayKey, slot, description,
+                publishedAtEpochMs, ratingSum, voterCount, ingredientsCsv, kind, pending)
+            VALUES ('m-pre', 'c1', 'a1', '2026-06-19', 'lunch', '', 1000, 0, 0, '', 'solo', 0)
+            """.trimIndent(),
+            0,
+        )
+
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
+
+        val db = FoodRatsDatabase(driver)
+        val row = db.mealQueries.selectFeedByCrewDay("c1", "2026-06-19").executeAsList().single()
+        assertEquals(null, row.platesJson, "a row written before platesJson existed must read back NULL")
+
+        driver.close()
+    }
 }
