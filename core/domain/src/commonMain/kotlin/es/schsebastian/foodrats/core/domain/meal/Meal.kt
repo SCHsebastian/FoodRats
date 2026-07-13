@@ -53,4 +53,10 @@ data class Meal(
      * multi-author kind (spec §4.2 / §5).
      */
     val kind: MealKind = MealKind.Solo,
+    /**
+     * How the plate photo was captured — see [PlateSource]. Defaults to [PlateSource.Camera] so
+     * every existing construction site compiles unchanged and legacy meals (published before this
+     * marker existed) read as camera-sourced.
+     */
+    val plateSource: PlateSource = PlateSource.Camera,
 )

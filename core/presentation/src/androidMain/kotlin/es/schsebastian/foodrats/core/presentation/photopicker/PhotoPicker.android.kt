@@ -20,6 +20,9 @@ import androidx.exifinterface.media.ExifInterface
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.text.ParsePosition
+import java.text.SimpleDateFormat
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,7 +55,10 @@ actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker
                         if (bytes == null) {
                             PhotoPickResult.Failed("Unreadable image: $uri")
                         } else {
-                            PhotoPickResult.Picked(normalizeExifRotation(bytes))
+                            // Read EXIF from the RAW bytes — normalization below re-encodes the
+                            // image (baking in rotation), which drops EXIF metadata entirely.
+                            val metadata = readExifMetadata(bytes)
+                            PhotoPickResult.Picked(normalizeExifRotation(bytes), PhotoSource.Gallery, metadata)
                         }
                     } catch (t: Throwable) {
                         PhotoPickResult.Failed(t.message)
@@ -79,7 +85,7 @@ actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker
                             !captured -> PhotoPickResult.Cancelled
                             !file.exists() -> PhotoPickResult.Failed("Captured photo missing: $path")
                             else -> try {
-                                PhotoPickResult.Picked(normalizeExifRotation(file.readBytes()))
+                                PhotoPickResult.Picked(normalizeExifRotation(file.readBytes()), PhotoSource.Camera, null)
                             } catch (t: Throwable) {
                                 PhotoPickResult.Failed(t.message)
                             }
@@ -152,5 +158,38 @@ private fun normalizeExifRotation(bytes: ByteArray): ByteArray {
         out.toByteArray()
     } catch (_: Throwable) {
         bytes
+    }
+}
+
+/**
+ * Best-effort EXIF read from the RAW (pre-normalization) picked bytes: capture time (device-zone
+ * epoch millis) + GPS lat/long, when present. The Android system photo picker frequently redacts
+ * GPS by design — that's expected, [PhotoMetadata]'s fields are nullable for exactly this. Any
+ * failure (corrupt/absent EXIF) yields an all-null [PhotoMetadata] rather than failing the pick.
+ */
+private fun readExifMetadata(rawBytes: ByteArray): PhotoMetadata {
+    return try {
+        val exif = ByteArrayInputStream(rawBytes).use { ExifInterface(it) }
+        val latLong = exif.latLong
+        val dateString = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+            ?: exif.getAttribute(ExifInterface.TAG_DATETIME)
+        val takenAtEpochMs = dateString?.let { raw ->
+            val position = ParsePosition(0)
+            // Fresh SimpleDateFormat per call (it's not thread-safe); "yyyy:MM:dd HH:mm:ss" is
+            // the fixed EXIF datetime format (TAG_DATETIME[_ORIGINAL]), parsed in the JVM
+            // default (device) timezone, matching the "EXIF datetime interpreted in device
+            // zone" convention.
+            SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
+                .parse(raw, position)
+                ?.takeIf { position.index > 0 }
+                ?.time
+        }
+        PhotoMetadata(
+            takenAtEpochMs = takenAtEpochMs,
+            latitude = latLong?.getOrNull(0),
+            longitude = latLong?.getOrNull(1),
+        )
+    } catch (_: Throwable) {
+        PhotoMetadata(takenAtEpochMs = null, latitude = null, longitude = null)
     }
 }

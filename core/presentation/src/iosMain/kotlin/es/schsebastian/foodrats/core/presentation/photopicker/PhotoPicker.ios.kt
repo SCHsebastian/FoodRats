@@ -9,10 +9,26 @@ import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.reinterpret
 import kotlinx.cinterop.useContents
 import kotlinx.cinterop.usePinned
+import platform.CoreFoundation.CFRelease
 import platform.CoreGraphics.CGRectMake
+import platform.Foundation.CFBridgingRelease
+import platform.Foundation.CFBridgingRetain
+import platform.Foundation.NSCalendar
 import platform.Foundation.NSData
+import platform.Foundation.NSDateComponents
+import platform.Foundation.timeIntervalSince1970
+import platform.ImageIO.CGImageSourceCopyPropertiesAtIndex
+import platform.ImageIO.CGImageSourceCreateWithData
+import platform.ImageIO.kCGImagePropertyExifDateTimeOriginal
+import platform.ImageIO.kCGImagePropertyExifDictionary
+import platform.ImageIO.kCGImagePropertyGPSDictionary
+import platform.ImageIO.kCGImagePropertyGPSLatitude
+import platform.ImageIO.kCGImagePropertyGPSLatitudeRef
+import platform.ImageIO.kCGImagePropertyGPSLongitude
+import platform.ImageIO.kCGImagePropertyGPSLongitudeRef
 import platform.PhotosUI.PHPickerConfiguration
 import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
@@ -118,7 +134,7 @@ private class CameraCaptureDelegate(
             dispatch_async(dispatch_get_main_queue()) {
                 deliverOnMain(
                     if (bytes == null) PhotoPickResult.Failed("Unreadable image")
-                    else PhotoPickResult.Picked(bytes),
+                    else PhotoPickResult.Picked(bytes, PhotoSource.Camera, null),
                 )
             }
         }
@@ -147,9 +163,12 @@ private class GalleryPickDelegate(
             // Fires on a background queue — decode + JPEG re-encode here, hop to
             // the main queue only to deliver the result.
             val bytes = data?.let { nsData -> UIImage(data = nsData).toNormalizedJpegBytes() }
+            // Metadata MUST be read from the raw NSData, before the JPEG re-encode above
+            // bakes in orientation and drops EXIF entirely.
+            val metadata = data?.let { readGalleryMetadata(it) }
             dispatch_async(dispatch_get_main_queue()) {
                 deliverOnMain(
-                    if (bytes != null) PhotoPickResult.Picked(bytes)
+                    if (bytes != null) PhotoPickResult.Picked(bytes, PhotoSource.Gallery, metadata)
                     else PhotoPickResult.Failed(error?.localizedDescription),
                 )
             }
@@ -182,6 +201,94 @@ private fun UIImage.toNormalizedJpegBytes(): ByteArray? {
     val jpeg = UIImageJPEGRepresentation(normalized, JPEG_QUALITY) ?: return null
     val bytes = jpeg.toByteArray()
     return if (bytes.isEmpty()) null else bytes
+}
+
+/**
+ * Best-effort EXIF read from the RAW (pre-re-encode) picked [data] via ImageIO: capture time
+ * (device-zone epoch millis) + GPS lat/long, when present. Photos exported by third-party apps
+ * or edited in Photos frequently strip GPS — that's expected, [PhotoMetadata]'s fields are
+ * nullable for exactly this. Any failure (corrupt/absent EXIF, unexpected dictionary shape)
+ * yields an all-null [PhotoMetadata] rather than failing the pick.
+ *
+ * Memory management: `NSData`/`CFDataRef` are toll-free bridged at the ObjC/CF runtime level, but
+ * this Kotlin/Native binding types them as unrelated Kotlin types (an ObjC class vs a raw C struct
+ * pointer) — a plain `as CFDataRef` cast can never succeed. [CFBridgingRetain] is the sanctioned
+ * bridge instead: it hands back a retained generic CF pointer (a "Create Rule" return — we own it
+ * and must [CFRelease] it) that [kotlinx.cinterop.reinterpret] narrows to `CFDataRef`.
+ * `CGImageSourceCreateWithData` is likewise a CF "Create Rule" return needing its own [CFRelease].
+ * `CGImageSourceCopyPropertiesAtIndex` is a CF "Copy Rule" return, but [CFBridgingRelease] transfers
+ * that CF retain into Kotlin/ARC-managed memory in one step, so the bridged `Map` needs no manual
+ * release.
+ */
+private fun readGalleryMetadata(data: NSData): PhotoMetadata {
+    val noMetadata = PhotoMetadata(takenAtEpochMs = null, latitude = null, longitude = null)
+    val retainedData = CFBridgingRetain(data) ?: return noMetadata
+    try {
+        val imageSource = try {
+            CGImageSourceCreateWithData(retainedData.reinterpret(), null) ?: return noMetadata
+        } catch (_: Throwable) {
+            return noMetadata
+        }
+        try {
+            val propertiesRef = CGImageSourceCopyPropertiesAtIndex(imageSource, 0uL, null)
+            @Suppress("UNCHECKED_CAST")
+            val properties = propertiesRef?.let { CFBridgingRelease(it) as? Map<Any?, *> }
+            @Suppress("UNCHECKED_CAST")
+            val exif = properties?.get(kCGImagePropertyExifDictionary) as? Map<Any?, *>
+            @Suppress("UNCHECKED_CAST")
+            val gps = properties?.get(kCGImagePropertyGPSDictionary) as? Map<Any?, *>
+
+            val takenAtEpochMs = (exif?.get(kCGImagePropertyExifDateTimeOriginal) as? String)
+                ?.let { raw -> parseExifDateTimeToEpochMs(raw) }
+
+            val rawLatitude = gps?.get(kCGImagePropertyGPSLatitude) as? Double
+            val rawLongitude = gps?.get(kCGImagePropertyGPSLongitude) as? Double
+            val latitudeRef = gps?.get(kCGImagePropertyGPSLatitudeRef) as? String
+            val longitudeRef = gps?.get(kCGImagePropertyGPSLongitudeRef) as? String
+            val latitude = rawLatitude?.let { if (latitudeRef == "S") -it else it }
+            val longitude = rawLongitude?.let { if (longitudeRef == "W") -it else it }
+
+            return PhotoMetadata(takenAtEpochMs, latitude, longitude)
+        } catch (_: Throwable) {
+            return noMetadata
+        } finally {
+            CFRelease(imageSource)
+        }
+    } finally {
+        CFRelease(retainedData)
+    }
+}
+
+/**
+ * Parses a fixed `"yyyy:MM:dd HH:mm:ss"` EXIF datetime (the TAG_DATETIME[_ORIGINAL] format) into
+ * device-zone epoch millis, WITHOUT touching `NSTimeZone` directly (this Kotlin/Native Foundation
+ * binding doesn't expose `NSTimeZone.systemTimeZone`/`localTimeZone`). [NSCalendar.currentCalendar]
+ * already carries the system's current time zone, so building an [NSDateComponents] and resolving
+ * it via [NSCalendar.dateFromComponents] interprets the parsed fields in the device zone for free.
+ * Manual field-splitting (not [platform.Foundation.NSDateFormatter]) sidesteps locale/format
+ * quirks entirely, since EXIF's datetime format is fixed, not locale-dependent. Returns `null` on
+ * any malformed input.
+ */
+private fun parseExifDateTimeToEpochMs(raw: String): Long? {
+    // "yyyy:MM:dd HH:mm:ss" — exactly 19 characters, colon-separated date + space + colon-separated time.
+    if (raw.length != 19) return null
+    val year = raw.substring(0, 4).toLongOrNull() ?: return null
+    val month = raw.substring(5, 7).toLongOrNull() ?: return null
+    val day = raw.substring(8, 10).toLongOrNull() ?: return null
+    val hour = raw.substring(11, 13).toLongOrNull() ?: return null
+    val minute = raw.substring(14, 16).toLongOrNull() ?: return null
+    val second = raw.substring(17, 19).toLongOrNull() ?: return null
+
+    val components = NSDateComponents().apply {
+        this.year = year
+        this.month = month
+        this.day = day
+        this.hour = hour
+        this.minute = minute
+        this.second = second
+    }
+    val date = NSCalendar.currentCalendar.dateFromComponents(components) ?: return null
+    return (date.timeIntervalSince1970 * 1000.0).toLong()
 }
 
 private fun NSData.toByteArray(): ByteArray {
