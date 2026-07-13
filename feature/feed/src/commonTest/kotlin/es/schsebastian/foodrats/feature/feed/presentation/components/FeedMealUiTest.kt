@@ -293,6 +293,53 @@ class FeedMealUiTest {
         assertEquals(ui.plateCacheKey, ui.plates[0].cacheKey)
     }
 
+    @Test fun plates_with_a_blank_photo_url_are_dropped_from_the_pager_page_list() {
+        // REAL BUG (found by the edge-presentation test wave, fixed here): a MealReadPort
+        // implementation (or a future refactor of the existing one) that ever returns a Meal whose
+        // plates contain an unresolved (blank photoUrl) entry used to flow straight through into
+        // FeedMealUi.plates — inflating photoCount and leaving an unloadable pager page. toFeedPlates
+        // must defensively drop blank-photoUrl entries rather than trusting every port impl to have
+        // already filtered them upstream.
+        val multi = sampleMeal.copy(
+            plates = listOf(
+                MealPlate(photoUrl = "https://example.com/p0.jpg", source = PlateSource.Camera),
+                MealPlate(photoUrl = "", source = PlateSource.Gallery), // failed-to-resolve entry
+                MealPlate(photoUrl = "https://example.com/p2.jpg", source = PlateSource.Camera),
+            ),
+        )
+        val ui = MealWithRatings(multi, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(2, ui.photoCount)
+        assertEquals(
+            listOf("https://example.com/p0.jpg", "https://example.com/p2.jpg"),
+            ui.plates.map { it.photoUrl },
+        )
+        // The surviving pages keep their ORIGINAL positional cache keys (index 0 and index 2 in the
+        // source list) — the dropped blank entry at index 1 must not renumber page 2 down to "_p1".
+        assertEquals(
+            listOf("crews/c1/meals/m1.jpg", "crews/c1/meals/m1_p2.jpg"),
+            ui.plates.map { it.cacheKey },
+        )
+    }
+
+    @Test fun all_plates_blank_photo_url_falls_back_to_the_legacy_single_page() {
+        // When EVERY entry is unresolved, the surviving (filtered) list is empty — the same
+        // `.ifEmpty` branch that handles a legacy/empty meal.plates must degrade to the one legacy
+        // page instead of leaving the pager with zero pages.
+        val allBlank = sampleMeal.copy(
+            plates = listOf(
+                MealPlate(photoUrl = "", source = PlateSource.Gallery),
+                MealPlate(photoUrl = "", source = PlateSource.Camera),
+            ),
+        )
+        val ui = MealWithRatings(allBlank, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(1, ui.photoCount)
+        assertEquals(1, ui.plates.size)
+        val page = ui.plates.single()
+        assertEquals("https://example.com/p.jpg", page.photoUrl) // sampleMeal's legacy photoUrl
+        assertEquals("crews/c1/meals/m1.jpg", page.cacheKey)
+        assertFalse(page.isGallery) // sampleMeal.plateSource defaults to Camera
+    }
+
     @Test fun hand_built_fixture_without_plates_still_reports_photo_count_one() {
         // FeedMealUiShareTest builds FeedMealUi directly (never through toFeedUi); photoCount must
         // still read 1 rather than 0 so callers can't divide-by/index into an empty page list.

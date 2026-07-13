@@ -362,12 +362,24 @@ fun MealWithRatings.toFeedUi(
     )
 }
 
-/** Maps each ordered [MealPlate] to its presentation page, deriving the per-index stable cache key. */
+/**
+ * Maps each ordered [MealPlate] to its presentation page, deriving the per-index stable cache key.
+ * A blank [MealPlate.photoUrl] (e.g. a URL that failed to resolve upstream) is DROPPED rather than
+ * passed through — `:feature:feed` reads `Meal` exclusively through `MealReadPort` and must not
+ * trust that every implementation already filters unresolved-URL entries before they reach
+ * [es.schsebastian.foodrats.core.domain.meal.Meal.plates] (see [toFeedUi]'s `.ifEmpty` fallback for
+ * the "every entry was blank" case). [mapIndexedNotNull] preserves the ORIGINAL index for
+ * [platePathForIndex] even when earlier/later entries are dropped, so a surviving page's cache key
+ * still matches its real Storage object path (`..._p{n}.jpg` numbering is positional, not sequential
+ * among survivors).
+ */
 private fun List<MealPlate>.toFeedPlates(crewId: String, mealId: String): List<FeedPlateUi> =
-    mapIndexed { index, plate ->
-        FeedPlateUi(
-            photoUrl = plate.photoUrl,
-            cacheKey = platePathForIndex(crewId, mealId, index),
-            isGallery = plate.source.toUi().isGallery,
-        )
+    mapIndexedNotNull { index, plate ->
+        plate.photoUrl.takeIf { it.isNotBlank() }?.let { url ->
+            FeedPlateUi(
+                photoUrl = url,
+                cacheKey = platePathForIndex(crewId, mealId, index),
+                isGallery = plate.source.toUi().isGallery,
+            )
+        }
     }
