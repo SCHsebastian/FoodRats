@@ -36,8 +36,11 @@ export function mealStoragePaths(
   doc: { platePath?: string; thumbnailPath?: string } | undefined,
 ): { platePath: string; thumbnailPath: string } {
   return {
-    platePath: doc?.platePath ?? `crews/${crewId}/meals/${mealId}.jpg`,
-    thumbnailPath: doc?.thumbnailPath ?? `crews/${crewId}/meals/${mealId}_thumb.jpg`,
+    // `||` (not `??`) on purpose: a doc that persisted platePath: "" must fall back to the
+    // deterministic scheme — deleting "" silently orphans the real blob. Same semantics as
+    // deleteAccount's platePathOf, which treats "" as missing.
+    platePath: doc?.platePath || `crews/${crewId}/meals/${mealId}.jpg`,
+    thumbnailPath: doc?.thumbnailPath || `crews/${crewId}/meals/${mealId}_thumb.jpg`,
   };
 }
 

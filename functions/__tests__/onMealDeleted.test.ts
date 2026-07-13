@@ -63,14 +63,13 @@ describe("mealStoragePaths — path resolution", () => {
     });
   });
 
-  it("an EMPTY-STRING stored path is used verbatim, not treated as missing (documented behavior)", () => {
-    // NOTE: `?? fallback` only catches null/undefined — a doc that persisted platePath: "" keeps
-    // the empty string, so the delete targets "" (a no-op/failed delete that is logged and
-    // swallowed by reclaimMealObjects). deleteAccount's platePathOf treats "" as missing instead;
-    // this asymmetry is deliberate to document here.
+  it("an EMPTY-STRING stored path falls back to the deterministic scheme (regression: '' orphaned the blob)", () => {
+    // Fixed 2026-07-13: `?? fallback` only caught null/undefined, so a doc that persisted
+    // platePath: "" targeted "" — a no-op delete that orphaned the real blob. Now `||` treats
+    // "" as missing, matching deleteAccount's platePathOf.
     expect(mealStoragePaths(CREW, MEAL, { platePath: "", thumbnailPath: "" })).toEqual({
-      platePath: "",
-      thumbnailPath: "",
+      platePath: PLATE,
+      thumbnailPath: THUMB,
     });
   });
 });

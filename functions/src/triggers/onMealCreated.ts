@@ -1,5 +1,5 @@
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import { sendToCrew, mealDeepLink } from "../fcm/push";
 import { KEY_NEW_MEAL_POST, FALLBACK } from "../i18n/keys";
@@ -68,32 +68,27 @@ async function awardBadgeIfMilestone(
   try {
     const db = getFirestore();
     const deps: BadgeDeps = {
-      readMealCount: async () => {
+      countCanonicalPublish: async (_uid, canonicalKey) => {
         // The raw lifetime count lives in a SERVER-ONLY subcollection (deny-all client
         // access, like `nudges`) so it is neither world-readable nor client-forgeable —
         // only the derived `badgeId` tier is public (no leaderboard arms race, no self-cheat
         // by writing an inflated count).
-        const doc = await db.doc(`accounts/${uid}/badgeProgress/counter`).get();
-        return (doc.data()?.mealPublishCount as number | undefined) ?? 0;
-      },
-      isAlreadyCounted: async (_uid, canonicalKey) => {
-        const marker = await db
-          .doc(`accounts/${uid}/publishedMealKeys/${canonicalKey}`)
-          .get();
-        return marker.exists;
-      },
-      markCounted: async (_uid, canonicalKey) => {
-        await db
-          .doc(`accounts/${uid}/publishedMealKeys/${canonicalKey}`)
-          .set({ markedAtEpochMs: Date.now() });
-      },
-      incrementMealCount: async () => {
-        // FieldValue.increment is atomic and avoids read-modify-write races. merge:true
-        // makes the first increment create the (owner-only) progress doc if absent.
-        const ref = db.doc(`accounts/${uid}/badgeProgress/counter`);
-        await ref.set({ mealPublishCount: FieldValue.increment(1) }, { merge: true });
-        const updated = await ref.get();
-        return (updated.data()?.mealPublishCount as number) ?? 1;
+        const markerRef = db.doc(`accounts/${uid}/publishedMealKeys/${canonicalKey}`);
+        const counterRef = db.doc(`accounts/${uid}/badgeProgress/counter`);
+        // Marker + increment commit in ONE transaction: a crash aborts both (the
+        // re-delivery re-runs the unit and short-circuits on the marker), and the
+        // transactional read makes prev/new exact under concurrent multi-crew fan-out.
+        return db.runTransaction(async (tx) => {
+          const marker = await tx.get(markerRef);
+          if (marker.exists) return null;
+          const counter = await tx.get(counterRef);
+          const prevCount = (counter.data()?.mealPublishCount as number | undefined) ?? 0;
+          const newCount = prevCount + 1;
+          tx.set(markerRef, { markedAtEpochMs: Date.now() });
+          // merge:true so the first increment creates the (owner-only) progress doc.
+          tx.set(counterRef, { mealPublishCount: newCount }, { merge: true });
+          return { prevCount, newCount };
+        });
       },
       writeBadge: async (_uid, badgeId) => {
         // Admin SDK write — bypasses all Firestore security rules (the only allowed path for badgeId).

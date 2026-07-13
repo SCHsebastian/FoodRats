@@ -19,19 +19,22 @@
 
 export interface BadgeDeps {
   /**
-   * Read the current lifetime canonical-meal count for the account.
-   * Returns 0 when the field does not exist yet.
+   * Atomically consume one canonical publish: check the dedup marker at
+   * accounts/{uid}/publishedMealKeys/{canonicalKey} and — only when absent — write the
+   * marker AND increment the lifetime count in the SAME Firestore transaction.
+   *
+   * Returns null when the key was already counted; otherwise the count before/after.
+   *
+   * MUST be one atomic unit. Marker and count may never diverge: a crash aborts the
+   * whole transaction (the re-delivery re-runs it from scratch), and a committed marker
+   * implies its increment committed with it. Two separate writes are NOT an
+   * implementation option — marker-first lost the count on a crash in between (the
+   * retry short-circuited on the marker), increment-first double-counts on retry.
    */
-  readMealCount: (uid: string) => Promise<number>;
-  /**
-   * Check whether this canonical publish key has already been counted.
-   * Uses a dedup marker at accounts/{uid}/publishedMealKeys/{canonicalKey}.
-   */
-  isAlreadyCounted: (uid: string, canonicalKey: string) => Promise<boolean>;
-  /** Mark this canonical key as counted (write the dedup marker). */
-  markCounted: (uid: string, canonicalKey: string) => Promise<void>;
-  /** Atomically increment the meal count by 1. Returns the NEW count. */
-  incrementMealCount: (uid: string) => Promise<number>;
+  countCanonicalPublish: (
+    uid: string,
+    canonicalKey: string,
+  ) => Promise<{ prevCount: number; newCount: number } | null>;
   /**
    * Write the badgeId (and only the badgeId) to the account doc.
    * Called only when the badge changes — no-op when already at the right tier.
@@ -91,15 +94,13 @@ export async function processBadgeMilestone(
     ? mealId.slice(crewId.length + 1)
     : mealId; // fallback: keep full id (should not happen with well-formed docs)
 
-  // Dedup: only count the first crew copy of a given canonical publish.
-  if (await deps.isAlreadyCounted(uid, canonicalKey)) return null;
-  await deps.markCounted(uid, canonicalKey);
+  // Dedup + count in ONE transaction: only the first crew copy of a canonical publish
+  // gets a non-null result, and the marker can never exist without its increment.
+  const counted = await deps.countCanonicalPublish(uid, canonicalKey);
+  if (counted === null) return null;
 
-  const prevCount = await deps.readMealCount(uid);
-  const newCount = await deps.incrementMealCount(uid);
-
-  const prevBadge = badgeIdForPrevCount(prevCount);
-  const newBadge = badgeIdForCount(newCount);
+  const prevBadge = badgeIdForPrevCount(counted.prevCount);
+  const newBadge = badgeIdForCount(counted.newCount);
 
   // No change or still below the first threshold.
   if (newBadge === null || newBadge === prevBadge) return null;
