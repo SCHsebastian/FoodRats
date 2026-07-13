@@ -161,7 +161,10 @@
     <!-- multi-photo-crew15: chip compacto de la miniatura del feed, solo cuando la comida tiene
          más de una foto. %1$d = FeedMealUi.photoCount. -->
     <string name="feed_tile_photo_count">×%1$d</string>
-    <string name="feed_tile_photo_count_cd">%1$d fotos</string>
+    <plurals name="feed_tile_photo_count_cd">
+        <item quantity="one">%1$d foto</item>
+        <item quantity="other">%1$d fotos</item>
+    </plurals>
     <!-- multi-photo-crew15: descripción del selector de fotos del detalle de comida, se
          actualiza al deslizar. %1$d = página actual (base 1), %2$d = total de páginas. -->
     <string name="feed_detail_photo_pager_cd">Foto %1$d de %2$d</string>

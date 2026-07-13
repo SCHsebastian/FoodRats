@@ -129,7 +129,6 @@ import foodrats.feature.feed.generated.resources.feed_meal_photo_open_cd
 import foodrats.feature.feed.generated.resources.feed_gallery_chip_label
 import foodrats.feature.feed.generated.resources.feed_gallery_chip_cd
 import foodrats.feature.feed.generated.resources.feed_tile_photo_count
-import foodrats.feature.feed.generated.resources.feed_tile_photo_count_cd
 import foodrats.feature.feed.generated.resources.feed_detail_photo_pager_cd
 import org.jetbrains.compose.resources.StringResource
 
@@ -277,9 +276,10 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     // + meal detail (see PlateSourceUi in FeedMealUi.kt).
     GalleryChipLabel(Res.string.feed_gallery_chip_label),
     GalleryChipCd(Res.string.feed_gallery_chip_cd),
-    // multi-photo-crew15 — feed-tile "N photos" compact chip (only when FeedMealUi.photoCount > 1).
+    // multi-photo-crew15 — feed-tile "×N" compact chip label (only when FeedMealUi.photoCount > 1).
+    // Its content description is quantity-aware (see FeedPluralKey.TilePhotoCountCd) — "×N" is a
+    // multiplier glyph with no grammatical number, so only the CD needed pluralizing.
     TilePhotoCount(Res.string.feed_tile_photo_count),
-    TilePhotoCountCd(Res.string.feed_tile_photo_count_cd),
     // multi-photo-crew15 — meal-detail photo-pager content description (updated with the current page).
     DetailPhotoPagerCd(Res.string.feed_detail_photo_pager_cd),
 }

@@ -161,7 +161,10 @@
     <!-- multi-photo-crew15: feed-tile compact chip shown only when a meal has more than one
          photo. %1$d = FeedMealUi.photoCount. -->
     <string name="feed_tile_photo_count">×%1$d</string>
-    <string name="feed_tile_photo_count_cd">%1$d photos</string>
+    <plurals name="feed_tile_photo_count_cd">
+        <item quantity="one">%1$d photo</item>
+        <item quantity="other">%1$d photos</item>
+    </plurals>
     <!-- multi-photo-crew15: meal-detail photo pager content description, updated as the viewer
          swipes. %1$d = 1-based current page, %2$d = total page count. -->
     <string name="feed_detail_photo_pager_cd">Photo %1$d of %2$d</string>

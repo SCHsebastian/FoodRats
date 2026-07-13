@@ -332,7 +332,13 @@ class ComposePlateViewModel(
      * added here behaves identically to one added at capture time.
      */
     private suspend fun addPhotos(picked: List<PickedPhoto>) {
-        if (picked.isEmpty()) return
+        // Re-entrancy guard mirroring CaptureMealViewModel.PhotosTaken/isCapturing: each intent runs
+        // in its own coroutine (MviViewModel.onIntent launches per intent), so an overlapping
+        // AddPhotos dispatched while a previous batch is still being persisted would interleave at
+        // UpdateMealDraftUseCase's read-then-write suspension point and silently drop a photo. Drop
+        // re-entries while a batch is already in flight.
+        if (currentState.isAddingPhotos || picked.isEmpty()) return
+        update { it.copy(isAddingPhotos = true) }
         val capacity = (MealPublishPolicy.MAX_PHOTOS_PER_MEAL - currentState.photos.size).coerceAtLeast(0)
         val toAdd = picked.take(capacity)
         for (photo in toAdd) {
@@ -344,6 +350,7 @@ class ComposePlateViewModel(
         val trimmed = toAdd.size < picked.size
         update {
             it.copy(
+                isAddingPhotos = false,
                 error = when {
                     trimmed -> MealError.Validation.TooManyPhotos
                     it.error == MealError.Validation.TooManyPhotos -> null

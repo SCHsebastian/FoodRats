@@ -3,7 +3,7 @@
 **Owner:** the FoodRats developer (solo/small team). **SLA: every report is reviewed within 24 hours.**
 **Scope:** Apple App Store Guideline 1.2 (Safety / User-Generated Content). Companion to the design spec `docs/specs/2026-06-19-ugc-compliance-design.md`.
 
-FoodRats is a closed-group meal-sharing app. User-generated content = profiles (display name, avatar), meals (plate photo, dish name, free-text description), comments, and reactions. There is no public discovery — content is only visible inside a user's crews (3–8 members).
+FoodRats is a closed-group meal-sharing app. User-generated content = profiles (display name, avatar), meals (plate photo, dish name, free-text description), comments, and reactions. There is no public discovery — content is only visible inside a user's crews (3–15 members).
 
 ---
 
@@ -29,7 +29,7 @@ A Cloud Function (`onReportCreated`, region `europe-west3`) fires on every new `
   - **Account** → **never auto-deleted.** Account-level takedown is always a human decision (a dogpile may be a false positive). The function flags it for manual review only.
 - Below threshold the function logs the report for the daily manual review and takes no action.
 
-Because crews are 3–8 people, 3 distinct reporters is usually reached within minutes — so genuinely objectionable content is typically gone well inside the 24 h SLA without any human in the loop.
+Because crews are 3–15 people, the fixed 3-reporter threshold is a smaller share of a large crew than a small one — but genuinely objectionable content still tends to draw multiple reports quickly once a few members see it, so it's typically gone well inside the 24 h SLA without any human in the loop.
 
 ---
 

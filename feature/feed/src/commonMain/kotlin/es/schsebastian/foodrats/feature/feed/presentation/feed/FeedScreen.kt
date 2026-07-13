@@ -591,8 +591,8 @@ private fun StructuralMealTile(
     }
     val galleryChipCd = resolve(FeedStringKey.GalleryChipCd)
     // multi-photo-crew15 — resolved unconditionally (mirrors galleryChipCd above); only used when
-    // ui.photoCount > 1 below.
-    val photoCountChipCd = resolve(FeedStringKey.TilePhotoCountCd, ui.photoCount)
+    // ui.photoCount > 1 below. Quantity-aware ("1 photo" / "N photos") via FeedPluralKey — R8.
+    val photoCountChipCd = resolvePlural(FeedPluralKey.TilePhotoCountCd, ui.photoCount)
 
     Box(
         modifier = Modifier

@@ -33,9 +33,11 @@ import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
 import es.schsebastian.foodrats.core.presentation.photopicker.PickedPhoto
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
+import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.test.FakeMealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -329,6 +331,65 @@ class ComposePlateViewModelTest {
 
         assertTrue(repo.observeDraft().first()!!.plates.isEmpty())
         vm.state.test { assertNull(expectMostRecentItem().error) }
+    }
+
+    @Test fun add_photos_reentry_while_a_batch_is_in_flight_drops_the_second_call_without_losing_the_first() = runTest {
+        // Regression for R1: two overlapping AddPhotos intents each run in their own coroutine
+        // (MviViewModel.onIntent). Before the isAddingPhotos guard, a second call arriving while the
+        // first batch's per-photo loop was still persisting would read the same stale draft and its
+        // saveDraft would clobber the first batch's still-pending photo — silent data loss, no error.
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos()) }
+        val gate = CompletableDeferred<Unit>()
+        // Suspend only the write that lands the batch's SECOND photo (plates.size == 2) — the exact
+        // point where the original interleaving happened — so a second AddPhotos can be dispatched
+        // mid-batch: after the first photo has landed but before the second has.
+        val gatedRepo = object : MealRepository by repo {
+            override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {
+                if (draft.plates.size == 2) gate.await()
+                return repo.saveDraft(draft)
+            }
+        }
+        val vm = ComposePlateViewModel(
+            updateDraft = UpdateMealDraftUseCase(gatedRepo),
+            repository = gatedRepo,
+            crewMembership = FakeCrewMembership(crew),
+            uploadCoordinator = object : MealUploadCoordinator { override fun enqueueDraftUpload() {} },
+            locationProvider = object : LocationProvider {
+                override suspend fun current(): Result<Coordinates, LocationError> =
+                    Result.failure(LocationError.Unavailable)
+            },
+            classifyPlate = ClassifyDraftPlateUseCase(
+                FakeClassifier { Result.success(emptyList()) },
+                FakeIngredients(emptyMap()),
+                FakeFeatureFlags(true),
+                object : AiPreferencePort {
+                    override val enabled: Flow<Boolean> = flowOf(true)
+                    override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> = Result.success(Unit)
+                },
+            ),
+            clock = clock,
+            zone = zone,
+        )
+
+        // First batch: two photos. The loop's second AddPhoto suspends on the gate mid-batch.
+        vm.onIntent(
+            ComposePlateIntent.AddPhotos(
+                listOf(PickedPhoto(bytes("p1"), PhotoSource.Camera), PickedPhoto(bytes("p2"), PhotoSource.Camera)),
+            ),
+        )
+        assertTrue(vm.state.value.isAddingPhotos)
+        assertEquals(listOf("p1"), gatedRepo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+
+        // Re-entry while the first batch is still in flight must be a no-op — it must NOT interleave
+        // its own read-then-write on top of the first batch's still-pending second photo.
+        vm.onIntent(ComposePlateIntent.AddPhotos(listOf(PickedPhoto(bytes("p3"), PhotoSource.Camera))))
+        assertEquals(listOf("p1"), gatedRepo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+
+        gate.complete(Unit)
+
+        // Both of the FIRST batch's photos landed, in order; the re-entrant call's photo never did.
+        assertEquals(listOf("p1", "p2"), repo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+        assertFalse(vm.state.value.isAddingPhotos)
     }
 
     @Test fun move_photo_reorders_the_draft_and_selection_follows_the_moved_photo() = runTest {

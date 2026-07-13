@@ -267,6 +267,23 @@ describe("crews — membership cap invariant (max 15)", () => {
     );
   });
 
+  it("the owner can approve the 15th member when the crew has 14 (the allow boundary)", async () => {
+    const fourteen = Array.from({ length: 14 }, (_, i) => `u${i + 1}`);
+    await seedCrew(env, "almostFull", {
+      ownerId: "u1",
+      name: "AlmostFull",
+      memberIds: fourteen,
+      members: Object.fromEntries(fourteen.map((u) => [u, {}])),
+    });
+    const db = env.authenticatedContext("u1").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, "crews/almostFull"), {
+        memberIds: [...fourteen, "u15"],
+        members: Object.fromEntries([...fourteen, "u15"].map((u) => [u, {}])),
+      }),
+    );
+  });
+
   it("approval is REJECTED when the crew is already full (15 members)", async () => {
     const fifteen = Array.from({ length: 15 }, (_, i) => `u${i + 1}`);
     await seedCrew(env, "full", {

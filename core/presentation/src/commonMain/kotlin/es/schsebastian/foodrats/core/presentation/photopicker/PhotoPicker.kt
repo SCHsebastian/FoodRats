@@ -60,10 +60,14 @@ sealed interface PhotoPickResult {
     }
 
     /**
-     * Two or more photos selected from a multi-select gallery pick ([PhotoPicker.launchGallery]
-     * with `maxItems > 1`), in the user's selection order. Convention: an empty selection is always
-     * [Cancelled], never `PickedMultiple(emptyList())` — callers may treat a non-empty [photos] as
-     * an invariant of this variant rather than a case to defend against.
+     * The result of a multi-select gallery pick ([PhotoPicker.launchGallery] with `maxItems > 1`),
+     * in the user's selection order. [photos] can hold as few as ONE entry: the system picker lets
+     * the user select just a single photo even when launched in multi-select mode, and both
+     * platform actuals still emit `PickedMultiple` (never `Picked`) for that outcome — the variant
+     * is keyed off how the picker was LAUNCHED, not off how many photos were actually chosen.
+     * Convention: an empty selection is always [Cancelled], never `PickedMultiple(emptyList())` —
+     * callers may treat a non-empty [photos] as an invariant of this variant rather than a case to
+     * defend against.
      */
     data class PickedMultiple(val photos: List<PickedPhoto>) : PhotoPickResult
 

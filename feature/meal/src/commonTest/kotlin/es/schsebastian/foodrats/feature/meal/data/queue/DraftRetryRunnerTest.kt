@@ -149,6 +149,24 @@ class DraftRetryRunnerTest {
         assertEquals(expected, analytics.events.single())
     }
 
+    /** R3 regression: `photo_count` must reflect the REAL draft's plate count. The test above only
+     *  proves the single-plate default (1) is stamped, which would pass even if `photoCount` were
+     *  hardcoded back to `AnalyticsEvent.MealPublished`'s own default — this one forces a real
+     *  multi-photo value through `trackPublished`. */
+    @Test
+    fun successful_drain_of_a_multi_photo_draft_stamps_the_real_photo_count() = runTest {
+        val q = queue()
+        q.enqueue(draft().copy(plates = listOf(Plate(byteArrayOf(1)), Plate(byteArrayOf(2)), Plate(byteArrayOf(3)))))
+        val analytics = RecordingAnalyticsTracker()
+        val repo = ScriptedPublishRepository(ArrayDeque(listOf(Result.Ok(true))))
+        val runner = DraftRetryRunner(q, repo, AlwaysOnline(), DraftRetryPolicy(), analytics, clock = sameDayClock, zone = zone)
+
+        runner.runOnce(scope = null)
+
+        val event = analytics.events.single() as AnalyticsEvent.MealPublished
+        assertEquals(3, event.photoCount)
+    }
+
     /** A gallery-sourced plate stamps `source = gallery` on the true publish-outcome event. */
     @Test
     fun successful_drain_stamps_gallery_publish_source_from_the_plate() = runTest {

@@ -299,10 +299,24 @@ internal class FirebaseMealRepository(
                     // Upload every photo IN ORDER (index 0 = primary → the legacy path; n >= 1 →
                     // the extras). Each call returns its own deterministic path; rebuild the dto's
                     // `plates` list from exactly what landed in Storage — never a guessed path. A
-                    // mid-loop storage failure propagates out of the whole publish attempt (mapped
-                    // to PhotoUploadFailed below); a retry re-uploads from index 0, an idempotent
-                    // overwrite at the same deterministic paths, so nothing needs cleanup here.
-                    val uploadedPaths = draft.plates.mapIndexed { index, p -> storage.upload(crewId, mealId.value, index, p) }
+                    // mid-loop storage failure best-effort deletes whatever THIS attempt already
+                    // uploaded (indices 0 until the failing one) before rethrowing — without this,
+                    // those objects would never be referenced by any Firestore doc and would leak
+                    // forever once the retry budget exhausts on a photo that fails every attempt. A
+                    // retry then re-uploads from index 0, an idempotent overwrite at the same
+                    // deterministic paths, so cleaning up here is safe.
+                    val uploaded = mutableListOf<String>()
+                    val uploadedPaths = try {
+                        draft.plates.forEachIndexed { index, p -> uploaded += storage.upload(crewId, mealId.value, index, p) }
+                        uploaded
+                    } catch (t: Throwable) {
+                        FrLog.w("MealRepo", t) { "upload failed for crew ${crewId.value} at plate ${uploaded.size}: ${t.message}" }
+                        uploaded.indices.forEach { index ->
+                            runCatching { storage.delete(crewId, mealId.value, index) }
+                                .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed after upload failure (index $index): ${it.message}" } }
+                        }
+                        throw t
+                    }
                     val dtoWithPaths = dto.copy(
                         platePath = uploadedPaths[0],
                         plates = uploadedPaths.mapIndexed { index, path ->

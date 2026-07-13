@@ -231,4 +231,35 @@ class BackgroundMealUploadCoordinatorTest {
         val event = analytics.events.single() as AnalyticsEvent.MealPublished
         assertEquals(PublishSource.CAMERA, event.source)
     }
+
+    /** R3 regression: same fire site as the two tests above, but for `photo_count` — must reflect
+     *  the REAL draft's plate count, not just the fixture's single-plate default (which would still
+     *  pass even if `photoCount` were hardcoded back to `AnalyticsEvent.MealPublished`'s own
+     *  default of 1, or if the wrong draft object were wired through). */
+    @Test
+    fun fallback_upload_of_a_multi_photo_draft_stamps_the_real_photo_count() = runTest {
+        val repository = FakeMealRepository()
+        repository.saveDraft(draft().copy(plates = listOf(Plate(byteArrayOf(1)), Plate(byteArrayOf(2)), Plate(byteArrayOf(3)))))
+        val analytics = RecordingAnalyticsTracker()
+        val coordinator = BackgroundMealUploadCoordinator(
+            repository = repository,
+            publishMeal = PublishMealUseCase(
+                repository,
+                FixedClock(Instant.parse("2026-06-14T10:00:00Z")),
+                TimeZone.UTC,
+            ),
+            prefs = AppPreferences(FakeDataStore()),
+            scheduler = NoopScheduler(),
+            dispatchers = dispatchers,
+            analytics = analytics,
+            draftQueue = null,
+            retryRunner = null,
+        )
+
+        coordinator.enqueueDraftUpload()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val event = analytics.events.single() as AnalyticsEvent.MealPublished
+        assertEquals(3, event.photoCount)
+    }
 }

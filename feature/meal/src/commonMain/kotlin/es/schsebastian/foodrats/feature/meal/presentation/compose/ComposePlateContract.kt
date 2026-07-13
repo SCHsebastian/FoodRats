@@ -43,6 +43,15 @@ data class ComposePlateState(
      */
     val photos: List<Plate> = emptyList(),
     /**
+     * True while an [ComposePlateIntent.AddPhotos] batch is being persisted. Mirrors
+     * [es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealState.isCapturing]:
+     * each intent runs in its own coroutine (`MviViewModel.onIntent`), so an overlapping
+     * `AddPhotos` dispatched while a previous batch is still writing would interleave at the
+     * `UpdateMealDraftUseCase` read-then-write suspension point and silently drop a photo.
+     * [ComposePlateViewModel] drops re-entries while this is true.
+     */
+    val isAddingPhotos: Boolean = false,
+    /**
      * UI-only: which [photos] entry the hero preview/gallery-marker/action-row currently target.
      * Not persisted to the draft. Clamped into `photos.indices` whenever the list shrinks (see
      * [ComposePlateViewModel]); defaults to the first photo.

@@ -34,22 +34,21 @@ export interface MealBlobStore {
 }
 
 /**
- * The deleted meal's PRIMARY photo + its thumbnail path. Prefers the paths persisted on the deleted
- * doc; falls back to the deterministic upload scheme for older meals (e.g. published before
- * `thumbnailPath` was written, or a plate whose thumbnail pipeline never ran). For a multi-photo
- * meal's FULL photo set (primary + every extra photo), see `mealPhotoPaths` — thumbnails stay
- * PRIMARY-ONLY, so this function's `thumbnailPath` half is unaffected by multi-photo.
+ * The deleted meal's generated thumbnail path. Prefers the path persisted on the deleted doc;
+ * falls back to the deterministic upload scheme for older meals (e.g. published before
+ * `thumbnailPath` was written, or a plate whose thumbnail pipeline never ran). Thumbnails stay
+ * PRIMARY-ONLY (only the primary photo ever gets a `_thumb.jpg`), so this is unaffected by
+ * multi-photo — the meal's FULL photo set (primary + every extra photo), including the primary
+ * photo's OWN path fallback, comes from `mealPhotoPaths` instead, which owns that independently.
  */
 export function mealStoragePaths(
   crewId: string,
   mealId: string,
   doc: { platePath?: string; thumbnailPath?: string } | undefined,
-): { platePath: string; thumbnailPath: string } {
+): { thumbnailPath: string } {
   return {
-    // `||` (not `??`) on purpose: a doc that persisted platePath: "" must fall back to the
-    // deterministic scheme — deleting "" silently orphans the real blob. Same semantics as
-    // `mealPhotoPaths`, which treats "" (or a non-string) platePath as missing.
-    platePath: doc?.platePath || `crews/${crewId}/meals/${mealId}.jpg`,
+    // `||` (not `??`) on purpose: a doc that persisted thumbnailPath: "" must fall back to the
+    // deterministic scheme, matching `mealPhotoPaths`'s empty-string-is-missing semantics.
     thumbnailPath: doc?.thumbnailPath || `crews/${crewId}/meals/${mealId}_thumb.jpg`,
   };
 }

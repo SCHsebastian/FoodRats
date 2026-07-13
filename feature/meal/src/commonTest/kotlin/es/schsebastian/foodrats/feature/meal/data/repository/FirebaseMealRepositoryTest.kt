@@ -552,6 +552,29 @@ class FirebaseMealRepositoryTest {
         assertEquals(listOf(0, 1, 2), f.storage.deletes.map { it.third })
     }
 
+    /** R2 regression: a mid-loop UPLOAD failure (plate 3 of 3) never reaches `firestore.write`, so
+     *  the doc-write-failure catch above never runs for this crew. Without dedicated cleanup on the
+     *  upload path itself, plates 0 and 1 — already uploaded THIS attempt — would leak in Storage
+     *  forever once the retry budget exhausts on a photo that fails every attempt. This locks that
+     *  the upload-failure branch best-effort deletes exactly what landed before the failure, and
+     *  that the original upload error (not a doc-write error) is what publish() returns. */
+    @Test fun publish_multi_photo_upload_failure_on_the_last_plate_cleans_up_the_ones_already_uploaded() = runTest {
+        val f = Fixture().apply {
+            storage.uploadFault = RuntimeException("Storage upload failed")
+            storage.uploadFaultAtIndex = 2 // the 3rd of 3 plates
+        }
+        val repo = repository(f)
+        val plates = listOf(Plate(byteArrayOf(1, 2, 3)), Plate(byteArrayOf(4, 5, 6)), Plate(byteArrayOf(7, 8, 9)))
+
+        val result = repo.publish(draft(plates = plates))
+
+        assertEquals(Result.failure(MealError.Publish.PhotoUploadFailed), result, "the ORIGINAL upload error propagates")
+        assertEquals(3, f.storage.uploads.size, "the failing 3rd upload is still attempted (and counted) before throwing")
+        assertEquals(0, f.firestore.writes.size, "an upload failure must never reach firestore.write")
+        assertEquals(2, f.storage.deletes.size, "cleanup deletes exactly the 2 plates that landed before the failure")
+        assertEquals(listOf(0, 1), f.storage.deletes.map { it.third })
+    }
+
     /** A draft exceeding the photo cap is rejected before any IO — the repository is the hard
      *  backstop even if some upstream layer somehow let a too-large list through. */
     @Test fun publish_with_too_many_photos_returns_too_many_photos_and_uploads_nothing() = runTest {

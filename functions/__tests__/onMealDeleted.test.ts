@@ -28,47 +28,43 @@ function blobStore(missing: Set<string> = new Set()): {
   };
 }
 
-describe("mealStoragePaths — path resolution", () => {
-  it("prefers paths persisted on the deleted doc", () => {
+describe("mealStoragePaths — thumbnail path resolution", () => {
+  // NOTE: mealStoragePaths only resolves the thumbnail path now (R9 dead-code cleanup — it used
+  // to also compute a `platePath`, but that was unused at its only call site: reclaimMealObjects
+  // gets the meal's full photo set, PRIMARY included, from `mealPhotoPaths` instead, which owns
+  // the exact same "" -> deterministic-fallback semantics — see mealPhotoPaths.test.ts for that
+  // regression's coverage on the path that's actually used to delete the blob).
+  it("prefers the thumbnail path persisted on the deleted doc", () => {
     expect(
       mealStoragePaths(CREW, MEAL, {
         platePath: "custom/plate.jpg",
         thumbnailPath: "custom/thumb.jpg",
       }),
-    ).toEqual({ platePath: "custom/plate.jpg", thumbnailPath: "custom/thumb.jpg" });
+    ).toEqual({ thumbnailPath: "custom/thumb.jpg" });
   });
 
-  it("falls back to the deterministic scheme when the doc has no paths (older meals)", () => {
-    expect(mealStoragePaths(CREW, MEAL, undefined)).toEqual({
-      platePath: PLATE,
-      thumbnailPath: THUMB,
-    });
-    expect(mealStoragePaths(CREW, MEAL, {})).toEqual({
-      platePath: PLATE,
-      thumbnailPath: THUMB,
-    });
+  it("falls back to the deterministic scheme when the doc has no thumbnailPath (older meals)", () => {
+    expect(mealStoragePaths(CREW, MEAL, undefined)).toEqual({ thumbnailPath: THUMB });
+    expect(mealStoragePaths(CREW, MEAL, {})).toEqual({ thumbnailPath: THUMB });
   });
 
-  it("mixes a stored plate path with a derived thumbnail path (plate present, thumb absent)", () => {
+  it("falls back to the deterministic scheme when only platePath is present (thumb absent)", () => {
     expect(mealStoragePaths(CREW, MEAL, { platePath: "stored/plate.jpg" })).toEqual({
-      platePath: "stored/plate.jpg",
       thumbnailPath: THUMB,
     });
   });
 
-  it("mixes a derived plate path with a stored thumbnail path (thumb present, plate absent)", () => {
+  it("uses the stored thumbnailPath regardless of platePath (thumb present, plate absent)", () => {
     expect(mealStoragePaths(CREW, MEAL, { thumbnailPath: "stored/thumb.jpg" })).toEqual({
-      platePath: PLATE,
       thumbnailPath: "stored/thumb.jpg",
     });
   });
 
-  it("an EMPTY-STRING stored path falls back to the deterministic scheme (regression: '' orphaned the blob)", () => {
+  it("an EMPTY-STRING stored thumbnailPath falls back to the deterministic scheme (regression: '' orphaned the blob)", () => {
     // Fixed 2026-07-13: `?? fallback` only caught null/undefined, so a doc that persisted
-    // platePath: "" targeted "" — a no-op delete that orphaned the real blob. Now `||` treats
+    // thumbnailPath: "" targeted "" — a no-op delete that orphaned the real blob. Now `||` treats
     // "" as missing, matching `mealPhotoPaths`'s semantics.
     expect(mealStoragePaths(CREW, MEAL, { platePath: "", thumbnailPath: "" })).toEqual({
-      platePath: PLATE,
       thumbnailPath: THUMB,
     });
   });

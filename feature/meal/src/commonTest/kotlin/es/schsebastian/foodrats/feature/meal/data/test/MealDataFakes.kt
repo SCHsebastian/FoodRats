@@ -94,6 +94,13 @@ internal class FakeMealFirestore : MealFirestore {
  */
 internal class FakePlateStorage : PlateStorage {
     var uploadFault: Throwable? = null
+    /**
+     * When null (default), [uploadFault] fires unconditionally on the first `upload` call —
+     * the original all-or-nothing behavior every single-photo test relies on. When set, it
+     * fires only for that specific 0-based plate [index]; other indices upload normally — lets
+     * a test model a mid-batch upload failure (e.g. plate 3 of 3 fails, plates 0/1 already landed).
+     */
+    var uploadFaultAtIndex: Int? = null
     var deleteFault: Throwable? = null
     var url: String = "https://fake/plate.jpg"
 
@@ -104,7 +111,7 @@ internal class FakePlateStorage : PlateStorage {
     /** Index 0 returns the (single-photo-compatible) [url] verbatim; extras get an index suffix. */
     override suspend fun upload(crewId: CrewId, mealId: String, index: Int, plate: Plate): String {
         uploads += UploadCall(crewId, mealId, index, plate)
-        uploadFault?.let { throw it }
+        uploadFault?.let { fault -> if (uploadFaultAtIndex == null || uploadFaultAtIndex == index) throw fault }
         return if (index == 0) url else "$url.p$index"
     }
 
