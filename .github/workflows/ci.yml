@@ -5,6 +5,8 @@ name: CI
 #  - host-tests:   the cross-platform host test suite. None of the tested
 #                  modules apply the Firebase/googleServices plugin, so this
 #                  job needs NO secrets and runs identically on fork PRs.
+#  - functions-tests: typechecks + runs the Cloud Functions vitest suite. Pure
+#                  TypeScript, no Firebase credentials — fork-safe.
 #  - ios-tests:    runs the iOS-simulator unit tests for the non-Firebase modules
 #                  on the self-hosted Mac runner (the same one release uses).
 #                  Skipped on fork PRs so untrusted code never touches the runner.
@@ -59,13 +61,18 @@ jobs:
 
       # :core:domain hosts the whole-project architecture fitness functions
       # (ArchitectureFitnessTest + KonsistRulesTest), so they run here too.
-      # :feature:meal-ai is intentionally omitted: it has `withHostTest {}` wired
-      # but no androidHostTest sources yet, so its test task is NO-SOURCE (a no-op).
-      # Add :feature:meal-ai:testAndroidHostTest here once it gains host tests.
+      # This list must stay in sync with docs/testing/TEST-MAP.md §Commands and
+      # the CLAUDE.md "All Android host tests" row — every module with a
+      # testAndroidHostTest task runs here.
       - name: Run host tests
         run: >
           ./gradlew --no-daemon
           :core:domain:testAndroidHostTest
+          :core:data:testAndroidHostTest
+          :core:database:testAndroidHostTest
+          :core:designsystem:testAndroidHostTest
+          :core:presentation:testAndroidHostTest
+          :core:i18n:testAndroidHostTest
           :feature:auth:testAndroidHostTest
           :feature:crew:testAndroidHostTest
           :feature:meal:testAndroidHostTest
@@ -73,7 +80,9 @@ jobs:
           :feature:stats:testAndroidHostTest
           :feature:notifications:testAndroidHostTest
           :feature:ingredient:testAndroidHostTest
-          :core:designsystem:testAndroidHostTest
+          :feature:achievements:testAndroidHostTest
+          :feature:moderation:testAndroidHostTest
+          :feature:meal-ai:testAndroidHostTest
           :shared:testAndroidHostTest
 
       - name: Upload test reports
@@ -84,6 +93,35 @@ jobs:
           path: '**/build/reports/tests/**'
           if-no-files-found: ignore
           retention-days: 7
+
+  functions-tests:
+    name: Cloud Functions tests
+    # Pure TypeScript/vitest — no Firebase credentials, safe on fork PRs.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: functions/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm --dir functions install --frozen-lockfile
+
+      - name: Typecheck (tsc)
+        run: pnpm --dir functions build
+
+      - name: Test (vitest)
+        run: pnpm --dir functions test
 
   ios-tests:
     name: iOS unit tests (sim)

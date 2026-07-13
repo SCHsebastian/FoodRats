@@ -15,6 +15,9 @@ kotlin {
         compileSdk = libs.versions.android.compileSdk.get().toInt()
         minSdk = libs.versions.android.minSdk.get().toInt()
         compilerOptions { jvmTarget = JvmTarget.JVM_11 }
+        withHostTest {
+            isIncludeAndroidResources = true
+        }
     }
     sourceSets {
         commonMain.dependencies {
@@ -35,6 +38,12 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.turbine)
             implementation(libs.kotlinx.coroutines.test)
+        }
+        val androidHostTest by getting {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.junit)
+            }
         }
     }
 }
