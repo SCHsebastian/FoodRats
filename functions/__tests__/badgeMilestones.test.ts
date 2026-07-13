@@ -78,22 +78,17 @@ function fakeDeps(
 } {
   const marked: string[] = [];
   const badges: Array<{ uid: string; badgeId: string }> = [];
-  let incrementCalls = 0;
 
   const mealCount = overrides.mealCount ?? 0;
   const alreadyCounted = overrides.alreadyCounted ?? false;
-  // By default, the increment returns mealCount + 1.
+  // By default, counting yields mealCount + 1.
   const newCount = overrides.newCount ?? mealCount + 1;
 
   const deps: BadgeDeps = {
-    readMealCount: async () => mealCount,
-    isAlreadyCounted: async () => alreadyCounted,
-    markCounted: async (uid, key) => {
+    countCanonicalPublish: async (uid, key) => {
+      if (alreadyCounted) return null;
       marked.push(`${uid}/${key}`);
-    },
-    incrementMealCount: async () => {
-      incrementCalls++;
-      return newCount;
+      return { prevCount: mealCount, newCount };
     },
     writeBadge: async (uid, badgeId) => {
       badges.push({ uid, badgeId });
@@ -234,30 +229,34 @@ describe("processBadgeMilestone — edge cases", () => {
     expect(badges).toHaveLength(0);
   });
 
-  it("marks the dedup key BEFORE incrementing (current ordering — crash between the two loses the count)", async () => {
-    // BUG(potential): markCounted runs before incrementMealCount. A crash in between leaves the
-    // canonical key marked but never counted — that publish is then permanently uncountable
-    // (the retry short-circuits on isAlreadyCounted). Documented here as the current behavior.
-    const order: string[] = [];
+  it("dedup marker and count increment are ONE atomic operation — no marker-only state can exist", async () => {
+    // Regression (fixed 2026-07-13): marker and increment used to be two separate writes,
+    // marker first — a crash in between left the key marked but never counted, and the
+    // retry short-circuited on the marker, losing that publish's count forever. The
+    // contract is now a single transactional dep; the pipeline makes exactly one call
+    // to it, so no partial marker/count state is reachable by construction.
+    const calls: string[] = [];
     const deps: BadgeDeps = {
-      readMealCount: async () => 0,
-      isAlreadyCounted: async () => {
-        order.push("isAlreadyCounted");
-        return false;
-      },
-      markCounted: async () => {
-        order.push("markCounted");
-      },
-      incrementMealCount: async () => {
-        order.push("increment");
-        return 1;
+      countCanonicalPublish: async () => {
+        calls.push("countCanonicalPublish");
+        return { prevCount: 0, newCount: 1 };
       },
       writeBadge: async () => {
-        order.push("writeBadge");
+        calls.push("writeBadge");
       },
     };
     await processBadgeMilestone(UID, CREW, MEAL_ID, deps);
-    expect(order).toEqual(["isAlreadyCounted", "markCounted", "increment", "writeBadge"]);
+    expect(calls).toEqual(["countCanonicalPublish", "writeBadge"]);
+  });
+
+  it("a crash inside the atomic count propagates — the retry re-runs it with nothing partially committed", async () => {
+    const deps: BadgeDeps = {
+      countCanonicalPublish: async () => {
+        throw new Error("tx aborted");
+      },
+      writeBadge: async () => undefined,
+    };
+    await expect(processBadgeMilestone(UID, CREW, MEAL_ID, deps)).rejects.toThrow("tx aborted");
   });
 
   it("propagates a writeBadge failure to the caller (onMealCreated swallows it there)", async () => {
@@ -276,19 +275,17 @@ describe("processBadgeMilestone — edge cases", () => {
 
 describe("processBadgeMilestone — idempotency", () => {
   it("is idempotent: the same canonical key counted twice awards the badge only once", async () => {
-    let callCount = 0;
     const badges: Array<{ uid: string; badgeId: string }> = [];
-    const marked: string[] = [];
+    const countedKeys = new Set<string>();
 
     const deps: BadgeDeps = {
-      readMealCount: async () => 0,
-      // First call: not counted. Second call: already counted.
-      isAlreadyCounted: async () => callCount > 0,
-      markCounted: async (uid, key) => {
-        callCount++;
-        marked.push(`${uid}/${key}`);
+      // Stateful fake mirroring the real transaction: first call counts, replay returns null.
+      countCanonicalPublish: async (uid, key) => {
+        const k = `${uid}/${key}`;
+        if (countedKeys.has(k)) return null;
+        countedKeys.add(k);
+        return { prevCount: 0, newCount: 1 };
       },
-      incrementMealCount: async () => 1,
       writeBadge: async (uid, badgeId) => { badges.push({ uid, badgeId }); },
     };
 
