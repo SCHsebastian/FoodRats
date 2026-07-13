@@ -300,6 +300,85 @@ describe("crews — membership cap invariant (max 15)", () => {
       }),
     );
   });
+
+  it("a non-owner member CANNOT approve the 15th member even though there is room (owner-only gate wins over cap room)", async () => {
+    const fourteen = Array.from({ length: 14 }, (_, i) => `u${i + 1}`);
+    await seedCrew(env, "almostFull2", {
+      ownerId: "u1",
+      name: "AlmostFull2",
+      memberIds: fourteen,
+      members: Object.fromEntries(fourteen.map((u) => [u, {}])),
+    });
+    const db = env.authenticatedContext("u2").firestore(); // u2 is a member, not the owner
+    await assertFails(
+      updateDoc(doc(db, "crews/almostFull2"), {
+        memberIds: [...fourteen, "u15"],
+        members: Object.fromEntries([...fourteen, "u15"].map((u) => [u, {}])),
+      }),
+    );
+  });
+
+  it("the owner CANNOT approve two members in a single write (size must grow by exactly 1)", async () => {
+    // Stays within the 15 cap (13 -> 15) so this isolates the size()==size()+1 invariant from the
+    // <=15 cap invariant tested above.
+    const thirteen = Array.from({ length: 13 }, (_, i) => `u${i + 1}`);
+    await seedCrew(env, "jumpTwo", {
+      ownerId: "u1",
+      name: "JumpTwo",
+      memberIds: thirteen,
+      members: Object.fromEntries(thirteen.map((u) => [u, {}])),
+    });
+    const db = env.authenticatedContext("u1").firestore();
+    await assertFails(
+      updateDoc(doc(db, "crews/jumpTwo"), {
+        memberIds: [...thirteen, "u14", "u15"],
+        members: Object.fromEntries([...thirteen, "u14", "u15"].map((u) => [u, {}])),
+      }),
+    );
+  });
+
+  it("full lifecycle: a member leaves a full 15-member crew (-> 14), then the owner re-approves a new member back to 15", async () => {
+    const fifteen = Array.from({ length: 15 }, (_, i) => `u${i + 1}`);
+    await seedCrew(env, "lifecycle15", {
+      ownerId: "u1",
+      name: "Lifecycle15",
+      memberIds: fifteen,
+      members: Object.fromEntries(fifteen.map((u) => [u, {}])),
+    });
+
+    // Step 1 — u15 leaves: 15 -> 14.
+    const fourteen = fifteen.filter((u) => u !== "u15");
+    const leaverDb = env.authenticatedContext("u15").firestore();
+    await assertSucceeds(
+      updateDoc(doc(leaverDb, "crews/lifecycle15"), {
+        memberIds: fourteen,
+        members: Object.fromEntries(fourteen.map((u) => [u, {}])),
+      }),
+    );
+
+    // Step 2 — the owner re-approves a NEW member (u16): 14 -> 15, back at the cap.
+    const ownerDb = env.authenticatedContext("u1").firestore();
+    await assertSucceeds(
+      updateDoc(doc(ownerDb, "crews/lifecycle15"), {
+        memberIds: [...fourteen, "u16"],
+        members: Object.fromEntries([...fourteen, "u16"].map((u) => [u, {}])),
+      }),
+    );
+  });
+});
+
+describe("crews — ownership transfer at the membership cap (15 members)", () => {
+  it("the owner can transfer ownership on a full 15-member crew", async () => {
+    const fifteen = Array.from({ length: 15 }, (_, i) => `u${i + 1}`);
+    await seedCrew(env, "transferFull15", {
+      ownerId: "u1",
+      name: "TransferFull15",
+      memberIds: fifteen,
+      members: Object.fromEntries(fifteen.map((u) => [u, {}])),
+    });
+    const db = env.authenticatedContext("u1").firestore();
+    await assertSucceeds(updateDoc(doc(db, "crews/transferFull15"), { ownerId: "u2" }));
+  });
 });
 
 describe("crews — rename authorization", () => {

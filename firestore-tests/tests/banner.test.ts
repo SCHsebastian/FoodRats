@@ -4,7 +4,7 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from "@firebase/rules-unit-testing";
-import { ref, uploadBytes } from "firebase/storage";
+import { deleteObject, ref, uploadBytes } from "firebase/storage";
 import { doc, setDoc, updateDoc } from "firebase/firestore";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -236,5 +236,56 @@ describe("storage.rules — plate upload requires crew membership (#4)", () => {
     await assertFails(
       uploadBytes(ref(storage, platePath("bob")), jpeg(), { contentType: "image/jpeg" }),
     );
+  });
+});
+
+// Multi-photo filenames carry a `_p{n}` suffix (crew15 multi-photo build), e.g.
+// `crews/{crewId}/meals/{crewId}_{uid}_{dayKey}_{token}_p1.jpg`. The storage rule's own regex
+// (`filename.matches(crewId + '_' + uid + '_.*\\.jpg')`) tolerates ANY content between the uid and
+// `.jpg`, so these lock the ACTUAL (already-passing) contract for the new filename shape — not a
+// rule change. Crew c1 (seeded in the top beforeEach): owner alice, members alice + bob; carol is
+// a non-member.
+describe("storage.rules — multi-photo plate filenames (_p{n} suffix)", () => {
+  const multiPlate = (uid: string, n: number) => `crews/c1/meals/c1_${uid}_2026-06-14_tok_p${n}.jpg`;
+  const multiThumb = (uid: string, n: number) =>
+    `crews/c1/meals/c1_${uid}_2026-06-14_tok_p${n}_thumb.jpg`;
+
+  it("a crew MEMBER can upload their own multi-photo plate (_p1 suffix)", async () => {
+    const storage = env.authenticatedContext("bob").storage();
+    await assertSucceeds(
+      uploadBytes(ref(storage, multiPlate("bob", 1)), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("REJECTS a client-written multi-photo thumbnail (_p1_thumb suffix is server-only, Admin SDK)", async () => {
+    const storage = env.authenticatedContext("bob").storage();
+    await assertFails(
+      uploadBytes(ref(storage, multiThumb("bob", 1)), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("a member still cannot upload a multi-photo plate naming ANOTHER user's uid", async () => {
+    const storage = env.authenticatedContext("alice").storage();
+    await assertFails(
+      uploadBytes(ref(storage, multiPlate("bob", 1)), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("a NON-member CANNOT upload a multi-photo plate even with a valid-looking (self-named) filename", async () => {
+    const storage = env.authenticatedContext("carol").storage();
+    await assertFails(
+      uploadBytes(ref(storage, multiPlate("carol", 1)), jpeg(), { contentType: "image/jpeg" }),
+    );
+  });
+
+  it("the author can delete their own multi-photo plate (_p1 suffix)", async () => {
+    // Seed the object under disabled rules so the assertion below exercises the DELETE rule only.
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await uploadBytes(ref(ctx.storage(), multiPlate("bob", 1)), jpeg(), {
+        contentType: "image/jpeg",
+      });
+    });
+    const storage = env.authenticatedContext("bob").storage();
+    await assertSucceeds(deleteObject(ref(storage, multiPlate("bob", 1))));
   });
 });
