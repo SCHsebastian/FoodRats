@@ -32,6 +32,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.templates.FrScreenScaffold
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
@@ -87,13 +88,13 @@ fun CaptureMealScreen(
                 }
             }
             is PhotoPickResult.PickedMultiple -> {
-                // Defensive only — CaptureMealScreen always launches single-pick (`launchCamera()`
-                // / the no-arg `launchGallery()`), so this arm should be unreachable today; Wave 3
-                // owns the real multi-photo capture UX (the launcher affordance itself). Still,
-                // append EVERY photo (not just the first) via ONE PhotosTaken batch intent — the
-                // VM processes the whole list atomically in a single coroutine, which is what lets
-                // "append every photo" actually append every photo (dispatching one PhotoTaken per
-                // photo here would race the VM's isCapturing guard and drop all but the first).
+                // The gallery fallback below launches a multi-select pick (`launchGallery(maxItems =
+                // MealPublishPolicy.MAX_PHOTOS_PER_MEAL)`), so this arm is the common case for a
+                // gallery-originated first pick, not just a defensive branch. Append EVERY photo
+                // (not just the first) via ONE PhotosTaken batch intent — the VM processes the whole
+                // list atomically in a single coroutine, which is what lets "append every photo"
+                // actually append every photo (dispatching one PhotoTaken per photo here would race
+                // the VM's isCapturing guard and drop all but the first).
                 if (!processing && !state.isCapturing) {
                     awaitingChoice = false
                     lastPickFailed = false
@@ -192,7 +193,11 @@ fun CaptureMealScreen(
                 )
                 FrGlassButton(
                     label = resolve(MealStringKey.CaptureChooseFromGallery),
-                    onClick = { awaitingChoice = false; picker.launchGallery() },
+                    // Multi-select from the very first pick: a fresh draft's remaining capacity IS
+                    // the absolute cap (see CaptureMealViewModel.PhotosTaken's defensive cap-trim
+                    // comment), so the user can build the whole photo set in one gallery visit
+                    // instead of capturing one photo then adding the rest from the compose screen.
+                    onClick = { awaitingChoice = false; picker.launchGallery(maxItems = MealPublishPolicy.MAX_PHOTOS_PER_MEAL) },
                     tone = FrButtonTone.Glass,
                     leadingIcon = FrIcons.GalleryImport,
                     fillWidth = true,

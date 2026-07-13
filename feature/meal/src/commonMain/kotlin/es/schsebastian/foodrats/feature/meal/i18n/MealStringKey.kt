@@ -27,8 +27,16 @@ import foodrats.feature.meal.generated.resources.meal_compose_description_label
 import foodrats.feature.meal.generated.resources.meal_compose_dish_counter
 import foodrats.feature.meal.generated.resources.meal_compose_dish_label
 import foodrats.feature.meal.generated.resources.meal_compose_eyebrow
+import foodrats.feature.meal.generated.resources.meal_compose_add_photo
 import foodrats.feature.meal.generated.resources.meal_compose_locating
+import foodrats.feature.meal.generated.resources.meal_compose_move_photo_left_a11y
+import foodrats.feature.meal.generated.resources.meal_compose_move_photo_right_a11y
+import foodrats.feature.meal.generated.resources.meal_compose_photo_counter
+import foodrats.feature.meal.generated.resources.meal_compose_photo_counter_a11y
 import foodrats.feature.meal.generated.resources.meal_compose_photo_description
+import foodrats.feature.meal.generated.resources.meal_compose_photo_tile_a11y
+import foodrats.feature.meal.generated.resources.meal_compose_photos_label
+import foodrats.feature.meal.generated.resources.meal_compose_remove_photo_a11y
 import foodrats.feature.meal.generated.resources.meal_compose_slot_label
 import foodrats.feature.meal.generated.resources.meal_compose_slot_optional
 import foodrats.feature.meal.generated.resources.meal_description_moderation_warning
@@ -136,4 +144,13 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     // Non-removable provenance marker on the composer preview for a gallery-sourced plate.
     ComposeGalleryChip(Res.string.meal_compose_gallery_chip),
     ComposeGalleryChipA11y(Res.string.meal_compose_gallery_chip_a11y),
+    // Multi-photo composer strip (Wave 3): header, counter, per-tile/action-row a11y.
+    ComposePhotosLabel(Res.string.meal_compose_photos_label),
+    ComposePhotoCounter(Res.string.meal_compose_photo_counter),
+    ComposePhotoCounterA11y(Res.string.meal_compose_photo_counter_a11y),
+    ComposePhotoTileA11y(Res.string.meal_compose_photo_tile_a11y),
+    ComposeAddPhoto(Res.string.meal_compose_add_photo),
+    ComposeRemovePhotoA11y(Res.string.meal_compose_remove_photo_a11y),
+    ComposeMovePhotoLeftA11y(Res.string.meal_compose_move_photo_left_a11y),
+    ComposeMovePhotoRightA11y(Res.string.meal_compose_move_photo_right_a11y),
 }

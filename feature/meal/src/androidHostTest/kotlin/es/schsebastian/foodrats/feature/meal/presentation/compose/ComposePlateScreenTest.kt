@@ -1,8 +1,13 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
@@ -19,6 +24,7 @@ import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -50,6 +56,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import kotlin.test.assertEquals
 import kotlin.time.Instant
 
 /**
@@ -88,6 +95,21 @@ class ComposePlateScreenTest {
         authorId = account,
         day = MealDay(LocalDate(2026, 5, 24), zone),
         plates = listOf(Plate(realJpegBytes(), source = source)),
+        dish = null,
+        description = Description.EMPTY,
+    )
+
+    /**
+     * A multi-photo draft for the strip tests below. Plain distinguishable byte arrays (not a real
+     * JPEG) are fine here: the strip's tile Box/click-target/semantics render unconditionally, and
+     * only the thumbnail `Image` itself is gated on a successful `decodeImageBitmap` — none of the
+     * strip assertions (position, selection, counter, gallery marker) depend on that decode.
+     */
+    private fun draftWithPhotos(vararg sources: PlateSource) = MealDraft(
+        audienceCrewIds = setOf(crew),
+        authorId = account,
+        day = MealDay(LocalDate(2026, 5, 24), zone),
+        plates = sources.mapIndexed { i, source -> Plate(byteArrayOf(i.toByte()), source = source) },
         dish = null,
         description = Description.EMPTY,
     )
@@ -146,7 +168,11 @@ class ComposePlateScreenTest {
         rule.waitForIdle()
 
         rule.onNodeWithText("Gallery").assertExists()
-        rule.onNodeWithContentDescription("Photo picked from the gallery").assertExists()
+        // A single-photo gallery draft now carries the marker TWICE (Wave 3): once on the hero (the
+        // pre-existing chip asserted above via its visible "Gallery" label) and once as the strip
+        // tile's own mini marker (decision: "strip tiles carry their own mini marker") — both reuse
+        // this same a11y string since they describe the identical fact about the identical photo.
+        rule.onAllNodesWithContentDescription("Photo picked from the gallery").assertCountEquals(2)
     }
 
     @Test fun camera_draft_does_not_show_the_gallery_chip() {
@@ -161,6 +187,174 @@ class ComposePlateScreenTest {
         rule.waitForIdle()
 
         rule.onNodeWithText("Gallery").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Photo picked from the gallery").assertDoesNotExist()
+    }
+
+    // ── multi-photo strip (Wave 3) ─────────────────────────────────────────
+
+    @Test fun photo_strip_renders_every_draft_photo_in_order_with_a_counter() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera, PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("3 / ${MealPublishPolicy.MAX_PHOTOS_PER_MEAL}").assertExists()
+        rule.onNodeWithContentDescription("Photo 1 of 3").assertExists()
+        rule.onNodeWithContentDescription("Photo 2 of 3").assertExists()
+        rule.onNodeWithContentDescription("Photo 3 of 3").assertExists()
+        // No phantom 4th tile.
+        rule.onNodeWithContentDescription("Photo 4 of 3").assertDoesNotExist()
+    }
+
+    @Test fun add_tile_is_shown_while_under_the_photo_cap() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Add another photo").assertExists()
+    }
+
+    @Test fun add_tile_is_hidden_once_the_photo_cap_is_reached() {
+        val atCap = Array(MealPublishPolicy.MAX_PHOTOS_PER_MEAL) { PlateSource.Camera }
+        val repo = FakeMealRepository().apply { runBlockingSaveDraft(draftWithPhotos(*atCap)) }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("${MealPublishPolicy.MAX_PHOTOS_PER_MEAL} / ${MealPublishPolicy.MAX_PHOTOS_PER_MEAL}").assertExists()
+        rule.onNodeWithContentDescription("Add another photo").assertDoesNotExist()
+    }
+
+    @Test fun add_tile_opens_a_camera_gallery_chooser_that_dismisses_on_either_action_without_crashing() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Add another photo").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Take a photo").assertExists()
+        rule.onNodeWithText("Choose from gallery").assertExists()
+
+        // Tapping either action calls the real Android rememberPhotoPicker actual (via the host
+        // Activity's ActivityResultRegistry, same as CaptureMealScreenTest's gallery-action test) and
+        // immediately dismisses the chooser — proving the tap is wired through rather than a dead button.
+        rule.onNodeWithText("Choose from gallery").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Take a photo").assertDoesNotExist()
+    }
+
+    @Test fun add_tile_chooser_camera_action_dismisses_without_crashing() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Add another photo").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Take a photo").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Choose from gallery").assertDoesNotExist()
+    }
+
+    @Test fun tapping_a_tile_selects_it() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera, PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        // Default selection is the first photo.
+        rule.onNodeWithContentDescription("Photo 1 of 3").assertIsSelected()
+
+        rule.onNodeWithContentDescription("Photo 2 of 3").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Photo 2 of 3").assertIsSelected()
+        rule.onNodeWithContentDescription("Photo 1 of 3").assertIsNotSelected()
+        // The action row's visible "Photo N of M" label (a real FrText, distinct from any tile's
+        // contentDescription) confirms it re-targets the newly-selected photo too.
+        rule.onNodeWithText("Photo 2 of 3").assertExists()
+    }
+
+    @Test fun remove_deletes_the_selected_photo_and_the_strip_shrinks() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera, PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+        rule.onNodeWithText("3 / ${MealPublishPolicy.MAX_PHOTOS_PER_MEAL}").assertExists()
+
+        rule.onNodeWithContentDescription("Remove this photo").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("2 / ${MealPublishPolicy.MAX_PHOTOS_PER_MEAL}").assertExists()
+        rule.onNodeWithContentDescription("Photo 3 of 3").assertDoesNotExist()
+        rule.onNodeWithContentDescription("Photo 1 of 2").assertExists()
+        rule.onNodeWithContentDescription("Photo 2 of 2").assertExists()
+    }
+
+    @Test fun move_right_reorders_the_draft_and_keeps_the_moved_photo_selected() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Gallery))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Move photo right").performClick()
+        rule.waitForIdle()
+
+        // Verified via state (explicitly allowed alongside semantics order): the Camera photo that
+        // started at index 0 is now at index 1, and the Gallery photo slid into index 0.
+        assertEquals(listOf(PlateSource.Gallery, PlateSource.Camera), vm.state.value.photos.map { it.source })
+        // Selection follows the moved photo to its new slot.
+        assertEquals(1, vm.state.value.selectedIndex)
+    }
+
+    @Test fun strip_tile_gallery_marker_shows_only_on_the_gallery_sourced_photo() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Gallery))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        // Exactly one marker exists — onNodeWithContentDescription fails if there were zero or more
+        // than one match, so this alone proves the Camera-sourced tile carries none.
+        rule.onNodeWithContentDescription("Photo picked from the gallery").assertExists()
+    }
+
+    @Test fun strip_tile_gallery_marker_absent_when_every_photo_is_camera_sourced() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
         rule.onNodeWithContentDescription("Photo picked from the gallery").assertDoesNotExist()
     }
 

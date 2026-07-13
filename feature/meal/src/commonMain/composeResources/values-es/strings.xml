@@ -72,4 +72,13 @@
 
     <string name="meal_compose_gallery_chip">Galería</string>
     <string name="meal_compose_gallery_chip_a11y">Foto elegida de la galería</string>
+
+    <string name="meal_compose_photos_label">Fotos</string>
+    <string name="meal_compose_photo_counter">%1$d / %2$d</string>
+    <string name="meal_compose_photo_counter_a11y">%1$d de %2$d fotos</string>
+    <string name="meal_compose_photo_tile_a11y">Foto %1$d de %2$d</string>
+    <string name="meal_compose_add_photo">Añadir otra foto</string>
+    <string name="meal_compose_remove_photo_a11y">Quitar esta foto</string>
+    <string name="meal_compose_move_photo_left_a11y">Mover foto a la izquierda</string>
+    <string name="meal_compose_move_photo_right_a11y">Mover foto a la derecha</string>
 </resources>

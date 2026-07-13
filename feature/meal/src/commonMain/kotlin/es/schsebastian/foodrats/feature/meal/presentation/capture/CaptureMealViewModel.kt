@@ -5,26 +5,22 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.CaptureSource
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
-import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
-import es.schsebastian.foodrats.core.domain.meal.MealSlot
-import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoMetadata
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
-import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftCommand
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
+import es.schsebastian.foodrats.feature.meal.presentation.components.applyExifPrefill
+import es.schsebastian.foodrats.feature.meal.presentation.components.toPlateSource
 import kotlinx.coroutines.flow.first
 import kotlinx.datetime.TimeZone
-import kotlinx.datetime.toLocalDateTime
-import kotlin.time.Instant
 
 class CaptureMealViewModel(
     private val startDraft: StartMealDraftUseCase,
@@ -119,45 +115,14 @@ class CaptureMealViewModel(
     private suspend fun appendPhoto(bytes: ByteArray, source: PhotoSource, metadata: PhotoMetadata?): Boolean {
         val plateSource = source.toPlateSource()
         val r = updateDraft(UpdateMealDraftCommand.AddPhoto(Plate(bytes, source = plateSource)))
-        if (r is Result.Ok && plateSource == PlateSource.Gallery) {
+        if (r is Result.Ok && source == PhotoSource.Gallery) {
             // Best-effort EXIF prefill: a captured timestamp suggests a MealSlot, GPS
             // suggests Coordinates — only for fields the user hasn't already set. Camera
             // picks carry no metadata (live shot, nothing to prefill from). Never surfaces
-            // an error and never blocks the caller's navigation.
-            applyExifPrefill(r.value, metadata)
+            // an error and never blocks the caller's navigation. Shared with ComposePlateViewModel
+            // (see ExifPrefill.kt) — the exact same rules apply when photos are added post-capture.
+            applyExifPrefill(r.value, metadata, zone, updateDraft)
         }
         return r is Result.Ok
-    }
-
-    private fun PhotoSource.toPlateSource(): PlateSource = when (this) {
-        PhotoSource.Camera -> PlateSource.Camera
-        PhotoSource.Gallery -> PlateSource.Gallery
-    }
-
-    /**
-     * Applies the EXIF-derived slot/coordinates suggestions to [draft] (already carrying the fresh
-     * photo). Both are gated on the corresponding field being unset, so a value the user already
-     * chose is never clobbered. Every failure mode (missing metadata, an unparseable timestamp, an
-     * out-of-range coordinate pair, a `saveDraft` error) is swallowed — this is advisory prefill,
-     * never a blocking step.
-     */
-    private suspend fun applyExifPrefill(draft: MealDraft, metadata: PhotoMetadata?) {
-        if (metadata == null) return
-        if (draft.slot == null) {
-            metadata.takenAtEpochMs?.let { epochMs ->
-                runCatching { Instant.fromEpochMilliseconds(epochMs).toLocalDateTime(zone).hour }
-                    .getOrNull()
-                    ?.let { hour -> updateDraft(UpdateMealDraftCommand.SetSlot(MealSlot.forHour(hour))) }
-            }
-        }
-        if (draft.coordinates == null) {
-            val lat = metadata.latitude
-            val lon = metadata.longitude
-            if (lat != null && lon != null) {
-                (Coordinates.of(lat, lon) as? Result.Ok)?.value?.let { coords ->
-                    updateDraft(UpdateMealDraftCommand.SetCoordinates(coords))
-                }
-            }
-        }
     }
 }

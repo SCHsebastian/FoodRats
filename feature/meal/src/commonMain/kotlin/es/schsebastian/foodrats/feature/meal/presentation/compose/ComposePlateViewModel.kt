@@ -13,7 +13,6 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
 import es.schsebastian.foodrats.core.domain.meal.MealValueObjectError
-import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationPort
 import es.schsebastian.foodrats.core.domain.moderation.TextModerationVerdict
@@ -22,11 +21,16 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.result.getOrElse
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
+import es.schsebastian.foodrats.core.presentation.photopicker.PickedPhoto
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
+import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftCommand
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
+import es.schsebastian.foodrats.feature.meal.presentation.components.applyExifPrefill
+import es.schsebastian.foodrats.feature.meal.presentation.components.toPlateSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
@@ -66,15 +70,18 @@ class ComposePlateViewModel(
     init {
         analytics.track(AnalyticsEvent.MealComposerOpened)
         repository.observeDraft().onEach { draft ->
-            // PRIMARY-photo derivation (plates[0]): the composer's hero preview/gallery-marker/
-            // classification target is always the FIRST photo — Wave 3 owns the multi-photo strip
-            // UI on top of the full draft.plates list; this VM's single-photo-shaped state fields
-            // stay a faithful mirror of the primary until then.
-            val primary = draft?.plates?.firstOrNull()
+            val photos = draft?.plates ?: emptyList()
             update {
+                // selectedIndex is UI-only (never persisted to the draft); clamp it into range
+                // whenever the photo list changes size so a stale index left over from a shrink
+                // (e.g. RemovePhotoAt) never points past the end. RemovePhotoAt/MovePhoto compute
+                // the precise "sane neighbor"/"follow the moved photo" value themselves right
+                // after this same draft emission lands, so this clamp is a safety net, not the
+                // source of truth for those cases.
+                val clampedIndex = if (photos.isEmpty()) 0 else it.selectedIndex.coerceIn(0, photos.size - 1)
                 it.copy(
-                    photoBytes = primary?.photoBytes,
-                    plateSource = primary?.source ?: PlateSource.Camera,
+                    photos = photos,
+                    selectedIndex = clampedIndex,
                     coordinates = draft?.coordinates,
                     draftIngredients = draft?.ingredients ?: emptyList(),
                     detectedIngredients = draft?.detectedIngredients ?: emptyList(),
@@ -87,7 +94,7 @@ class ComposePlateViewModel(
                         descriptionTooLong = it.descriptionTooLong,
                         descriptionFlagged = it.descriptionWarning,
                         dishFlagged = it.dishWarning,
-                        photo = primary?.photoBytes,
+                        hasPhoto = photos.isNotEmpty(),
                         audience = draft?.audienceCrewIds ?: emptySet(),
                         dailyLimitReached = it.dailyLimitReached,
                     ),
@@ -100,11 +107,14 @@ class ComposePlateViewModel(
     /**
      * Runs on-device classification for a freshly captured plate. Idempotent per
      * photo content: a repeat call with the same bytes (screen re-entry) is a
-     * no-op, but a different photo (re-capture) re-classifies and overwrites any
-     * prior detection + manual edits via [UpdateMealDraftCommand.SetDetected].
+     * no-op, but a different photo (re-capture, or a reorder that changes which
+     * photo is primary) re-classifies and overwrites any prior detection + manual
+     * edits via [UpdateMealDraftCommand.SetDetected].
      *
      * Classification is advisory — failures surface a banner but never block
-     * publishing, so `canContinue` is untouched here.
+     * publishing, so `canContinue` is untouched here. Always targets the PRIMARY
+     * photo (`state.photos[0]`) — the caller (the compose screen) keys this off
+     * `state.primaryPhoto`, never the currently-selected/viewed photo.
      */
     fun onPhotoCaptured(bytes: ByteArray) {
         val fingerprint = bytes.contentHashCode()
@@ -184,7 +194,7 @@ class ComposePlateViewModel(
                 dailyLimitReached = limitReached,
                 canContinue = computeCanContinue(
                     it.dish, it.dishTooLong, it.descriptionTooLong, it.descriptionWarning, it.dishWarning,
-                    it.photoBytes, it.selectedCrewIds, limitReached,
+                    it.photos.isNotEmpty(), it.selectedCrewIds, limitReached,
                 ),
             )
         }
@@ -212,7 +222,7 @@ class ComposePlateViewModel(
                         },
                         canContinue = computeCanContinue(
                             intent.value, dishTooLong, it.descriptionTooLong, it.descriptionWarning,
-                            dishFlagged, it.photoBytes, it.selectedCrewIds, it.dailyLimitReached,
+                            dishFlagged, it.photos.isNotEmpty(), it.selectedCrewIds, it.dailyLimitReached,
                         ),
                     )
                 }
@@ -234,7 +244,7 @@ class ComposePlateViewModel(
                         },
                         canContinue = computeCanContinue(
                             it.dish, it.dishTooLong, tooLong, warning, it.dishWarning,
-                            it.photoBytes, it.selectedCrewIds, it.dailyLimitReached,
+                            it.photos.isNotEmpty(), it.selectedCrewIds, it.dailyLimitReached,
                         ),
                     )
                 }
@@ -286,6 +296,60 @@ class ComposePlateViewModel(
                 uploadCoordinator.enqueueDraftUpload()
                 emit(ComposePlateEffect.UploadEnqueued)
             }
+            is ComposePlateIntent.AddPhotos -> addPhotos(intent.photos)
+            ComposePlateIntent.PhotoPickFailed -> update { it.copy(error = MealError.Publish.PhotoUploadFailed) }
+            is ComposePlateIntent.RemovePhotoAt -> {
+                val photos = currentState.photos
+                if (intent.index in photos.indices) {
+                    val newSelected = selectedIndexAfterRemoval(intent.index, currentState.selectedIndex, photos.size - 1)
+                    updateDraft(UpdateMealDraftCommand.RemovePhotoAt(intent.index))
+                    update { it.copy(selectedIndex = newSelected) }
+                }
+            }
+            is ComposePlateIntent.MovePhoto -> {
+                val photos = currentState.photos
+                if (intent.fromIndex in photos.indices && intent.toIndex in photos.indices) {
+                    updateDraft(UpdateMealDraftCommand.MovePhoto(intent.fromIndex, intent.toIndex))
+                    // Selection follows the moved photo, so repeated move-right/-left taps keep
+                    // acting on the same photo instead of the selection staying pinned to a slot.
+                    update { it.copy(selectedIndex = intent.toIndex) }
+                }
+            }
+            is ComposePlateIntent.SelectPhoto -> {
+                if (intent.index in currentState.photos.indices) update { it.copy(selectedIndex = intent.index) }
+            }
+        }
+    }
+
+    /**
+     * Appends [picked] (in order) via [UpdateMealDraftCommand.AddPhoto], trimmed to whatever
+     * remains under [MealPublishPolicy.MAX_PHOTOS_PER_MEAL]. A trim surfaces the existing
+     * `TooManyPhotos` validation message as a transient notice through the same error banner the
+     * screen already renders for other validation failures; a full (untrimmed) add clears a
+     * lingering notice from an earlier trim without touching an unrelated error. Mirrors
+     * [es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealViewModel]'s
+     * `PhotosTaken` batch-append + EXIF-prefill rules (shared via `ExifPrefill.kt`) so a photo
+     * added here behaves identically to one added at capture time.
+     */
+    private suspend fun addPhotos(picked: List<PickedPhoto>) {
+        if (picked.isEmpty()) return
+        val capacity = (MealPublishPolicy.MAX_PHOTOS_PER_MEAL - currentState.photos.size).coerceAtLeast(0)
+        val toAdd = picked.take(capacity)
+        for (photo in toAdd) {
+            val r = updateDraft(UpdateMealDraftCommand.AddPhoto(Plate(photo.bytes, source = photo.source.toPlateSource())))
+            if (r is Result.Ok && photo.source == PhotoSource.Gallery) {
+                applyExifPrefill(r.value, photo.metadata, zone, updateDraft)
+            }
+        }
+        val trimmed = toAdd.size < picked.size
+        update {
+            it.copy(
+                error = when {
+                    trimmed -> MealError.Validation.TooManyPhotos
+                    it.error == MealError.Validation.TooManyPhotos -> null
+                    else -> it.error
+                },
+            )
         }
     }
 
@@ -370,7 +434,7 @@ class ComposePlateViewModel(
         descriptionTooLong: Boolean,
         descriptionFlagged: Boolean,
         dishFlagged: Boolean,
-        photo: ByteArray?,
+        hasPhoto: Boolean,
         audience: Set<CrewId>,
         dailyLimitReached: Boolean,
     ): Boolean = dish.isNotBlank() &&
@@ -378,7 +442,20 @@ class ComposePlateViewModel(
         !descriptionTooLong &&
         !descriptionFlagged &&
         !dishFlagged &&
-        photo != null &&
+        hasPhoto &&
         audience.isNotEmpty() &&
         !dailyLimitReached
+
+    /**
+     * The "sane neighbor" selection after removing [removedIndex] from a (now [newSize]-long)
+     * photo list. A removal before the current selection shifts it down by one so it keeps
+     * pointing at the same surviving photo; a removal AT the current selection keeps the same
+     * numeric slot (the next photo slides into it) unless that was the last slot, in which case
+     * it clamps to the new last photo; a removal after the selection leaves it untouched.
+     */
+    private fun selectedIndexAfterRemoval(removedIndex: Int, previousSelected: Int, newSize: Int): Int {
+        if (newSize <= 0) return 0
+        val shifted = if (removedIndex < previousSelected) previousSelected - 1 else previousSelected
+        return shifted.coerceIn(0, newSize - 1)
+    }
 }
