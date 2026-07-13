@@ -31,7 +31,7 @@ import { logger } from "firebase-functions/v2";
  * `mintPlateUrls`'s `buildSignedUrls`). The pure projection [buildExportArchive] assembles the
  * JSON document so the "shape + excludes-other-PII" contract is asserted directly.
  *
- * Async note (roadmap §0.4 "export may be slow"): exports are bounded — a crew is ≤ 8 members and
+ * Async note (roadmap §0.4 "export may be slow"): exports are bounded — a crew is ≤ 15 members and
  * a member authors a handful of meals/day — so this runs synchronously inside the callable and
  * returns the URL inline. There is no enqueue/push step; if exports ever grow we can split the
  * gather into a job, but the current data volume does not warrant the complexity.
@@ -289,7 +289,7 @@ export const exportMyData = onCall(
       castVotes: async (uid) => {
         // `ratings[uid]` map-key existence isn't directly queryable; iterate the crews the caller
         // belongs to and collect their own vote on any meal NOT authored by them. Crews are tiny
-        // (≤ 8 members) so this bounded per-crew meal scan is fine (mirrors deleteAccount's
+        // (≤ 15 members) so this bounded per-crew meal scan is fine (mirrors deleteAccount's
         // votedMeals). Self-authored meals are skipped — those export under `meals`.
         const crews = await db.collection("crews").where("memberIds", "array-contains", uid).get();
         const out: VoteSnap[] = [];

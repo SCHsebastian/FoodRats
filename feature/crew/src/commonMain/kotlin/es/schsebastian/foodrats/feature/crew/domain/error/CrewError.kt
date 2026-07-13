@@ -29,7 +29,7 @@ sealed interface CrewError {
 
     sealed interface Membership : CrewError {
         data object NotFound : Membership          // crew doc doesn't exist
-        data object Full : Membership              // size == 8
+        data object Full : Membership              // size == 15
         data object NotInvited : Membership        // tried to access a crew you're not in
         data object AlreadyMember : Membership
         data object NotMember : Membership         // tried to leave a crew you're not in

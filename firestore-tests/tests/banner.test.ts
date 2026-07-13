@@ -150,7 +150,7 @@ describe("firestore.rules — crew bannerPath field (C9)", () => {
   });
 });
 
-// A production-scale crew: the max 8 members, each with the rich personalization sub-fields, and
+// A production-scale crew: the max 15 members, each with the rich personalization sub-fields, and
 // every optional top-level field populated. `diff(resource.data)` deep-compares the `members` map,
 // so each rule arm that diffs is far more expensive here. The pre-refactor rule recomputed that diff
 // in EVERY owner arm (name, blindVoting, tagline, welcomeMessage, weeklyChallenge, scoreStyle,
@@ -165,7 +165,7 @@ const RICH_MEMBER = (i: number) => ({
   accentColor: "#B0561E",
 });
 const bigCrew = (owner: string) => {
-  const uids = Array.from({ length: 8 }, (_, i) => (i === 0 ? owner : `member${i}`));
+  const uids = Array.from({ length: 15 }, (_, i) => (i === 0 ? owner : `member${i}`));
   return {
     id: "big",
     name: "Production Scale Crew",
@@ -186,21 +186,21 @@ const bigCrew = (owner: string) => {
   };
 };
 
-describe("firestore.rules — owner banner write at production scale (8 members)", () => {
+describe("firestore.rules — owner banner write at production scale (15 members)", () => {
   beforeEach(async () => {
     await env.withSecurityRulesDisabled(async (ctx) => {
       await setDoc(doc(ctx.firestore(), "crews/big"), bigCrew("alice"));
     });
   });
 
-  it("the OWNER can set bannerPath on a full 8-member crew (must not hit the 1000-expr cap)", async () => {
+  it("the OWNER can set bannerPath on a full 15-member crew (must not hit the 1000-expr cap)", async () => {
     const db = env.authenticatedContext("alice").firestore();
     await assertSucceeds(
       updateDoc(doc(db, "crews/big"), { bannerPath: "crew_banners/big/banner.jpg" }),
     );
   });
 
-  it("the OWNER can set bannerPath + bannerToken on a full 8-member crew (IMAGE-2, no 1000-expr cap)", async () => {
+  it("the OWNER can set bannerPath + bannerToken on a full 15-member crew (IMAGE-2, no 1000-expr cap)", async () => {
     const db = env.authenticatedContext("alice").firestore();
     await assertSucceeds(
       updateDoc(doc(db, "crews/big"), {

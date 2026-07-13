@@ -36,16 +36,16 @@ class CrewTest {
     }
 
     @Test fun addMember_at_cap_minus_one_succeeds() {
-        val crew = crewOf(listOf("a", "b", "c", "d", "e", "f", "g"))
-        val result = crew.addMember(member("h"))
+        val crew = crewOf(listOf("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n"))
+        val result = crew.addMember(member("o"))
         assertTrue(result is Result.Ok)
         assertEquals(CrewSize.MAX, result.value.size)
     }
 
     @Test fun addMember_at_cap_fails_with_Full() {
-        val crew = crewOf(listOf("a", "b", "c", "d", "e", "f", "g", "h"))
+        val crew = crewOf(listOf("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o"))
         assertEquals(CrewSize.MAX, crew.size)
-        val result = crew.addMember(member("i"))
+        val result = crew.addMember(member("p"))
         assertEquals(Result.failure(CrewError.Membership.Full), result)
     }
 

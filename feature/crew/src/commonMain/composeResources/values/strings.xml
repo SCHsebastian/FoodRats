@@ -15,7 +15,7 @@
     <string name="crew_settings_back_cta">Back</string>
     <string name="crew_settings_members_section">MEMBERS</string>
     <string name="crew_settings_owner_badge">You're the owner</string>
-    <string name="crew_settings_members_count">%1$d of 8 members</string>
+    <string name="crew_settings_members_count">%1$d of 15 members</string>
     <string name="crew_settings_role_owner">Owner</string>
     <string name="crew_settings_role_member">Member</string>
     <string name="crew_settings_leave_cta">Leave crew</string>

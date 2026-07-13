@@ -255,7 +255,7 @@ describe("crews — full-document membership writes (real client `set()` path)",
   });
 });
 
-describe("crews — membership cap invariant (max 8)", () => {
+describe("crews — membership cap invariant (max 15)", () => {
   it("the owner can approve a member when there is room", async () => {
     await seedCrew(env, "c1", { ownerId: "alice", name: "C1", memberIds: ["alice"], members: { alice: {} } });
     const db = env.authenticatedContext("alice").firestore();
@@ -267,19 +267,19 @@ describe("crews — membership cap invariant (max 8)", () => {
     );
   });
 
-  it("approval is REJECTED when the crew is already full (8 members)", async () => {
-    const eight = ["u1", "u2", "u3", "u4", "u5", "u6", "u7", "u8"];
+  it("approval is REJECTED when the crew is already full (15 members)", async () => {
+    const fifteen = Array.from({ length: 15 }, (_, i) => `u${i + 1}`);
     await seedCrew(env, "full", {
       ownerId: "u1",
       name: "Full",
-      memberIds: eight,
-      members: Object.fromEntries(eight.map((u) => [u, {}])),
+      memberIds: fifteen,
+      members: Object.fromEntries(fifteen.map((u) => [u, {}])),
     });
     const db = env.authenticatedContext("u1").firestore();
     await assertFails(
       updateDoc(doc(db, "crews/full"), {
-        memberIds: [...eight, "u9"],
-        members: Object.fromEntries([...eight, "u9"].map((u) => [u, {}])),
+        memberIds: [...fifteen, "u16"],
+        members: Object.fromEntries([...fifteen, "u16"].map((u) => [u, {}])),
       }),
     );
   });

@@ -216,7 +216,7 @@ export const deleteAccount = onCall(
       votedMeals: async (uid) => {
         // ratings[uid] map-key existence isn't directly queryable; iterate the crews uid belongs
         // to and collect meals NOT authored by uid that carry a ratings[uid] entry. Crews are
-        // tiny (≤ 8 members) so this bounded per-crew meal scan is fine (§17 risk note).
+        // tiny (≤ 15 members) so this bounded per-crew meal scan is fine (§17 risk note).
         const crews = await db.collection("crews").where("memberIds", "array-contains", uid).get();
         const out: MealRef[] = [];
         for (const crew of crews.docs) {

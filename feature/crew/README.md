@@ -1,6 +1,6 @@
 # :feature:crew
 
-Bounded context: closed-group membership (3-8 members), invite codes, member
+Bounded context: closed-group membership (3-15 members), invite codes, member
 listing, owner-only rename/delete, the active-crew selector that gates the
 rest of the app, and the sign-out entry point.
 

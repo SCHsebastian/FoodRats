@@ -184,11 +184,11 @@ service cloud.firestore {
       // (evaluated ONCE for the whole group). Each shape is a cheap size/hasAll check.
       function membershipWrite() {
         return onlyMembershipUnchanged() && (
-          // (13) approve — owner appends exactly one member; owner stays; old members survive; ≤ 8.
+          // (13) approve — owner appends exactly one member; owner stays; old members survive; ≤ 15.
           (isOwner()
            && request.auth.uid in request.resource.data.memberIds
            && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
-           && request.resource.data.memberIds.size() <= 8
+           && request.resource.data.memberIds.size() <= 15
            && request.resource.data.memberIds.hasAll(resource.data.memberIds))
           ||
           // (4) leave — a member removes ONLY themselves; no other member evicted.

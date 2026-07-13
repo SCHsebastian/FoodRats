@@ -15,7 +15,7 @@
     <string name="crew_settings_back_cta">Atrás</string>
     <string name="crew_settings_members_section">MIEMBROS</string>
     <string name="crew_settings_owner_badge">Eres el dueño</string>
-    <string name="crew_settings_members_count">%1$d de 8 miembros</string>
+    <string name="crew_settings_members_count">%1$d de 15 miembros</string>
     <string name="crew_settings_role_owner">Dueño</string>
     <string name="crew_settings_role_member">Miembro</string>
     <string name="crew_settings_leave_cta">Salir de la cuadrilla</string>
