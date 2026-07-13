@@ -16,4 +16,4 @@ The shared MVI plumbing: `MviViewModel<State, Intent>` base (~80 LOC) and `Error
 
 ## Test
 
-No host-test task — `commonTest` runs via Android/iOS unit-test targets.
+`./gradlew :core:presentation:testAndroidHostTest` (host task enabled 2026-07-13; also runs on the iOS sim lane via `:core:presentation:iosSimulatorArm64Test`).
