@@ -61,7 +61,9 @@ class SetCrewWelcomeMessageUseCase(
         requestedBy: AccountId,
         message: String?,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.SetCrewWelcomeMessage(crewId, requestedBy, message))
-        return Result.success(Unit)
+        return when (outbox.enqueue(PendingCommand.SetCrewWelcomeMessage(crewId, requestedBy, message))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

@@ -28,5 +28,8 @@ internal fun ProfileError.toStringKey(): StringKey = when (this) {
     ProfileError.Export.Unavailable -> AuthStringKey.ExportDataErrorBackend
     ProfileError.Ai.PersistFailed -> AuthStringKey.ProfileAiPersistFailed
     ProfileError.Avatar.RemoveFailed -> AuthStringKey.ProfileRemoveAvatarError
+    ProfileError.AvatarPrepare.TooLarge -> AuthStringKey.ProfileAvatarTooLarge
+    ProfileError.AvatarPrepare.Unreadable -> AuthStringKey.ProfileAvatarUnreadable
+    ProfileError.AvatarPrepare.PickFailed -> AuthStringKey.ProfileAvatarPickFailed
     ProfileError.Accent.PersistFailed -> AuthStringKey.ProfileAccentPersistFailed
 }

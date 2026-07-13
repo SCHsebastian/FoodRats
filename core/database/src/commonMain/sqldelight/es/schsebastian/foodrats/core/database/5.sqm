@@ -1,0 +1,12 @@
+-- Migration v5 -> v6 (multi-photo meals: ordered plates). Adds the nullable `platesJson` column
+-- to `meal` so the local feed cache round-trips the ordered multi-photo list (mirrors
+-- MealDto.plates). An EXISTING (v5) install gets the column added as NULL — every row synced
+-- before multi-photo existed reads back as the legacy single-photo shape (platePath/plateSource);
+-- a fresh install runs Schema.create() at v6 and gets it from Meal.sq directly. Keep
+-- byte-consistent with Meal.sq's meal CREATE TABLE.
+--
+-- (verifyMigrations is off pre-launch — see core/database/build.gradle.kts — so there is no
+-- committed schema dump to cross-check; this file exists so an upgraded dev/CI install isn't left
+-- querying a column that doesn't exist, mirroring the 1.sqm / 2.sqm / 3.sqm / 4.sqm rationale.)
+
+ALTER TABLE meal ADD COLUMN platesJson TEXT;

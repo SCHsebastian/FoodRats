@@ -36,6 +36,9 @@ class ProfileErrorToStringKeyTest {
         ProfileError.Export.Unavailable,
         ProfileError.Ai.PersistFailed,
         ProfileError.Avatar.RemoveFailed,
+        ProfileError.AvatarPrepare.TooLarge,
+        ProfileError.AvatarPrepare.Unreadable,
+        ProfileError.AvatarPrepare.PickFailed,
         ProfileError.Accent.PersistFailed,
     )
 
@@ -43,7 +46,7 @@ class ProfileErrorToStringKeyTest {
         // Each leaf resolves without throwing (type guarantees the result IS an AuthStringKey).
         allLeaves.forEach { it.toStringKey() }
         // Guard against the list drifting from the error tree (update both when adding a leaf).
-        assertEquals(20, allLeaves.size, "ProfileError leaf count changed — update this test + the mapper")
+        assertEquals(23, allLeaves.size, "ProfileError leaf count changed — update this test + the mapper")
     }
 
     @Test fun session_signed_out_maps_to_its_own_re_auth_string() =
@@ -86,4 +89,13 @@ class ProfileErrorToStringKeyTest {
 
     @Test fun avatar_remove_failed_maps_to_dedicated_key() =
         assertEquals(AuthStringKey.ProfileRemoveAvatarError, ProfileError.Avatar.RemoveFailed.toStringKey())
+
+    @Test fun avatar_prepare_too_large_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileAvatarTooLarge, ProfileError.AvatarPrepare.TooLarge.toStringKey())
+
+    @Test fun avatar_prepare_unreadable_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileAvatarUnreadable, ProfileError.AvatarPrepare.Unreadable.toStringKey())
+
+    @Test fun avatar_prepare_pick_failed_maps_to_dedicated_key() =
+        assertEquals(AuthStringKey.ProfileAvatarPickFailed, ProfileError.AvatarPrepare.PickFailed.toStringKey())
 }

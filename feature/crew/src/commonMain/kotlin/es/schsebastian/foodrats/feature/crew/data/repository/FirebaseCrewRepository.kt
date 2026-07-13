@@ -10,8 +10,10 @@ import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyRequestedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
+import es.schsebastian.foodrats.feature.crew.data.firebase.BannerImageTooLargeException
+import es.schsebastian.foodrats.feature.crew.data.firebase.BannerImageUnreadableException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
-import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorage
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.FullException
@@ -39,7 +41,7 @@ internal class FirebaseCrewRepository(
     // SQLDelight store; the CrewSyncEngine keeps it fresh off the Firestore listener.
     private val local: CrewLocalStore,
     // C9 — crew banner Storage adapter (upload/delete). Null in tests that don't exercise banner.
-    private val bannerStorage: CrewBannerStorageDataSource? = null,
+    private val bannerStorage: CrewBannerStorage? = null,
 ) : CrewRepository {
 
     override suspend fun create(
@@ -318,8 +320,23 @@ internal class FirebaseCrewRepository(
         // produces a NEW path; we reclaim the PREVIOUS object after the pointer write lands (the old
         // fixed path overwrote in place and needed no reclaim). Read the prior path before uploading.
         val previousPath = crew.bannerPath
-        val path = runCatching { withContext(dispatchers.io) { storage.upload(crewId, bytes) } }
-            .getOrElse { return Result.failure(CrewError.Banner.UploadFailed) }
+        val path = try {
+            withContext(dispatchers.io) { storage.upload(crewId, bytes) }
+        } catch (t: Throwable) {
+            return Result.failure(
+                when (t) {
+                    // Typed compression outcomes from the datasource — the image itself is the problem.
+                    BannerImageUnreadableException -> CrewError.Banner.ImageUnreadable
+                    BannerImageTooLargeException -> CrewError.Banner.ImageTooLarge
+                    // Everything else classifies like every other backend throwable (toCrewFault via
+                    // the mapper); only the unclassifiable bucket keeps the banner-specific message.
+                    else -> when (val mapped = errorMapper.map(t)) {
+                        CrewError.Backend.Unknown -> CrewError.Banner.UploadFailed
+                        else -> mapped
+                    }
+                },
+            )
+        }
         // The token is the versioned object's filename stem: crew_banners/{crewId}/{token}.jpg.
         val token = path.substringAfterLast('/').substringBeforeLast('.')
         return when (val written = dataSource.setBannerPath(crewId, path, token)) {

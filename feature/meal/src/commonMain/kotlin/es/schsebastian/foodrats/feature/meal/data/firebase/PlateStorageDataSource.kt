@@ -36,8 +36,8 @@ internal class PlateStorageDataSource(
      * - Android actual: `typealias Data = ByteArray`
      * - iOS actual: wrapper `class Data(val data: NSData)` — bridged via [toStorageData].
      */
-    override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
-        val path = platefile(crewId, mealId)
+    override suspend fun upload(crewId: CrewId, mealId: String, index: Int, plate: Plate): String {
+        val path = platefile(crewId, mealId, index)
         // On-device downscale + re-encode before upload (roadmap §5.1) to cut upload size and
         // storage cost. Best-effort: [PlateCompressor] returns the original bytes on any failure,
         // so this never blocks a publish. The blocking codec work is acceptable here — this is the
@@ -61,10 +61,12 @@ internal class PlateStorageDataSource(
      * Deletes the blob at the deterministic upload path. Called for best-effort cleanup when
      * the publish write fails after a successful upload; the repository swallows any failure.
      */
-    override suspend fun delete(crewId: CrewId, mealId: String) {
-        storage.reference(platefile(crewId, mealId)).delete()
+    override suspend fun delete(crewId: CrewId, mealId: String, index: Int) {
+        storage.reference(platefile(crewId, mealId, index)).delete()
     }
 
-    private fun platefile(crewId: CrewId, mealId: String): String =
-        "crews/${crewId.value}/meals/${mealId}.jpg"
+    /** `index` 0 = the legacy single-photo path; `index` n >= 1 = the nth extra photo. */
+    private fun platefile(crewId: CrewId, mealId: String, index: Int): String =
+        if (index == 0) "crews/${crewId.value}/meals/${mealId}.jpg"
+        else "crews/${crewId.value}/meals/${mealId}_p$index.jpg"
 }

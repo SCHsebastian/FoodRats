@@ -21,7 +21,13 @@ data class MealDraft(
     val audienceCrewIds: Set<CrewId>,
     val authorId: AccountId,
     val day: MealDay,
-    val plate: Plate?,
+    /**
+     * Ordered photos for this draft, up to
+     * [es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy.MAX_PHOTOS_PER_MEAL]. Empty
+     * means no photo yet. Replaces the old single nullable `plate` field — see [plate] for a
+     * read-only single-photo convenience derivation ([plates]\[0\]).
+     */
+    val plates: List<Plate> = emptyList(),
     val dish: DishName?,
     val description: Description,
     val slot: MealSlot? = null,
@@ -41,4 +47,12 @@ data class MealDraft(
      * the presentation/data task must implement.
      */
     val detectedDishSlug: String? = null,
-)
+) {
+    /**
+     * The primary (first) photo — a read-only convenience derivation ([plates]\[0\]) for call
+     * sites that only care about a single cover photo (e.g. classification, the composer's hero
+     * preview). `null` when [plates] is empty. Not a constructor parameter, so it plays no part
+     * in `equals`/`hashCode`/`copy` — mutate [plates] instead.
+     */
+    val plate: Plate? get() = plates.firstOrNull()
+}

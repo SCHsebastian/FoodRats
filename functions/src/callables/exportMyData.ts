@@ -2,6 +2,7 @@ import { onCall, HttpsError, type CallableRequest } from "firebase-functions/v2/
 import { getFirestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { logger } from "firebase-functions/v2";
+import { mealPhotoPaths } from "../meal/mealPhotoPaths";
 
 /**
  * GDPR Art. 20 (data portability) — "download all my plates + data".
@@ -21,7 +22,9 @@ import { logger } from "firebase-functions/v2";
  *                caller's OWN membership entry. We do NOT dump other members' profiles or
  *                memberships (only the caller's own membership + the crew's shared identity fields).
  *   - meals:     every meal the caller authored across every crew (collectionGroup authorId==uid),
- *                each with its plate object path (and a signed image URL in `plates[]`).
+ *                each carrying its OWN photo(s) — primary + any multi-photo extras — as a
+ *                signed-URL manifest in its `plates[]`. The top-level `plates[]` stays a flattened,
+ *                de-duplicated union across every meal (kept for backward-compat).
  *   - comments:  every comment the caller authored, including on OTHER users' meals.
  *   - votes:     every score the caller cast — `ratings[uid]` entries across meals in the caller's
  *                crews (the caller's vote only, never other voters').
@@ -31,7 +34,7 @@ import { logger } from "firebase-functions/v2";
  * `mintPlateUrls`'s `buildSignedUrls`). The pure projection [buildExportArchive] assembles the
  * JSON document so the "shape + excludes-other-PII" contract is asserted directly.
  *
- * Async note (roadmap §0.4 "export may be slow"): exports are bounded — a crew is ≤ 8 members and
+ * Async note (roadmap §0.4 "export may be slow"): exports are bounded — a crew is ≤ 15 members and
  * a member authors a handful of meals/day — so this runs synchronously inside the callable and
  * returns the URL inline. There is no enqueue/push step; if exports ever grow we can split the
  * gather into a job, but the current data volume does not warrant the complexity.
@@ -57,10 +60,11 @@ export interface ExportMyDataResponse {
   expiresAtMs: number;
 }
 
-/** A meal the caller authored: its doc path + the plate object path (for the image manifest). */
+/** A meal the caller authored: its doc path + every one of its photo object paths (see
+ *  `mealPhotoPaths`) for the per-meal image manifest. */
 export interface MealSnap {
   path: string;
-  platePath: string | null;
+  platePaths: string[];
   data: Record<string, unknown>;
 }
 
@@ -93,6 +97,16 @@ export interface PlateManifestEntry {
   url: string;
 }
 
+/** An authored meal as it lands in the archive: identity + raw data, plus its OWN photos. */
+export interface MealExportEntry {
+  path: string;
+  data: Record<string, unknown>;
+  /** This meal's own photos, in order (index 0 = primary), each with a signed read URL. Empty
+   *  when none of the meal's photo paths resolved to a signed URL (e.g. an unresolvable legacy
+   *  doc) — never a missing field. */
+  plates: PlateManifestEntry[];
+}
+
 /** The assembled export archive — the JSON document uploaded to Storage + handed back. */
 export interface ExportArchive {
   schemaVersion: number;
@@ -102,10 +116,12 @@ export interface ExportArchive {
   consent: DocSnap[];
   devices: DocSnap[];
   crews: CrewSnap[];
-  meals: DocSnap[];
+  meals: MealExportEntry[];
   comments: DocSnap[];
   votes: VoteSnap[];
-  /** Signed download URLs for the caller's plate images (de-duplicated by path). */
+  /** Signed download URLs for the caller's plate images, flattened across EVERY meal's photos
+   *  (de-duplicated by path). Kept for backward-compat with the pre-multi-photo shape; see each
+   *  meal's own `plates` for per-meal grouping. */
   plates: PlateManifestEntry[];
 }
 
@@ -138,6 +154,11 @@ export interface ExportDeps {
  * Keeping this side-effect-free lets the "right shape, excludes other members' PII" contract be
  * asserted directly. `plates` is de-duplicated by object path (a plate shared to several crews is
  * one image copy per crew, so paths differ — but we de-dup defensively).
+ *
+ * Per-meal grouping (`meals[i].plates`) is a pure lookup against the just-de-duplicated flat list —
+ * no re-signing, no re-fetching. A meal's photo path missing from the flat list (shouldn't happen:
+ * the caller signs the union of every meal's `platePaths` before calling this) is silently dropped
+ * from that meal's own manifest rather than emitting an entry with a missing URL.
  */
 export function buildExportArchive(input: {
   uid: string;
@@ -158,6 +179,8 @@ export function buildExportArchive(input: {
     seenPlates.add(p.path);
     plates.push(p);
   }
+  const urlByPath = new Map(plates.map((p) => [p.path, p.url]));
+
   return {
     schemaVersion: EXPORT_SCHEMA_VERSION,
     exportedAt: new Date(input.exportedAtMs).toISOString(),
@@ -166,7 +189,13 @@ export function buildExportArchive(input: {
     consent: input.consent,
     devices: input.devices,
     crews: input.crews,
-    meals: input.meals.map((m) => ({ path: m.path, data: m.data })),
+    meals: input.meals.map((m) => ({
+      path: m.path,
+      data: m.data,
+      plates: m.platePaths
+        .map((path) => ({ path, url: urlByPath.get(path) }))
+        .filter((p): p is PlateManifestEntry => typeof p.url === "string"),
+    })),
     comments: input.comments,
     votes: input.votes,
     plates,
@@ -197,11 +226,9 @@ export async function exportMyDataCore(
     deps.castVotes(uid),
   ]);
 
-  // Sign a read URL for each authored meal's plate image (skip meals with no plate path).
-  const platePaths = meals
-    .map((m) => m.platePath)
-    .filter((p): p is string => typeof p === "string" && p !== "");
-  const uniquePlatePaths = [...new Set(platePaths)];
+  // Sign a read URL for every authored meal's photo(s) — the union of every meal's photo paths
+  // (primary + any multi-photo extras).
+  const uniquePlatePaths = [...new Set(meals.flatMap((m) => m.platePaths))];
   const signed = await Promise.all(uniquePlatePaths.map((p) => deps.signUrl(p, expiresAtMs)));
   const plates: PlateManifestEntry[] = uniquePlatePaths.map((path, i) => ({ path, url: signed[i] }));
 
@@ -228,13 +255,6 @@ export const exportMyData = onCall(
   { region: "europe-west3" },
   async (request: CallableRequest<ExportMyDataRequest>): Promise<ExportMyDataResponse> => {
     const db = getFirestore();
-
-    const platePathOf = (path: string, platePath: unknown): string | null => {
-      if (typeof platePath === "string" && platePath !== "") return platePath;
-      // Fall back to the deterministic `crews/{crewId}/meals/{mealId}.jpg` upload path.
-      const m = /^(crews\/[^/]+)\/meals\/([^/]+)$/.exec(path);
-      return m ? `${m[1]}/meals/${m[2]}.jpg` : null;
-    };
 
     const deps: ExportDeps = {
       account: async (uid) => {
@@ -276,7 +296,7 @@ export const exportMyData = onCall(
       authoredMeals: async (uid) =>
         (await db.collectionGroup("meals").where("authorId", "==", uid).get()).docs.map((d) => ({
           path: d.ref.path,
-          platePath: platePathOf(d.ref.path, d.data().platePath),
+          platePaths: mealPhotoPaths(d.ref.path, d.data()),
           data: d.data(),
         })),
 
@@ -289,7 +309,7 @@ export const exportMyData = onCall(
       castVotes: async (uid) => {
         // `ratings[uid]` map-key existence isn't directly queryable; iterate the crews the caller
         // belongs to and collect their own vote on any meal NOT authored by them. Crews are tiny
-        // (≤ 8 members) so this bounded per-crew meal scan is fine (mirrors deleteAccount's
+        // (≤ 15 members) so this bounded per-crew meal scan is fine (mirrors deleteAccount's
         // votedMeals). Self-authored meals are skipped — those export under `meals`.
         const crews = await db.collection("crews").where("memberIds", "array-contains", uid).get();
         const out: VoteSnap[] = [];

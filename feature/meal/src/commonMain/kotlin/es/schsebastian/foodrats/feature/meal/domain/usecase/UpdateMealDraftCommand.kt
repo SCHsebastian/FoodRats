@@ -9,7 +9,18 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
 sealed interface UpdateMealDraftCommand {
-    data class SetPhoto(val plate: Plate) : UpdateMealDraftCommand
+    /**
+     * Appends [plate] to the end of the draft's ordered [es.schsebastian.foodrats.feature.meal.domain.model.MealDraft.plates].
+     * Cap-guarded: [UpdateMealDraftUseCase] rejects an append past
+     * [es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy.MAX_PHOTOS_PER_MEAL] with
+     * `MealError.Validation.TooManyPhotos` rather than silently dropping it — the caller decides
+     * whether to surface that or ignore it.
+     */
+    data class AddPhoto(val plate: Plate) : UpdateMealDraftCommand
+    /** Removes the photo at [index]. Out-of-bounds is a no-op (defensive; the UI should never offer it). */
+    data class RemovePhotoAt(val index: Int) : UpdateMealDraftCommand
+    /** Moves the photo at [fromIndex] to [toIndex]. Either index out of bounds is a no-op. */
+    data class MovePhoto(val fromIndex: Int, val toIndex: Int) : UpdateMealDraftCommand
     data class SetDish(val dish: DishName) : UpdateMealDraftCommand
     data class SetDescription(val description: Description) : UpdateMealDraftCommand
     /** `null` clears the slot — it's an optional label, not required to publish. */

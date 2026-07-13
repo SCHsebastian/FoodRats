@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  FALLBACK,
   KEY_NEW_COMMENT,
   KEY_NEW_MEAL_POST,
   KEY_SOCIAL_NUDGE,
@@ -7,6 +8,15 @@ import {
   localizeNotification,
   normalizeLang,
 } from "../src/i18n/keys";
+
+describe("payload key constants — client PushPayloadMapper contract", () => {
+  it("pins the exact key strings the client matches against", () => {
+    expect(KEY_NEW_COMMENT).toBe("new_comment");
+    expect(KEY_NEW_MEAL_POST).toBe("new_meal_post");
+    expect(KEY_WEEKLY_DIGEST).toBe("weekly_digest");
+    expect(KEY_SOCIAL_NUDGE).toBe("social_nudge");
+  });
+});
 
 describe("normalizeLang", () => {
   it("maps Spanish variants to es", () => {
@@ -75,5 +85,54 @@ describe("localizeNotification — matches the client Compose-resource strings",
 
   it("returns null for an unknown key (caller falls back to English default)", () => {
     expect(localizeNotification("es", "totally_unknown", {})).toBeNull();
+    expect(localizeNotification("en", "", {})).toBeNull();
+  });
+
+  it("tolerates missing data params on new_comment (empty-string fallback, no crash)", () => {
+    expect(localizeNotification("en", KEY_NEW_COMMENT, {})).toEqual({
+      title: " commented on your ",
+      body: "Tap to read",
+    });
+  });
+
+  it("tolerates missing data params on new_meal_post (empty-string fallback)", () => {
+    expect(localizeNotification("es", KEY_NEW_MEAL_POST, {})).toEqual({
+      title: " publicó una comida",
+      body: " — pulsa para ver",
+    });
+  });
+
+  it("tolerates missing count params on social_nudge (falls back to 0 of 0)", () => {
+    expect(localizeNotification("en", KEY_SOCIAL_NUDGE, {})).toEqual({
+      title: "Your crew is eating 👀",
+      body: "0 of 0 crewmates already posted today — your turn",
+    });
+  });
+});
+
+describe("FALLBACK — English baseline for the OS lock-screen text", () => {
+  it("mirrors the EN localization for comment + meal-post + nudge templates", () => {
+    expect(FALLBACK.newCommentTitle("Ana", "paella")).toBe(
+      localizeNotification("en", KEY_NEW_COMMENT, { commenterName: "Ana", dishName: "paella" })!
+        .title,
+    );
+    expect(FALLBACK.newCommentBody).toBe("Tap to read");
+    expect(FALLBACK.newMealPostTitle("Beto")).toBe("Beto posted a meal");
+    expect(FALLBACK.newMealPostBody("tacos")).toBe("tacos — tap to view");
+    expect(FALLBACK.weeklyDigestTitle).toBe("Your week in food");
+    expect(FALLBACK.socialNudgeTitle).toBe("Your crew is eating 👀");
+    expect(FALLBACK.socialNudgeBody(3, 5)).toBe(
+      localizeNotification("en", KEY_SOCIAL_NUDGE, { postedCount: "3", crewSize: "5" })!.body,
+    );
+  });
+
+  it("joins weekly-digest award parts with the ' · ' separator", () => {
+    expect(FALLBACK.weeklyDigestBody(["Best meal: X (4.5★)", "Best cook: Ana"])).toBe(
+      "Best meal: X (4.5★) · Best cook: Ana",
+    );
+  });
+
+  it("produces an empty digest body for zero award parts", () => {
+    expect(FALLBACK.weeklyDigestBody([])).toBe("");
   });
 });

@@ -1,6 +1,6 @@
 # :feature:crew
 
-Closed-group membership bounded context (3–8 members): create / join-by-code / leave, invite codes, member list, owner-only rename / delete, active-crew selector, sign-out entry point.
+Closed-group membership bounded context (3–15 members): create / join-by-code / leave, invite codes, member list, owner-only rename / delete, active-crew selector, sign-out entry point.
 
 ## Authoritative references
 

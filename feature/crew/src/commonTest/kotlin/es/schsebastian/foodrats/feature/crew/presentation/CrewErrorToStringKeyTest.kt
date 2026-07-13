@@ -39,4 +39,7 @@ class CrewErrorToStringKeyTest {
     // C9 — crew banner
     @Test fun maps_banner_upload_failed() = assertEquals(CrewStringKey.ErrorBannerUploadFailed, CrewError.Banner.UploadFailed.toStringKey())
     @Test fun maps_banner_delete_failed() = assertEquals(CrewStringKey.ErrorBannerDeleteFailed, CrewError.Banner.DeleteFailed.toStringKey())
+    @Test fun maps_banner_image_too_large() = assertEquals(CrewStringKey.ErrorBannerImageTooLarge, CrewError.Banner.ImageTooLarge.toStringKey())
+    @Test fun maps_banner_image_unreadable() = assertEquals(CrewStringKey.ErrorBannerImageUnreadable, CrewError.Banner.ImageUnreadable.toStringKey())
+    @Test fun maps_banner_pick_failed() = assertEquals(CrewStringKey.ErrorBannerPickFailed, CrewError.Banner.PickFailed.toStringKey())
 }

@@ -32,6 +32,12 @@ import { rgbaToThumbHash } from "thumbhash";
  * we log and return — no thumbnail is left orphaned because we only upload it AFTER resolving the
  * meal id from the path; an orphaned `_thumb.jpg` is reclaimed by `onMealDeleted`'s prefix-aware
  * cleanup the same way the original is.
+ *
+ * Multi-photo meals (up to `MealPublishPolicy.MAX_PHOTOS_PER_MEAL`) upload extra photos as
+ * `crews/{crewId}/meals/{mealId}_p{n}.jpg` (n = 1..9) alongside the primary `{mealId}.jpg`. This
+ * pipeline is PRIMARY-ONLY: an extra-photo object is classified out in `classifyPlateObject` (see
+ * [EXTRA_PHOTO_SUFFIX]) and skipped before any Firestore read — only the primary ever gets a
+ * thumbnail/ThumbHash.
  */
 
 /**
@@ -48,6 +54,17 @@ export const THUMBNAIL_METADATA_MARKER = "thumbnailGenerated";
 
 /** Suffix that turns a plate object name into its thumbnail object name. */
 export const THUMBNAIL_SUFFIX = "_thumb";
+
+/**
+ * Suffix pattern for a multi-photo meal's NON-primary photo objects
+ * (`crews/{crewId}/meals/{mealId}_p{n}.jpg`, n = 1..9 — client-side cap is
+ * `MealPublishPolicy.MAX_PHOTOS_PER_MEAL - 1`). This pipeline is PRIMARY-ONLY (thumbnails +
+ * ThumbHash are generated only for the primary photo — see module doc), so an extra-photo object
+ * must be classified out entirely rather than misread as its own mealId: there is no
+ * `crews/{c}/meals/{mealId}_p1` doc, and reading `{mealId}_p1` as a mealId would target the WRONG
+ * (nonexistent) document instead of the real meal.
+ */
+export const EXTRA_PHOTO_SUFFIX = /_p\d+$/;
 
 /** Max edge (px) of the generated thumbnail. The feed never needs more than this. */
 export const THUMBNAIL_MAX_EDGE = 512;
@@ -109,6 +126,9 @@ export function classifyPlateObject(
   const fileStem = match[2];
   // The thumbnail we write lives under the same prefix with the same `.jpg` extension — skip it.
   if (fileStem.endsWith(THUMBNAIL_SUFFIX)) return null;
+  // A multi-photo meal's non-primary photo — skip entirely (no thumbnail, no ThumbHash, no doc
+  // read/write). See [EXTRA_PHOTO_SUFFIX].
+  if (EXTRA_PHOTO_SUFFIX.test(fileStem)) return null;
 
   const mealId = fileStem;
   return {

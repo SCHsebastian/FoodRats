@@ -7,12 +7,16 @@ import es.schsebastian.foodrats.core.domain.outbox.OutboxCommandHandler
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntry
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryStatus
+import es.schsebastian.foodrats.core.domain.outbox.OutboxError
 import es.schsebastian.foodrats.core.domain.outbox.OutboxExecuteResult
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.outbox.OutboxRetryPolicy
 import es.schsebastian.foodrats.core.domain.outbox.OutboxTransitions
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.core.domain.telemetry.NoopCrashReporter
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -76,6 +80,10 @@ class OutboxRunner(
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
     // Default Noop keeps direct-construction tests green; real binding injected per platform.
     private val scheduler: OutboxDrainScheduler = NoopOutboxDrainScheduler(),
+    // Reports outbox status-write failures that would otherwise silently desync the queue (a
+    // failed markFailed/updateStatus write is swallowed by nothing else — see reportIfErr).
+    // Default Noop keeps direct-construction tests green; real binding injected per platform.
+    private val crashReporter: CrashReporter = NoopCrashReporter,
 ) {
     private val mutex = Mutex()
 
@@ -110,6 +118,10 @@ class OutboxRunner(
      */
     @OptIn(FlowPreview::class)
     fun start(scope: CoroutineScope) {
+        // BUG FIX: reconcile any Uploading row left over from a previous process/coroutine death
+        // BEFORE wiring the drain triggers below. See [reconcileStaleUploading].
+        scope.launch { reconcileStaleUploading() }
+
         // false→true edge of connectivity (the monitor conflates to the latest value; we drain on
         // every `true`). Debounced to coalesce rapid-toggle bursts (H6).
         connectivity.isOnline()
@@ -134,6 +146,50 @@ class OutboxRunner(
 
     private fun launchDrain(scope: CoroutineScope) {
         scope.launch { runOnce(scope) }
+    }
+
+    /**
+     * BUG FIX (orphaned Uploading entries): [attempt]'s CAS claim ([OutboxPort.markUploading])
+     * durably transitions a row Pending→Uploading BEFORE calling `handler.execute()`. If the
+     * process dies, or the coroutine carrying that call is cancelled, mid-execute — the row is
+     * left Uploading forever: drains only ever pick up [OutboxEntryStatus.Pending] entries
+     * ([runOnce]'s `filter { it.status is OutboxEntryStatus.Pending }`), so the write is never
+     * retried and the sync indicator counts it as outstanding permanently.
+     *
+     * Called once from [start], before the connectivity/pending-count triggers are wired: by
+     * construction there is no drain in flight yet at that point (this is the first thing the
+     * single runner instance does), so any [OutboxEntryStatus.Uploading] row found now is
+     * necessarily a hangover from a previous process — the single-claim-owner invariant (H1)
+     * makes flipping it back to Pending here safe. Runs under [mutex] so it can never race a
+     * concurrently-launched [runOnce] (e.g. a fast connectivity trigger firing before this
+     * coroutine is scheduled).
+     */
+    private suspend fun reconcileStaleUploading() = mutex.withLock {
+        val stale = outbox.observePending().first().filter { it.status is OutboxEntryStatus.Uploading }
+        for (entry in stale) {
+            FrLog.w("Outbox") {
+                "reconciling stale Uploading row ${entry.id.value} (${entry.command::class.simpleName}) back to Pending at startup"
+            }
+            reportIfErr("reconcileStaleUploading", outbox.updateStatus(entry.id, OutboxEntryStatus.Pending))
+        }
+    }
+
+    /**
+     * Report a failed outbox status write (BUG: previously ignored) so it is at least
+     * observable — a silently-failed [OutboxPort.markFailed] / [OutboxPort.updateStatus] write
+     * desyncs the queue (e.g. an entry stays claimed as Uploading, or keeps a stale attempt
+     * count) with nothing surfacing it. `:core:data` must not add user-facing surface for this,
+     * so this only forwards to the injected [CrashReporter] — the existing failure-reporting
+     * pattern in this class.
+     */
+    private fun reportIfErr(op: String, result: Result<*, OutboxError>) {
+        if (result is Result.Err) {
+            FrLog.w("Outbox") { "outbox status write '$op' failed: ${result.error}" }
+            crashReporter.recordNonFatal(
+                IllegalStateException("Outbox status write '$op' failed: ${result.error}"),
+                tag = "Outbox",
+            )
+        }
     }
 
     /**
@@ -231,11 +287,37 @@ class OutboxRunner(
             // of the meal-publish queue's MealUploadStatus.Failed.errorKey, which IS mapped to a
             // StringKey by the BackgroundMealUploadCoordinator for the upload-queue error banner.
             FrLog.w("Outbox") { "no handler for ${entry.command::class.simpleName}; terminal" }
-            outbox.markFailed(entry.id, errorKey = "outbox.error.noHandler", retryable = false)
+            reportIfErr(
+                "markFailed-noHandler",
+                outbox.markFailed(entry.id, errorKey = "outbox.error.noHandler", retryable = false),
+            )
             return AttemptOutcome.Terminal
         }
 
-        return when (val r = handler.execute(entry.command)) {
+        // BUG FIX (orphaned Uploading entries, part 2): the CAS claim above already committed
+        // this entry to Uploading. If `handler.execute` throws or is cancelled — process death,
+        // a lifecycle-scoped `scope` being torn down mid-call, an unexpected feature-handler bug
+        // — the row must not be left claimed forever. A thrown [CancellationException] restores
+        // the row to Pending and rethrows (never swallow cancellation); any other unexpected
+        // [Throwable] is treated as a retryable failure so it flows through the exact same
+        // budget/backoff machinery as [OutboxExecuteResult.Retryable] below, rather than leaking
+        // the claim.
+        val result = try {
+            handler.execute(entry.command)
+        } catch (e: CancellationException) {
+            FrLog.w("Outbox", e) {
+                "handler.execute cancelled for ${entry.command::class.simpleName}; restoring ${entry.id.value} to Pending"
+            }
+            reportIfErr("updateStatus-cancelledRestore", outbox.updateStatus(entry.id, OutboxEntryStatus.Pending))
+            throw e
+        } catch (e: Throwable) {
+            FrLog.w("Outbox", e) {
+                "handler.execute threw for ${entry.command::class.simpleName}; treating as retryable rather than leaking the Uploading claim"
+            }
+            OutboxExecuteResult.Retryable(errorKey = "outbox.error.handlerThrew")
+        }
+
+        return when (val r = result) {
             // Both mean "the goal is met" — reconcile by removing. AlreadyApplied is the
             // idempotency/dedup path (e.g. the comment doc already exists, the member was
             // already removed), never a failure.
@@ -248,7 +330,7 @@ class OutboxRunner(
             is OutboxExecuteResult.Retryable -> {
                 val newAttemptCount = entry.attemptCount + 1
                 val failed = OutboxTransitions.onFailure(newAttemptCount, r.errorKey, policy)
-                outbox.markFailed(entry.id, failed.errorKey, failed.retryable)
+                reportIfErr("markFailed-retryable", outbox.markFailed(entry.id, failed.errorKey, failed.retryable))
                 if (failed.retryable) {
                     val delayMs = policy.nextDelay(newAttemptCount)?.inWholeMilliseconds
                     if (scope != null && delayMs != null) {
@@ -266,7 +348,10 @@ class OutboxRunner(
                         FrLog.d("Outbox") {
                             "${entry.command::class.simpleName} failed (attempt $newAttemptCount); re-armed to Pending for WM backoff"
                         }
-                        outbox.updateStatus(entry.id, OutboxEntryStatus.Pending)
+                        reportIfErr(
+                            "updateStatus-workerRearm",
+                            outbox.updateStatus(entry.id, OutboxEntryStatus.Pending),
+                        )
                     }
                     AttemptOutcome.RetryableReArmed
                 } else {
@@ -279,7 +364,7 @@ class OutboxRunner(
             // terminal immediately, regardless of the attempt budget. Notify the handler.
             is OutboxExecuteResult.Terminal -> {
                 FrLog.w("Outbox") { "${entry.command::class.simpleName} terminal: ${r.errorKey}" }
-                outbox.markFailed(entry.id, r.errorKey, retryable = false)
+                reportIfErr("markFailed-terminal", outbox.markFailed(entry.id, r.errorKey, retryable = false))
                 handler.onTerminal(entry.command)
                 AttemptOutcome.Terminal
             }
@@ -290,7 +375,7 @@ class OutboxRunner(
     private fun scheduleRetry(scope: CoroutineScope, id: OutboxEntryId, delayMs: Long) {
         scope.launch {
             delay(delayMs)
-            outbox.updateStatus(id, OutboxEntryStatus.Pending)
+            reportIfErr("updateStatus-scheduledRetry", outbox.updateStatus(id, OutboxEntryStatus.Pending))
         }
     }
 

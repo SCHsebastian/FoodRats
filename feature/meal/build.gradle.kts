@@ -34,8 +34,6 @@ kotlin {
             implementation(libs.bundles.feature.ui)
             implementation(libs.bundles.firebase.gitlive)
             implementation(libs.bundles.kotlinx.common)
-            implementation(libs.okio)
-            implementation(libs.imagepickerkmp)
             // SQLDelight runtime types (FoodRatsDatabase/MealQueries) + the asFlow/mapToList
             // reactive extensions the MealLocalStore reads return. :core:database exposes these
             // `implementation` (not api), so feature/meal declares them directly.
@@ -51,6 +49,9 @@ kotlin {
         val androidHostTest by getting {
             dependencies {
                 implementation(libs.bundles.feature.hosttest)
+                // Robolectric + Compose UI test harness (CaptureMealScreen / ComposePlateScreen
+                // behavior tests) — same stack :feature:feed / :feature:ingredient use.
+                implementation(libs.bundles.compose.hosttest)
                 // In-memory JVM SQLDelight driver for MealLocalStore + repository read-path host tests.
                 implementation(libs.sqldelight.jvm.driver)
                 // In-memory DataStore harness for FirebaseMealRepository's MealDraftLocalStore dep

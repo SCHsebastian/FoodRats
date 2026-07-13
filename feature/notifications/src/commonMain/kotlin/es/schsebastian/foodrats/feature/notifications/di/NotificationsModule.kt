@@ -16,7 +16,6 @@ import es.schsebastian.foodrats.feature.notifications.domain.bus.NotificationBus
 import es.schsebastian.foodrats.feature.notifications.domain.repository.DeviceTokenRepository
 import es.schsebastian.foodrats.feature.notifications.domain.repository.EffectiveLanguageTag
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.DeregisterDeviceTokenUseCase
-import es.schsebastian.foodrats.feature.notifications.domain.usecase.HandleIncomingPushUseCase
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.RegisterDeviceTokenUseCase
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.RequestNotificationPermissionUseCase
 import es.schsebastian.foodrats.feature.notifications.domain.usecase.ScheduleDailyInactivityReminderUseCase
@@ -46,7 +45,6 @@ val notificationsModule = module {
     factoryOf(::DeregisterDeviceTokenUseCase)
     factoryOf(::RequestNotificationPermissionUseCase)
     factory { ScheduleDailyInactivityReminderUseCase(get(), get(), TimeZone.currentSystemDefault()) }
-    factoryOf(::HandleIncomingPushUseCase)
 
     // Cross-feature ports — :feature:auth and :feature:meal call these instead of importing
     // this feature directly.

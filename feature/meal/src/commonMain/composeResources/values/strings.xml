@@ -5,7 +5,6 @@
     <string name="meal_compose_slot_label">Slot</string>
     <string name="meal_compose_dish_label">Dish</string>
     <string name="meal_compose_description_label">Description</string>
-    <string name="meal_publish_title">Review and publish</string>
 
     <string name="meal_ingredients_classifying">Analyzing ingredients…</string>
     <string name="meal_classifier_no_detection">Couldn't detect ingredients</string>
@@ -29,7 +28,7 @@
     <string name="meal_error_validation_no_photo">Snap a photo first.</string>
     <string name="meal_error_validation_description_too_long">Description is too long (max %1$d characters).</string>
     <string name="meal_error_validation_too_many_ingredients">Too many ingredients (max 30).</string>
-    <string name="meal_compose_description_placeholder">What did you eat? (optional)</string>
+    <string name="meal_error_validation_too_many_photos">A meal can have at most 10 photos.</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
     <string name="meal_compose_dish_counter">%1$d / %2$d</string>
     <string name="meal_compose_counter_a11y">%1$d of %2$d characters used</string>
@@ -65,4 +64,21 @@
     <string name="meal_capture_no_crews">Join or create a crew before posting a meal.</string>
     <string name="meal_capture_draft_failed">Couldn't start your meal. Try again.</string>
     <string name="meal_capture_photo_failed">Couldn't save your photo. Try again.</string>
+    <string name="meal_capture_saving_plate">Saving your plate…</string>
+    <string name="meal_capture_fallback_title">Add your plate photo</string>
+    <string name="meal_capture_failed_title">Couldn't get that photo. Try again or pick one from your gallery.</string>
+    <string name="meal_capture_retry_camera">Take a photo</string>
+    <string name="meal_capture_choose_gallery">Choose from gallery</string>
+
+    <string name="meal_compose_gallery_chip">Gallery</string>
+    <string name="meal_compose_gallery_chip_a11y">Photo picked from the gallery</string>
+
+    <string name="meal_compose_photos_label">Photos</string>
+    <string name="meal_compose_photo_counter">%1$d / %2$d</string>
+    <string name="meal_compose_photo_counter_a11y">%1$d of %2$d photos</string>
+    <string name="meal_compose_photo_tile_a11y">Photo %1$d of %2$d</string>
+    <string name="meal_compose_add_photo">Add another photo</string>
+    <string name="meal_compose_remove_photo_a11y">Remove this photo</string>
+    <string name="meal_compose_move_photo_left_a11y">Move photo left</string>
+    <string name="meal_compose_move_photo_right_a11y">Move photo right</string>
 </resources>

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -20,6 +21,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -28,9 +30,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
+import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
@@ -71,17 +72,6 @@ fun AchievementsScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
 
-    // Celebration overlay driven by the Unlocked effect (spec §8.3). Holds the most recent
-    // unlocked title key; cleared when the user dismisses.
-    var celebration by remember { mutableStateOf<AchievementStringKey?>(null) }
-    LaunchedEffect(vm) {
-        vm.effects.collect { effect ->
-            when (effect) {
-                is AchievementsEffect.Unlocked -> celebration = effect.titleKey
-            }
-        }
-    }
-
     Box(modifier = Modifier.fillMaxSize()) {
         FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft, dim = 0.32f, scrim = FrScrimStyle.Even)
 
@@ -92,11 +82,12 @@ fun AchievementsScreen(
                 }
             }
             when {
-                state.statuses.isEmpty() && state.error == null && !state.isLoading -> EmptyState()
                 state.statuses.isNotEmpty() -> BadgeGrid(
                     statuses = state.statuses,
                     onSelect = { vm.onIntent(AchievementsIntent.SelectBadge(it.achievement.id)) },
                 )
+                state.isLoading -> BadgeGridSkeleton()
+                state.error == null -> EmptyState()
                 else -> Unit
             }
         }
@@ -131,11 +122,13 @@ fun AchievementsScreen(
         }
     }
 
-    celebration?.let { titleKey ->
+    // BUG FIX (2026-07-12): celebration is read straight from state (survives rotation/process
+    // recreation — see AchievementsState.celebration's kdoc) instead of a plain Composable `remember`.
+    state.celebration?.let { titleKey ->
         // Bespoke firework celebration (see AchievementCelebration.kt) — tap anywhere to dismiss.
         AchievementUnlockedCelebration(
             titleKey = titleKey,
-            onDismiss = { celebration = null },
+            onDismiss = { vm.onIntent(AchievementsIntent.DismissCelebration) },
         )
     }
 }
@@ -182,6 +175,50 @@ private fun BadgeGrid(
         }
     }
 }
+
+/**
+ * Initial-load skeleton mirroring [BadgeGrid]'s silhouette (same 3-column grid, paddings and
+ * spacings): a section-header shimmer strip followed by badge-shaped placeholders — shimmering
+ * 56 dp disc + two text lines, matching `FrAchievementCard`. Shown while statuses are still
+ * loading so first paint reveals the grid shape instead of a blank floor.
+ */
+@Composable
+private fun BadgeGridSkeleton() {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier.fillMaxSize().frSafeHorizontalPadding().frContentWidth(Breakpoints.contentMax),
+        contentPadding = PaddingValues(Spacing.lg),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
+        verticalArrangement = Arrangement.spacedBy(Spacing.lg),
+        userScrollEnabled = false,
+    ) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            FrShimmerBox(
+                modifier = Modifier.padding(top = Spacing.sm).size(width = 96.dp, height = 12.dp),
+                shape = RoundedCornerShape(Radius.sm),
+            )
+        }
+        items(SKELETON_BADGE_COUNT) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(Spacing.xs),
+            ) {
+                FrShimmerBox(modifier = Modifier.size(56.dp), shape = CircleShape)
+                FrShimmerBox(
+                    modifier = Modifier.fillMaxWidth(0.8f).height(12.dp),
+                    shape = RoundedCornerShape(Radius.sm),
+                )
+                FrShimmerBox(
+                    modifier = Modifier.fillMaxWidth(0.55f).height(10.dp),
+                    shape = RoundedCornerShape(Radius.sm),
+                )
+            }
+        }
+    }
+}
+
+/** Three full skeleton rows — enough to read as "a badge grid is coming" without filling the screen. */
+private const val SKELETON_BADGE_COUNT = 9
 
 /**
  * Bespoke staggered entrance: each badge springs up from 65 % scale + 36 dp below with a soft

@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -124,12 +125,26 @@ class DraftQueueLocalStore(
         val retryable: Boolean = false,   // failed only
     )
 
+    /** One photo entry in [MealDraftJson.plates] — mirrors [Plate]. */
+    @Serializable
+    private data class PlateJson(
+        val photoBase64: String,
+        val overlayApplied: Boolean = false,
+        // PlateSource.key(); null reads back as camera.
+        val source: String? = null,
+    )
+
     @Serializable
     private data class MealDraftJson(
         val audienceCrewIds: List<String> = emptyList(),
         val authorId: String,
         val dayIso: String,
         val zoneId: String,
+        // Ordered photos. Written by every current enqueue; an entry queued before multi-photo
+        // existed has this empty and is read from the legacy fields below instead.
+        val plates: List<PlateJson> = emptyList(),
+        // Legacy single-photo fields — READ FALLBACK ONLY (an entry queued before `plates`
+        // existed). Never written going forward — only [plates] is written.
         val photoBase64: String? = null,
         val overlayApplied: Boolean = false,
         val dish: String? = null,
@@ -141,6 +156,8 @@ class DraftQueueLocalStore(
         val detectedIngredients: List<String> = emptyList(),
         val detectedDishSlug: String? = null,
         val classifierVersion: String? = null,
+        // PlateSource.key(); null (entries queued before the marker existed) reads back as camera.
+        val plateSource: String? = null,
     )
 
     private fun QueuedDraft.toJson() = QueuedDraftJson(
@@ -164,8 +181,10 @@ class DraftQueueLocalStore(
         authorId = authorId.value,
         dayIso = day.date.toString(),
         zoneId = day.zone.id,
-        photoBase64 = plate?.photoBytes?.let { Base64.encode(it) },
-        overlayApplied = plate?.overlayApplied ?: false,
+        // WRITE only the new array field — the legacy photoBase64/overlayApplied/plateSource
+        // fields are read-fallback only and stay at their defaults (skipped by the default
+        // Json config, which doesn't serialize default-valued fields).
+        plates = plates.map { PlateJson(Base64.encode(it.photoBytes), it.overlayApplied, it.source.key()) },
         dish = dish?.value,
         description = description.value,
         slot = slot?.key(),
@@ -205,7 +224,11 @@ class DraftQueueLocalStore(
         val acc = AccountId.of(authorId).getOrElse { return null }
         val day = runCatching { LocalDate.parse(dayIso) }.getOrNull() ?: return null
         val zone = runCatching { TimeZone.of(zoneId) }.getOrNull() ?: TimeZone.UTC
-        val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied) }
+        // The new array format wins when present; an entry queued before `plates` existed (empty
+        // array) falls back to the legacy single photoBase64 field as a 1-item list.
+        val platesList = plates.ifEmpty {
+            photoBase64?.let { listOf(PlateJson(it, overlayApplied, plateSource)) }.orEmpty()
+        }.map { Plate(Base64.decode(it.photoBase64), it.overlayApplied, PlateSource.fromKey(it.source)) }
         val d = dish?.let { DishName.of(it).getOrElse { return null } }
         val desc = Description.of(description).getOrElse { Description.EMPTY }
         val coords = if (latitude != null && longitude != null) {
@@ -215,7 +238,7 @@ class DraftQueueLocalStore(
             audienceCrewIds = audience,
             authorId = acc,
             day = MealDay(day, zone),
-            plate = plate,
+            plates = platesList,
             dish = d,
             description = desc,
             slot = slot?.let(MealSlot::fromKey),

@@ -30,7 +30,16 @@ CREATE TABLE meal (
     kind               TEXT    NOT NULL DEFAULT 'solo',
     -- Optimistic-write bookkeeping (P3b): 1 while the write is in flight / unconfirmed by the server.
     pending            INTEGER NOT NULL DEFAULT 0,
-    idempotencyKey     TEXT
+    idempotencyKey     TEXT,
+    -- Plate-photo provenance: PlateSource.key() ("camera"/"gallery"). NULL (rows synced before the
+    -- marker existed) reads back as camera, mirroring MealDto.plateSource.
+    plateSource        TEXT,
+    -- Ordered multi-photo mirror of platePath/plateSource: JSON-encoded List<PlateEntryDto>
+    -- (mirrors MealDto.plates). NULL for a legacy/single-photo row — readers fall back to
+    -- platePath/plateSource for the one photo. LAST on purpose: 5.sqm's ALTER TABLE ADD COLUMN
+    -- appends, and SQLDelight's SELECT * mappers read by index — fresh (Schema.create) and
+    -- migrated installs must agree on column order.
+    platesJson         TEXT
 );
 
 CREATE INDEX meal_crew_day ON meal(crewId, dayKey);
@@ -77,11 +86,11 @@ upsertMeal:
 INSERT OR REPLACE INTO meal(
     mealId, crewId, authorId, authorName, dayKey, slot, platePath, thumbnailPath, thumbHash,
     dishName, description, latitude, longitude, publishedAtEpochMs, ratingSum, voterCount,
-    ingredientsCsv, classifierVersion, cuisine, kind, pending, idempotencyKey
+    ingredientsCsv, classifierVersion, cuisine, kind, plateSource, platesJson, pending, idempotencyKey
 ) VALUES (
     :mealId, :crewId, :authorId, :authorName, :dayKey, :slot, :platePath, :thumbnailPath, :thumbHash,
     :dishName, :description, :latitude, :longitude, :publishedAtEpochMs, :ratingSum, :voterCount,
-    :ingredientsCsv, :classifierVersion, :cuisine, :kind, :pending, :idempotencyKey
+    :ingredientsCsv, :classifierVersion, :cuisine, :kind, :plateSource, :platesJson, :pending, :idempotencyKey
 );
 
 -- Meal ids currently held for a crew within a day-key range — used by the sync engine to compute

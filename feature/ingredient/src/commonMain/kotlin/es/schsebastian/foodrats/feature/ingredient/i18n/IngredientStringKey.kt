@@ -17,12 +17,10 @@ import foodrats.feature.ingredient.generated.resources.ingredient_category_spice
 import foodrats.feature.ingredient.generated.resources.ingredient_category_sweet
 import foodrats.feature.ingredient.generated.resources.ingredient_category_vegetable
 import foodrats.feature.ingredient.generated.resources.ingredient_detected_section_title
-import foodrats.feature.ingredient.generated.resources.ingredient_retry_action
 import foodrats.feature.ingredient.generated.resources.ingredient_search_hint
 import foodrats.feature.ingredient.generated.resources.ingredient_select_done
 import foodrats.feature.ingredient.generated.resources.ingredient_select_title
 import foodrats.feature.ingredient.generated.resources.ingredient_selection_full
-import foodrats.feature.ingredient.generated.resources.ingredient_unknown
 import org.jetbrains.compose.resources.StringResource
 
 enum class IngredientStringKey(override val resourceId: StringResource) : StringKey {
@@ -33,8 +31,6 @@ enum class IngredientStringKey(override val resourceId: StringResource) : String
     SelectionFull(Res.string.ingredient_selection_full),
     CatalogLoadFailed(Res.string.ingredient_catalog_load_failed),
     CatalogEmpty(Res.string.ingredient_catalog_empty),
-    RetryAction(Res.string.ingredient_retry_action),
-    UnknownIngredient(Res.string.ingredient_unknown),
     CategoryVegetable(Res.string.ingredient_category_vegetable),
     CategoryFruit(Res.string.ingredient_category_fruit),
     CategoryMeat(Res.string.ingredient_category_meat),

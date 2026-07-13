@@ -61,7 +61,9 @@ class SetCrewTaglineUseCase(
         requestedBy: AccountId,
         tagline: String?,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.SetCrewTagline(crewId, requestedBy, tagline))
-        return Result.success(Unit)
+        return when (outbox.enqueue(PendingCommand.SetCrewTagline(crewId, requestedBy, tagline))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

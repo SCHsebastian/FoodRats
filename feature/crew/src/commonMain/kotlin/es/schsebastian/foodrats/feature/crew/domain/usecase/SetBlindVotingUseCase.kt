@@ -50,7 +50,9 @@ class SetBlindVotingUseCase(
         requestedBy: AccountId,
         enabled: Boolean,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.SetBlindVoting(crewId, requestedBy, enabled))
-        return Result.success(Unit)
+        return when (outbox.enqueue(PendingCommand.SetBlindVoting(crewId, requestedBy, enabled))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

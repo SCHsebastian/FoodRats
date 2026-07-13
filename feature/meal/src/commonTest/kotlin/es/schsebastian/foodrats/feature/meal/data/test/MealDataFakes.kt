@@ -94,21 +94,29 @@ internal class FakeMealFirestore : MealFirestore {
  */
 internal class FakePlateStorage : PlateStorage {
     var uploadFault: Throwable? = null
+    /**
+     * When null (default), [uploadFault] fires unconditionally on the first `upload` call —
+     * the original all-or-nothing behavior every single-photo test relies on. When set, it
+     * fires only for that specific 0-based plate [index]; other indices upload normally — lets
+     * a test model a mid-batch upload failure (e.g. plate 3 of 3 fails, plates 0/1 already landed).
+     */
+    var uploadFaultAtIndex: Int? = null
     var deleteFault: Throwable? = null
     var url: String = "https://fake/plate.jpg"
 
-    data class UploadCall(val crewId: CrewId, val mealId: String, val plate: Plate)
+    data class UploadCall(val crewId: CrewId, val mealId: String, val index: Int, val plate: Plate)
     val uploads = mutableListOf<UploadCall>()
-    val deletes = mutableListOf<Pair<CrewId, String>>()
+    val deletes = mutableListOf<Triple<CrewId, String, Int>>()
 
-    override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
-        uploads += UploadCall(crewId, mealId, plate)
-        uploadFault?.let { throw it }
-        return url
+    /** Index 0 returns the (single-photo-compatible) [url] verbatim; extras get an index suffix. */
+    override suspend fun upload(crewId: CrewId, mealId: String, index: Int, plate: Plate): String {
+        uploads += UploadCall(crewId, mealId, index, plate)
+        uploadFault?.let { fault -> if (uploadFaultAtIndex == null || uploadFaultAtIndex == index) throw fault }
+        return if (index == 0) url else "$url.p$index"
     }
 
-    override suspend fun delete(crewId: CrewId, mealId: String) {
-        deletes += crewId to mealId
+    override suspend fun delete(crewId: CrewId, mealId: String, index: Int) {
+        deletes += Triple(crewId, mealId, index)
         deleteFault?.let { throw it }
     }
 }
@@ -127,10 +135,15 @@ internal class FakeMealAuthorIdentity(
 /**
  * Behavioral fake for [ImageUrlPort]. By default resolves each requested path to a
  * deterministic `signed://{path}` URL so callers can assert resolution; set [fail] to model
- * a backend failure (the resolver contract degrades to "no URL" on the consumer side).
+ * a backend failure (the resolver contract degrades to "no URL" on the consumer side), or
+ * populate [missingPaths] to model a PARTIAL resolution failure — those specific paths are
+ * omitted from the returned map while every other requested path still resolves (e.g. an
+ * extra plate whose object never finished uploading server-side, while the primary resolves
+ * fine).
  */
 internal class FakeImageUrlPort(
     var fail: Boolean = false,
+    var missingPaths: Set<String> = emptySet(),
 ) : ImageUrlPort {
     val calls = mutableListOf<Pair<CrewId, List<String>>>()
 
@@ -140,7 +153,7 @@ internal class FakeImageUrlPort(
     ): Result<Map<String, String>, ImageUrlError> {
         calls += crewId to paths
         if (fail) return Result.failure(ImageUrlError.Unavailable)
-        return Result.success(paths.associateWith { "signed://$it" })
+        return Result.success(paths.filterNot { it in missingPaths }.associateWith { "signed://$it" })
     }
 
     override suspend fun resolveOwnAvatar(path: String): Result<String?, ImageUrlError> {

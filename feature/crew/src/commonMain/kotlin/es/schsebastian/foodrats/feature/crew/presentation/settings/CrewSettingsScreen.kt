@@ -84,20 +84,18 @@ import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
+import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.LeaveCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
-import io.github.ismoy.imagepickerkmp.domain.extensions.asSource
-import io.github.ismoy.imagepickerkmp.domain.models.MimeType
-import io.github.ismoy.imagepickerkmp.features.imagepicker.model.ImagePickerResult
-import io.github.ismoy.imagepickerkmp.features.imagepicker.ui.rememberImagePickerKMP
 import kotlinx.coroutines.delay
-import kotlinx.io.readByteArray
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -391,7 +389,9 @@ fun CrewSettingsScreen(
                                 cacheKey = if (crew.bannerToken != null) crew.bannerPath.orEmpty() else "",
                                 focalY = crew.bannerFocalY,
                                 saving = state.isSavingBanner,
+                                bannerError = state.bannerError,
                                 onPicked = { vm.onIntent(CrewSettingsIntent.BannerPicked(it)) },
+                                onPickFailed = { vm.onIntent(CrewSettingsIntent.BannerPickFailed) },
                                 onRemove = { vm.onIntent(CrewSettingsIntent.RemoveBanner) },
                                 onReposition = { vm.onIntent(CrewSettingsIntent.RepositionBanner(it)) },
                                 modifier = Modifier.frRiseIn(delayMillis = 180),
@@ -887,25 +887,21 @@ private fun BannerSection(
     cacheKey: String,
     focalY: Float,
     saving: Boolean,
+    bannerError: CrewError?,
     onPicked: (ByteArray) -> Unit,
+    onPickFailed: () -> Unit,
     onRemove: () -> Unit,
     onReposition: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val picker = rememberImagePickerKMP()
-    LaunchedEffect(picker.result) {
-        when (val r = picker.result) {
-            is ImagePickerResult.Success -> {
-                val photo = r.first ?: return@LaunchedEffect
-                val bytes = photo.asSource().readByteArray()
-                onPicked(bytes)
-                picker.reset()
-            }
-            is ImagePickerResult.Error,
-            is ImagePickerResult.Dismissed,
-            is ImagePickerResult.Loading,
-            is ImagePickerResult.Idle,
-            -> Unit
+    val picker = rememberPhotoPicker { result ->
+        when (result) {
+            is PhotoPickResult.Picked -> onPicked(result.bytes)
+            // Defensive only — the banner picker always launches single-pick; Wave 3 owns any
+            // real multi-photo banner UX. Treat the first photo exactly like a single Picked.
+            is PhotoPickResult.PickedMultiple -> onPicked(result.photos.first().bytes)
+            PhotoPickResult.Cancelled -> Unit
+            is PhotoPickResult.Failed -> onPickFailed()
         }
     }
 
@@ -924,10 +920,14 @@ private fun BannerSection(
                 color = StructuralColors.onMedia.copy(alpha = 0.6f),
             )
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             FrGlassButton(
                 label = resolve(CrewStringKey.SettingsBannerChange),
-                onClick = { picker.launchGallery(allowMultiple = false, mimeTypes = listOf(MimeType.IMAGE_JPEG, MimeType.IMAGE_PNG)) },
+                onClick = { picker.launchGallery() },
                 tone = FrButtonTone.Glass,
                 leadingIcon = FrIcons.GalleryImport,
                 enabled = !saving,
@@ -942,6 +942,15 @@ private fun BannerSection(
                     modifier = Modifier.weight(1f),
                 )
             }
+            // In-flight upload/delete indicator — same shape as the score-style row's spinner.
+            if (saving) {
+                FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+            }
+        }
+        // Banner-specific failure rendered IN the section (the shared bottom banner is off-screen
+        // from here and is cleared by every crew listener re-emission).
+        bannerError?.let { err ->
+            DangerBanner(text = resolve(err.toStringKey()))
         }
     }
 }

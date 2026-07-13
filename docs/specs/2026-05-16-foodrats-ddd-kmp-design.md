@@ -10,7 +10,7 @@ This spec **does not** implement the architecture — it defines the structure a
 
 ## 1. Overview
 
-FoodRats is a Kotlin Multiplatform Mobile app (Android + iOS via Compose Multiplatform) for closed-group daily meal sharing — 3-8 friends/family/colleagues post one photo per day with an overlay (date, food tag, 1-10 rating, dish name) and see group statistics (streaks, most-eaten dish, variety). The tone is social and lightly competitive, explicitly anti-calorie-tracking.
+FoodRats is a Kotlin Multiplatform Mobile app (Android + iOS via Compose Multiplatform) for closed-group daily meal sharing — 3-15 friends/family/colleagues (raised from 8, 2026-07-13) post one photo per day with an overlay (date, food tag, 1-10 rating, dish name) and see group statistics (streaks, most-eaten dish, variety). The tone is social and lightly competitive, explicitly anti-calorie-tracking.
 
 **MVP backend:** Firebase (Auth, Firestore, Storage, Messaging) via GitLive KMP bindings. Designed so the data layer can be swapped to a server we own later, without touching the domain.
 
@@ -25,7 +25,7 @@ FoodRats is a Kotlin Multiplatform Mobile app (Android + iOS via Compose Multipl
 | Context | Responsibility | Key concepts |
 |---|---|---|
 | **Identity** | Sign in/up/out, current user profile | `Account`, `Session`, `Handle`, `DisplayName` |
-| **Crew** | The closed group; invites, membership | `Crew`, `CrewCode`, `Member`, `Invite`, `CrewSize` (invariant: 3-8) |
+| **Crew** | The closed group; invites, membership | `Crew`, `CrewCode`, `Member`, `Invite`, `CrewSize` (invariant: 3-15, raised from 8, 2026-07-13) |
 | **Meal** | Daily post; capture, draft, publish | `Meal`, `Plate`, `Dish`, `FoodTag`, `Score`, `MealDay` |
 | **Feed** | A crew's day-window of meals to view | `FeedEntry`, `FeedDay`, `FeedQuery` |
 | **Stats** | Group analytics, streaks, comparisons | `Streak`, `Roundup`, `DishTally`, `VarietyScore`, `Leaderboard` |

@@ -10,7 +10,9 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealKind
+import es.schsebastian.foodrats.core.domain.meal.MealPlate
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -70,6 +72,17 @@ fun MealDto.toDomain(): Result<Meal, MealError.Read> {
             // unparseable cuisine just becomes "unstamped", never a read failure.
             cuisine = cuisine?.let { CuisineSlug.of(it).getOrNull() },
             kind = mealKind,
+            // Tolerant provenance read: null (legacy) or an unknown key collapses to Camera.
+            plateSource = PlateSource.fromKey(plateSource),
+            // Entries with a null/blank path are dropped (never surfaced as a blank-URL photo);
+            // if none survive this is a legacy single-photo doc — Meal.plates stays empty and
+            // readers fall back to photoUrl/plateSource above. A well-formed doc's plates[0]
+            // always mirrors platePath/plateSource by construction (see FirebaseMealRepository.publish
+            // and MealDto.from), so no defensive override is needed here.
+            plates = plates.mapNotNull { entry ->
+                val path = entry.path?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                MealPlate(photoUrl = path, source = PlateSource.fromKey(entry.source))
+            },
         )
     )
 }
@@ -107,7 +120,18 @@ fun MealDto.Companion.from(meal: Meal): MealDto = MealDto(
     classifierVersion = meal.classifierVersion,
     cuisine = meal.cuisine?.value,
     kind = meal.kind.toDiscriminator(),
+    plateSource = meal.plateSource.key(),
+    // Deterministic per-index paths — NEVER meal.plates[i].photoUrl, which at this layer may hold
+    // a (resolved, expiring) signed URL. Index 0 uses the exact same formula as the top-level
+    // platePath above, so plates[0].path == platePath by construction when meal.plates is non-empty.
+    plates = meal.plates.mapIndexed { index, plate ->
+        PlateEntryDto(path = platePathForIndex(meal.crewId.value, meal.id.value, index), source = plate.source.key())
+    },
 )
+
+/** `crews/{crewId}/meals/{mealId}.jpg` for the primary photo (index 0); `..._p{n}.jpg` for extras. */
+private fun platePathForIndex(crewId: String, mealId: String, index: Int): String =
+    if (index == 0) "crews/$crewId/meals/$mealId.jpg" else "crews/$crewId/meals/${mealId}_p$index.jpg"
 
 /** Drops blanks and any slug that fails [IngredientSlug]'s invariants; unknown-but-valid slugs survive. */
 private fun List<String>.toSlugs(): List<IngredientSlug> =

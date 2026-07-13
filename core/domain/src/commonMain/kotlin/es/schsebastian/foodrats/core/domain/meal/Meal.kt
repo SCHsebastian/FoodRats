@@ -53,4 +53,29 @@ data class Meal(
      * multi-author kind (spec §4.2 / §5).
      */
     val kind: MealKind = MealKind.Solo,
-)
+    /**
+     * How the plate photo was captured — see [PlateSource]. Defaults to [PlateSource.Camera] so
+     * every existing construction site compiles unchanged and legacy meals (published before this
+     * marker existed) read as camera-sourced.
+     */
+    val plateSource: PlateSource = PlateSource.Camera,
+    /**
+     * Ordered photos for this meal, up to [MealPublishPolicy.MAX_PHOTOS_PER_MEAL]. Contract:
+     * - **Empty** — the legacy single-photo shape. Every meal published before this field existed
+     *   (and any construction site that hasn't been migrated) has an empty list; readers fall back
+     *   to [photoUrl]/[thumbnailUrl]/[plateSource] for the one photo.
+     * - **Non-empty** — the full ordered list of this meal's photos. `plates[0]` always mirrors
+     *   [photoUrl]/[plateSource] (the first photo doubles as the "cover" photo those fields
+     *   surface), so single-photo readers that only know about [photoUrl] still see the right
+     *   cover image.
+     *
+     * Defaults to empty so every existing construction site compiles unchanged.
+     */
+    val plates: List<MealPlate> = emptyList(),
+) {
+    /**
+     * Total photo count for this meal. Legacy/empty [plates] is always exactly 1 (the single
+     * [photoUrl] every meal has); non-empty [plates] reports its own size. Never 0.
+     */
+    val photoCount: Int get() = if (plates.isEmpty()) 1 else plates.size
+}

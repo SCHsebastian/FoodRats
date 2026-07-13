@@ -59,6 +59,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
 import es.schsebastian.foodrats.core.designsystem.structural.FrMetric
 import es.schsebastian.foodrats.core.designsystem.structural.FrMetricSize
 import es.schsebastian.foodrats.core.designsystem.structural.FrMicroRow
+import es.schsebastian.foodrats.core.designsystem.structural.FrPagerDots
 import es.schsebastian.foodrats.core.designsystem.structural.FrScoreDisc
 import es.schsebastian.foodrats.core.designsystem.structural.FrScoreTone
 import es.schsebastian.foodrats.core.designsystem.structural.FrScrim
@@ -90,6 +91,7 @@ internal fun structuralStories(): List<CatalogEntry> = listOf(
     CatalogEntry("structural.scoredisc", CatalogGroup.STRUCTURAL, "FrScoreDisc", "Score badge — Olive / Hot / Muted") { ScoreDiscStory() },
     CatalogEntry("structural.avatar", CatalogGroup.STRUCTURAL, "FrGlassAvatar", "Avatar with accent rings + sizes") { AvatarStory2() },
     CatalogEntry("structural.chip", CatalogGroup.STRUCTURAL, "FrStructuralChip", "Frosted pill — selected / Ember / compact") { ChipStory2() },
+    CatalogEntry("structural.pagerdots", CatalogGroup.STRUCTURAL, "FrPagerDots", "Page-position dots over a media floor") { PagerDotsStory() },
     CatalogEntry("structural.flame", CatalogGroup.STRUCTURAL, "FrFlameBadge", "Streak flame pill") { FlameStory() },
     CatalogEntry("structural.button", CatalogGroup.STRUCTURAL, "FrGlassButton", "Primary / Ember / Glass / Ghost / Danger") { ButtonStory2() },
     CatalogEntry("structural.circlebutton", CatalogGroup.STRUCTURAL, "FrGlassCircleButton", "Dark frosted floating chrome (back / close)") { CircleButtonStory() },
@@ -306,6 +308,25 @@ private fun ChipStory2() {
                 FrStructuralChip("HOT 9", tone = FrChipTone.Ember)
                 FrStructuralChip("NEW", compact = true)
             }
+        }
+    }
+}
+
+@Composable
+private fun PagerDotsStory() {
+    CatalogScene("Over a media floor", lockedTheme = ThemeMode.Dark) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(96.dp)
+                .clip(RoundedCornerShape(Radius.md)),
+        ) {
+            FrMediaFloor(brush = StructuralColors.dishRamen, blur = StructuralBlur.None, dim = 0.2f, scrim = null)
+            FrPagerDots(
+                pageCount = 4,
+                currentPage = 1,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(Spacing.sm),
+            )
         }
     }
 }

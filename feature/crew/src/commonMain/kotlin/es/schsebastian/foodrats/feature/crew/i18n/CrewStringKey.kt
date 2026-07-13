@@ -32,15 +32,11 @@ import foodrats.feature.crew.generated.resources.crew_member_deleted
 import foodrats.feature.crew.generated.resources.crew_member_unnamed
 import foodrats.feature.crew.generated.resources.crew_picker_brand_name
 import foodrats.feature.crew.generated.resources.crew_picker_create_cta
-import foodrats.feature.crew.generated.resources.crew_picker_crew_button
 import foodrats.feature.crew.generated.resources.crew_picker_crews_label
-import foodrats.feature.crew.generated.resources.crew_picker_empty_headline
 import foodrats.feature.crew.generated.resources.crew_picker_empty_subtext
 import foodrats.feature.crew.generated.resources.crew_picker_hero_subtitle
 import foodrats.feature.crew.generated.resources.crew_picker_join_cta
 import foodrats.feature.crew.generated.resources.crew_picker_profile_cta
-import foodrats.feature.crew.generated.resources.crew_picker_title
-import foodrats.feature.crew.generated.resources.crew_settings_actions_section
 import foodrats.feature.crew.generated.resources.crew_settings_back_cta
 import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_description
 import foodrats.feature.crew.generated.resources.crew_settings_blind_voting_label
@@ -70,16 +66,17 @@ import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_tit
 import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_body
 import foodrats.feature.crew.generated.resources.crew_error_banner_upload_failed
 import foodrats.feature.crew.generated.resources.crew_error_banner_delete_failed
+import foodrats.feature.crew.generated.resources.crew_error_banner_image_too_large
+import foodrats.feature.crew.generated.resources.crew_error_banner_image_unreadable
+import foodrats.feature.crew.generated.resources.crew_error_banner_pick_failed
 import foodrats.feature.crew.generated.resources.crew_settings_banner_reposition_hint
 import foodrats.feature.crew.generated.resources.crew_settings_banner_preview_cd
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
-import foodrats.feature.crew.generated.resources.crew_settings_crew_section
 import foodrats.feature.crew.generated.resources.crew_settings_danger_section
 import foodrats.feature.crew.generated.resources.crew_settings_delete_body
 import foodrats.feature.crew.generated.resources.crew_settings_delete_confirm
 import foodrats.feature.crew.generated.resources.crew_settings_delete_cta
 import foodrats.feature.crew.generated.resources.crew_settings_delete_title
-import foodrats.feature.crew.generated.resources.crew_settings_invite_code
 import foodrats.feature.crew.generated.resources.crew_settings_leave_cta
 import foodrats.feature.crew.generated.resources.crew_settings_leave_title
 import foodrats.feature.crew.generated.resources.crew_settings_leave_body
@@ -94,9 +91,6 @@ import foodrats.feature.crew.generated.resources.crew_settings_remove_member_con
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_confirm_title
 import foodrats.feature.crew.generated.resources.crew_settings_remove_member_cta
 import foodrats.feature.crew.generated.resources.crew_settings_save
-import foodrats.feature.crew.generated.resources.crew_settings_copy_cta
-import foodrats.feature.crew.generated.resources.crew_settings_share
-import foodrats.feature.crew.generated.resources.crew_settings_share_code
 import foodrats.feature.crew.generated.resources.crew_settings_share_link
 import foodrats.feature.crew.generated.resources.crew_settings_show_qr
 import foodrats.feature.crew.generated.resources.crew_settings_qr_caption
@@ -137,15 +131,12 @@ import foodrats.feature.crew.generated.resources.crew_error_transfer_target_not_
 import org.jetbrains.compose.resources.StringResource
 
 enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
-    PickerTitle(Res.string.crew_picker_title),
-    PickerEmptyHeadline(Res.string.crew_picker_empty_headline),
     PickerEmptySubtext(Res.string.crew_picker_empty_subtext),
     PickerHeroSubtitle(Res.string.crew_picker_hero_subtitle),
     PickerCreateCta(Res.string.crew_picker_create_cta),
     PickerJoinCta(Res.string.crew_picker_join_cta),
     PickerBrandName(Res.string.crew_picker_brand_name),
     PickerCrewsLabel(Res.string.crew_picker_crews_label),
-    PickerCrewButton(Res.string.crew_picker_crew_button),
     PickerProfileCta(Res.string.crew_picker_profile_cta),
     CreateNameLabel(Res.string.crew_create_name_label),
     CreateSubmit(Res.string.crew_create_submit),
@@ -158,13 +149,10 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsMembersCount(Res.string.crew_settings_members_count),
     SettingsRoleOwner(Res.string.crew_settings_role_owner),
     SettingsRoleMember(Res.string.crew_settings_role_member),
-    SettingsShareCode(Res.string.crew_settings_share_code),
     SettingsLeaveCta(Res.string.crew_settings_leave_cta),
     SettingsLeaveTitle(Res.string.crew_settings_leave_title),
     SettingsLeaveBody(Res.string.crew_settings_leave_body),
     SettingsLeaveConfirm(Res.string.crew_settings_leave_confirm),
-    SettingsCrewSection(Res.string.crew_settings_crew_section),
-    SettingsActionsSection(Res.string.crew_settings_actions_section),
     SettingsDangerSection(Res.string.crew_settings_danger_section),
     SettingsCrewNameLabel(Res.string.crew_settings_crew_name_label),
     SettingsSave(Res.string.crew_settings_save),
@@ -176,13 +164,10 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsTaglinePlaceholder(Res.string.crew_settings_tagline_placeholder),
     ErrorValidationTaglineTooLong(Res.string.crew_error_validation_tagline_too_long),
     SettingsSwitchCrew(Res.string.crew_settings_switch_crew),
-    SettingsInviteCode(Res.string.crew_settings_invite_code),
-    SettingsShare(Res.string.crew_settings_share),
     SettingsShareLink(Res.string.crew_settings_share_link),
     SettingsShowQr(Res.string.crew_settings_show_qr),
     SettingsQrCaption(Res.string.crew_settings_qr_caption),
     SettingsQrClose(Res.string.crew_settings_qr_close),
-    SettingsCopyCta(Res.string.crew_settings_copy_cta),
     InviteShareMessage(Res.string.crew_invite_share_message),
     InviteEyebrow(Res.string.crew_invite_eyebrow),
     InviteSubtitle(Res.string.crew_invite_subtitle),
@@ -246,6 +231,9 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsBannerPreviewCd(Res.string.crew_settings_banner_preview_cd),
     ErrorBannerUploadFailed(Res.string.crew_error_banner_upload_failed),
     ErrorBannerDeleteFailed(Res.string.crew_error_banner_delete_failed),
+    ErrorBannerImageTooLarge(Res.string.crew_error_banner_image_too_large),
+    ErrorBannerImageUnreadable(Res.string.crew_error_banner_image_unreadable),
+    ErrorBannerPickFailed(Res.string.crew_error_banner_pick_failed),
     // U5b — badge labels rendered next to the member display name on crew member rows.
     BadgeFirst(Res.string.crew_badge_first),
     BadgeTen(Res.string.crew_badge_ten),

@@ -36,4 +36,7 @@ fun CrewError.toStringKey(): CrewStringKey = when (this) {
     CrewError.Transfer.CannotTransferToSelf -> CrewStringKey.ErrorTransferCannotTransferToSelf
     CrewError.Banner.UploadFailed           -> CrewStringKey.ErrorBannerUploadFailed
     CrewError.Banner.DeleteFailed           -> CrewStringKey.ErrorBannerDeleteFailed
+    CrewError.Banner.ImageTooLarge          -> CrewStringKey.ErrorBannerImageTooLarge
+    CrewError.Banner.ImageUnreadable        -> CrewStringKey.ErrorBannerImageUnreadable
+    CrewError.Banner.PickFailed             -> CrewStringKey.ErrorBannerPickFailed
 }

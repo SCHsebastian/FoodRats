@@ -13,9 +13,13 @@ import es.schsebastian.foodrats.core.domain.meal.MealUploadQueueSnapshot
 import es.schsebastian.foodrats.core.domain.meal.MealUploadStatus
 import es.schsebastian.foodrats.core.domain.meal.QueuedUploadActionsPort
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.telemetry.CrashReporter
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.core.domain.telemetry.NoopCrashReporter
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.feature.meal.data.queue.DraftRetryRunner
 import es.schsebastian.foodrats.feature.meal.data.queue.uploadErrorKey
+import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.QueuedDraftStatus
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
@@ -30,6 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.launchIn
@@ -65,6 +70,7 @@ class BackgroundMealUploadCoordinator(
     private val scheduler: MealUploadScheduler,
     private val dispatchers: DispatcherProvider,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
+    private val crashReporter: CrashReporter = NoopCrashReporter,
     // Offline-first durable queue (roadmap §5.2). Nullable so existing direct
     // construction in tests stays green; when bound, the coordinator durably
     // enqueues each draft and lets [retryRunner] drain it on connectivity-return,
@@ -97,6 +103,17 @@ class BackgroundMealUploadCoordinator(
     private val mutex = Mutex()
     private var inFlight: Job? = null
 
+    /**
+     * A [DraftQueuePort.enqueue] write failure (durable-queue DataStore IO) never produces a
+     * [QueuedDraft] entry — there's nothing for [deriveStatus] to see — so without this the
+     * meal would silently vanish: the composer has already navigated away on
+     * [MealUploadCoordinator.enqueueDraftUpload]'s fire-and-forget contract, and no error is
+     * ever surfaced. Sticky until the next successful enqueue (or the queue itself reports
+     * real work), combined into [status] below so it isn't clobbered by an unrelated queue
+     * re-emission.
+     */
+    private val enqueueFailure = MutableStateFlow<MealUploadStatus.Failed?>(null)
+
     init {
         val q = draftQueue
         if (q != null) {
@@ -104,8 +121,9 @@ class BackgroundMealUploadCoordinator(
             // flow so the Feed "uploading" indicator works without this coordinator publishing.
             // The retry runner drains persisted Pending entries on launch (process-death resume)
             // and on connectivity-return — no legacy single-flag resume needed.
-            q.observe()
-                .map(::deriveStatus)
+            combine(q.observe().map(::deriveStatus), enqueueFailure) { queueStatus, failure ->
+                if (failure != null && queueStatus == MealUploadStatus.Idle) failure else queueStatus
+            }
                 .distinctUntilChanged()
                 .onEach { _status.value = it }
                 .launchIn(scope)
@@ -132,7 +150,22 @@ class BackgroundMealUploadCoordinator(
                 // offline safety net, so no separate in-process publish + pending flag is needed —
                 // running both is what previously let the loser delete the live plate.
                 val draft = runCatching { repository.observeDraft().first() }.getOrNull()
-                if (draft != null) q.enqueue(draft)
+                if (draft != null) {
+                    when (val r = q.enqueue(draft)) {
+                        is Result.Ok -> enqueueFailure.value = null
+                        is Result.Err -> {
+                            // The durable write failed — the draft never entered the queue, so
+                            // DraftRetryRunner will never see it and no retry will ever happen.
+                            // Surface it as a terminal failure (see [enqueueFailure]) and report
+                            // it: this is otherwise a totally silent dropped meal.
+                            crashReporter.recordNonFatal(
+                                IllegalStateException("draft enqueue failed: ${r.error}"),
+                                tag = "meal-upload-enqueue",
+                            )
+                            enqueueFailure.value = MealUploadStatus.Failed(errorKey = r.error.uploadErrorKey())
+                        }
+                    }
+                }
                 scheduler.schedule()
             } else {
                 // Fallback: in-process single-flag upload (no durable queue bound, e.g. unit tests).
@@ -151,9 +184,18 @@ class BackgroundMealUploadCoordinator(
      * (roadmap §5.2 feed-top-bar retry). Flipping the status to Pending makes the
      * [retryRunner]'s queue-observer trigger a fresh drain pass; the deterministic
      * `MealId` means the re-publish overwrites, never duplicates.
+     *
+     * Also covers an [enqueueFailure] (the durable *write itself* failed, so the draft
+     * never became a queue entry in the first place — there's nothing here to re-arm).
+     * `repository`'s draft is untouched by a failed enqueue, so re-running
+     * [enqueueDraftUpload] retries against the same still-composed draft.
      */
     override suspend fun retryFailed() {
         val q = draftQueue ?: return
+        if (enqueueFailure.value != null) {
+            enqueueFailure.value = null
+            enqueueDraftUpload()
+        }
         val terminal = runCatching { q.observe().first() }.getOrNull().orEmpty()
             .filter { (it.status as? QueuedDraftStatus.Failed)?.retryable == false }
         for (entry in terminal) {
@@ -163,10 +205,12 @@ class BackgroundMealUploadCoordinator(
 
     /**
      * Drop every terminal `Failed(retryable = false)` entry from the queue — the
-     * user has abandoned those plates (roadmap §5.2 feed-top-bar dismiss).
+     * user has abandoned those plates (roadmap §5.2 feed-top-bar dismiss). Also
+     * clears a pending [enqueueFailure] (the user abandoned that plate too).
      */
     override suspend fun dismissFailed() {
         val q = draftQueue ?: return
+        enqueueFailure.value = null
         val terminal = runCatching { q.observe().first() }.getOrNull().orEmpty()
             .filter { (it.status as? QueuedDraftStatus.Failed)?.retryable == false }
         for (entry in terminal) {
@@ -243,7 +287,8 @@ class BackgroundMealUploadCoordinator(
                         ingredientCount = draft.ingredients.size,
                         hasDescription = draft.description.value.isNotBlank(),
                         audienceCrewCount = draft.audienceCrewIds.size,
-                        source = PublishSource.UNKNOWN,
+                        source = draft.plates.toPublishSource(),
+                        photoCount = draft.plates.size,
                     ),
                 )
                 // No local streak nudge is scheduled here. The server-side `streakNudge` Cloud
@@ -275,4 +320,17 @@ class BackgroundMealUploadCoordinator(
         const val ERROR_UNKNOWN = "meal.upload.unknown"
         const val ERROR_NO_DRAFT = "meal.upload.no_draft"
     }
+}
+
+/**
+ * Maps the draft's PRIMARY (first) photo provenance onto the `meal_published` [PublishSource]
+ * dimension. An empty list can't happen on a successful publish (the repo rejects photo-less
+ * drafts), but the draft type allows it — UNKNOWN keeps the mapping total without inventing a
+ * source. A mixed camera+gallery multi-photo draft is stamped by its primary photo only — the
+ * dimension is single-valued and Wave 3's per-photo markers carry the rest.
+ */
+internal fun List<Plate>.toPublishSource(): PublishSource = when (firstOrNull()?.source) {
+    PlateSource.Camera -> PublishSource.CAMERA
+    PlateSource.Gallery -> PublishSource.GALLERY
+    null -> PublishSource.UNKNOWN
 }

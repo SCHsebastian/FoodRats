@@ -40,10 +40,6 @@ kotlin {
             // `implementation` (not api), so feature/crew declares them directly.
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines.ext)
-            // Avatar picker (gallery) — same KMP picker the meal feature uses.
-            // Mirror feature:meal: if iOS link breaks on material-icons-extended, add the same
-            // exclude noted in CLAUDE.md.
-            implementation(libs.imagepickerkmp)
             // AsyncImage for rendering avatar URLs.
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)

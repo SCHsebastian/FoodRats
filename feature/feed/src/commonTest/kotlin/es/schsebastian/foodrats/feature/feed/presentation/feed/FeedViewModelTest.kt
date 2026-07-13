@@ -324,12 +324,45 @@ class FeedViewModelTest {
     @Test fun rate_meal_records_call_with_correct_score() = runTest {
         val ratingPort = FakeMealRatingPort()
         val vm = buildVm(ratingPort = ratingPort)
-        vm.onIntent(FeedIntent.RateMeal("meal-1", 4))
+        vm.onIntent(FeedIntent.RateMeal("meal-1", 4, "c-1"))
         runCurrent()
         assertEquals(1, ratingPort.calls.size)
         assertEquals("meal-1", ratingPort.calls.first().mealId)
         assertEquals(4, ratingPort.calls.first().score)
         assertEquals("u-viewer", ratingPort.calls.first().raterId)
+    }
+
+    /**
+     * Regression test (BUG 2, 2026-07-12): rate() must target the crewId CARRIED ON THE INTENT
+     * (sourced from the tapped tile's FeedMealUi.crewId at map time), not whatever
+     * ActiveCrewProvider reports at the moment the intent is handled. Simulates the user switching
+     * the active crew AFTER the tile was rendered/tapped but before the intent is processed.
+     */
+    @Test fun rate_meal_targets_the_intents_crewId_even_after_the_active_crew_switches() = runTest {
+        val ratingPort = FakeMealRatingPort()
+        val active = FakeActiveCrewProvider(initial = crew)
+        val vm = buildVm(ratingPort = ratingPort, active = active)
+        // The active crew changes to a DIFFERENT crew before the intent is handled.
+        active.set((CrewId.of("c-2") as Result.Ok).value)
+        vm.onIntent(FeedIntent.RateMeal("meal-1", 4, "c-1"))
+        runCurrent()
+        assertEquals(1, ratingPort.calls.size)
+        assertEquals("c-1", ratingPort.calls.first().crewId, "must use the intent's crewId, not the now-active c-2")
+    }
+
+    /**
+     * Regression test (BUG 2, 2026-07-12): react() must target the intent's crewId too — see
+     * [rate_meal_targets_the_intents_crewId_even_after_the_active_crew_switches].
+     */
+    @Test fun react_meal_targets_the_intents_crewId_even_after_the_active_crew_switches() = runTest {
+        val reactionPort = FakeMealReactionPort()
+        val active = FakeActiveCrewProvider(initial = crew)
+        val vm = buildVm(reactionPort = reactionPort, active = active)
+        active.set((CrewId.of("c-2") as Result.Ok).value)
+        vm.onIntent(FeedIntent.ReactMeal("m-1", "c-1"))
+        runCurrent()
+        assertEquals(1, reactionPort.toggleCalls.size)
+        assertEquals("c-1", reactionPort.toggleCalls.first().crewId, "must use the intent's crewId, not the now-active c-2")
     }
 
     @Test fun blind_voting_off_author_shown_in_state() = runTest {
@@ -375,7 +408,7 @@ class FeedViewModelTest {
         val vm = buildVm(ratingPort = ratingPort)
         vm.state.test {
             skipItems(1)
-            vm.onIntent(FeedIntent.RateMeal("meal-1", 5))
+            vm.onIntent(FeedIntent.RateMeal("meal-1", 5, "c-1"))
             val s = expectMostRecentItem()
             assertEquals(RateError.CannotRateOwnMeal, s.rateError)
             cancelAndIgnoreRemainingEvents()
@@ -411,7 +444,7 @@ class FeedViewModelTest {
         val vm = buildVm(reactionPort = reactionPort, analytics = analytics)
         vm.state.test {
             skipItems(1)
-            vm.onIntent(FeedIntent.ReactMeal("m-1"))
+            vm.onIntent(FeedIntent.ReactMeal("m-1", "c-1"))
             runCurrent()
             val s = expectMostRecentItem()
             val meal = s.meals.single { it.mealId == "m-1" }
@@ -447,7 +480,7 @@ class FeedViewModelTest {
             // Viewer already reacted -> starts highlighted with count 1.
             var s = expectMostRecentItem()
             assertTrue(s.meals.single { it.mealId == "m-1" }.viewerReacted)
-            vm.onIntent(FeedIntent.ReactMeal("m-1"))
+            vm.onIntent(FeedIntent.ReactMeal("m-1", "c-1"))
             runCurrent()
             s = expectMostRecentItem()
             val meal = s.meals.single { it.mealId == "m-1" }
@@ -467,7 +500,7 @@ class FeedViewModelTest {
         val outbox = RecordingOutboxPort()
         val vm = buildVm(reactionPort = reactionPort, outbox = outbox)
         runCurrent()
-        vm.onIntent(FeedIntent.ReactMeal("m-1"))
+        vm.onIntent(FeedIntent.ReactMeal("m-1", "c-1"))
         runCurrent()
         assertEquals(null, vm.state.value.reactError, "connectivity failure is parked, not surfaced")
         assertEquals(1, outbox.enqueued.size)
@@ -489,7 +522,7 @@ class FeedViewModelTest {
         )
         vm.state.test {
             skipItems(1)
-            vm.onIntent(FeedIntent.ReactMeal("m-1"))
+            vm.onIntent(FeedIntent.ReactMeal("m-1", "c-1"))
             runCurrent()
             cancelAndIgnoreRemainingEvents()
         }
@@ -509,7 +542,7 @@ class FeedViewModelTest {
             outbox = outbox,
             connectivity = FakeConnectivityPort(online = false),
         )
-        vm.onIntent(FeedIntent.RateMeal("m-1", 4))
+        vm.onIntent(FeedIntent.RateMeal("m-1", 4, "c-1"))
         runCurrent()
         assertTrue(ratingPort.calls.isEmpty(), "offline must not hit the direct rating port")
         val cmd = outbox.enqueued.single()
@@ -621,7 +654,7 @@ class FeedViewModelTest {
         val vm = buildVm(ratingPort = ratingPort, analytics = analytics)
         runCurrent()
         // A rate re-runs the feed Ok branch for the SAME day — must not re-fire feed_day_viewed.
-        vm.onIntent(FeedIntent.RateMeal("m-1", 4))
+        vm.onIntent(FeedIntent.RateMeal("m-1", 4, "c-1"))
         runCurrent()
         assertEquals(
             listOf<AnalyticsEvent>(

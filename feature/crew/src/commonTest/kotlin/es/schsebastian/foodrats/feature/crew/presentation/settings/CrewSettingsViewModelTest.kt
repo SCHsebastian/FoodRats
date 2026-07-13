@@ -402,6 +402,44 @@ class CrewSettingsViewModelTest {
     }
 
     @Test
+    fun banner_picked_failure_sets_banner_error_and_clears_saving_without_touching_shared_error() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew)).apply {
+            nextSetBanner = Result.failure(CrewError.Banner.ImageTooLarge)
+        }
+        val vm = buildVm(ownerId, repo)
+
+        vm.onIntent(CrewSettingsIntent.BannerPicked(byteArrayOf(1, 2, 3)))
+
+        assertEquals(CrewError.Banner.ImageTooLarge, vm.state.value.bannerError)
+        assertEquals(false, vm.state.value.isSavingBanner)
+        // The shared bottom error stays untouched — banner failures render in the banner section.
+        assertNull(vm.state.value.error)
+    }
+
+    @Test
+    fun banner_pick_failed_intent_surfaces_pick_failed_banner_error() = runTest {
+        val vm = buildVm(ownerId)
+
+        vm.onIntent(CrewSettingsIntent.BannerPickFailed)
+
+        assertEquals(CrewError.Banner.PickFailed, vm.state.value.bannerError)
+        assertEquals(false, vm.state.value.isSavingBanner)
+    }
+
+    @Test
+    fun banner_picked_success_clears_previous_banner_error() = runTest {
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val vm = buildVm(ownerId, repo)
+        vm.onIntent(CrewSettingsIntent.BannerPickFailed)
+        assertEquals(CrewError.Banner.PickFailed, vm.state.value.bannerError)
+
+        vm.onIntent(CrewSettingsIntent.BannerPicked(byteArrayOf(1, 2, 3)))
+
+        assertNull(vm.state.value.bannerError)
+        assertEquals(false, vm.state.value.isSavingBanner)
+    }
+
+    @Test
     fun switch_crew_emits_navigate_effect() = runTest {
         val vm = buildVm(ownerId)
 

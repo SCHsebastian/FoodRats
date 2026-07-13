@@ -49,7 +49,6 @@ import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftRetryPolicy
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
-import es.schsebastian.foodrats.feature.meal.domain.usecase.DiscardMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.PublishMealUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
@@ -100,6 +99,7 @@ val mealModule = module {
             zone = get(),
             appScope = get(named("appScope")),
             timestampStore = MealSyncTimestampStore(prefs = get(), dispatchers = get()),
+            crashReporter = get(),
         ).also { it.start() }
     }
     // Feed freshness + manual refresh seam (P4-T2): the engine IS the FeedSyncStatusPort impl
@@ -200,7 +200,6 @@ val mealModule = module {
     factoryOf(::StartMealDraftUseCase)
     factoryOf(::UpdateMealDraftUseCase)
     factoryOf(::PublishMealUseCase)
-    factoryOf(::DiscardMealDraftUseCase)
     // Resolves MealClassifierPort (bound by :feature:meal-ai) + IngredientReadPort
     // (bound by :feature:ingredient) at app composition — see shared/ aggregator.
     factoryOf(::ClassifyDraftPlateUseCase)
@@ -225,6 +224,10 @@ val mealModule = module {
             // The queue is the single publish executor, so the true publish-outcome analytics
             // (meal_published / meal_publish_failed) are emitted here, not in the coordinator.
             analytics = get(),
+            // Re-stamps a midnight-stale draft.day to today on the first publish attempt only —
+            // see the day-rollover note on DraftRetryRunner.attempt().
+            clock = get(),
+            zone = get(),
         )
     }
 
@@ -240,6 +243,7 @@ val mealModule = module {
             scheduler = get(),
             dispatchers = get(),
             analytics = get(),
+            crashReporter = get(),
             draftQueue = get<DraftQueuePort>(),
             retryRunner = get(),
         )
@@ -256,6 +260,8 @@ val mealModule = module {
             startDraft = get(), updateDraft = get(),
             sessionProvider = get(), crewMembership = get(),
             defaultAudience = get<DefaultAudiencePort>(),
+            // Device zone for the gallery EXIF slot prefill (same binding the draft/compose VMs use).
+            zone = get(),
             analytics = get(),
         )
     }

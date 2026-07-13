@@ -20,6 +20,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -90,6 +92,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.FrMediaFloor
 import es.schsebastian.foodrats.core.designsystem.structural.FrMetric
 import es.schsebastian.foodrats.core.designsystem.structural.FrMetricSize
 import es.schsebastian.foodrats.core.designsystem.structural.FrMicroRow
+import es.schsebastian.foodrats.core.designsystem.structural.FrPagerDots
 import es.schsebastian.foodrats.core.designsystem.structural.FrScoreDisc
 import es.schsebastian.foodrats.core.designsystem.structural.FrScoreTone
 import es.schsebastian.foodrats.core.designsystem.structural.FrStructuralChip
@@ -111,6 +114,7 @@ import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.FeedPlateUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrLocationMap
 import es.schsebastian.foodrats.feature.feed.presentation.components.MealSlotUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.RaterVoteUi
@@ -380,8 +384,12 @@ private fun DetailLoadingSkeleton(onBack: () -> Unit) {
 // Body
 // ----------------------------------------------------------------------------------------------
 
+// internal (not private): the androidHostTest MealDetailScreenTest renders this directly with a
+// hand-built MealDetailState — MealDetailViewModel's real port graph (comments, ingredients,
+// delete/edit use cases, story sharing, ...) is too large to duplicate as fakes just to exercise
+// the photo pager, and MealDetailBody itself needs no DI (it's pure state-in/intent-out).
 @Composable
-private fun MealDetailBody(
+internal fun MealDetailBody(
     state: MealDetailState,
     onIntent: (MealDetailIntent) -> Unit,
     onBack: () -> Unit,
@@ -390,13 +398,16 @@ private fun MealDetailBody(
     onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     val meal = state.meal ?: return
+    val galleryChipCd = resolve(FeedStringKey.GalleryChipCd)
     val headHeight = rememberHeadHeight()
     // FIREST-2: the live comment listener is bounded to the newest [commentLimit] comments. When the
     // visible rows fill that window there are (probably) older ones beyond it, so offer "load older".
     val canLoadOlder = state.commentRows.size >= state.commentLimit
     var pendingDeleteCommentId by remember { mutableStateOf<MealCommentId?>(null) }
-    // Full-screen zoomable photo viewer (opened by tapping the header plate).
-    var showPhotoViewer by remember { mutableStateOf(false) }
+    // Full-screen zoomable photo viewer (opened by tapping the header pager); carries the TAPPED
+    // page's plate (multi-photo-crew15) so the viewer opens on that specific photo, not always
+    // the primary one.
+    var viewerPlate by remember { mutableStateOf<FeedPlateUi?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // Z0 — a solid, warm-concrete page floor. The plate is NO LONGER the full-screen floor: it's
@@ -415,41 +426,73 @@ private fun MealDetailBody(
             .frContentWidth(Breakpoints.contentMax)
             .padding(horizontal = Spacing.lg)
         LazyColumn(modifier = Modifier.fillMaxSize()) {
-            // Header: the plate, bounded to the top. The dish title floats at its foot over a scrim.
-            // clipToBounds() is essential: FrMediaFloor over-scales the image (.scale(1.06f)), which
-            // would otherwise bleed the bright bottom edge of the photo down over the description below.
-            // Tapping the plate opens the full-screen zoomable viewer (only when there's a real photo).
+            // Header: the plate(s), bounded to the top. The dish title floats at its foot over a
+            // scrim. clipToBounds() is essential: FrMediaFloor over-scales the image (.scale(1.06f)),
+            // which would otherwise bleed the bright bottom edge of the photo down over the
+            // description below. Tapping a page opens the full-screen zoomable viewer on THAT page's
+            // photo (only when it has a real photo).
+            //
+            // multi-photo-crew15: the single static Box became a HorizontalPager over meal.plates
+            // (ALWAYS non-empty — toFeedUi synthesizes exactly one legacy page when Meal.plates was
+            // empty, see FeedMealUi.plates kdoc). Page 0 of a legacy/single-photo meal renders through
+            // the EXACT same FrMediaFloor/stablePlateRequest call as before, so it's pixel-identical.
+            // The dish title/author/slot chip are meal-level (not per-page) and stay OUTSIDE the pager,
+            // floating over whichever page is current; only the gallery-provenance chip is per-page
+            // (a meal can mix a camera shot with gallery picks across its photos).
             item {
+                val pages = meal.plates.ifEmpty {
+                    listOf(FeedPlateUi(photoUrl = meal.photoUrl, cacheKey = meal.plateCacheKey, isGallery = meal.plateSource.isGallery))
+                }
+                val pagerState = rememberPagerState(pageCount = { pages.size })
+                val currentPlate = pages.getOrNull(pagerState.currentPage) ?: pages.first()
+                val multiPage = pages.size > 1
+                val pagerCd = if (multiPage) {
+                    resolve(FeedStringKey.DetailPhotoPagerCd, pagerState.currentPage + 1, pages.size)
+                } else {
+                    null
+                }
+                val photoOpenCd = resolve(FeedStringKey.MealPhotoOpenCd)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(headHeight)
                         .clipToBounds()
                         .then(
-                            if (meal.photoUrl.isNotBlank()) {
-                                Modifier.clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClickLabel = resolve(FeedStringKey.MealPhotoOpenCd),
-                                    onClick = { showPhotoViewer = true },
-                                )
-                            } else {
-                                Modifier
-                            },
+                            if (pagerCd != null) Modifier.semantics { contentDescription = pagerCd } else Modifier,
                         ),
                 ) {
-                    // The plate, confined to the header. Standard scrim keeps it crisp; OnMedia keeps the
-                    // dark wash in light theme so the white title/author stay legible over it.
-                    if (meal.photoUrl.isNotBlank()) {
-                        FrMediaFloor(
-                            painter = rememberAsyncImagePainter(model = stablePlateRequest(meal.photoUrl, meal.plateCacheKey)),
-                            blur = StructuralBlur.None,
-                            dim = 0.18f,
-                            scrim = FrScrimStyle.Standard,
-                            tone = FrFloorTone.OnMedia,
-                        )
-                    } else {
-                        FrMediaFloor(brush = dishBrushFor(meal.slot), blur = StructuralBlur.Soft, dim = 0.3f, tone = FrFloorTone.OnMedia)
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxSize()) { page ->
+                        val plate = pages[page]
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (plate.photoUrl.isNotBlank()) {
+                                        Modifier.clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClickLabel = photoOpenCd,
+                                            onClick = { viewerPlate = plate },
+                                        )
+                                    } else {
+                                        Modifier
+                                    },
+                                ),
+                        ) {
+                            // The plate, confined to the header. Standard scrim keeps it crisp; OnMedia
+                            // keeps the dark wash in light theme so the white title/author stay legible.
+                            if (plate.photoUrl.isNotBlank()) {
+                                FrMediaFloor(
+                                    painter = rememberAsyncImagePainter(model = stablePlateRequest(plate.photoUrl, plate.cacheKey)),
+                                    blur = StructuralBlur.None,
+                                    dim = 0.18f,
+                                    scrim = FrScrimStyle.Standard,
+                                    tone = FrFloorTone.OnMedia,
+                                )
+                            } else {
+                                FrMediaFloor(brush = dishBrushFor(meal.slot), blur = StructuralBlur.Soft, dim = 0.3f, tone = FrFloorTone.OnMedia)
+                            }
+                        }
                     }
                     // Bottom-anchored gradient scrim so the white title/author stay readable over a
                     // bright plate (the Standard media-floor scrim is transparent at the head foot).
@@ -468,9 +511,24 @@ private fun MealDetailBody(
                         modifier = Modifier.fillMaxSize().padding(horizontal = Spacing.lg, vertical = Spacing.lg),
                         verticalArrangement = Arrangement.Bottom,
                     ) {
-                        // Slot chip — only when tagged (slot is optional).
-                        meal.slot?.let { slot ->
-                            FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
+                        // Slot chip (meal-level, only when tagged) + gallery-provenance chip
+                        // (permanent, non-removable) for the CURRENTLY VISIBLE page.
+                        val hasLeadingChip = meal.slot != null || currentPlate.isGallery
+                        if (hasLeadingChip) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                                meal.slot?.let { slot ->
+                                    FrStructuralChip(label = resolve(slot.labelKey()).uppercase())
+                                }
+                                if (currentPlate.isGallery) {
+                                    FrStructuralChip(
+                                        label = resolve(FeedStringKey.GalleryChipLabel).uppercase(),
+                                        leadingIcon = FrIcons.GalleryImport,
+                                        modifier = Modifier.semantics(mergeDescendants = true) {
+                                            contentDescription = galleryChipCd
+                                        },
+                                    )
+                                }
+                            }
                             Spacer(Modifier.height(Spacing.sm))
                         }
                         FrText(
@@ -482,6 +540,16 @@ private fun MealDetailBody(
                         )
                         Spacer(Modifier.height(Spacing.sm))
                         AuthorRow(meal)
+                    }
+                    if (multiPage) {
+                        FrPagerDots(
+                            pageCount = pages.size,
+                            currentPage = pagerState.currentPage,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .statusBarsPadding()
+                                .padding(top = Spacing.md),
+                        )
                     }
                 }
             }
@@ -657,13 +725,20 @@ private fun MealDetailBody(
                     contentDescription = resolve(FeedStringKey.BlockAuthorCta),
                 )
             }
-            if (state.canDeleteMeal && !state.isDeletingMeal) {
-                FrGlassCircleButton(
-                    icon = FrIcons.Delete,
-                    onClick = onRequestDeleteMeal,
-                    contentDescription = resolve(FeedStringKey.DeleteMealCta),
-                    danger = true,
-                )
+            if (state.canDeleteMeal) {
+                // While the delete write is in flight the CTA swaps for a spinner (mirrors the
+                // isPreparingShare slot above) — before this, deleting showed nothing until the
+                // meal disappeared, and the CTA silently vanishing read as a broken button.
+                if (state.isDeletingMeal) {
+                    FrProgressIndicator()
+                } else {
+                    FrGlassCircleButton(
+                        icon = FrIcons.Delete,
+                        onClick = onRequestDeleteMeal,
+                        contentDescription = resolve(FeedStringKey.DeleteMealCta),
+                        danger = true,
+                    )
+                }
             }
         }
 
@@ -678,11 +753,11 @@ private fun MealDetailBody(
         )
     }
 
-    if (showPhotoViewer && meal.photoUrl.isNotBlank()) {
+    viewerPlate?.let { plate ->
         MealPhotoViewer(
-            photoUrl = meal.photoUrl,
-            cacheKey = meal.plateCacheKey,
-            onDismiss = { showPhotoViewer = false },
+            photoUrl = plate.photoUrl,
+            cacheKey = plate.cacheKey,
+            onDismiss = { viewerPlate = null },
         )
     }
 

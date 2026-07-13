@@ -184,11 +184,11 @@ service cloud.firestore {
       // (evaluated ONCE for the whole group). Each shape is a cheap size/hasAll check.
       function membershipWrite() {
         return onlyMembershipUnchanged() && (
-          // (13) approve — owner appends exactly one member; owner stays; old members survive; ≤ 8.
+          // (13) approve — owner appends exactly one member; owner stays; old members survive; ≤ 15.
           (isOwner()
            && request.auth.uid in request.resource.data.memberIds
            && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
-           && request.resource.data.memberIds.size() <= 8
+           && request.resource.data.memberIds.size() <= 15
            && request.resource.data.memberIds.hasAll(resource.data.memberIds))
           ||
           // (4) leave — a member removes ONLY themselves; no other member evicted.
@@ -329,11 +329,19 @@ service cloud.firestore {
                         'id', 'authorId', 'authorName', 'crewId', 'dayKey', 'slot', 'platePath',
                         'dishName', 'description', 'latitude', 'longitude', 'publishedAtEpochMs',
                         'ratings', 'ratingSum', 'voterCount', 'ingredients', 'classifierVersion',
-                        'cuisine', 'kind', 'thumbHash', 'thumbnailPath'
+                        'cuisine', 'kind', 'thumbHash', 'thumbnailPath', 'plateSource', 'plates'
                       ])
                       // Server-owned: a client may only send these as null (or omit them).
                       && (!('thumbHash' in request.resource.data) || request.resource.data.thumbHash == null)
                       && (!('thumbnailPath' in request.resource.data) || request.resource.data.thumbnailPath == null)
+                      // Multi-photo meals (up to 10, ordered): GitLive encodeDefaults=true sends
+                      // this even when the draft carried a single photo (empty list) — tolerate
+                      // absent/null/empty, and cap the ordered list at the same limit the client
+                      // enforces (MealPublishPolicy.MAX_PHOTOS_PER_MEAL). Per-entry shape (path/
+                      // source strings) isn't validated further here — same trust level as the
+                      // single-photo platePath/plateSource fields above.
+                      && (!('plates' in request.resource.data) || request.resource.data.plates == null
+                          || (request.resource.data.plates is list && request.resource.data.plates.size() <= 10))
                       // A meal MUST be created with zero rating aggregates. Without this
                       // the author could publish with ratingSum:9999 / voterCount:9 and win
                       // the server-attested weekly Best Cook / Best Meal digest. The vote

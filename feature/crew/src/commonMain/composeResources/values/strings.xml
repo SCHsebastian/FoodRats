@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="crew_picker_title">Your crews</string>
-    <string name="crew_picker_empty_headline">No crew yet</string>
     <string name="crew_picker_crews_label">Your crews</string>
     <string name="crew_picker_empty_subtext">Create a crew or join one with an invite code.</string>
     <string name="crew_picker_hero_subtitle">Eat together, even apart.</string>
     <string name="crew_picker_create_cta">Create a crew</string>
     <string name="crew_picker_join_cta">Join with code</string>
     <string name="crew_picker_brand_name">FoodRats</string>
-    <string name="crew_picker_crew_button">%1$s (%2$d/8)</string>
     <string name="crew_picker_profile_cta">Your profile</string>
     <string name="crew_create_name_label">Crew name</string>
     <string name="crew_create_submit">Create</string>
@@ -18,13 +15,10 @@
     <string name="crew_settings_back_cta">Back</string>
     <string name="crew_settings_members_section">MEMBERS</string>
     <string name="crew_settings_owner_badge">You're the owner</string>
-    <string name="crew_settings_members_count">%1$d of 8 members</string>
+    <string name="crew_settings_members_count">%1$d of 15 members</string>
     <string name="crew_settings_role_owner">Owner</string>
     <string name="crew_settings_role_member">Member</string>
-    <string name="crew_settings_share_code">Share code: %1$s</string>
     <string name="crew_settings_leave_cta">Leave crew</string>
-    <string name="crew_settings_crew_section">Crew</string>
-    <string name="crew_settings_actions_section">Actions</string>
     <string name="crew_settings_danger_section">DANGER ZONE</string>
     <string name="crew_settings_crew_name_label">Crew name</string>
     <string name="crew_settings_save">Save</string>
@@ -36,9 +30,6 @@
     <string name="crew_settings_tagline_placeholder">e.g. "only home-cooked, no delivery" (max 120 chars)</string>
     <string name="crew_error_validation_tagline_too_long">Tagline is too long (max 120 characters).</string>
     <string name="crew_settings_switch_crew">Switch crew</string>
-    <string name="crew_settings_invite_code">Invite code</string>
-    <string name="crew_settings_share">Share</string>
-    <string name="crew_settings_copy_cta">Copy code</string>
     <string name="crew_settings_leave_title">Leave crew?</string>
     <string name="crew_settings_leave_body">You'll lose access to %1$s's meals and feed. You can rejoin later with an invite code.</string>
     <string name="crew_settings_leave_confirm">Leave</string>
@@ -108,6 +99,9 @@
     <string name="crew_settings_banner_preview_cd">Banner preview — drag up or down to reposition</string>
     <string name="crew_error_banner_upload_failed">Failed to upload banner. Try again.</string>
     <string name="crew_error_banner_delete_failed">Failed to remove banner. Try again.</string>
+    <string name="crew_error_banner_image_too_large">That photo is too large to upload. Try a smaller one.</string>
+    <string name="crew_error_banner_image_unreadable">Couldn't read that photo. Try a different one.</string>
+    <string name="crew_error_banner_pick_failed">Couldn't open that photo. Try again.</string>
     <!-- U5b — achievement badge labels rendered next to the member display name. -->
     <string name="crew_badge_first">First Plate</string>
     <string name="crew_badge_ten">10 Plates</string>

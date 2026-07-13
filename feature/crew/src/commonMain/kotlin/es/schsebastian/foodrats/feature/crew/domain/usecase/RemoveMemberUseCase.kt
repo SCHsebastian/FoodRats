@@ -74,7 +74,9 @@ class RemoveMemberUseCase(
         requestedBy: AccountId,
         target: AccountId,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.RemoveMember(crewId, requestedBy, target))
-        return Result.success(Unit)
+        return when (outbox.enqueue(PendingCommand.RemoveMember(crewId, requestedBy, target))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

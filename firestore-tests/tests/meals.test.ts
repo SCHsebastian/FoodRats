@@ -29,6 +29,13 @@ const validMeal = (overrides: Record<string, unknown> = {}) => ({
   ...overrides,
 });
 
+/** N well-formed multi-photo plate entries — the ordered `{path, source}` shape the client publishes. */
+const platesOf = (n: number) =>
+  Array.from({ length: n }, (_, i) => ({
+    path: `crews/${CREW}/meals/${ID}_${i}.jpg`,
+    source: i % 2 === 0 ? "camera" : "gallery",
+  }));
+
 beforeAll(async () => {
   env = await makeEnv();
 });
@@ -140,6 +147,161 @@ describe("meals create — award-aggregate self-stuffing (the P1 fix)", () => {
   it("REJECTS create with an unknown field (field whitelist)", async () => {
     const db = env.authenticatedContext("alice").firestore();
     await assertFails(setDoc(doc(db, PATH), validMeal({ photoUrl: "https://x/p.jpg" })));
+  });
+});
+
+describe("meals create — multi-photo plates (Wave 2 whitelist addition)", () => {
+  it("publishes with plates: [] (new clients send the empty list)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal({ plates: [] })));
+  });
+
+  it("publishes with plates: null (encodeDefaults null case)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal({ plates: null })));
+  });
+
+  it("publishes with 10 well-formed plate entries (at the cap)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal({ plates: platesOf(10) })));
+  });
+
+  it("REJECTS 11 plate entries (over the cap)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(db, PATH), validMeal({ plates: platesOf(11) })));
+  });
+
+  it("REJECTS plates as a non-list value", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(setDoc(doc(db, PATH), validMeal({ plates: "not-a-list" })));
+  });
+
+  it("publishes a legacy-shaped meal with NO plates key at all (old behavior locked)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(setDoc(doc(db, PATH), validMeal()));
+  });
+});
+
+describe("meals update — plates is immutable post-create", () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), PATH), validMeal({ plates: platesOf(2) }));
+    });
+  });
+
+  it("REJECTS an update that changes plates alongside an otherwise-valid rating write", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 5 } },
+        ratingSum: 5,
+        voterCount: 1,
+        plates: platesOf(3),
+      }),
+    );
+  });
+
+  it("ACCEPTS an update that re-sends plates with the IDENTICAL current value (diff sees no change)", async () => {
+    // The update rule gates on `request.resource.data.diff(resource.data).affectedKeys()
+    // .hasOnly(['ratings','ratingSum','voterCount'])`. `diff()` compares by VALUE, so resending the
+    // exact same ordered `plates` array (same paths, same order) is not an "affected key" even
+    // though the client included it in the write payload — locks the ACTUAL (accepted) behavior.
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, PATH), {
+        ratings: { bob: { score: 5 } },
+        ratingSum: 5,
+        voterCount: 1,
+        plates: platesOf(2),
+      }),
+    );
+  });
+});
+
+describe("meals update — rating write on a meal with a populated plates array (regression)", () => {
+  beforeEach(async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), PATH), validMeal({ plates: platesOf(3) }));
+    });
+  });
+
+  it("a member can still rate a multi-photo meal without touching plates", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, PATH), { ratings: { bob: { score: 5 } }, ratingSum: 5, voterCount: 1 }),
+    );
+  });
+});
+
+describe("meals create — plates edge cases (Wave 3 edge-rules hardening)", () => {
+  it("ACCEPTS a plate entry carrying EXTRA keys (the rule only checks `is list` + size, never entry shape)", async () => {
+    // firestore.rules L340-342: "Per-entry shape ... isn't validated further here — same trust
+    // level as the single-photo platePath/plateSource fields above." hasOnly() is a TOP-LEVEL
+    // document check and does not recurse into list entries, so a stray extra key inside one
+    // {path, source} entry is not rejected. Locking the actual (accepted) behavior.
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, PATH),
+        validMeal({
+          plates: [{ path: `crews/${CREW}/meals/${ID}_0.jpg`, source: "camera", thumb: "x" }],
+        }),
+      ),
+    );
+  });
+
+  it("ACCEPTS a max-payload create: every whitelisted field populated + 10 plates (at the cap)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, PATH),
+        validMeal({
+          authorName: "Alice A.",
+          dishName: "Paella",
+          description: "Weekend paella with the whole crew.",
+          latitude: 40.4168,
+          longitude: -3.7038,
+          ingredients: ["rice", "shrimp", "chorizo"],
+          classifierVersion: "food101-v3",
+          cuisine: "spanish",
+          kind: "solo",
+          plateSource: "camera",
+          thumbHash: null,
+          thumbnailPath: null,
+          plates: platesOf(10),
+        }),
+      ),
+    );
+  });
+
+  it("REJECTS an unknown top-level field even when plates is otherwise valid (hasOnly still governs)", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(doc(db, PATH), validMeal({ plates: platesOf(2), photoUrl: "https://x/p.jpg" })),
+    );
+  });
+
+  it("a non-member CANNOT publish even with an otherwise-valid plates array", async () => {
+    const db = env.authenticatedContext("charlie").firestore();
+    const cid = mealId(CREW, "charlie", DAY, "lunch");
+    await assertFails(
+      setDoc(
+        doc(db, `crews/${CREW}/meals/${cid}`),
+        validMeal({ id: cid, authorId: "charlie", plates: platesOf(2) }),
+      ),
+    );
+  });
+
+  it("REJECTS plates as a map/object instead of a list", async () => {
+    const db = env.authenticatedContext("alice").firestore();
+    await assertFails(
+      setDoc(
+        doc(db, PATH),
+        validMeal({
+          plates: { "0": { path: `crews/${CREW}/meals/${ID}_0.jpg`, source: "camera" } },
+        }),
+      ),
+    );
   });
 });
 

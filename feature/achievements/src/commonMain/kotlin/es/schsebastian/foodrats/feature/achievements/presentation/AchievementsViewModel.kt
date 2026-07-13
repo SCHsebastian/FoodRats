@@ -20,7 +20,8 @@ import kotlinx.coroutines.launch
  *
  * The ONLY side-effecting step is [persistAndCelebrate]: it writes newly-met unlocks exactly once,
  * and ONLY after the persist `Result` resolves `Ok` does it fire the `achievement_unlocked` analytics
- * event and the `Unlocked` effect — never before persistence, never inside a use case (CHARTER §9).
+ * event and set [AchievementsState.celebration] — never before persistence, never inside a use case
+ * (CHARTER §9).
  *
  * [analytics] defaults to [NoopAnalyticsTracker] so existing-style tests stay green; the Koin module
  * passes the real port via an explicit `viewModel { … analytics = get() }`.
@@ -55,7 +56,14 @@ class AchievementsViewModel(
         if (write is Result.Ok) {
             newlyMet.forEach { status ->
                 analytics.track(AnalyticsEvent.AchievementUnlocked(status.achievement.id.value))
-                emit(AchievementsEffect.Unlocked(status.achievement.titleKey))
+            }
+            // BUG FIX (2026-07-12): celebration lives in state, not a one-shot effect — see
+            // AchievementsState.celebration's kdoc. When several unlock in the same snapshot the last
+            // one wins, matching the previous effect-channel behavior (the screen's collector
+            // overwrote its local `celebration` var on every drained item with no display delay
+            // between them, so only the final title was ever actually shown).
+            newlyMet.lastOrNull()?.let { status ->
+                update { it.copy(celebration = status.achievement.titleKey) }
             }
         }
         // on Err: leave them met-but-locked; the next snapshot retries the (idempotent) write.
@@ -66,5 +74,6 @@ class AchievementsViewModel(
             update { s -> s.copy(selected = s.statuses.firstOrNull { it.achievement.id == intent.id }) }
         AchievementsIntent.DismissDetail -> update { it.copy(selected = null) }
         AchievementsIntent.DismissError -> update { it.copy(error = null) }
+        AchievementsIntent.DismissCelebration -> update { it.copy(celebration = null) }
     }
 }

@@ -11,9 +11,11 @@ import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealKind
+import es.schsebastian.foodrats.core.domain.meal.MealPlate
 import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -28,6 +30,7 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealErrorMapper
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealFirestore
+import es.schsebastian.foodrats.feature.meal.data.firebase.PlateEntryDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDiscriminator
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
@@ -147,11 +150,16 @@ internal class FirebaseMealRepository(
                 // (avatars are resolved upstream by AccountReadPort, so the lookup below
                 // already carries signed avatar URLs). Thumbnails share the crew prefix, so
                 // `mintPlateUrls` authorizes them in the same batch — no callable change
-                // (roadmap §5.1 handoff). Cache absorbs re-resolution on scroll.
+                // (roadmap §5.1 handoff). plates[1..]'s paths ride in the SAME batch (one
+                // callable call regardless of path count); plates[0].path == platePath by
+                // construction, so `.distinct()` avoids asking the resolver for it twice.
+                // Cache absorbs re-resolution on scroll.
                 val signedUrls = imageUrls
                     .resolve(
                         crewId,
-                        dtos.flatMap { listOfNotNull(it.platePath, it.thumbnailPath) },
+                        dtos.flatMap { dto ->
+                            listOfNotNull(dto.platePath, dto.thumbnailPath) + dto.plates.mapNotNull { it.path }
+                        }.distinct(),
                     )
                     .getOrNull().orEmpty()
                 accountRead.observeMany(ids).map { identities ->
@@ -162,10 +170,20 @@ internal class FirebaseMealRepository(
                         (dto.toMealWithRatings(lookup) as? Result.Ok)?.value?.let { mwr ->
                             val plateUrl = dto.platePath?.let { signedUrls[it] } ?: ""
                             val thumbUrl = dto.thumbnailPath?.let { signedUrls[it] } ?: ""
+                            // A legacy row (dto.plates empty) yields an empty list here — readers
+                            // fall back to photoUrl/plateSource, exactly like the domain contract.
+                            // An entry whose signed URL failed to resolve is DROPPED, never
+                            // surfaced with a blank URL.
+                            val enrichedPlates = dto.plates.mapNotNull { entry ->
+                                val path = entry.path?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+                                val signed = signedUrls[path] ?: return@mapNotNull null
+                                MealPlate(photoUrl = signed, source = PlateSource.fromKey(entry.source))
+                            }
                             mwr.copy(
                                 meal = mwr.meal.copy(
                                     photoUrl = plateUrl,
                                     thumbnailUrl = thumbUrl,
+                                    plates = enrichedPlates,
                                 ),
                             )
                         }
@@ -204,8 +222,12 @@ internal class FirebaseMealRepository(
     override suspend fun publish(draft: MealDraft): Result<Meal, MealError> =
         withContext(dispatchers.io) {
             runCatching<Result<Meal, MealError>> {
-                val plate = draft.plate
-                    ?: return@runCatching Result.failure(MealError.Validation.NoPhoto)
+                if (draft.plates.isEmpty()) {
+                    return@runCatching Result.failure(MealError.Validation.NoPhoto)
+                }
+                if (draft.plates.size > MealPublishPolicy.MAX_PHOTOS_PER_MEAL) {
+                    return@runCatching Result.failure(MealError.Validation.TooManyPhotos)
+                }
                 // Slot is optional now — no NoSlotSelected check; "" persists as "no slot".
                 if (draft.ingredients.size > MAX_INGREDIENTS) {
                     return@runCatching Result.failure(MealError.Validation.TooManyIngredients)
@@ -216,11 +238,17 @@ internal class FirebaseMealRepository(
                 val author = draft.authorId
                 val dayKey = draft.day.toKey()
                 val slotKey = draft.slot?.key() ?: ""
-                // Stable per-draft idempotency token derived from the photo bytes: identical on
-                // every retry (same plate) and across the per-crew copies of one logical post, so
-                // the deterministic MealId.forDayToken keeps re-publishing idempotent and lets
-                // "delete my post" reconstruct each crew's copy.
-                val token = plate.photoBytes.contentHashCode().toUInt().toString(16)
+                // Stable per-draft idempotency token: identical on every retry (same plates, same
+                // order) and across the per-crew copies of one logical post, so the deterministic
+                // MealId.forDayToken keeps re-publishing idempotent and lets "delete my post"
+                // reconstruct each crew's copy. A single photo keeps the EXACT legacy formula (so
+                // ids minted before multi-photo existed are unaffected); reordering photos changes
+                // the fold's result, which is intentional — a reorder is a different logical post.
+                val token = if (draft.plates.size == 1) {
+                    draft.plates[0].photoBytes.contentHashCode().toUInt().toString(16)
+                } else {
+                    draft.plates.fold(17) { acc, p -> 31 * acc + p.photoBytes.contentHashCode() }.toUInt().toString(16)
+                }
                 val currentAuthor = authorIdentity.current()
                 // Resolve the cuisine ONCE for the whole fan-out from the detected dish. Advisory:
                 // a missing/unmapped dish OR a lookup fault yields null (cuisine just stays
@@ -257,6 +285,9 @@ internal class FirebaseMealRepository(
                         // Stamp Solo — the draft carries no kind yet (spec §4.3); every published
                         // meal is Solo. Branch on draft.kind only when the Together build ships.
                         kind = MealKind.Solo.toDiscriminator(),
+                        // Provenance marker: mirrors plates[0] — every per-crew copy carries the
+                        // PRIMARY photo's capture source (the legacy single-photo readers' signal).
+                        plateSource = draft.plates[0].source.key(),
                     )
                     // Idempotent retry / double-fire: this exact post already reached this crew.
                     // Don't set a representative — a skip is not a fresh publish; if NOTHING is
@@ -265,14 +296,36 @@ internal class FirebaseMealRepository(
                     // Daily cap reached for this crew — skip it (the rule has no count, so this
                     // client-side guard is the cap). Other selected crews may still have room.
                     if (existing.size >= MealPublishPolicy.MAX_MEALS_PER_CREW_PER_DAY) continue
-                    // Upload returns the deterministic plate path; rebuild the dto with it. A storage
-                    // failure surfaces as PhotoUploadFailed (mapped below) and aborts the fan-out —
-                    // a retry re-does the unwritten crews.
-                    val platePath = storage.upload(crewId, mealId.value, plate)
-                    val dtoWithPath = dto.copy(platePath = platePath)
+                    // Upload every photo IN ORDER (index 0 = primary → the legacy path; n >= 1 →
+                    // the extras). Each call returns its own deterministic path; rebuild the dto's
+                    // `plates` list from exactly what landed in Storage — never a guessed path. A
+                    // mid-loop storage failure best-effort deletes whatever THIS attempt already
+                    // uploaded (indices 0 until the failing one) before rethrowing — without this,
+                    // those objects would never be referenced by any Firestore doc and would leak
+                    // forever once the retry budget exhausts on a photo that fails every attempt. A
+                    // retry then re-uploads from index 0, an idempotent overwrite at the same
+                    // deterministic paths, so cleaning up here is safe.
+                    val uploaded = mutableListOf<String>()
+                    val uploadedPaths = try {
+                        draft.plates.forEachIndexed { index, p -> uploaded += storage.upload(crewId, mealId.value, index, p) }
+                        uploaded
+                    } catch (t: Throwable) {
+                        FrLog.w("MealRepo", t) { "upload failed for crew ${crewId.value} at plate ${uploaded.size}: ${t.message}" }
+                        uploaded.indices.forEach { index ->
+                            runCatching { storage.delete(crewId, mealId.value, index) }
+                                .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed after upload failure (index $index): ${it.message}" } }
+                        }
+                        throw t
+                    }
+                    val dtoWithPaths = dto.copy(
+                        platePath = uploadedPaths[0],
+                        plates = uploadedPaths.mapIndexed { index, path ->
+                            PlateEntryDto(path = path, source = draft.plates[index].source.key())
+                        },
+                    )
                     try {
-                        firestore.write(dtoWithPath, mealId.value)
-                        if (representative == null) representative = (dtoWithPath.toDomain() as? Result.Ok)?.value
+                        firestore.write(dtoWithPaths, mealId.value)
+                        if (representative == null) representative = (dtoWithPaths.toDomain() as? Result.Ok)?.value
                     } catch (t: Throwable) {
                         // `.set()` OVERWRITES — it never throws ALREADY_EXISTS — so uniqueness is
                         // enforced by the create rule's `!exists(...)`, whose rejection surfaces as
@@ -280,7 +333,7 @@ internal class FirebaseMealRepository(
                         // SAME draft lands here with a LIVE doc already owning this deterministic
                         // blob (our upload just overwrote it). Reclaiming it would strip the image
                         // off a published meal — the "image vanishes" bug. So confirm no live doc
-                        // exists before treating the blob as an orphan.
+                        // exists before treating the blob(s) as orphans.
                         val docExists = t.toFirebaseFault() == FirebaseFault.AlreadyExists ||
                             runCatching { firestore.existingMealIds(crewId, author, dayKey).contains(mealId.value) }
                                 .getOrDefault(true)
@@ -291,8 +344,12 @@ internal class FirebaseMealRepository(
                             anyFailed = true
                             lastFault = t
                             FrLog.w("MealRepo", t) { "fan-out write failed for crew ${crewId.value}: ${t.message}" }
-                            runCatching { storage.delete(crewId, mealId.value) }
-                                .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed: ${it.message}" } }
+                            // Best-effort per-object: delete EVERY photo uploaded in this attempt,
+                            // not just the primary — a partial cleanup would leave extras orphaned.
+                            uploadedPaths.indices.forEach { index ->
+                                runCatching { storage.delete(crewId, mealId.value, index) }
+                                    .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed (index $index): ${it.message}" } }
+                            }
                         }
                     }
                 }

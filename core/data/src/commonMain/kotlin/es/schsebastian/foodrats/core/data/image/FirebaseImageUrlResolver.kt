@@ -209,8 +209,11 @@ class FirebaseImageUrlResolver internal constructor(
          */
         const val MUTABLE_CLIENT_TTL_MS = 10 * 60_000L
 
-        /** Cap on persisted entries — bounds the DataStore blob; oldest (soonest-expiring) drop first. */
-        const val MAX_PERSISTED = 256
+        /**
+         * Cap on persisted entries — bounds the DataStore blob; oldest (soonest-expiring) drop
+         * first. Sized for multi-photo meals (≤ 10 plates ⇒ up to ~12 paths per meal).
+         */
+        const val MAX_PERSISTED = 512
 
         /** Per-meal plate object: `crews/{crewId}/meals/{file}.jpg` (immutable — id encodes content). */
         private val IMMUTABLE_PLATE = Regex("""^crews/[^/]+/meals/[^/]+\.jpg$""")

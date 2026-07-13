@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="crew_picker_title">Tus cuadrillas</string>
-    <string name="crew_picker_empty_headline">Aún no tienes una cuadrilla</string>
     <string name="crew_picker_crews_label">Tus cuadrillas</string>
     <string name="crew_picker_empty_subtext">Crea una cuadrilla o únete con un código de invitación.</string>
     <string name="crew_picker_hero_subtitle">Comemos juntos, incluso a la distancia.</string>
     <string name="crew_picker_create_cta">Crear una cuadrilla</string>
     <string name="crew_picker_join_cta">Unirme con código</string>
     <string name="crew_picker_brand_name">FoodRats</string>
-    <string name="crew_picker_crew_button">%1$s (%2$d/8)</string>
     <string name="crew_picker_profile_cta">Tu perfil</string>
     <string name="crew_create_name_label">Nombre de la cuadrilla</string>
     <string name="crew_create_submit">Crear</string>
@@ -18,13 +15,10 @@
     <string name="crew_settings_back_cta">Atrás</string>
     <string name="crew_settings_members_section">MIEMBROS</string>
     <string name="crew_settings_owner_badge">Eres el dueño</string>
-    <string name="crew_settings_members_count">%1$d de 8 miembros</string>
+    <string name="crew_settings_members_count">%1$d de 15 miembros</string>
     <string name="crew_settings_role_owner">Dueño</string>
     <string name="crew_settings_role_member">Miembro</string>
-    <string name="crew_settings_share_code">Comparte el código: %1$s</string>
     <string name="crew_settings_leave_cta">Salir de la cuadrilla</string>
-    <string name="crew_settings_crew_section">Cuadrilla</string>
-    <string name="crew_settings_actions_section">Acciones</string>
     <string name="crew_settings_danger_section">ZONA DE PELIGRO</string>
     <string name="crew_settings_crew_name_label">Nombre de la cuadrilla</string>
     <string name="crew_settings_save">Guardar</string>
@@ -36,9 +30,6 @@
     <string name="crew_settings_tagline_placeholder">ej. "solo casero, nada de delivery" (máx. 120 caracteres)</string>
     <string name="crew_error_validation_tagline_too_long">El lema es demasiado largo (máx. 120 caracteres).</string>
     <string name="crew_settings_switch_crew">Cambiar de cuadrilla</string>
-    <string name="crew_settings_invite_code">Código de invitación</string>
-    <string name="crew_settings_share">Compartir</string>
-    <string name="crew_settings_copy_cta">Copiar código</string>
     <string name="crew_settings_leave_title">¿Salir de la cuadrilla?</string>
     <string name="crew_settings_leave_body">Perderás el acceso a los platos y al feed de %1$s. Podrás volver a unirte más tarde con un código de invitación.</string>
     <string name="crew_settings_leave_confirm">Salir</string>
@@ -108,6 +99,9 @@
     <string name="crew_settings_banner_preview_cd">Vista previa de la portada — arrastra arriba o abajo para reposicionar</string>
     <string name="crew_error_banner_upload_failed">No se pudo subir la portada. Inténtalo de nuevo.</string>
     <string name="crew_error_banner_delete_failed">No se pudo quitar la portada. Inténtalo de nuevo.</string>
+    <string name="crew_error_banner_image_too_large">Esa foto es demasiado grande para subirla. Prueba con una más pequeña.</string>
+    <string name="crew_error_banner_image_unreadable">No se pudo leer esa foto. Prueba con otra.</string>
+    <string name="crew_error_banner_pick_failed">No se pudo abrir esa foto. Inténtalo de nuevo.</string>
     <!-- U5b — etiquetas del logro mostradas junto al nombre del miembro. -->
     <string name="crew_badge_first">Primer Plato</string>
     <string name="crew_badge_ten">10 Platos</string>

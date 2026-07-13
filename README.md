@@ -2,13 +2,13 @@
 
 **A closed-group daily meal-sharing app for Android and iOS.** Built with Kotlin Multiplatform and Compose Multiplatform, sharing one codebase across both platforms.
 
-FoodRats is for small circles — 3 to 8 friends, family, or colleagues — who want to share what they eat each day without the diet-app baggage. Each member posts **one photo per day** of a meal, adds a short description and a 1–10 score, and the crew sees a shared feed plus light group stats (streaks, leaderboards, most-eaten dishes). The tone is social and lightly competitive, and explicitly **anti-calorie-tracking**: it's about sharing food with people you like, not counting macros.
+FoodRats is for small circles — 3 to 15 friends, family, or colleagues — who want to share what they eat each day without the diet-app baggage. Each member posts **one photo per day** of a meal, adds a short description and a 1–10 score, and the crew sees a shared feed plus light group stats (streaks, leaderboards, most-eaten dishes). The tone is social and lightly competitive, and explicitly **anti-calorie-tracking**: it's about sharing food with people you like, not counting macros.
 
 ---
 
 ## What it does
 
-- **Crews** — Create a private crew and invite 3–8 people with a join code. Membership is closed; there's no public discovery.
+- **Crews** — Create a private crew and invite 3–15 people with a join code. Membership is closed; there's no public discovery.
 - **One meal a day** — Capture a photo with the native camera (or pick from the gallery), compose a *Plate* with a description and a 1–10 *Score*, and publish. The "one meal per day per member" rule is a domain invariant.
 - **Meal AI (in progress)** — On-device ingredient/dish classification from the meal photo using MediaPipe + a bundled TensorFlow Lite Food-101 model, so the app can suggest what's on the plate.
 - **Feed** — Scroll your crew's meals day by day.
@@ -26,7 +26,7 @@ FoodRats is for small circles — 3 to 8 friends, family, or colleagues — who 
 | Navigation | Jetpack Navigation Compose (type-safe routes) |
 | Backend (MVP) | Firebase — Auth, Firestore, Storage, Messaging, Crashlytics — via [GitLive](https://github.com/GitLiveApp/firebase-kotlin-sdk) KMP bindings |
 | Push backend | Cloud Functions (TypeScript, `europe-west3`) |
-| Images | Coil 3 (loading), ImagePickerKMP (camera/gallery) |
+| Images | Coil 3 (loading), in-house native camera + system photo picker (`rememberPhotoPicker`, `:core:presentation`) |
 | On-device AI | MediaPipe Tasks Vision + TensorFlow Lite (Food-101) |
 | Design system | Atomic Design (`Fr*` components), standalone catalog app |
 

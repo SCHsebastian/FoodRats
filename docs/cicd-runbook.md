@@ -66,7 +66,6 @@ hacer una persona con acceso a las cuentas) y cómo se opera el día a día.
 
 Según `CLAUDE.md` (sección iOS), antes del primer build de release iOS:
 - Añade los paquetes SPM de Firebase y GoogleSignIn (ver `iosApp/SETUP.md`).
-- Enlaza `CoreLocation.framework` (ImagePickerKMP).
 - Añade el producto SPM **FirebaseCrashlytics** + el Run Script de subida de dSYM.
 
 > **dSYMs en Crashlytics.** El Run Script en el archive no sube los símbolos de forma fiable

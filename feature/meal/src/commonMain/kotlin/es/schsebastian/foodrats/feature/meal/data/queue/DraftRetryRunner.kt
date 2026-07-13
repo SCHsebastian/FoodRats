@@ -3,11 +3,14 @@ package es.schsebastian.foodrats.feature.meal.data.queue
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
-import es.schsebastian.foodrats.core.domain.analytics.PublishSource
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
+import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealUploadQueueSnapshot
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.core.domain.time.Clock
+import es.schsebastian.foodrats.core.domain.time.SystemClock
+import es.schsebastian.foodrats.feature.meal.data.upload.toPublishSource
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.QueueEntryId
@@ -27,6 +30,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.datetime.TimeZone
 
 /**
  * Background retry runner for the offline-first publish queue (roadmap §5.2).
@@ -65,6 +69,11 @@ class DraftRetryRunner(
     // `meal_publish_failed` only when a draft is given up on (terminal). Default Noop keeps the
     // direct-construction tests green. NO PII (slot/counts only).
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
+    // Used ONLY to re-stamp a stale `MealDraft.day` on the very first publish attempt — see
+    // the day-rollover note on [attempt]. Defaults keep existing direct-construction call
+    // sites green.
+    private val clock: Clock = SystemClock(),
+    private val zone: TimeZone = TimeZone.currentSystemDefault(),
 ) {
     private val mutex = Mutex()
 
@@ -121,12 +130,30 @@ class DraftRetryRunner(
     }
 
     private suspend fun attempt(entry: QueuedDraft, scope: CoroutineScope?) {
-        queue.markUploading(entry.id)
-        when (val r = publish.publish(entry.draft)) {
+        // Re-stamp a stale `day` (e.g. drafted just before midnight, drained after
+        // connectivity returns) to *today* — but ONLY on the very first attempt
+        // (`attemptCount == 0`). FirebaseMealRepository.publish fans a draft out to
+        // EVERY audience crew in a loop keyed by `MealId.forDayToken(crewId, author,
+        // draft.day, token)`; once any attempt has run, a partial fan-out may already
+        // have landed some crews under the OLD day's deterministic id. Restamping again
+        // on a retry would target a DIFFERENT id for the remaining crews and duplicate
+        // the meal instead of idempotently overwriting it — so after attempt 1, every
+        // later retry of this entry must keep using whichever day attempt 1 actually
+        // used. [DraftQueuePort.markUploading]'s draft override persists the corrected
+        // day back onto the entry so it stays consistent across retries.
+        val today = MealDay.today(clock, zone)
+        val restamped = if (entry.attemptCount == 0 && entry.draft.day != today) {
+            entry.draft.copy(day = today)
+        } else {
+            null
+        }
+        queue.markUploading(entry.id, restamped)
+        val draftToPublish = restamped ?: entry.draft
+        when (val r = publish.publish(draftToPublish)) {
             is Result.Ok -> {
                 FrLog.d("DraftQueue") { "published queued draft ${entry.id.value}; removing" }
                 queue.remove(entry.id)
-                trackPublished(entry.draft)
+                trackPublished(draftToPublish)
             }
             // AlreadyPostedToday is idempotency-success for a durable queue: this draft's
             // (crew, day, slot) is already published (e.g. a prior drain already posted it),
@@ -170,7 +197,8 @@ class DraftRetryRunner(
                 ingredientCount = draft.ingredients.size,
                 hasDescription = draft.description.value.isNotBlank(),
                 audienceCrewCount = draft.audienceCrewIds.size,
-                source = PublishSource.UNKNOWN,
+                source = draft.plates.toPublishSource(),
+                photoCount = draft.plates.size,
             ),
         )
     }
@@ -220,6 +248,7 @@ internal fun MealError.uploadErrorKey(): String = when (this) {
     MealError.Validation.TooLong         -> "meal.error.tooLong"
     MealError.Validation.DescriptionTooLong -> "meal.error.descriptionTooLong"
     MealError.Validation.TooManyIngredients -> "meal.error.tooManyIngredients"
+    MealError.Validation.TooManyPhotos   -> "meal.error.tooManyPhotos"
     MealError.Validation.OutOfRange      -> "meal.error.outOfRange"
     MealError.Read.Unauthorized          -> "meal.error.readUnauthorized"
     MealError.Read.CrewNotFound          -> "meal.error.readCrewNotFound"

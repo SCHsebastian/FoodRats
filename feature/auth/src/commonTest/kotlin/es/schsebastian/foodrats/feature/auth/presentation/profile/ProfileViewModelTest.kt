@@ -37,6 +37,7 @@ import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.core.domain.session.SignOutPort
 import es.schsebastian.foodrats.core.domain.account.AccountWriteError
+import es.schsebastian.foodrats.feature.auth.domain.error.ProfileError
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
@@ -855,6 +856,74 @@ class ProfileViewModelTest {
             assertEquals(AuthStringKey.ProfileRemoveAvatarError, final.removeAvatarError)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // ── avatar prepare failures (picker error / compressor refused) ─────────────────────────────
+
+    @Test fun avatar_prepare_failed_too_large_surfaces_upload_error() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
+            val final = expectMostRecentItem()
+            assertFalse(final.isUploadingAvatar)
+            assertEquals(AuthStringKey.ProfileAvatarTooLarge, final.uploadAvatarError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun avatar_prepare_failed_unreadable_surfaces_upload_error() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.Unreadable))
+            assertEquals(AuthStringKey.ProfileAvatarUnreadable, expectMostRecentItem().uploadAvatarError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun avatar_prepare_failed_pick_failed_surfaces_upload_error() = runTest {
+        val vm = buildViewModel(Result.success(Unit), RecordingAnalyticsTracker(), RecordingSignOutPort())
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.PickFailed))
+            assertEquals(AuthStringKey.ProfileAvatarPickFailed, expectMostRecentItem().uploadAvatarError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun prepare_failure_never_reaches_the_write_port() = runTest {
+        val writePort = FakeAccountWritePort()
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
+            expectMostRecentItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertTrue(writePort.avatarUploads.isEmpty())
+    }
+
+    @Test fun next_successful_pick_clears_the_prepare_error() = runTest {
+        val writePort = FakeAccountWritePort()
+        val vm = buildViewModel(
+            deletionResult = Result.success(Unit),
+            analytics = RecordingAnalyticsTracker(),
+            signOut = RecordingSignOutPort(),
+            writePort = writePort,
+        )
+        vm.state.test {
+            vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.Unreadable))
+            assertEquals(AuthStringKey.ProfileAvatarUnreadable, expectMostRecentItem().uploadAvatarError)
+
+            vm.onIntent(ProfileIntent.AvatarPicked(byteArrayOf(1, 2, 3)))
+            val final = expectMostRecentItem()
+            assertNull(final.uploadAvatarError)
+            assertFalse(final.isUploadingAvatar)
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, writePort.avatarUploads.size)
     }
 
     // ── Accent palette tests ──────────────────────────────────────────────────────────────────────

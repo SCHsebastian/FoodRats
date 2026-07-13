@@ -6,6 +6,7 @@ import foodrats.feature.feed.generated.resources.feed_plates_count
 import foodrats.feature.feed.generated.resources.feed_rating_summary_votes
 import foodrats.feature.feed.generated.resources.feed_reactions_label
 import foodrats.feature.feed.generated.resources.feed_score_summary_votes
+import foodrats.feature.feed.generated.resources.feed_tile_photo_count_cd
 import org.jetbrains.compose.resources.PluralStringResource
 
 /**
@@ -26,4 +27,12 @@ enum class FeedPluralKey(override val resourceId: PluralStringResource) : Plural
 
     /** Reaction-count a11y label — "1 reaction" / "N reactions". Takes %1$d = count. */
     ReactionsLabel(Res.plurals.feed_reactions_label),
+
+    /**
+     * multi-photo-crew15 — feed-tile photo-count chip's content description ("1 photo" / "N
+     * photos"), only used when [es.schsebastian.foodrats.feature.feed.presentation.feed.FeedMealUi.photoCount]
+     * > 1. The sibling visible label ([FeedStringKey.TilePhotoCount], "×N") stays a plain
+     * StringKey — a multiplier glyph has no grammatical number to pluralize.
+     */
+    TilePhotoCountCd(Res.plurals.feed_tile_photo_count_cd),
 }

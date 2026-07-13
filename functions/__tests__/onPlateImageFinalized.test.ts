@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   classifyPlateObject,
+  EXTRA_PHOTO_SUFFIX,
   IMMUTABLE_CACHE_CONTROL,
   isGeneratedThumbnail,
   processPlateImage,
@@ -48,6 +49,119 @@ describe("classifyPlateObject — path filter (§5.1)", () => {
     expect(classifyPlateObject(undefined, "image/jpeg")).toBeNull();
     // nested path under meals/ is not a direct child → no match
     expect(classifyPlateObject("crews/c1/meals/sub/x.jpg", "image/jpeg")).toBeNull();
+  });
+
+  it("ignores a bare '_thumb.jpg' stem and a stem that merely ends in _thumb", () => {
+    expect(classifyPlateObject("crews/c1/meals/_thumb.jpg", "image/jpeg")).toBeNull();
+    expect(classifyPlateObject("crews/c1/meals/dinner_thumb.jpg", "image/jpeg")).toBeNull();
+  });
+
+  it("ignores paths with empty crew or meal segments", () => {
+    expect(classifyPlateObject("crews//meals/x.jpg", "image/jpeg")).toBeNull();
+    expect(classifyPlateObject("crews/c1/meals/.jpg", "image/jpeg")).toBeNull();
+  });
+
+  it("extension and content-type checks are lowercase-only (documented current behavior)", () => {
+    // GCS content types + client uploads are lowercase, so the strict match is fine in practice —
+    // but an uppercase variant IS rejected today. Documented so a future relaxation is deliberate.
+    expect(classifyPlateObject("crews/c1/meals/x.JPG", "image/jpeg")).toBeNull();
+    expect(classifyPlateObject(PLATE, "image/JPEG")).toBeNull();
+  });
+});
+
+describe("classifyPlateObject — multi-photo extra-photo skip", () => {
+  it("skips a first extra photo (_p1) — PRIMARY-ONLY pipeline never sees it", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p1.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("skips a double-digit extra photo (_p12)", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p12.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("still processes the PRIMARY photo (no _p suffix)", () => {
+    expect(classifyPlateObject(PLATE, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch",
+      platePath: PLATE,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg",
+    });
+  });
+
+  it("still skips the generated thumbnail (both guards live in the same function)", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("does NOT collide with a legacy hex-token mealId that merely ends in a digit (no literal 'p')", () => {
+    // Documents the non-collision the naming scheme relies on: a token tail like "_2" has no
+    // literal "p" before the digits, so EXTRA_PHOTO_SUFFIX does not match it and the object is
+    // still processed as a (legacy) primary plate.
+    const name = "crews/c1/meals/c1_alice_2026-06-14_lunch_2.jpg";
+    expect(EXTRA_PHOTO_SUFFIX.test("c1_alice_2026-06-14_lunch_2")).toBe(false);
+    expect(classifyPlateObject(name, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch_2",
+      platePath: name,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_2_thumb.jpg",
+    });
+  });
+});
+
+describe("classifyPlateObject — multi-photo suffix edge cases (test-hardening pass)", () => {
+  it("skips a hypothetical extra-photo thumbnail name (_p1_thumb.jpg) via the thumb-suffix guard", () => {
+    // This exact object never gets generated in production (thumbnails are PRIMARY-ONLY — see
+    // module doc), but the thumb-suffix check fires BEFORE the extra-photo check (fileStem ends
+    // in "_thumb", not "_p1"), so it's excluded either way — defense in depth, locked here.
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p1_thumb.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("skips a ZERO-PADDED extra photo (_p01) — \\d+ has no leading-zero restriction", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p01.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("skips double- and triple-digit extra photos (_p10, _p999)", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p10.jpg", "image/jpeg"),
+    ).toBeNull();
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p999.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("does NOT skip a mealId that merely CONTAINS '_p2_' mid-string, not as a suffix (lock actual)", () => {
+    // EXTRA_PHOTO_SUFFIX is end-anchored (/_p\d+$/): "..._p2_x" doesn't end in digits right after
+    // "p" (it ends in "_x"), so this is processed as an (unusual) PRIMARY plate, not skipped as an
+    // extra photo. This mealId shape can't arise from the real id scheme (dayKey/slot vocabulary
+    // never produces it), so the anchoring only matters against adversarial/synthetic names, not a
+    // real collision risk in practice.
+    const name = "crews/c1/meals/c1_alice_2026-06-14_lunch_p2_x.jpg";
+    expect(EXTRA_PHOTO_SUFFIX.test("c1_alice_2026-06-14_lunch_p2_x")).toBe(false);
+    expect(classifyPlateObject(name, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch_p2_x",
+      platePath: name,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_p2_x_thumb.jpg",
+    });
+  });
+
+  it("still processes a legacy hex-token tail that looks numeric with two digits (_99, no literal 'p')", () => {
+    const name = "crews/c1/meals/c1_alice_2026-06-14_lunch_99.jpg";
+    expect(EXTRA_PHOTO_SUFFIX.test("c1_alice_2026-06-14_lunch_99")).toBe(false);
+    expect(classifyPlateObject(name, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch_99",
+      platePath: name,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_99_thumb.jpg",
+    });
   });
 });
 
@@ -240,6 +354,22 @@ describe("runPlatePipeline — orchestration", () => {
     expect(b.uploads).toEqual([]);
   });
 
+  it("skips a multi-photo extra-photo object with ZERO Firestore reads (no garbage doc, multi-photo)", async () => {
+    const m = mealStore({ kind: "unprocessed" });
+    const b = blobStore();
+    const readStatus = vi.spyOn(m.store, "readStatus");
+
+    const outcome = await runPlatePipeline(
+      { meals: m.store, blobs: b.store, imageOps: okImageOps },
+      { ...plateObject, name: "crews/c1/meals/c1_alice_2026-06-14_lunch_p1.jpg" },
+    );
+
+    expect(outcome).toBe("ignored-not-plate");
+    expect(readStatus).not.toHaveBeenCalled();
+    expect(b.uploads).toEqual([]);
+    expect(m.written).toEqual([]);
+  });
+
   it("ignores non-plate objects (avatars, exports, junk)", async () => {
     const m = mealStore({ kind: "unprocessed" });
     const b = blobStore();
@@ -250,6 +380,65 @@ describe("runPlatePipeline — orchestration", () => {
     );
 
     expect(outcome).toBe("ignored-not-plate");
+    expect(m.written).toEqual([]);
+  });
+
+  it("side-effect order: thumbnail upload → plate cache backfill → doc write LAST", async () => {
+    // The doc write is the durable "processed" signal (readStatus checks thumbHash) — it must land
+    // only after both Storage effects, so a crash mid-pipeline re-runs instead of stranding.
+    const order: string[] = [];
+    const meals: MealStore = {
+      readStatus: async () => ({ kind: "unprocessed" }),
+      writeDerivatives: async () => {
+        order.push("writeDerivatives");
+      },
+    };
+    const blobs: PlateBlobStore = {
+      download: async () => {
+        order.push("download");
+        return Buffer.from("ORIGINAL");
+      },
+      uploadThumbnail: async () => {
+        order.push("uploadThumbnail");
+      },
+      setCacheControl: async () => {
+        order.push("setCacheControl");
+      },
+    };
+
+    await runPlatePipeline({ meals, blobs, imageOps: okImageOps }, plateObject);
+    expect(order).toEqual(["download", "uploadThumbnail", "setCacheControl", "writeDerivatives"]);
+  });
+
+  it("a thumbnail-upload failure propagates and the meal doc is NOT marked processed", async () => {
+    const m = mealStore({ kind: "unprocessed" });
+    const failing: PlateBlobStore = {
+      download: async () => Buffer.from("ORIGINAL"),
+      uploadThumbnail: async () => {
+        throw new Error("gcs write failed");
+      },
+      setCacheControl: async () => undefined,
+    };
+
+    await expect(
+      runPlatePipeline({ meals: m.store, blobs: failing, imageOps: okImageOps }, plateObject),
+    ).rejects.toThrow("gcs write failed");
+    // No doc write → the retry sees "unprocessed" and re-runs the whole pipeline.
+    expect(m.written).toEqual([]);
+  });
+
+  it("a download failure propagates before any upload or doc write", async () => {
+    const m = mealStore({ kind: "unprocessed" });
+    const b = blobStore();
+    b.store.download = async () => {
+      throw new Error("object gone");
+    };
+
+    await expect(
+      runPlatePipeline({ meals: m.store, blobs: b.store, imageOps: okImageOps }, plateObject),
+    ).rejects.toThrow("object gone");
+    expect(b.uploads).toEqual([]);
+    expect(b.cacheControlSet).toEqual([]);
     expect(m.written).toEqual([]);
   });
 });

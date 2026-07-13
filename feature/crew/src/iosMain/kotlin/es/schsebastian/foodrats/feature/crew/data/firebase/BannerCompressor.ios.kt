@@ -5,25 +5,30 @@ import org.jetbrains.skia.Image
 import org.jetbrains.skia.Rect
 import org.jetbrains.skia.Surface
 
-internal actual fun ByteArray.resizeBannerForUpload(maxDim: Int, quality: Int): ByteArray = try {
-    val image = Image.makeFromEncoded(this)
+internal actual fun encodeBannerJpeg(bytes: ByteArray, maxDimension: Int, quality: Int): ByteArray? = try {
+    val image = Image.makeFromEncoded(bytes)
     val w = image.width
     val h = image.height
-    val ratio = minOf(maxDim.toFloat() / w, maxDim.toFloat() / h).coerceAtMost(1f)
-    val newW = (w * ratio).toInt().coerceAtLeast(1)
-    val newH = (h * ratio).toInt().coerceAtLeast(1)
+    if (w <= 0 || h <= 0) {
+        null
+    } else {
+        val ratio = minOf(maxDimension.toFloat() / w, maxDimension.toFloat() / h).coerceAtMost(1f)
+        val newW = (w * ratio).toInt().coerceAtLeast(1)
+        val newH = (h * ratio).toInt().coerceAtLeast(1)
 
-    val finalImage = if (ratio < 1f) {
-        val surface = Surface.makeRasterN32Premul(newW, newH)
-        surface.canvas.drawImageRect(
-            image,
-            Rect.makeWH(w.toFloat(), h.toFloat()),
-            Rect.makeWH(newW.toFloat(), newH.toFloat()),
-        )
-        surface.makeImageSnapshot()
-    } else image
+        val finalImage = if (ratio < 1f) {
+            val surface = Surface.makeRasterN32Premul(newW, newH)
+            surface.canvas.drawImageRect(
+                image,
+                Rect.makeWH(w.toFloat(), h.toFloat()),
+                Rect.makeWH(newW.toFloat(), newH.toFloat()),
+            )
+            surface.makeImageSnapshot()
+        } else image
 
-    finalImage.encodeToData(EncodedImageFormat.JPEG, quality)?.bytes ?: this
+        finalImage.encodeToData(EncodedImageFormat.JPEG, quality)?.bytes
+    }
 } catch (_: Throwable) {
-    this
+    // Null — never the original bytes: the common ladder turns this into a typed Unreadable.
+    null
 }

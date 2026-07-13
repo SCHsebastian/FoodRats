@@ -29,7 +29,7 @@ sealed interface CrewError {
 
     sealed interface Membership : CrewError {
         data object NotFound : Membership          // crew doc doesn't exist
-        data object Full : Membership              // size == 8
+        data object Full : Membership              // size == 15
         data object NotInvited : Membership        // tried to access a crew you're not in
         data object AlreadyMember : Membership
         data object NotMember : Membership         // tried to leave a crew you're not in
@@ -65,7 +65,10 @@ sealed interface CrewError {
     }
 
     sealed interface Banner : CrewError {
-        data object UploadFailed : Banner          // storage write failed (network / permission)
+        data object UploadFailed : Banner          // storage write failed for an unclassifiable reason
         data object DeleteFailed : Banner          // storage delete failed (network / permission)
+        data object ImageTooLarge : Banner         // could not be shrunk under the Storage byte cap
+        data object ImageUnreadable : Banner       // picked bytes could not be decoded as an image
+        data object PickFailed : Banner            // the system photo picker itself failed
     }
 }

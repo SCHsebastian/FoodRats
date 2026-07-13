@@ -18,15 +18,31 @@ data class AchievementsState(
     val selected: AchievementStatus? = null,
     val error: AchievementError? = null,
     val isLoading: Boolean = true,
+    /**
+     * Non-null while the unlock celebration overlay is showing (spec §8.3).
+     *
+     * BUG FIX (2026-07-12): this used to be a one-shot [MviEffect] collected into a plain
+     * Composable `remember` in `AchievementsScreen`, which the manifest's un-configured
+     * `MainActivity` recreation (no `android:configChanges`) wiped on rotation — the underlying
+     * effect had already been drained from its channel, so the reward feedback was lost for good.
+     * Living in [AchievementsState] instead makes it survive recomposition/rotation like the rest
+     * of MVI state (the same `ViewModelStoreOwner` holds the ViewModel across a config change);
+     * cleared explicitly via [AchievementsIntent.DismissCelebration].
+     */
+    val celebration: AchievementStringKey? = null,
 ) : MviState
 
 sealed interface AchievementsIntent : MviIntent {
     data class SelectBadge(val id: AchievementId) : AchievementsIntent
     data object DismissDetail : AchievementsIntent
     data object DismissError : AchievementsIntent
+    /** Dismisses the unlock celebration overlay (see [AchievementsState.celebration]). */
+    data object DismissCelebration : AchievementsIntent
 }
 
-sealed interface AchievementsEffect : MviEffect {
-    /** Drives the unlock celebration overlay at the screen (spec §8.3). */
-    data class Unlocked(val titleKey: AchievementStringKey) : AchievementsEffect
-}
+/**
+ * No leaves today — the unlock celebration moved to [AchievementsState.celebration] (see its kdoc
+ * for why). Kept as the ViewModel's effect type parameter in case a genuinely one-shot,
+ * non-restorable effect is needed later.
+ */
+sealed interface AchievementsEffect : MviEffect

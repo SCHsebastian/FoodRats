@@ -12,7 +12,7 @@ import es.schsebastian.foodrats.feature.crew.domain.model.WeeklyChallenge
 
 /**
  * The Crew aggregate root. The invariant this context exists to protect is the
- * 3..8 membership cap ([CrewSize]) — enforced here in-memory by [addMember], and
+ * 3..15 membership cap ([CrewSize]) — enforced here in-memory by [addMember], and
  * atomically server-side by the join transaction in `CrewFirestoreDataSource`.
  * Both reference [CrewSize.MAX] so the cap has a single source of truth.
  */

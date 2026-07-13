@@ -29,7 +29,7 @@ class MigrationV1ToV2Test {
     /** Minimal v1 schema: only the `meal` + `mealRating` tables that existed before P3b. */
     private fun createV1Schema(driver: JdbcSqliteDriver) {
         driver.execute(null, "PRAGMA foreign_keys = ON", 0)
-        // meal table (same as in the generated v2 schema — it is unchanged across versions)
+        // meal table AS IT WAS AT v1 (no plateSource — that column arrives via 4.sqm at v5)
         driver.execute(
             null,
             """
@@ -172,7 +172,10 @@ class MigrationV1ToV2Test {
 
     @Test
     fun migration_does_not_destroy_existing_meal_rows() {
-        // Ensure migrate(1→2) leaves pre-existing meal rows intact.
+        // Ensure the full migration chain (1 → latest) leaves pre-existing meal rows intact.
+        // Must migrate to the CURRENT version: the generated SELECT * mappers read by column
+        // index against the latest schema (incl. the v4→v5 `plateSource` column), so a DB left
+        // at an intermediate version can't be queried through the generated queries.
         val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         createV1Schema(driver)
 
@@ -188,12 +191,109 @@ class MigrationV1ToV2Test {
         )
 
         // Migrate.
-        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = 2)
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
 
         val db = FoodRatsDatabase(driver)
         val meals = db.mealQueries.selectFeedByCrewDay("c1", "2026-06-19").executeAsList()
-        assertEquals(1, meals.size, "pre-existing meal row must survive the v1→v2 migration")
+        assertEquals(1, meals.size, "pre-existing meal row must survive the v1→latest migration")
         assertEquals("m1", meals.single().mealId)
+        // v4→v5 (4.sqm): the pre-existing row's appended plateSource column is NULL (legacy = camera).
+        assertEquals(null, meals.single().plateSource, "pre-migration meal rows must read plateSource NULL")
+
+        driver.close()
+    }
+
+    /**
+     * v4→v5 drift guard (4.sqm — `plateSource`): a migrated DB must accept and round-trip the new
+     * column through the GENERATED queries. `upsertMeal` names every column, and
+     * `selectFeedByCrewDay` is a `SELECT *` mapped by index — so this fails loudly if `4.sqm`
+     * drifts from Meal.sq (missing column) or if the column order diverges between a fresh
+     * `Schema.create()` table and the ALTER-appended migrated one.
+     */
+    @Test
+    fun migrated_db_round_trips_plate_source_through_generated_queries() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createV1Schema(driver)
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
+        val db = FoodRatsDatabase(driver)
+
+        db.mealQueries.upsertMeal(
+            mealId = "m-gallery", crewId = "c1", authorId = "a1", authorName = null,
+            dayKey = "2026-07-13", slot = "", platePath = null, thumbnailPath = null, thumbHash = null,
+            dishName = "Pizza", description = "", latitude = null, longitude = null,
+            publishedAtEpochMs = 1_000L, ratingSum = 0L, voterCount = 0L, ingredientsCsv = "",
+            classifierVersion = null, cuisine = null, kind = "solo", plateSource = "gallery",
+            platesJson = null, pending = 0L, idempotencyKey = null,
+        )
+
+        val row = db.mealQueries.selectFeedByCrewDay("c1", "2026-07-13").executeAsList().single()
+        assertEquals("gallery", row.plateSource, "plateSource must round-trip on a migrated DB")
+        // The write landed in the right column (index-mapped SELECT * would smear neighbours on drift).
+        assertEquals(0L, row.pending)
+        assertEquals(null, row.idempotencyKey)
+
+        driver.close()
+    }
+
+    /**
+     * v5→v6 drift guard (5.sqm — `platesJson`): a migrated DB must accept and round-trip the new
+     * column through the GENERATED queries, exactly like the v4→v5 `plateSource` guard above —
+     * `upsertMeal` names every column, `selectFeedByCrewDay` is a `SELECT *` mapped by index, so
+     * this fails loudly if `5.sqm` drifts from `Meal.sq` or the column order diverges between a
+     * fresh `Schema.create()` table and the ALTER-appended migrated one.
+     */
+    @Test
+    fun migrated_db_round_trips_plates_json_through_generated_queries() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createV1Schema(driver)
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
+        val db = FoodRatsDatabase(driver)
+        val platesJson = """[{"path":"crews/c1/meals/m-multi.jpg","source":"camera"},{"path":"crews/c1/meals/m-multi_p1.jpg","source":"gallery"}]"""
+
+        db.mealQueries.upsertMeal(
+            mealId = "m-multi", crewId = "c1", authorId = "a1", authorName = null,
+            dayKey = "2026-07-13", slot = "", platePath = null, thumbnailPath = null, thumbHash = null,
+            dishName = "Pizza", description = "", latitude = null, longitude = null,
+            publishedAtEpochMs = 1_000L, ratingSum = 0L, voterCount = 0L, ingredientsCsv = "",
+            classifierVersion = null, cuisine = null, kind = "solo", plateSource = "camera",
+            platesJson = platesJson, pending = 0L, idempotencyKey = null,
+        )
+
+        val row = db.mealQueries.selectFeedByCrewDay("c1", "2026-07-13").executeAsList().single()
+        assertEquals(platesJson, row.platesJson, "platesJson must round-trip on a migrated DB")
+        // The write landed in the right column (index-mapped SELECT * would smear neighbours on drift).
+        assertEquals(0L, row.pending)
+        assertEquals(null, row.idempotencyKey)
+
+        driver.close()
+    }
+
+    /**
+     * Companion to `migration_does_not_destroy_existing_meal_rows`, which locks that a v1-inserted
+     * row's appended `plateSource` column reads back NULL post-migration. This locks the SAME
+     * contract for the `platesJson` column (5.sqm, one migration further): a row written BEFORE
+     * either multi-photo migration existed must read `platesJson` as NULL after migrating all the
+     * way to the CURRENT version — never a parse crash, never a stray default.
+     */
+    @Test
+    fun migrated_pre_existing_row_reads_plates_json_null() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createV1Schema(driver)
+        driver.execute(
+            null,
+            """
+            INSERT INTO meal(mealId, crewId, authorId, dayKey, slot, description,
+                publishedAtEpochMs, ratingSum, voterCount, ingredientsCsv, kind, pending)
+            VALUES ('m-pre', 'c1', 'a1', '2026-06-19', 'lunch', '', 1000, 0, 0, '', 'solo', 0)
+            """.trimIndent(),
+            0,
+        )
+
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
+
+        val db = FoodRatsDatabase(driver)
+        val row = db.mealQueries.selectFeedByCrewDay("c1", "2026-06-19").executeAsList().single()
+        assertEquals(null, row.platesJson, "a row written before platesJson existed must read back NULL")
 
         driver.close()
     }

@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.getOrNull
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
@@ -38,7 +39,7 @@ class AnalyticsTaxonomyTest {
         AnalyticsEvent.PlateClassified(detectedCount = 3, latencyMs = 120L, classifierVersion = "food101_v1"),
         AnalyticsEvent.IngredientsConfirmed(detectedCount = 3, confirmedCount = 2),
         AnalyticsEvent.MealComposerOpened,
-        AnalyticsEvent.MealPublished(MealSlot.Lunch, ingredientCount = 2, hasDescription = true, audienceCrewCount = 1, source = PublishSource.CAMERA),
+        AnalyticsEvent.MealPublished(MealSlot.Lunch, ingredientCount = 2, hasDescription = true, audienceCrewCount = 1, source = PublishSource.CAMERA, photoCount = 3),
         AnalyticsEvent.MealPublishFailed("PublishUnavailable"),
         AnalyticsEvent.MealDeleted(byAuthor = true),
         AnalyticsEvent.MealOpened(mealId),
@@ -156,5 +157,30 @@ class AnalyticsTaxonomyTest {
                 "user-property key too long: '${p.key}'",
             )
         }
+    }
+
+    @Test
+    fun meal_published_carries_photo_count_as_a_ga4_count() {
+        // Locks the multi-photo-meal wire contract: photo_count rides alongside the other
+        // publish-funnel dimensions as a Count, defaulting to 1 for legacy single-photo callers
+        // that haven't stamped a real Meal.photoCount yet.
+        val default = AnalyticsEvent.MealPublished(
+            slot = MealSlot.Lunch,
+            ingredientCount = 0,
+            hasDescription = false,
+            audienceCrewCount = 1,
+            source = PublishSource.CAMERA,
+        )
+        assertEquals(AnalyticsValue.Count(1), default.params["photo_count"])
+
+        val multi = AnalyticsEvent.MealPublished(
+            slot = MealSlot.Lunch,
+            ingredientCount = 0,
+            hasDescription = false,
+            audienceCrewCount = 1,
+            source = PublishSource.CAMERA,
+            photoCount = 3,
+        )
+        assertEquals(AnalyticsValue.Count(3), multi.params["photo_count"])
     }
 }

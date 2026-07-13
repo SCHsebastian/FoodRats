@@ -65,6 +65,7 @@ val outboxModule = module {
             // or NoopOutboxDrainScheduler (iOS). Bound by outboxAndroidModule /
             // outboxIosModule before outboxModule is loaded.
             scheduler = get(),
+            crashReporter = get(),
         ).also { it.start(appScope) }
     }
 }

@@ -4,12 +4,15 @@ import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.location.Coordinates
 import es.schsebastian.foodrats.core.domain.meal.ClassifierError
 import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.presentation.mvi.MviEffect
 import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
+import es.schsebastian.foodrats.core.presentation.photopicker.PickedPhoto
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
+import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 
 data class ComposePlateState(
     val dish: String = "",
@@ -32,7 +35,28 @@ data class ComposePlateState(
     val selectedSlot: MealSlot? = null,
     /** True when every selected crew is at the daily cap; gates `canContinue` and shows a banner. */
     val dailyLimitReached: Boolean = false,
-    val photoBytes: ByteArray? = null,
+    /**
+     * Ordered photos for this draft — a live mirror of `MealDraft.plates` (the draft is the single
+     * source of truth; this list is never mutated locally). [Plate] already carries content-based
+     * `equals`/`hashCode` and a size-only `toString`, so this list — and therefore this whole state
+     * class — never needs a manual override to stay safe (no raw photo bytes ever reach a log line).
+     */
+    val photos: List<Plate> = emptyList(),
+    /**
+     * True while an [ComposePlateIntent.AddPhotos] batch is being persisted. Mirrors
+     * [es.schsebastian.foodrats.feature.meal.presentation.capture.CaptureMealState.isCapturing]:
+     * each intent runs in its own coroutine (`MviViewModel.onIntent`), so an overlapping
+     * `AddPhotos` dispatched while a previous batch is still writing would interleave at the
+     * `UpdateMealDraftUseCase` read-then-write suspension point and silently drop a photo.
+     * [ComposePlateViewModel] drops re-entries while this is true.
+     */
+    val isAddingPhotos: Boolean = false,
+    /**
+     * UI-only: which [photos] entry the hero preview/gallery-marker/action-row currently target.
+     * Not persisted to the draft. Clamped into `photos.indices` whenever the list shrinks (see
+     * [ComposePlateViewModel]); defaults to the first photo.
+     */
+    val selectedIndex: Int = 0,
     val coordinates: Coordinates? = null,
     val locating: Boolean = false,
     val showConfirm: Boolean = false,
@@ -51,54 +75,14 @@ data class ComposePlateState(
     /** True when the publish audience is shown as a picker (more than one crew to choose from). */
     val showCrewPicker: Boolean get() = availableCrews.size > 1
 
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is ComposePlateState) return false
-        return dish == other.dish &&
-            dishTooLong == other.dishTooLong &&
-            descriptionInput == other.descriptionInput &&
-            descriptionTooLong == other.descriptionTooLong &&
-            descriptionWarning == other.descriptionWarning &&
-            dishWarning == other.dishWarning &&
-            error == other.error &&
-            selectedSlot == other.selectedSlot &&
-            dailyLimitReached == other.dailyLimitReached &&
-            coordinates == other.coordinates &&
-            locating == other.locating &&
-            showConfirm == other.showConfirm &&
-            canContinue == other.canContinue &&
-            classifying == other.classifying &&
-            draftIngredients == other.draftIngredients &&
-            detectedIngredients == other.detectedIngredients &&
-            classifierError == other.classifierError &&
-            availableCrews == other.availableCrews &&
-            selectedCrewIds == other.selectedCrewIds &&
-            (photoBytes?.contentEquals(other.photoBytes) ?: (other.photoBytes == null))
-    }
+    /** The photo the hero preview / gallery-marker / action row currently target. `null` when empty. */
+    val selectedPhoto: Plate? get() = photos.getOrNull(selectedIndex)
 
-    override fun hashCode(): Int {
-        var result = dish.hashCode()
-        result = 31 * result + dishTooLong.hashCode()
-        result = 31 * result + descriptionInput.hashCode()
-        result = 31 * result + descriptionTooLong.hashCode()
-        result = 31 * result + descriptionWarning.hashCode()
-        result = 31 * result + dishWarning.hashCode()
-        result = 31 * result + (error?.hashCode() ?: 0)
-        result = 31 * result + (selectedSlot?.hashCode() ?: 0)
-        result = 31 * result + dailyLimitReached.hashCode()
-        result = 31 * result + (coordinates?.hashCode() ?: 0)
-        result = 31 * result + locating.hashCode()
-        result = 31 * result + showConfirm.hashCode()
-        result = 31 * result + canContinue.hashCode()
-        result = 31 * result + classifying.hashCode()
-        result = 31 * result + draftIngredients.hashCode()
-        result = 31 * result + detectedIngredients.hashCode()
-        result = 31 * result + (classifierError?.hashCode() ?: 0)
-        result = 31 * result + availableCrews.hashCode()
-        result = 31 * result + selectedCrewIds.hashCode()
-        result = 31 * result + (photoBytes?.contentHashCode() ?: 0)
-        return result
-    }
+    /** The first photo — the classifier's fixed target (index 0), independent of [selectedIndex]. */
+    val primaryPhoto: Plate? get() = photos.firstOrNull()
+
+    /** True while [photos] is under [MealPublishPolicy.MAX_PHOTOS_PER_MEAL] — drives the add-photo tile. */
+    val canAddMorePhotos: Boolean get() = photos.size < MealPublishPolicy.MAX_PHOTOS_PER_MEAL
 }
 
 sealed interface ComposePlateIntent : MviIntent {
@@ -115,6 +99,26 @@ sealed interface ComposePlateIntent : MviIntent {
     data class CrewToggled(val crewId: CrewId) : ComposePlateIntent
     /** Selects every crew the author belongs to (the "All" shortcut). */
     data object AllCrewsSelected : ComposePlateIntent
+
+    /**
+     * Appends [photos] (in order) from the compose screen's own camera/gallery picker, trimmed to
+     * whatever remains under [MealPublishPolicy.MAX_PHOTOS_PER_MEAL]. A gallery photo carrying EXIF
+     * metadata prefills slot/coordinates the same way the first capture does (only-if-unset).
+     */
+    data class AddPhotos(val photos: List<PickedPhoto>) : ComposePlateIntent {
+        // Size-only: MviViewModel logs every intent via toString(); never render photo bytes as text.
+        override fun toString() = "AddPhotos(photos=${photos.size})"
+    }
+
+    /** The compose screen's own picker failed to return a photo (surfaces a retry-able banner). */
+    data object PhotoPickFailed : ComposePlateIntent
+
+    /** Removes the photo at [index]. Out-of-bounds is a no-op; selection moves to a sane neighbor. */
+    data class RemovePhotoAt(val index: Int) : ComposePlateIntent
+    /** Moves the photo at [fromIndex] to [toIndex]; selection follows the moved photo. */
+    data class MovePhoto(val fromIndex: Int, val toIndex: Int) : ComposePlateIntent
+    /** Targets [index] as the hero preview / action-row subject. Out-of-bounds is a no-op. */
+    data class SelectPhoto(val index: Int) : ComposePlateIntent
 }
 
 sealed interface ComposePlateEffect : MviEffect {

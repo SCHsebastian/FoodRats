@@ -1,7 +1,10 @@
 package es.schsebastian.foodrats.feature.meal.data.local
 
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealDto
+import es.schsebastian.foodrats.feature.meal.data.firebase.PlateEntryDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.RatingEntryDto
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 /**
  * The local read source-of-truth projection of a meal (offline-first P3a §3.1). It is NEITHER a
@@ -36,6 +39,15 @@ data class LocalMeal(
     val classifierVersion: String?,
     val cuisine: String?,
     val kind: String,
+    /** PlateSource.key() ("camera"/"gallery"); `null` (rows synced pre-marker) reads back as camera. */
+    val plateSource: String? = null,
+    /**
+     * JSON-encoded `List<PlateEntryDto>` (see [MealDto.plates]) — the multi-photo mirror of
+     * [platePath]/[plateSource]. `null` (rows synced pre-multi-photo, or a legacy single-photo
+     * meal) means no extra photos; readers fall back to [platePath]/[plateSource] for the one
+     * photo, exactly like [MealDto.plates] empty/absent.
+     */
+    val platesJson: String? = null,
     val pending: Long,
     val idempotencyKey: String?,
     val ratings: List<LocalRating>,
@@ -79,6 +91,8 @@ fun LocalMeal.toMealDto(): MealDto = MealDto(
     classifierVersion = classifierVersion,
     cuisine = cuisine,
     kind = kind,
+    plateSource = plateSource,
+    plates = platesJson.toPlateEntries(),
 )
 
 /**
@@ -108,6 +122,10 @@ data class MealUpsert(
     val classifierVersion: String?,
     val cuisine: String?,
     val kind: String,
+    /** PlateSource.key() ("camera"/"gallery"); `null` mirrors a doc without the marker. */
+    val plateSource: String? = null,
+    /** JSON-encoded `List<PlateEntryDto>`; `null` mirrors an empty/absent [MealDto.plates]. */
+    val platesJson: String? = null,
     val pending: Long,
     val idempotencyKey: String?,
     val ratings: List<LocalRating>,
@@ -134,6 +152,8 @@ fun MealDto.toLocalUpsert(): MealUpsert = MealUpsert(
     classifierVersion = classifierVersion,
     cuisine = cuisine,
     kind = kind,
+    plateSource = plateSource,
+    platesJson = plates.toPlatesJson(),
     pending = 0L,
     idempotencyKey = null,
     ratings = ratings.map { (raterId, entry) ->
@@ -147,3 +167,14 @@ private fun List<String>.toIngredientCsv(): String = filter { it.isNotBlank() }.
 /** Inverse of [toIngredientCsv]: splits the CSV, dropping empties so "" → emptyList. */
 private fun String.toIngredientList(): List<String> =
     if (isBlank()) emptyList() else split(",").filter { it.isNotBlank() }
+
+private val platesJsonFormat = Json
+
+/** Empty list serializes to `null` (not `"[]"`) so a legacy/single-photo row stays a clean NULL column. */
+private fun List<PlateEntryDto>.toPlatesJson(): String? =
+    if (isEmpty()) null else platesJsonFormat.encodeToString(serializer<List<PlateEntryDto>>(), this)
+
+/** Tolerant decode: blank/unparseable JSON degrades to an empty list rather than crashing a read. */
+private fun String?.toPlateEntries(): List<PlateEntryDto> =
+    if (isNullOrBlank()) emptyList()
+    else runCatching { platesJsonFormat.decodeFromString(serializer<List<PlateEntryDto>>(), this) }.getOrElse { emptyList() }

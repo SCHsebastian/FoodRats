@@ -75,6 +75,9 @@ import foodrats.feature.auth.generated.resources.auth_profile_analytics_row
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_off
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_on
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_empty_bytes
+import foodrats.feature.auth.generated.resources.auth_profile_avatar_pick_failed
+import foodrats.feature.auth.generated.resources.auth_profile_avatar_too_large
+import foodrats.feature.auth.generated.resources.auth_profile_avatar_unreadable
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_uploading
 import foodrats.feature.auth.generated.resources.auth_profile_backend_unavailable
 import foodrats.feature.auth.generated.resources.auth_profile_offline
@@ -119,7 +122,6 @@ import foodrats.feature.auth.generated.resources.auth_profile_reminders_subtitle
 import foodrats.feature.auth.generated.resources.auth_profile_save
 import foodrats.feature.auth.generated.resources.auth_profile_sign_out_cta
 import foodrats.feature.auth.generated.resources.auth_profile_sign_out_failed
-import foodrats.feature.auth.generated.resources.auth_profile_signed_in_as_label
 import foodrats.feature.auth.generated.resources.auth_profile_theme_option_dark
 import foodrats.feature.auth.generated.resources.auth_profile_theme_option_light
 import foodrats.feature.auth.generated.resources.auth_profile_theme_option_system
@@ -197,7 +199,6 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileDangerZoneSection(Res.string.auth_profile_danger_zone_section),
     ProfileDangerZoneSubtitle(Res.string.auth_profile_danger_zone_subtitle),
     ProfileDisplayNameLabel(Res.string.auth_profile_display_name_label),
-    ProfileSignedInAsLabel(Res.string.auth_profile_signed_in_as_label),
     ProfileSave(Res.string.auth_profile_save),
     ProfileChangeAvatarCta(Res.string.auth_profile_change_avatar_cta),
     ProfileAvatarUploading(Res.string.auth_profile_avatar_uploading),
@@ -241,6 +242,12 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileOffline(Res.string.auth_profile_offline),
     ProfileSessionExpired(Res.string.auth_profile_session_expired),
     ProfileAvatarEmptyBytes(Res.string.auth_profile_avatar_empty_bytes),
+
+    // Avatar prepare failures — the picked photo never left the device (picker error, or the
+    // compressor refused it before the 1 MB avatars/{accountId} Storage cap could reject it server-side).
+    ProfileAvatarTooLarge(Res.string.auth_profile_avatar_too_large),
+    ProfileAvatarUnreadable(Res.string.auth_profile_avatar_unreadable),
+    ProfileAvatarPickFailed(Res.string.auth_profile_avatar_pick_failed),
 
     ProfileThemeRow(Res.string.auth_profile_theme_row),
     ProfileThemePickerTitle(Res.string.auth_profile_theme_picker_title),

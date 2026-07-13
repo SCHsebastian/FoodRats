@@ -6,9 +6,11 @@ import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealPlate
 import es.schsebastian.foodrats.core.domain.meal.MealRating
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -213,6 +215,19 @@ class FeedMealUiTest {
         assertEquals("crews/c1/meals/m1.jpg", ui.feedImageCacheKey)
     }
 
+    @Test fun camera_plate_source_maps_to_camera_ui_and_no_gallery_marker() {
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(PlateSourceUi.Camera, ui.plateSource)
+        assertFalse(ui.plateSource.isGallery)
+    }
+
+    @Test fun gallery_plate_source_maps_to_gallery_ui_marker() {
+        val galleryMeal = sampleMeal.copy(plateSource = PlateSource.Gallery)
+        val ui = MealWithRatings(galleryMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(PlateSourceUi.Gallery, ui.plateSource)
+        assertTrue(ui.plateSource.isGallery)
+    }
+
     @Test fun average_computed_from_ratings() {
         val ui = MealWithRatings(
             sampleMeal,
@@ -220,5 +235,134 @@ class FeedMealUiTest {
         ).toFeedUi((AccountId.of("u-y") as Result.Ok).value, today)
         assertEquals(3.0, ui.averageScore!!, 1e-9)
         assertEquals(2, ui.ratingCount)
+    }
+
+    // --- multi-photo-crew15: FeedMealUi.plates / photoCount --------------------------------
+
+    @Test fun legacy_meal_with_no_plates_synthesizes_one_page_from_the_legacy_fields() {
+        // sampleMeal.plates defaults to emptyList() — the pre-multi-photo shape every existing
+        // published meal has.
+        val ui = MealWithRatings(sampleMeal, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(1, ui.photoCount)
+        assertEquals(1, ui.plates.size)
+        val page = ui.plates.single()
+        assertEquals("https://example.com/p.jpg", page.photoUrl)
+        assertEquals("crews/c1/meals/m1.jpg", page.cacheKey)
+        assertFalse(page.isGallery)
+    }
+
+    @Test fun legacy_meal_page_reflects_gallery_plate_source() {
+        val galleryMeal = sampleMeal.copy(plateSource = PlateSource.Gallery)
+        val ui = MealWithRatings(galleryMeal, emptyList()).toFeedUi(viewerId, today)
+        assertTrue(ui.plates.single().isGallery)
+    }
+
+    @Test fun multi_photo_meal_maps_plates_in_order_with_per_photo_provenance() {
+        val multi = sampleMeal.copy(
+            plates = listOf(
+                MealPlate(photoUrl = "https://example.com/p0.jpg", source = PlateSource.Camera),
+                MealPlate(photoUrl = "https://example.com/p1.jpg", source = PlateSource.Gallery),
+                MealPlate(photoUrl = "https://example.com/p2.jpg", source = PlateSource.Camera),
+            ),
+        )
+        val ui = MealWithRatings(multi, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(3, ui.photoCount)
+        assertEquals(
+            listOf("https://example.com/p0.jpg", "https://example.com/p1.jpg", "https://example.com/p2.jpg"),
+            ui.plates.map { it.photoUrl },
+        )
+        assertEquals(listOf(false, true, false), ui.plates.map { it.isGallery })
+    }
+
+    @Test fun multi_photo_cache_keys_are_stable_per_index_storage_paths() {
+        // Mirrors MealMapper.platePathForIndex (:feature:meal): index 0 is the primary path
+        // (same as plateCacheKey), n >= 1 is "..._p{n}.jpg" — never the (rotating) signed URL.
+        val multi = sampleMeal.copy(
+            plates = listOf(
+                MealPlate(photoUrl = "https://example.com/p0.jpg", source = PlateSource.Camera),
+                MealPlate(photoUrl = "https://example.com/p1.jpg", source = PlateSource.Camera),
+                MealPlate(photoUrl = "https://example.com/p2.jpg", source = PlateSource.Camera),
+            ),
+        )
+        val ui = MealWithRatings(multi, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(
+            listOf("crews/c1/meals/m1.jpg", "crews/c1/meals/m1_p1.jpg", "crews/c1/meals/m1_p2.jpg"),
+            ui.plates.map { it.cacheKey },
+        )
+        // Page 0's cache key matches the meal-level plateCacheKey used by the feed tile/share card.
+        assertEquals(ui.plateCacheKey, ui.plates[0].cacheKey)
+    }
+
+    @Test fun plates_with_a_blank_photo_url_are_dropped_from_the_pager_page_list() {
+        // REAL BUG (found by the edge-presentation test wave, fixed here): a MealReadPort
+        // implementation (or a future refactor of the existing one) that ever returns a Meal whose
+        // plates contain an unresolved (blank photoUrl) entry used to flow straight through into
+        // FeedMealUi.plates — inflating photoCount and leaving an unloadable pager page. toFeedPlates
+        // must defensively drop blank-photoUrl entries rather than trusting every port impl to have
+        // already filtered them upstream.
+        val multi = sampleMeal.copy(
+            plates = listOf(
+                MealPlate(photoUrl = "https://example.com/p0.jpg", source = PlateSource.Camera),
+                MealPlate(photoUrl = "", source = PlateSource.Gallery), // failed-to-resolve entry
+                MealPlate(photoUrl = "https://example.com/p2.jpg", source = PlateSource.Camera),
+            ),
+        )
+        val ui = MealWithRatings(multi, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(2, ui.photoCount)
+        assertEquals(
+            listOf("https://example.com/p0.jpg", "https://example.com/p2.jpg"),
+            ui.plates.map { it.photoUrl },
+        )
+        // The surviving pages keep their ORIGINAL positional cache keys (index 0 and index 2 in the
+        // source list) — the dropped blank entry at index 1 must not renumber page 2 down to "_p1".
+        assertEquals(
+            listOf("crews/c1/meals/m1.jpg", "crews/c1/meals/m1_p2.jpg"),
+            ui.plates.map { it.cacheKey },
+        )
+    }
+
+    @Test fun all_plates_blank_photo_url_falls_back_to_the_legacy_single_page() {
+        // When EVERY entry is unresolved, the surviving (filtered) list is empty — the same
+        // `.ifEmpty` branch that handles a legacy/empty meal.plates must degrade to the one legacy
+        // page instead of leaving the pager with zero pages.
+        val allBlank = sampleMeal.copy(
+            plates = listOf(
+                MealPlate(photoUrl = "", source = PlateSource.Gallery),
+                MealPlate(photoUrl = "", source = PlateSource.Camera),
+            ),
+        )
+        val ui = MealWithRatings(allBlank, emptyList()).toFeedUi(viewerId, today)
+        assertEquals(1, ui.photoCount)
+        assertEquals(1, ui.plates.size)
+        val page = ui.plates.single()
+        assertEquals("https://example.com/p.jpg", page.photoUrl) // sampleMeal's legacy photoUrl
+        assertEquals("crews/c1/meals/m1.jpg", page.cacheKey)
+        assertFalse(page.isGallery) // sampleMeal.plateSource defaults to Camera
+    }
+
+    @Test fun hand_built_fixture_without_plates_still_reports_photo_count_one() {
+        // FeedMealUiShareTest builds FeedMealUi directly (never through toFeedUi); photoCount must
+        // still read 1 rather than 0 so callers can't divide-by/index into an empty page list.
+        val ui = FeedMealUi(
+            mealId = "m",
+            authorId = "a",
+            authorName = "A",
+            authorAvatarUrl = null,
+            photoUrl = "https://example.com/p.jpg",
+            dishName = "Dish",
+            description = "",
+            slot = null,
+            publishedAtEpochMs = 0L,
+            publishedHour = 0,
+            publishedMinute = 0,
+            dayEmote = "🔥",
+            averageScore = null,
+            ratingCount = 0,
+            votes = emptyList(),
+            viewerRating = null,
+            canRate = false,
+        )
+        assertEquals(1, ui.photoCount)
+        assertTrue(ui.plates.isEmpty())
     }
 }

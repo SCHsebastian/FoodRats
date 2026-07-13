@@ -3,6 +3,7 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { getAuth } from "firebase-admin/auth";
 import { logger } from "firebase-functions/v2";
+import { mealPhotoPaths } from "../meal/mealPhotoPaths";
 
 /**
  * Permanent, server-cascaded account deletion (Apple 5.1.1(v) / GDPR Art. 17).
@@ -10,8 +11,9 @@ import { logger } from "firebase-functions/v2";
  * A client-callable that, for the authenticated caller `uid`, erases EVERY trace of the account
  * with the Admin SDK (which bypasses Firestore/Storage rules — the client itself cannot reach
  * other members' comments/ratings or the Auth user record, which is why this runs server-side):
- *   1+2  every meal `uid` authored across every crew + its plate blob (recursiveDelete sweeps
- *        each meal's `comments` + deprecated `ratings` subcollections),
+ *   1+2  every meal `uid` authored across every crew + every one of its photo blobs (primary +
+ *        multi-photo extras — see `mealPhotoPaths`; recursiveDelete sweeps each meal's `comments`
+ *        + deprecated `ratings` subcollections),
  *   3    `uid`'s comments on OTHER users' meals,
  *   4    `uid`'s ratings/votes on OTHER users' meals (key delete + aggregate recompute in a txn),
  *   5+9  crew memberships — owned crews reassigned-or-deleted per the §6 policy (deleting orphaned
@@ -37,10 +39,11 @@ export interface DeleteAccountResponse {
   deleted: true;
 }
 
-/** A meal `uid` authored: its doc path + the plate blob path to reclaim (`null` if unresolvable). */
+/** A meal `uid` authored: its doc path + every one of its photo blob paths to reclaim (see
+ *  `mealPhotoPaths`; empty when unresolvable). */
 export interface MealRef {
   path: string;
-  platePath: string | null;
+  platePaths: string[];
 }
 
 /** A single document path (e.g. a comment on another user's meal). */
@@ -139,10 +142,12 @@ export async function deleteAccountCore(
     throw new HttpsError("failed-precondition", "Confirmation phrase did not match.");
   }
 
-  // 1+2: authored meals (sweeps comments/ratings) + their plate blobs.
+  // 1+2: authored meals (sweeps comments/ratings) + every one of their photo blobs.
   for (const m of await deps.authoredMeals(uid)) {
     await deps.recursiveDelete(m.path);
-    if (m.platePath !== null) await deps.deleteBlob(m.platePath);
+    for (const platePath of m.platePaths) {
+      await deps.deleteBlob(platePath);
+    }
   }
   // 3: comments on OTHER users' meals.
   for (const c of await deps.authoredComments(uid)) {
@@ -185,15 +190,6 @@ export const deleteAccount = onCall(
   async (request: CallableRequest<DeleteAccountRequest>): Promise<DeleteAccountResponse> => {
     const db = getFirestore();
 
-    const platePathOf = (path: string, platePath: unknown): string | null => {
-      if (typeof platePath === "string" && platePath !== "") return platePath;
-      // Fall back to the deterministic `crews/{crewId}/meals/{mealId}.jpg` upload path; if the meal
-      // path can't be parsed we return null so no blob is deleted (matches exportMyData — never
-      // attempt a delete at a malformed/guessed path).
-      const m = /^(crews\/[^/]+)\/meals\/([^/]+)$/.exec(path);
-      return m ? `${m[1]}/meals/${m[2]}.jpg` : null;
-    };
-
     const deps: DeletionDeps = {
       expectedPhrase: async (uid) => {
         const name = (
@@ -205,7 +201,7 @@ export const deleteAccount = onCall(
       authoredMeals: async (uid) =>
         (await db.collectionGroup("meals").where("authorId", "==", uid).get()).docs.map((d) => ({
           path: d.ref.path,
-          platePath: platePathOf(d.ref.path, d.data().platePath),
+          platePaths: mealPhotoPaths(d.ref.path, d.data()),
         })),
 
       authoredComments: async (uid) =>
@@ -216,7 +212,7 @@ export const deleteAccount = onCall(
       votedMeals: async (uid) => {
         // ratings[uid] map-key existence isn't directly queryable; iterate the crews uid belongs
         // to and collect meals NOT authored by uid that carry a ratings[uid] entry. Crews are
-        // tiny (≤ 8 members) so this bounded per-crew meal scan is fine (§17 risk note).
+        // tiny (≤ 15 members) so this bounded per-crew meal scan is fine (§17 risk note).
         const crews = await db.collection("crews").where("memberIds", "array-contains", uid).get();
         const out: MealRef[] = [];
         for (const crew of crews.docs) {
@@ -226,7 +222,7 @@ export const deleteAccount = onCall(
             if ((data.authorId as string | undefined) === uid) continue;
             const ratings = data.ratings as Record<string, unknown> | undefined;
             if (ratings && Object.prototype.hasOwnProperty.call(ratings, uid)) {
-              out.push({ path: meal.ref.path, platePath: platePathOf(meal.ref.path, data.platePath) });
+              out.push({ path: meal.ref.path, platePaths: mealPhotoPaths(meal.ref.path, data) });
             }
           }
         }

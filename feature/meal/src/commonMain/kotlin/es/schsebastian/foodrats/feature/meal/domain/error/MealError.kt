@@ -8,6 +8,9 @@ sealed interface MealError {
         data object NoPhoto : Validation
         data object DescriptionTooLong : Validation
         data object TooManyIngredients : Validation
+        /** [Meal][es.schsebastian.foodrats.core.domain.meal.Meal] carries more than
+         *  [es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy.MAX_PHOTOS_PER_MEAL] photos. */
+        data object TooManyPhotos : Validation
     }
     sealed interface Publish : MealError {
         /**

@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
@@ -13,6 +14,7 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
+import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
@@ -20,6 +22,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.CreateCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.ObserveMyCrewsUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RequestToJoinCrewUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -63,8 +66,33 @@ class CrewPickerViewModelTest {
         members = listOf(Member(me, Instant.fromEpochMilliseconds(0L))),
     )
 
+    /**
+     * Wraps [FakeCrewRepository] and parks `create` / `requestToJoinByCode` on a gate so tests can
+     * hold a write "in flight" while firing a second Submit — proves the double-tap re-entry guard.
+     */
+    private class GatedCrewRepository(
+        private val delegate: FakeCrewRepository,
+    ) : CrewRepository by delegate {
+        val createGate = CompletableDeferred<Unit>()
+        var createCalls = 0
+        val joinGate = CompletableDeferred<Unit>()
+        var joinCalls = 0
+
+        override suspend fun create(name: String, founder: AccountId): Result<Crew, CrewError> {
+            createCalls++
+            createGate.await()
+            return delegate.create(name, founder)
+        }
+
+        override suspend fun requestToJoinByCode(code: CrewCode, requester: AccountId): Result<Unit, CrewError> {
+            joinCalls++
+            joinGate.await()
+            return delegate.requestToJoinByCode(code, requester)
+        }
+    }
+
     private fun viewModel(
-        repo: FakeCrewRepository,
+        repo: CrewRepository,
         active: FakeActiveCrew = FakeActiveCrew(),
         analytics: RecordingAnalyticsTracker = RecordingAnalyticsTracker(),
     ) =
@@ -121,6 +149,44 @@ class CrewPickerViewModelTest {
         vm.onIntent(CrewPickerIntent.SubmitJoin)
         // CrewCode.of("xx") returns CodeMalformed; use case returns that without touching repo.
         assertEquals(CrewError.Validation.CodeMalformed, vm.state.value.error)
+    }
+
+    @Test fun submitCreate_reentry_while_create_in_flight_is_ignored() = runTest {
+        val repo = GatedCrewRepository(FakeCrewRepository().apply { nextCreate = Result.success(crewA) })
+        val vm = viewModel(repo)
+        vm.onIntent(CrewPickerIntent.ToggleCreateForm)
+        vm.onIntent(CrewPickerIntent.CreateInputChanged("Crew A"))
+        vm.onIntent(CrewPickerIntent.SubmitCreate)
+        assertTrue(vm.state.value.isCreating)
+        // Rapid double-tap while the first write is parked inside the repository — must be a no-op.
+        vm.onIntent(CrewPickerIntent.SubmitCreate)
+        assertEquals(1, repo.createCalls)
+        repo.createGate.complete(Unit)
+        vm.state.test {
+            val state = expectMostRecentItem()
+            assertEquals(false, state.isCreating)
+            assertEquals(null, state.error)
+        }
+        assertEquals(1, repo.createCalls)
+    }
+
+    @Test fun submitJoin_reentry_while_join_in_flight_is_ignored() = runTest {
+        val repo = GatedCrewRepository(FakeCrewRepository())
+        val vm = viewModel(repo)
+        vm.onIntent(CrewPickerIntent.ToggleJoinForm)
+        vm.onIntent(CrewPickerIntent.JoinInputChanged("ABCD23"))
+        vm.onIntent(CrewPickerIntent.SubmitJoin)
+        assertTrue(vm.state.value.isJoining)
+        // Double-tap while the first request is parked — must not file a duplicate join request.
+        vm.onIntent(CrewPickerIntent.SubmitJoin)
+        assertEquals(1, repo.joinCalls)
+        repo.joinGate.complete(Unit)
+        vm.state.test {
+            val state = expectMostRecentItem()
+            assertEquals(false, state.isJoining)
+            assertEquals(null, state.error)
+        }
+        assertEquals(1, repo.joinCalls)
     }
 
     @Test fun dismissError_clears_error() = runTest {

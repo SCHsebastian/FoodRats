@@ -55,7 +55,9 @@ class SetCrewBannerFocalUseCase(
         requestedBy: AccountId,
         focalY: Float,
     ): Result<Unit, CrewError> {
-        outbox.enqueue(PendingCommand.SetCrewBannerFocalY(crewId, requestedBy, focalY))
-        return Result.success(Unit)
+        return when (outbox.enqueue(PendingCommand.SetCrewBannerFocalY(crewId, requestedBy, focalY))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CrewError.Backend.Unavailable)
+        }
     }
 }

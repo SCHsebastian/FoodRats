@@ -31,7 +31,7 @@ class StartMealDraftUseCase(
             audienceCrewIds = audienceCrewIds,
             authorId = authorId,
             day = MealDay.today(clock, zone),
-            plate = null, dish = null, description = Description.EMPTY,
+            dish = null, description = Description.EMPTY,
         )
         return repository.saveDraft(fresh).map { fresh }
     }

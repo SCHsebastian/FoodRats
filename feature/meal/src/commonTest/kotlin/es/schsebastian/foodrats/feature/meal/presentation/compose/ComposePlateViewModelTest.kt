@@ -20,16 +20,24 @@ import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.meal.MealClassifierPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
+import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.MealUploadCoordinator
+import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoMetadata
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
+import es.schsebastian.foodrats.core.presentation.photopicker.PickedPhoto
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
+import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.test.FakeMealRepository
 import es.schsebastian.foodrats.feature.meal.domain.usecase.ClassifyDraftPlateUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -45,8 +53,10 @@ import kotlinx.datetime.TimeZone
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -67,10 +77,21 @@ class ComposePlateViewModelTest {
         audienceCrewIds = setOf(crew),
         authorId = account,
         day = MealDay(LocalDate(2026, 5, 24), zone),
-        plate = Plate(bytes(label)),
+        plates = listOf(Plate(bytes(label))),
         dish = null,
         description = Description.EMPTY,
     )
+
+    private fun draftWithPhotos(vararg photos: Plate) = MealDraft(
+        audienceCrewIds = setOf(crew),
+        authorId = account,
+        day = MealDay(LocalDate(2026, 5, 24), zone),
+        plates = photos.toList(),
+        dish = null,
+        description = Description.EMPTY,
+    )
+
+    private fun plate(label: String, source: PlateSource = PlateSource.Camera) = Plate(bytes(label), source = source)
 
     private suspend fun vmWith(
         repo: FakeMealRepository,
@@ -263,6 +284,529 @@ class ComposePlateViewModelTest {
             assertEquals(setOf(crew), expectMostRecentItem().selectedCrewIds)
         }
         assertEquals(setOf(crew), repo.observeDraft().first()!!.audienceCrewIds)
+    }
+
+    // ── multi-photo strip: AddPhotos / RemovePhotoAt / MovePhoto / SelectPhoto ────────────
+
+    @Test fun add_photos_trims_to_remaining_capacity_and_surfaces_the_cap_notice() = runTest {
+        val existing = (1..MealPublishPolicy.MAX_PHOTOS_PER_MEAL - 2).map { plate("existing-$it") }
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(*existing.toTypedArray())) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        // Only 2 slots remain; offer 5 — 3 must be trimmed, in order, from the tail.
+        vm.onIntent(
+            ComposePlateIntent.AddPhotos(
+                (1..5).map { PickedPhoto(bytes("new-$it"), PhotoSource.Camera) },
+            ),
+        )
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(MealPublishPolicy.MAX_PHOTOS_PER_MEAL, draft.plates.size)
+        assertEquals("new-1", draft.plates[draft.plates.size - 2].photoBytes.decodeToString())
+        assertEquals("new-2", draft.plates[draft.plates.size - 1].photoBytes.decodeToString())
+        vm.state.test {
+            assertEquals(MealError.Validation.TooManyPhotos, expectMostRecentItem().error)
+        }
+    }
+
+    @Test fun add_photos_under_cap_clears_a_previous_cap_notice() = runTest {
+        val existing = (1..MealPublishPolicy.MAX_PHOTOS_PER_MEAL - 1).map { plate("existing-$it") }
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(*existing.toTypedArray())) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        // First add hits the cap (1 slot, 2 offered) and sets the notice.
+        vm.onIntent(ComposePlateIntent.AddPhotos(listOf(PickedPhoto(bytes("a"), PhotoSource.Camera), PickedPhoto(bytes("b"), PhotoSource.Camera))))
+        vm.state.test { assertEquals(MealError.Validation.TooManyPhotos, expectMostRecentItem().error) }
+        // Free a slot, then add exactly one more — this add is NOT trimmed, so the stale notice clears.
+        vm.onIntent(ComposePlateIntent.RemovePhotoAt(0))
+        vm.onIntent(ComposePlateIntent.AddPhotos(listOf(PickedPhoto(bytes("c"), PhotoSource.Camera))))
+
+        vm.state.test { assertNull(expectMostRecentItem().error) }
+    }
+
+    @Test fun add_photos_with_empty_list_is_a_noop() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos()) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.AddPhotos(emptyList()))
+
+        assertTrue(repo.observeDraft().first()!!.plates.isEmpty())
+        vm.state.test { assertNull(expectMostRecentItem().error) }
+    }
+
+    @Test fun add_photos_reentry_while_a_batch_is_in_flight_drops_the_second_call_without_losing_the_first() = runTest {
+        // Regression for R1: two overlapping AddPhotos intents each run in their own coroutine
+        // (MviViewModel.onIntent). Before the isAddingPhotos guard, a second call arriving while the
+        // first batch's per-photo loop was still persisting would read the same stale draft and its
+        // saveDraft would clobber the first batch's still-pending photo — silent data loss, no error.
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos()) }
+        val gate = CompletableDeferred<Unit>()
+        // Suspend only the write that lands the batch's SECOND photo (plates.size == 2) — the exact
+        // point where the original interleaving happened — so a second AddPhotos can be dispatched
+        // mid-batch: after the first photo has landed but before the second has.
+        val gatedRepo = object : MealRepository by repo {
+            override suspend fun saveDraft(draft: MealDraft): Result<Unit, MealError> {
+                if (draft.plates.size == 2) gate.await()
+                return repo.saveDraft(draft)
+            }
+        }
+        val vm = ComposePlateViewModel(
+            updateDraft = UpdateMealDraftUseCase(gatedRepo),
+            repository = gatedRepo,
+            crewMembership = FakeCrewMembership(crew),
+            uploadCoordinator = object : MealUploadCoordinator { override fun enqueueDraftUpload() {} },
+            locationProvider = object : LocationProvider {
+                override suspend fun current(): Result<Coordinates, LocationError> =
+                    Result.failure(LocationError.Unavailable)
+            },
+            classifyPlate = ClassifyDraftPlateUseCase(
+                FakeClassifier { Result.success(emptyList()) },
+                FakeIngredients(emptyMap()),
+                FakeFeatureFlags(true),
+                object : AiPreferencePort {
+                    override val enabled: Flow<Boolean> = flowOf(true)
+                    override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> = Result.success(Unit)
+                },
+            ),
+            clock = clock,
+            zone = zone,
+        )
+
+        // First batch: two photos. The loop's second AddPhoto suspends on the gate mid-batch.
+        vm.onIntent(
+            ComposePlateIntent.AddPhotos(
+                listOf(PickedPhoto(bytes("p1"), PhotoSource.Camera), PickedPhoto(bytes("p2"), PhotoSource.Camera)),
+            ),
+        )
+        assertTrue(vm.state.value.isAddingPhotos)
+        assertEquals(listOf("p1"), gatedRepo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+
+        // Re-entry while the first batch is still in flight must be a no-op — it must NOT interleave
+        // its own read-then-write on top of the first batch's still-pending second photo.
+        vm.onIntent(ComposePlateIntent.AddPhotos(listOf(PickedPhoto(bytes("p3"), PhotoSource.Camera))))
+        assertEquals(listOf("p1"), gatedRepo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+
+        gate.complete(Unit)
+
+        // Both of the FIRST batch's photos landed, in order; the re-entrant call's photo never did.
+        assertEquals(listOf("p1", "p2"), repo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+        assertFalse(vm.state.value.isAddingPhotos)
+    }
+
+    @Test fun move_photo_reorders_the_draft_and_selection_follows_the_moved_photo() = runTest {
+        val repo = FakeMealRepository().apply {
+            saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C")))
+        }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.MovePhoto(0, 1))
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(listOf("B", "A", "C"), draft.plates.map { it.photoBytes.decodeToString() })
+        vm.state.test {
+            val st = expectMostRecentItem()
+            // Selection follows the moved photo (A) to its new slot, not the slot it vacated.
+            assertEquals(1, st.selectedIndex)
+            assertEquals("A", st.selectedPhoto?.photoBytes?.decodeToString())
+        }
+    }
+
+    @Test fun move_photo_with_out_of_bounds_index_is_a_noop_and_does_not_disturb_selection() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.MovePhoto(0, 5))
+
+        assertEquals(listOf("A", "B"), repo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+        vm.state.test { assertEquals(0, expectMostRecentItem().selectedIndex) }
+    }
+
+    @Test fun remove_photo_at_removes_the_selected_tile_and_selects_the_new_last_photo() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        vm.onIntent(ComposePlateIntent.SelectPhoto(2)) // select C, the last photo
+
+        vm.onIntent(ComposePlateIntent.RemovePhotoAt(2))
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(listOf("A", "B"), draft.plates.map { it.photoBytes.decodeToString() })
+        vm.state.test {
+            val st = expectMostRecentItem()
+            // C is gone; the selection clamps to the new last photo (B) — a sane neighbor, not a crash.
+            assertEquals(1, st.selectedIndex)
+            assertEquals("B", st.selectedPhoto?.photoBytes?.decodeToString())
+        }
+    }
+
+    @Test fun remove_photo_at_before_the_selection_shifts_the_selection_to_keep_pointing_at_the_same_photo() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        vm.onIntent(ComposePlateIntent.SelectPhoto(2)) // select C
+
+        vm.onIntent(ComposePlateIntent.RemovePhotoAt(0)) // remove A, which sits BEFORE the selection
+
+        vm.state.test {
+            val st = expectMostRecentItem()
+            // The index shifts down by one so the selection keeps pointing at C itself, not whatever
+            // photo happens to land in the numeric slot 2 used to occupy.
+            assertEquals(1, st.selectedIndex)
+            assertEquals("C", st.selectedPhoto?.photoBytes?.decodeToString())
+        }
+    }
+
+    @Test fun select_photo_out_of_bounds_is_a_noop() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.SelectPhoto(5))
+
+        vm.state.test { assertEquals(0, expectMostRecentItem().selectedIndex) }
+    }
+
+    @Test fun select_photo_within_bounds_updates_the_selection() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.SelectPhoto(1))
+
+        vm.state.test { assertEquals(1, expectMostRecentItem().selectedIndex) }
+    }
+
+    @Test fun selected_index_clamps_when_the_photo_list_shrinks_out_from_under_it() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        vm.onIntent(ComposePlateIntent.SelectPhoto(2))
+
+        // Shrink the draft directly (not via RemovePhotoAt) to exercise the observer's own safety
+        // clamp in isolation, independent of RemovePhotoAt's precise sane-neighbor computation.
+        repo.saveDraft(repo.observeDraft().first()!!.copy(plates = listOf(plate("A"))))
+
+        vm.state.test { assertEquals(0, expectMostRecentItem().selectedIndex) }
+    }
+
+    @Test fun classification_fingerprint_follows_the_primary_across_reorder() = runTest {
+        val repo = FakeMealRepository().apply {
+            saveDraft(draftWithPhotos(plate("plate-a"), plate("plate-b")))
+        }
+        val vm = vmWith(
+            repo,
+            classifyResult = { jpeg ->
+                when (jpeg.decodeToString()) {
+                    "plate-a" -> Result.success(listOf(DishLabel("pizza", 0.9f)))
+                    else -> Result.success(listOf(DishLabel("salad", 0.9f)))
+                }
+            },
+            dishMap = mapOf("pizza" to listOf("tomato", "cheese"), "salad" to listOf("lettuce", "olive")),
+        )
+
+        vm.onPhotoCaptured(bytes("plate-a"))
+        vm.state.test {
+            assertEquals(
+                listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("cheese").getOrNull()!!),
+                expectMostRecentItem().detectedIngredients,
+            )
+        }
+
+        vm.onIntent(ComposePlateIntent.MovePhoto(0, 1))
+        vm.state.test {
+            // plate-b slid into index 0 — it's now the primary the compose screen would reclassify.
+            assertEquals("plate-b", expectMostRecentItem().primaryPhoto?.photoBytes?.decodeToString())
+        }
+
+        // The screen's LaunchedEffect would now call onPhotoCaptured with the NEW primary's bytes.
+        // Its content differs from the last-classified fingerprint (plate-a), so this must actually
+        // run rather than be deduped.
+        vm.onPhotoCaptured(bytes("plate-b"))
+        vm.state.test {
+            assertEquals(
+                listOf(IngredientSlug.of("lettuce").getOrNull()!!, IngredientSlug.of("olive").getOrNull()!!),
+                expectMostRecentItem().detectedIngredients,
+            )
+        }
+    }
+
+    /** 2026-05-24T13:30Z — 13:30 in the test's UTC zone → MealSlot.forHour(13) = Lunch. */
+    private val composeLunchTakenAtMs = Instant.parse("2026-05-24T13:30:00Z").toEpochMilliseconds()
+
+    @Test fun exif_prefill_on_add_photos_applies_once_from_the_first_metadata_carrying_gallery_photo() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos()) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(
+            ComposePlateIntent.AddPhotos(
+                listOf(
+                    // First photo carries no metadata — nothing to prefill from it.
+                    PickedPhoto(bytes("g1"), PhotoSource.Gallery, metadata = null),
+                    // Second photo's EXIF is the first WITH metadata — it wins the prefill.
+                    PickedPhoto(
+                        bytes("g2"), PhotoSource.Gallery,
+                        metadata = PhotoMetadata(takenAtEpochMs = composeLunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+                    ),
+                    // A third photo's metadata must NOT override the already-set fields.
+                    PickedPhoto(
+                        bytes("g3"), PhotoSource.Gallery,
+                        metadata = PhotoMetadata(takenAtEpochMs = null, latitude = 10.0, longitude = 20.0),
+                    ),
+                ),
+            ),
+        )
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(3, draft.plates.size)
+        assertEquals(MealSlot.Lunch, draft.slot)
+        assertEquals(41.4, draft.coordinates?.latitude)
+        assertEquals(2.17, draft.coordinates?.longitude)
+    }
+
+    @Test fun photo_pick_failed_surfaces_an_upload_error() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.PhotoPickFailed)
+
+        vm.state.test { assertEquals(MealError.Publish.PhotoUploadFailed, expectMostRecentItem().error) }
+    }
+
+    // ── edge-case hardening (2026-07-13 track-edge-presentation) ──────────────────────────
+
+    @Test fun remove_photo_at_the_only_photo_leaves_an_empty_sane_state_and_blocks_continue() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        // Make every other canContinue gate pass so the photo removal is the ONLY thing under test.
+        vm.onIntent(ComposePlateIntent.DishChanged("Pizza"))
+
+        vm.onIntent(ComposePlateIntent.RemovePhotoAt(0))
+
+        assertTrue(repo.observeDraft().first()!!.plates.isEmpty())
+        vm.state.test {
+            val st = expectMostRecentItem()
+            assertTrue(st.photos.isEmpty())
+            assertEquals(0, st.selectedIndex)
+            assertEquals(null, st.selectedPhoto)
+            assertEquals(null, st.primaryPhoto)
+            assertFalse(st.canContinue, "removing the only photo must block Continue (no-photo gate)")
+        }
+    }
+
+    @Test fun move_photo_of_a_non_selected_tile_moves_selection_to_the_destination_index_not_the_previously_selected_photo() = runTest {
+        // Locks the ACTUAL selection-follow contract of the general MovePhoto(from, to) command.
+        // The UI's only caller (the strip's PhotoActionRow) always passes fromIndex == selectedIndex,
+        // so this exact shape (moving a DIFFERENT tile than the one selected) never happens today —
+        // but the intent handler itself is unconditional: `update { it.copy(selectedIndex =
+        // intent.toIndex) }` runs regardless of whether `fromIndex` was the current selection. So
+        // selection follows the MOVED photo's destination slot, not whichever photo the user had
+        // selected before the move.
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        vm.onIntent(ComposePlateIntent.SelectPhoto(2)) // C is selected
+
+        vm.onIntent(ComposePlateIntent.MovePhoto(0, 1)) // move A (NOT the selection) from 0 to 1
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(listOf("B", "A", "C"), draft.plates.map { it.photoBytes.decodeToString() })
+        vm.state.test {
+            val st = expectMostRecentItem()
+            // Selection jumped to index 1 (A's new slot) even though C — the photo the user actually
+            // had selected — is untouched and still sits at index 2.
+            assertEquals(1, st.selectedIndex)
+            assertEquals("A", st.selectedPhoto?.photoBytes?.decodeToString())
+        }
+    }
+
+    @Test fun move_photo_left_from_the_first_slot_is_a_noop() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        // Mirrors PhotoActionRow's onMoveLeft at the left edge: MovePhoto(selectedIndex, selectedIndex - 1).
+        vm.onIntent(ComposePlateIntent.MovePhoto(0, -1))
+
+        assertEquals(listOf("A", "B", "C"), repo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+        vm.state.test { assertEquals(0, expectMostRecentItem().selectedIndex) }
+    }
+
+    @Test fun move_photo_right_from_the_last_slot_is_a_noop() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        vm.onIntent(ComposePlateIntent.SelectPhoto(2))
+
+        // Mirrors PhotoActionRow's onMoveRight at the right edge: MovePhoto(selectedIndex, selectedIndex + 1).
+        vm.onIntent(ComposePlateIntent.MovePhoto(2, 3))
+
+        assertEquals(listOf("A", "B", "C"), repo.observeDraft().first()!!.plates.map { it.photoBytes.decodeToString() })
+        vm.state.test { assertEquals(2, expectMostRecentItem().selectedIndex) }
+    }
+
+    @Test fun add_photos_with_exactly_one_photo_appends_it_as_a_single_item() = runTest {
+        // Mirrors the screen's PickedMultiple(size == 1) arm, which also funnels into ONE AddPhotos
+        // call carrying a single-element list — same code path as a plain single Picked result.
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.AddPhotos(listOf(PickedPhoto(bytes("B"), PhotoSource.Camera))))
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(listOf("A", "B"), draft.plates.map { it.photoBytes.decodeToString() })
+        vm.state.test { assertEquals(null, expectMostRecentItem().error) }
+    }
+
+    @Test fun add_photos_when_already_at_the_cap_adds_nothing_and_surfaces_the_notice() = runTest {
+        val atCap = (1..MealPublishPolicy.MAX_PHOTOS_PER_MEAL).map { plate("existing-$it") }
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(*atCap.toTypedArray())) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(ComposePlateIntent.AddPhotos(listOf(PickedPhoto(bytes("new"), PhotoSource.Camera))))
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(MealPublishPolicy.MAX_PHOTOS_PER_MEAL, draft.plates.size)
+        assertEquals("existing-1", draft.plates.first().photoBytes.decodeToString()) // nothing displaced
+        vm.state.test { assertEquals(MealError.Validation.TooManyPhotos, expectMostRecentItem().error) }
+    }
+
+    @Test fun add_photos_that_succeeds_without_trimming_does_not_clobber_an_unrelated_existing_error() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        // Seed an UNRELATED error first (a failed pick from the compose screen's own picker).
+        vm.onIntent(ComposePlateIntent.PhotoPickFailed)
+        vm.state.test { assertEquals(MealError.Publish.PhotoUploadFailed, expectMostRecentItem().error) }
+
+        // Plenty of capacity remains, so this add is NOT trimmed — addPhotos() only auto-clears the
+        // error when it was specifically TooManyPhotos; an unrelated error must survive untouched.
+        vm.onIntent(ComposePlateIntent.AddPhotos(listOf(PickedPhoto(bytes("B"), PhotoSource.Camera))))
+
+        vm.state.test { assertEquals(MealError.Publish.PhotoUploadFailed, expectMostRecentItem().error) }
+    }
+
+    @Test fun select_photo_negative_index_is_a_noop() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"))) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+        vm.onIntent(ComposePlateIntent.SelectPhoto(1))
+
+        vm.onIntent(ComposePlateIntent.SelectPhoto(-1))
+
+        // Unchanged — SelectPhoto is a no-op for any out-of-bounds index, not a clamp to a boundary.
+        vm.state.test { assertEquals(1, expectMostRecentItem().selectedIndex) }
+    }
+
+    @Test fun swap_0_and_1_reclassifies_the_new_primary_then_swapping_back_reclassifies_again() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("plate-a"), plate("plate-b"))) }
+        var classifyCalls = 0
+        val vm = vmWith(
+            repo,
+            classifyResult = { jpeg ->
+                classifyCalls++
+                when (jpeg.decodeToString()) {
+                    "plate-a" -> Result.success(listOf(DishLabel("pizza", 0.9f)))
+                    else -> Result.success(listOf(DishLabel("salad", 0.9f)))
+                }
+            },
+            dishMap = mapOf("pizza" to listOf("tomato"), "salad" to listOf("lettuce")),
+        )
+
+        // Initial classify of the primary (plate-a).
+        vm.onPhotoCaptured(bytes("plate-a"))
+        assertEquals(1, classifyCalls)
+
+        // Swap 0<->1: plate-b becomes primary — the screen's LaunchedEffect would key on its new
+        // content hash and re-invoke onPhotoCaptured.
+        vm.onIntent(ComposePlateIntent.MovePhoto(0, 1))
+        vm.onPhotoCaptured(bytes("plate-b"))
+        assertEquals(2, classifyCalls)
+        vm.state.test {
+            assertEquals(listOf(IngredientSlug.of("lettuce").getOrNull()!!), expectMostRecentItem().detectedIngredients)
+        }
+
+        // Swap back 0<->1: plate-a is primary again. Even though plate-a was classified once already,
+        // the dedupe only compares against the LAST fingerprint (plate-b's) — so this reclassifies too.
+        vm.onIntent(ComposePlateIntent.MovePhoto(0, 1))
+        vm.onPhotoCaptured(bytes("plate-a"))
+        assertEquals(3, classifyCalls)
+        vm.state.test {
+            assertEquals(listOf(IngredientSlug.of("tomato").getOrNull()!!), expectMostRecentItem().detectedIngredients)
+        }
+    }
+
+    @Test fun removing_a_non_primary_photo_does_not_trigger_reclassification_of_the_unchanged_primary() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos(plate("A"), plate("B"), plate("C"))) }
+        var classifyCalls = 0
+        val vm = vmWith(repo, classifyResult = { classifyCalls++; Result.success(listOf(DishLabel("pizza", 0.9f))) })
+
+        vm.onPhotoCaptured(bytes("A")) // classify the primary once
+        assertEquals(1, classifyCalls)
+
+        vm.onIntent(ComposePlateIntent.RemovePhotoAt(2)) // remove C, a NON-primary tile
+
+        // Primary is still A (byte-identical) — the screen's LaunchedEffect key (contentHashCode of
+        // the primary) would not have changed, so it would never re-invoke onPhotoCaptured; simulate
+        // that by calling it again with the SAME bytes and confirming the fingerprint guard dedupes it.
+        vm.onPhotoCaptured(bytes("A"))
+        assertEquals(1, classifyCalls, "removing a non-primary photo must not cause the unchanged primary to reclassify")
+    }
+
+    @Test fun exif_prefill_on_add_photos_never_applies_to_a_camera_sourced_photo() = runTest {
+        val repo = FakeMealRepository().apply { saveDraft(draftWithPhotos()) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(
+            ComposePlateIntent.AddPhotos(
+                listOf(
+                    PickedPhoto(
+                        bytes("cam"), PhotoSource.Camera,
+                        // A camera pick should never legitimately carry EXIF, but the gate must be
+                        // keyed on `source`, not "metadata happens to be null" — assert the skip
+                        // holds even when metadata IS present.
+                        metadata = PhotoMetadata(takenAtEpochMs = composeLunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+                    ),
+                ),
+            ),
+        )
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(null, draft.slot)
+        assertEquals(null, draft.coordinates)
+    }
+
+    @Test fun exif_prefill_on_add_photos_fills_only_coordinates_when_slot_is_already_set() = runTest {
+        val seeded = draftWithPhotos().copy(slot = MealSlot.Breakfast)
+        val repo = FakeMealRepository().apply { saveDraft(seeded) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(
+            ComposePlateIntent.AddPhotos(
+                listOf(
+                    PickedPhoto(
+                        bytes("g"), PhotoSource.Gallery,
+                        metadata = PhotoMetadata(takenAtEpochMs = composeLunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+                    ),
+                ),
+            ),
+        )
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(MealSlot.Breakfast, draft.slot) // untouched
+        assertEquals(41.4, draft.coordinates?.latitude) // unset field still fills
+        assertEquals(2.17, draft.coordinates?.longitude)
+    }
+
+    @Test fun exif_prefill_on_add_photos_changes_nothing_when_both_slot_and_coordinates_are_already_set() = runTest {
+        val presetCoords = (Coordinates.of(10.0, 20.0) as Result.Ok).value
+        val seeded = draftWithPhotos().copy(slot = MealSlot.Breakfast, coordinates = presetCoords)
+        val repo = FakeMealRepository().apply { saveDraft(seeded) }
+        val vm = vmWith(repo, classifyResult = { Result.success(emptyList()) })
+
+        vm.onIntent(
+            ComposePlateIntent.AddPhotos(
+                listOf(
+                    PickedPhoto(
+                        bytes("g"), PhotoSource.Gallery,
+                        metadata = PhotoMetadata(takenAtEpochMs = composeLunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+                    ),
+                ),
+            ),
+        )
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(MealSlot.Breakfast, draft.slot)
+        assertEquals(10.0, draft.coordinates?.latitude)
+        assertEquals(20.0, draft.coordinates?.longitude)
     }
 
     private class FakeCrewMembership(private val crews: List<CrewId>) : CrewMembershipPort {

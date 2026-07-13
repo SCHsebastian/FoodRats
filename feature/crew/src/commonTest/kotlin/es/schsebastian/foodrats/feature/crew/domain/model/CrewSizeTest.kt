@@ -8,9 +8,9 @@ import kotlin.test.assertTrue
 class CrewSizeTest {
     @Test fun bounds() {
         assertEquals(3, CrewSize.MIN)
-        assertEquals(8, CrewSize.MAX)
+        assertEquals(15, CrewSize.MAX)
     }
     @Test fun canAdd_at_min_true() = assertTrue(CrewSize.canAdd(currentCount = 1))
-    @Test fun canAdd_at_max_minus_one_true() = assertTrue(CrewSize.canAdd(currentCount = 7))
-    @Test fun canAdd_at_max_false() = assertFalse(CrewSize.canAdd(currentCount = 8))
+    @Test fun canAdd_at_max_minus_one_true() = assertTrue(CrewSize.canAdd(currentCount = 14))
+    @Test fun canAdd_at_max_false() = assertFalse(CrewSize.canAdd(currentCount = 15))
 }

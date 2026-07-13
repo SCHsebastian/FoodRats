@@ -49,6 +49,8 @@ class MealDatabaseTest {
         classifierVersion = null,
         cuisine = null,
         kind = "solo",
+        plateSource = null,
+        platesJson = null,
         pending = pending,
         idempotencyKey = null,
     )
@@ -90,6 +92,8 @@ class MealDatabaseTest {
             classifierVersion = "v1",
             cuisine = "italian",
             kind = "solo",
+            plateSource = "gallery",
+            platesJson = """[{"path":"crews/c1/meals/m1.jpg","source":"gallery"}]""",
             pending = 0L,
             idempotencyKey = null,
         )
@@ -99,6 +103,17 @@ class MealDatabaseTest {
         assertEquals("Pizza", rows.single().dishName)
         assertEquals(8L, rows.single().ratingSum)
         assertEquals("cheese,tomato", rows.single().ingredientsCsv)
+        // The plateSource column round-trips (NULL default on the first insert, replaced here).
+        assertEquals("gallery", rows.single().plateSource)
+        // platesJson round-trips too (NULL default on the first insert, replaced here).
+        assertEquals("""[{"path":"crews/c1/meals/m1.jpg","source":"gallery"}]""", rows.single().platesJson)
+    }
+
+    @Test fun upsert_with_no_plates_json_reads_back_null() {
+        insertMeal("m1", crewId = "c1", dayKey = "2026-06-19", publishedAtEpochMs = 100L)
+
+        val rows = db.mealQueries.selectFeedByCrewDay("c1", "2026-06-19").executeAsList()
+        assertEquals(null, rows.single().platesJson)
     }
 
     @Test fun select_range_by_crew_is_inclusive_on_both_ends() {

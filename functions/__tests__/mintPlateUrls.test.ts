@@ -89,6 +89,50 @@ describe("authorizedPaths — crew-scoped allow-list (#15)", () => {
     const paths = ["crew_banners/c1/evil/9f3c1a2b.jpg"];
     expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
   });
+
+  it("does NOT leak across a crew-id PREFIX collision (c1 vs c11)", () => {
+    const paths = [
+      "crews/c11/meals/c11_alice_2026-06-14_lunch.jpg", // foreign crew whose id starts with c1
+      "crew_banners/c11/banner.jpg",
+    ];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
+  });
+
+  it("avatar uid match is exact — 'alice2' is not authorized just because 'alice' is a member", () => {
+    expect(authorizedPaths("c1", ["alice", "bob"], ["avatars/alice2.jpg"])).toEqual([]);
+    expect(authorizedPaths("c1", ["alice", "bob"], ["avatars/alice2/tok.jpg"])).toEqual([]);
+  });
+
+  it("drops an avatar path with a doubly-nested token segment", () => {
+    expect(authorizedPaths("c1", ["alice"], ["avatars/alice/x/y.jpg"])).toEqual([]);
+  });
+
+  it("returns empty for an empty path list", () => {
+    expect(authorizedPaths("c1", ["alice"], [])).toEqual([]);
+  });
+
+  it("authorizes multi-photo extra-photo paths (_p1..p9) exactly like the primary", () => {
+    const paths = [
+      "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg",
+      "crews/c1/meals/c1_alice_2026-06-14_lunch_p1.jpg",
+      "crews/c1/meals/c1_alice_2026-06-14_lunch_p9.jpg",
+    ];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(paths);
+  });
+
+  it("drops a multi-photo extra-photo path scoped to a FOREIGN crew", () => {
+    const paths = ["crews/c2/meals/c2_alice_2026-06-14_lunch_p1.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
+  });
+
+  it("authorizes a nested subpath under this crew's meals/ prefix (documented current behavior)", () => {
+    // NOTE: unlike the banner check, the plate check is prefix+suffix only, so a nested
+    // `crews/c1/meals/sub/x.jpg` IS signed. Still crew-scoped (no cross-crew leak) and a signed
+    // URL to a nonexistent object just 404s, but the rule is looser than the banner rule.
+    expect(
+      authorizedPaths("c1", ["alice"], ["crews/c1/meals/sub/x.jpg"]),
+    ).toEqual(["crews/c1/meals/sub/x.jpg"]);
+  });
 });
 
 describe("ownAvatarPaths — self-avatar allow-list (H2)", () => {
@@ -194,6 +238,19 @@ describe("buildSignedUrls — membership-checked minting (#15)", () => {
     ).toBe("unauthenticated");
   });
 
+  it("truncates a multi-photo-scale request (205 paths) to exactly MAX_PATHS, preserving order", async () => {
+    // A crew posting heavily with multi-photo meals (up to 10 photos each) can plausibly cross
+    // MAX_PATHS in one mintPlateUrls batch; the contract is "first MAX_PATHS win, in request order".
+    const paths = Array.from(
+      { length: 205 },
+      (_, i) => `crews/c1/meals/c1_alice_2026-06-14_meal${i}.jpg`,
+    );
+    const res = await buildSignedUrls(deps, "alice", { crewId: "c1", paths });
+    const keys = Object.keys(res.urls);
+    expect(keys).toHaveLength(MAX_PATHS);
+    expect(keys).toEqual(paths.slice(0, MAX_PATHS));
+  });
+
   it("caps requests at MAX_PATHS paths (functions-03)", async () => {
     // Build MAX_PATHS + 10 plate paths for crew c1; the response should contain at most MAX_PATHS.
     const extraPaths = Array.from(
@@ -202,5 +259,70 @@ describe("buildSignedUrls — membership-checked minting (#15)", () => {
     );
     const res = await buildSignedUrls(deps, "alice", { crewId: "c1", paths: extraPaths });
     expect(Object.keys(res.urls).length).toBeLessThanOrEqual(MAX_PATHS);
+  });
+
+  it("truncates BEFORE authorizing: a valid path beyond position MAX_PATHS is dropped", async () => {
+    // Documented behavior of the cap: `.slice(0, MAX_PATHS)` runs before the allow-list, so a
+    // request padded with junk can push a legitimate path off the end. The client never sends
+    // >200 paths, but the contract is "first MAX_PATHS win".
+    const junk = Array.from({ length: MAX_PATHS }, (_, i) => `junk/${i}.txt`);
+    const res = await buildSignedUrls(deps, "alice", {
+      crewId: "c1",
+      paths: [...junk, "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg"],
+    });
+    expect(res.urls).toEqual({});
+  });
+
+  it("tolerates a missing paths array (malformed request → empty result, no throw)", async () => {
+    const res = await buildSignedUrls(deps, "alice", {
+      crewId: "c1",
+      paths: undefined as unknown as string[],
+    });
+    expect(res.urls).toEqual({});
+    expect(res.expiresAtMs).toBe(NOW + URL_TTL_MS);
+  });
+
+  it("treats a missing crewId as a self-avatar request (nullish → empty string)", async () => {
+    const readCrewSpy = vi.fn(readCrew);
+    const res = await buildSignedUrls(
+      { readCrew: readCrewSpy, sign, nowMs: NOW },
+      "alice",
+      { crewId: undefined as unknown as string, paths: ["avatars/alice.jpg", "avatars/bob.jpg"] },
+    );
+    expect(readCrewSpy).not.toHaveBeenCalled();
+    expect(Object.keys(res.urls)).toEqual(["avatars/alice.jpg"]);
+  });
+
+  it("caps the self-avatar branch at MAX_PATHS too", async () => {
+    const junk = Array.from({ length: MAX_PATHS }, (_, i) => `avatars/not-me/${i}.jpg`);
+    const res = await buildSignedUrls(deps, "alice", {
+      crewId: "",
+      paths: [...junk, "avatars/alice.jpg"], // own avatar sits past the cap → dropped
+    });
+    expect(res.urls).toEqual({});
+  });
+
+  it("a member of a crew with an empty memberIds list is still rejected", async () => {
+    const emptyCrew: ReadCrew = async () => ({ memberIds: [] });
+    expect(
+      await codeOf(() =>
+        buildSignedUrls({ readCrew: emptyCrew, sign, nowMs: NOW }, "alice", {
+          crewId: "c1",
+          paths: [],
+        }),
+      ),
+    ).toBe("permission-denied");
+  });
+
+  it("propagates a signer failure (the callable wrapper maps it to 'internal')", async () => {
+    const failingSign: SignReadUrl = async () => {
+      throw new Error("gcs unavailable");
+    };
+    await expect(
+      buildSignedUrls({ readCrew, sign: failingSign, nowMs: NOW }, "alice", {
+        crewId: "c1",
+        paths: ["crews/c1/meals/c1_alice_2026-06-14_lunch.jpg"],
+      }),
+    ).rejects.toThrow("gcs unavailable");
   });
 });

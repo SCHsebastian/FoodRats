@@ -327,6 +327,30 @@ class MealLocalStoreTest {
         assertEquals(setOf("rater-2"), ratingsByMeal["recent"].orEmpty().map { it.raterId }.toSet())
     }
 
+    @Test fun upsert_all_round_trips_gallery_plate_source_through_the_real_driver() = runTest {
+        store.upsertAll(listOf(dto("m1", publishedAtEpochMs = 100L).copy(plateSource = "gallery")))
+
+        store.observeFeed("c1", "2026-06-19").test {
+            val meal = awaitItem().single()
+            assertEquals("gallery", meal.plateSource)
+            // Round trips through the store's own DTO reconstruction too.
+            assertEquals("gallery", meal.toMealDto().plateSource)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun upsert_all_with_no_plate_source_reads_back_null_not_camera_string() = runTest {
+        // MealLocalStore/LocalMeal are tolerant-null all the way through — the "null ⇒ camera"
+        // DEFAULT is applied by PlateSource.fromKey() at the domain-mapping boundary, not baked
+        // into the stored string here.
+        store.upsertAll(listOf(dto("m1", publishedAtEpochMs = 100L)))
+
+        store.observeFeed("c1", "2026-06-19").test {
+            assertEquals(null, awaitItem().single().plateSource)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test fun upsert_all_replaces_an_existing_row_in_place() = runTest {
         store.upsertAll(listOf(dto("m1", publishedAtEpochMs = 100L)))
         store.upsertAll(

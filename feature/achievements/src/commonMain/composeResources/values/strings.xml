@@ -6,13 +6,11 @@
     <string name="achievements_locked_section_title">Locked</string>
     <string name="achievements_progress_format">%1$d / %2$d</string>
     <string name="achievements_earned_on_format">Earned %1$s</string>
-    <string name="achievements_unlocked_toast">Badge unlocked!</string>
     <string name="achievements_celebration_title">New badge!</string>
     <string name="achievements_celebration_ack">Nice!</string>
     <string name="achievements_detail_locked_label">Locked</string>
     <string name="achievements_detail_how_earned_label">How you earned it</string>
     <string name="achievements_detail_how_to_earn_label">How to earn it</string>
-    <string name="achievements_detail_close_cta">Close</string>
     <string name="achievements_back_cta">Back</string>
     <string name="achievements_empty_subtext">Publish meals to start earning badges.</string>
 

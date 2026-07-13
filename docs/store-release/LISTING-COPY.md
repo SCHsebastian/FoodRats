@@ -17,14 +17,14 @@ Category suggestion: **Social** (alt: Lifestyle / Food & Drink). Content rating 
 `Share one daily meal photo with your small crew. Scores, streaks, no calorie counting.`
 **Full description** (≤4000):
 ```
-FoodRats is a closed-group meal-sharing app for crews of 3–8 — friends, family, or coworkers.
+FoodRats is a closed-group meal-sharing app for crews of 3–15 — friends, family, or coworkers.
 Post one meal a day: a photo, a 1–10 score, the dish name, and an optional note. That's it.
 
 No followers. No public feed. No calorie tracking. Just your people and what you ate today.
 
 WHAT YOU GET
 • One meal a day — a simple daily ritual, not another tracker.
-• Private crews of 3–8 — invite by link or QR; nothing is public.
+• Private crews of 3–15 — invite by link or QR; nothing is public.
 • Scores & streaks — rate plates 1–10, keep your crew's streak alive.
 • Stats that are fun, not clinical — podiums, leaderboards, and a cuisine passport.
 • Blind voting — rate before you see who cooked it (optional, per crew).
@@ -43,7 +43,7 @@ You can export your data or delete your account at any time, right from the app.
 `Comparte una comida al día con tu grupo cerrado. Puntuaciones y rachas, sin contar calorías.`
 **Descripción completa** (≤4000):
 ```
-FoodRats es una app de comidas para grupos cerrados de 3 a 8 personas: amigos, familia o
+FoodRats es una app de comidas para grupos cerrados de 3 a 15 personas: amigos, familia o
 compañeros. Publica una comida al día: una foto, una puntuación del 1 al 10, el nombre del plato
 y una nota opcional. Nada más.
 
@@ -51,7 +51,7 @@ Sin seguidores. Sin feed público. Sin contar calorías. Solo tu gente y lo que 
 
 QUÉ INCLUYE
 • Una comida al día — un ritual sencillo, no otro contador.
-• Crews privadas de 3 a 8 — invita por enlace o QR; nada es público.
+• Crews privadas de 3 a 15 — invita por enlace o QR; nada es público.
 • Puntuaciones y rachas — valora los platos del 1 al 10 y mantén viva la racha.
 • Estadísticas divertidas, no clínicas — podios, clasificaciones y un pasaporte de cocinas.
 • Votación a ciegas — valora antes de ver quién cocinó (opcional, por crew).
@@ -64,11 +64,16 @@ Una forma ligera y social de seguir en contacto a través de la comida.
 Puedes exportar tus datos o eliminar tu cuenta cuando quieras, desde la propia app.
 ```
 
-**Release notes (What's new) — first release, en/es:**
+**Release notes (What's new)** — per-release; no fastlane lane uploads this (every lane in
+`fastlane/Fastfile` sets `skip_upload_metadata`/`skip_metadata`), so it's a manual console paste
+every time. First release, en/es (historical, v1.0.0):
 ```
 en-US: First release. Create a crew, post your daily meal, and keep the streak going.
 es-ES: Primera versión. Crea una crew, publica tu comida del día y mantén la racha.
 ```
+Current release notes: `docs/store-release/RELEASE-NOTES-v1.11.0.md` (en/es, Play + TestFlight
+variants). Going forward each release gets its own `docs/store-release/RELEASE-NOTES-vX.Y.Z.md`
+instead of overwriting this block.
 
 ---
 
@@ -114,7 +119,7 @@ Feature graphic (Play, required): 1024×500 PNG. App icon is already in the proj
 ---
 
 ## UGC / review notes (paste into "Notes for review")
-- Closed groups only (3–8 invited members); no public discovery or open feed.
+- Closed groups only (3–15 invited members); no public discovery or open feed.
 - Photos and comments are visible only within a user's own crews.
 - Account deletion is in-app (Profile → Delete account) and via public URL:
   https://foodrats-de4ec.web.app/account-deletion

@@ -5,16 +5,22 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.CaptureSource
 import es.schsebastian.foodrats.core.domain.analytics.NoopAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.preferences.DefaultAudiencePort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoMetadata
+import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.domain.usecase.StartMealDraftUseCase
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftCommand
 import es.schsebastian.foodrats.feature.meal.domain.usecase.UpdateMealDraftUseCase
+import es.schsebastian.foodrats.feature.meal.presentation.components.applyExifPrefill
+import es.schsebastian.foodrats.feature.meal.presentation.components.toPlateSource
 import kotlinx.coroutines.flow.first
+import kotlinx.datetime.TimeZone
 
 class CaptureMealViewModel(
     private val startDraft: StartMealDraftUseCase,
@@ -23,6 +29,10 @@ class CaptureMealViewModel(
     private val crewMembership: CrewMembershipPort,
     // Noop default (null) keeps existing tests green; the Koin binding passes the real port.
     private val defaultAudience: DefaultAudiencePort? = null,
+    // Device zone for interpreting an EXIF capture timestamp (gallery prefill only). Defaulted so
+    // existing tests that don't care about prefill keep compiling; the Koin binding passes the
+    // app-wide zone (the same one StartMealDraftUseCase/ComposePlateViewModel use).
+    private val zone: TimeZone = TimeZone.UTC,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<CaptureMealState, CaptureMealIntent, CaptureMealEffect>(CaptureMealState()) {
 
@@ -58,13 +68,61 @@ class CaptureMealViewModel(
                 }
             }
             is CaptureMealIntent.PhotoTaken -> {
+                // Each intent runs in its own coroutine (MviViewModel.onIntent launches per
+                // intent), so a duplicate PhotoTaken dispatched while the first photo is still
+                // being persisted would interleave at the suspension point below and double-save
+                // the draft / double-emit NavigateToCompose. Drop re-entries while capturing.
+                if (currentState.isCapturing) return
                 update { it.copy(isCapturing = true, error = null) }
-                val r = updateDraft(UpdateMealDraftCommand.SetPhoto(Plate(intent.bytes)))
+                val ok = appendPhoto(intent.bytes, intent.source, intent.metadata)
                 update { it.copy(isCapturing = false) }
-                if (r is Result.Ok) emit(CaptureMealEffect.NavigateToCompose)
-                else if (r is Result.Err) update { it.copy(error = MealStringKey.CapturePhotoFailed) }
+                if (ok) emit(CaptureMealEffect.NavigateToCompose)
+                else update { it.copy(error = MealStringKey.CapturePhotoFailed) }
+            }
+            is CaptureMealIntent.PhotosTaken -> {
+                // Same re-entrancy guard as PhotoTaken, held for the WHOLE batch (not per-photo):
+                // firing one PhotoTaken-style append per photo as separate intents would each
+                // launch their own coroutine (MviViewModel.onIntent) and race this exact guard,
+                // dropping all but the first. Processing the batch sequentially inside this single
+                // handle() call is what makes "append every photo" actually append every photo.
+                if (currentState.isCapturing || intent.photos.isEmpty()) return
+                update { it.copy(isCapturing = true, error = null) }
+                var anyAppended = false
+                // Defensive cap-trim: a fresh draft always starts empty here (capture only ever
+                // runs against a freshly-started draft), so the remaining capacity IS the absolute
+                // max. AddPhoto's own cap guard is the authoritative backstop past that.
+                for (photo in intent.photos.take(MealPublishPolicy.MAX_PHOTOS_PER_MEAL)) {
+                    if (appendPhoto(photo.bytes, photo.source, photo.metadata)) {
+                        anyAppended = true
+                    } else {
+                        break // cap reached (or a genuine failure) — stop, keep whatever landed.
+                    }
+                }
+                update { it.copy(isCapturing = false) }
+                if (anyAppended) emit(CaptureMealEffect.NavigateToCompose)
+                else update { it.copy(error = MealStringKey.CapturePhotoFailed) }
             }
             CaptureMealIntent.OpenSettings -> emit(CaptureMealEffect.OpenAppSettings)
         }
+    }
+
+    /**
+     * Appends one photo to the draft via [UpdateMealDraftCommand.AddPhoto] and, for a gallery
+     * pick, applies the best-effort EXIF prefill. Returns `true` iff the append succeeded (a
+     * `false` means the cap ([MealPublishPolicy.MAX_PHOTOS_PER_MEAL]) was already reached — or,
+     * in principle, any other draft-save failure).
+     */
+    private suspend fun appendPhoto(bytes: ByteArray, source: PhotoSource, metadata: PhotoMetadata?): Boolean {
+        val plateSource = source.toPlateSource()
+        val r = updateDraft(UpdateMealDraftCommand.AddPhoto(Plate(bytes, source = plateSource)))
+        if (r is Result.Ok && source == PhotoSource.Gallery) {
+            // Best-effort EXIF prefill: a captured timestamp suggests a MealSlot, GPS
+            // suggests Coordinates — only for fields the user hasn't already set. Camera
+            // picks carry no metadata (live shot, nothing to prefill from). Never surfaces
+            // an error and never blocks the caller's navigation. Shared with ComposePlateViewModel
+            // (see ExifPrefill.kt) — the exact same rules apply when photos are added post-capture.
+            applyExifPrefill(r.value, metadata, zone, updateDraft)
+        }
+        return r is Result.Ok
     }
 }
