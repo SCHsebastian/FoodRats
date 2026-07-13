@@ -87,7 +87,7 @@ class CaptureMealScreenTest {
         analytics = RecordingAnalyticsTracker(),
     )
 
-    @Test fun camera_dismiss_fallback_chooser_renders_retry_gallery_and_cancel_actions() {
+    @Test fun camera_failure_fallback_chooser_renders_failed_title_with_retry_gallery_and_cancel_actions() {
         val vm = viewModel()
 
         rule.setContent {
@@ -97,7 +97,11 @@ class CaptureMealScreenTest {
         }
         rule.waitForIdle()
 
-        rule.onNodeWithText("Add your plate photo").assertExists()
+        // This chooser is reached via PhotoPickResult.Failed (the FileProvider authority is
+        // missing in this harness — see the class KDoc), so the title must be the FAILED
+        // variant, not the generic "Add your plate photo" a plain camera dismiss shows.
+        rule.onNodeWithText("Couldn't get that photo. Try again or pick one from your gallery.").assertExists()
+        rule.onNodeWithText("Add your plate photo").assertDoesNotExist()
         rule.onNodeWithText("Take a photo").assertExists()
         rule.onNodeWithText("Choose from gallery").assertExists()
         rule.onNodeWithText("Cancel").assertExists()
@@ -136,6 +140,7 @@ class CaptureMealScreenTest {
         rule.onNodeWithText("Choose from gallery").performClick()
         rule.waitForIdle()
 
-        rule.onNodeWithText("Add your plate photo").assertDoesNotExist()
+        rule.onNodeWithText("Couldn't get that photo. Try again or pick one from your gallery.")
+            .assertDoesNotExist()
     }
 }

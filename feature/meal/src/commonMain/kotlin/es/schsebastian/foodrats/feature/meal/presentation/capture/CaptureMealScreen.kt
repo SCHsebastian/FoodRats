@@ -57,6 +57,10 @@ fun CaptureMealScreen(
     // picker failed): rather than bouncing straight to onCancelled, offer a retry alongside a
     // gallery fallback so a dismissed camera isn't a dead end.
     var awaitingChoice by remember { mutableStateOf(false) }
+    // True when the chooser was reached via PhotoPickResult.Failed (vs a plain dismiss): the
+    // title then says the pick FAILED instead of the generic "add your photo", so a broken
+    // pick is no longer indistinguishable from a deliberate cancel (review-track gap).
+    var lastPickFailed by remember { mutableStateOf(false) }
     val picker = rememberPhotoPicker { result ->
         when (result) {
             is PhotoPickResult.Picked -> {
@@ -65,6 +69,7 @@ fun CaptureMealScreen(
                 // same guard; this one also skips the wasted resize work).
                 if (!processing && !state.isCapturing) {
                     awaitingChoice = false
+                    lastPickFailed = false
                     processing = true
                     scope.launch {
                         // Resize is CPU-bound and can take hundreds of ms on a 12MP shot.
@@ -80,14 +85,23 @@ fun CaptureMealScreen(
                     }
                 }
             }
-            PhotoPickResult.Cancelled -> awaitingChoice = true
-            is PhotoPickResult.Failed -> awaitingChoice = true
+            PhotoPickResult.Cancelled -> { lastPickFailed = false; awaitingChoice = true }
+            is PhotoPickResult.Failed -> { lastPickFailed = true; awaitingChoice = true }
         }
     }
 
     LaunchedEffect(Unit) {
         vm.onIntent(CaptureMealIntent.Start)
         picker.launchCamera()
+    }
+
+    // BUG FIX (pre-existing, review L2): `processing` flips true on the first Picked result and
+    // was never reset, so a later SetPhoto failure (state.error set, isCapturing back to false)
+    // left the "Saving your plate…" overlay up FOREVER, masking the error banner branch below.
+    // Reset it the moment the VM surfaces an error so the banner can actually win. The success
+    // path needs no reset — NavigateToCompose leaves the screen.
+    LaunchedEffect(state.error) {
+        if (state.error != null) processing = false
     }
 
     LaunchedEffect(Unit) {
@@ -141,7 +155,10 @@ fun CaptureMealScreen(
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
                 FrText(
-                    text = resolve(MealStringKey.CaptureFallbackTitle),
+                    text = resolve(
+                        if (lastPickFailed) MealStringKey.CaptureFailedTitle
+                        else MealStringKey.CaptureFallbackTitle,
+                    ),
                     style = StructuralType.titleMd,
                     color = StructuralColors.foreground,
                 )

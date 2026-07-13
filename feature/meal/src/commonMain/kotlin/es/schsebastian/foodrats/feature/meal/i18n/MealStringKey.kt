@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.meal.generated.resources.Res
 import foodrats.feature.meal.generated.resources.meal_capture_choose_gallery
 import foodrats.feature.meal.generated.resources.meal_capture_draft_failed
+import foodrats.feature.meal.generated.resources.meal_capture_failed_title
 import foodrats.feature.meal.generated.resources.meal_capture_fallback_title
 import foodrats.feature.meal.generated.resources.meal_capture_no_crews
 import foodrats.feature.meal.generated.resources.meal_capture_photo_failed
@@ -125,6 +126,9 @@ enum class MealStringKey(override val resourceId: StringResource) : StringKey {
     CaptureSavingPlate(Res.string.meal_capture_saving_plate),
     // Camera-dismissed fallback: retry the camera or pick the plate from the photo library.
     CaptureFallbackTitle(Res.string.meal_capture_fallback_title),
+    // Same chooser, but reached via PhotoPickResult.Failed — tells the user the pick FAILED
+    // (rather than the generic "add your photo" of a plain camera dismiss).
+    CaptureFailedTitle(Res.string.meal_capture_failed_title),
     CaptureRetryCamera(Res.string.meal_capture_retry_camera),
     CaptureChooseFromGallery(Res.string.meal_capture_choose_gallery),
     // Non-removable provenance marker on the composer preview for a gallery-sourced plate.
