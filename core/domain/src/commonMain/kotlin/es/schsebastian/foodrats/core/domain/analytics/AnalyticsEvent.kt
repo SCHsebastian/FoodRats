@@ -193,6 +193,9 @@ sealed interface AnalyticsEvent {
         val hasDescription: Boolean,
         val audienceCrewCount: Int,
         val source: PublishSource,
+        // Defaults to 1 (legacy single-photo meals / not-yet-migrated fire sites) so every
+        // existing construction site keeps compiling; real multi-photo callers stamp Meal.photoCount.
+        val photoCount: Int = 1,
     ) : AnalyticsEvent {
         override val name = "meal_published"
         override val params = mapOf(
@@ -201,6 +204,7 @@ sealed interface AnalyticsEvent {
             "has_description" to flag(hasDescription),
             "audience_crew_count" to count(audienceCrewCount),
             "publish_source" to text(source.wire),
+            "photo_count" to count(photoCount),
         )
     }
 

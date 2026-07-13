@@ -1,8 +1,10 @@
 package es.schsebastian.foodrats.core.presentation.photopicker
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,9 +30,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
+ * Absolute cap on a single multi-select gallery pick. `PickMultipleVisualMedia`'s own limit is
+ * fixed at launcher REGISTRATION time (the Android contract can't change it per-launch), so this
+ * is the ceiling every `launchGallery(maxItems)` call is trimmed to — see [requestedGalleryMax]
+ * below for how a smaller per-call request is still honored. Defined independently of
+ * `MealPublishPolicy.MAX_PHOTOS_PER_MEAL` (`:core:domain`) — this picker is meal-agnostic (also
+ * used by the avatar/crew-banner single pickers) — but currently the same value by design.
+ */
+private const val GALLERY_MULTI_SELECT_LIMIT = 10
+
+/**
  * Android [PhotoPicker]: `TakePicture` into a cache-dir temp file exposed via the
  * `${applicationId}.photopicker` FileProvider, and the system Photo Picker
- * (`PickVisualMedia`) for the gallery. No runtime permission needed for either.
+ * (`PickVisualMedia` / `PickMultipleVisualMedia`) for the gallery. No runtime permission needed
+ * for any of these.
  */
 @Composable
 actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker {
@@ -42,6 +55,12 @@ actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker
     // path must survive so the restored result callback can still find the photo.
     var pendingCapturePath by rememberSaveable { mutableStateOf<String?>(null) }
 
+    // The multi-select contract's OWN limit is fixed at registration (GALLERY_MULTI_SELECT_LIMIT,
+    // the absolute app cap); a caller may request a smaller max, which the system picker UI has no
+    // way to enforce — so the requested value is remembered here at launch and used to trim the
+    // returned list once the (out-of-process, possibly process-death-surviving) result arrives.
+    var requestedGalleryMax by rememberSaveable { mutableStateOf(1) }
+
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
     ) { uri ->
@@ -49,20 +68,27 @@ actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker
             currentOnResult(PhotoPickResult.Cancelled)
         } else {
             scope.launch {
+                val result = withContext(Dispatchers.Default) { pickGalleryUri(context, uri) }
+                currentOnResult(result)
+            }
+        }
+    }
+
+    val galleryMultiLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(GALLERY_MULTI_SELECT_LIMIT),
+    ) { uris ->
+        if (uris.isEmpty()) {
+            currentOnResult(PhotoPickResult.Cancelled)
+        } else {
+            val trimmed = uris.take(requestedGalleryMax)
+            scope.launch {
                 val result = withContext(Dispatchers.Default) {
-                    try {
-                        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                        if (bytes == null) {
-                            PhotoPickResult.Failed("Unreadable image: $uri")
-                        } else {
-                            // Read EXIF from the RAW bytes — normalization below re-encodes the
-                            // image (baking in rotation), which drops EXIF metadata entirely.
-                            val metadata = readExifMetadata(bytes)
-                            PhotoPickResult.Picked(normalizeExifRotation(bytes), PhotoSource.Gallery, metadata)
-                        }
-                    } catch (t: Throwable) {
-                        PhotoPickResult.Failed(t.message)
-                    }
+                    // Same per-URI pipeline as the single-select path, run in ORDER (uris is
+                    // already selection-ordered) — partial per-item failures are dropped, keeping
+                    // only the successes; an all-failed batch surfaces as Failed.
+                    val picks = trimmed.mapNotNull { uri -> (pickGalleryUri(context, uri) as? PhotoPickResult.Picked) }
+                        .map { picked -> PickedPhoto(picked.bytes, picked.source, picked.metadata) }
+                    if (picks.isEmpty()) PhotoPickResult.Failed("Unreadable images") else PhotoPickResult.PickedMultiple(picks)
                 }
                 currentOnResult(result)
             }
@@ -118,12 +144,48 @@ actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker
                 }
             }
 
-            override fun launchGallery() {
-                galleryLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                )
+            override fun launchGallery(maxItems: Int) {
+                if (maxItems <= 1) {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                } else {
+                    requestedGalleryMax = maxItems
+                    galleryMultiLauncher.launch(
+                        // The request's own `maxItems` further narrows the CONTRACT's registered
+                        // ceiling (GALLERY_MULTI_SELECT_LIMIT) — the system picker UI applies
+                        // min(registered, requested), so a caller asking for fewer than 10 sees
+                        // the correct cap in the picker itself, not just a post-hoc trim.
+                        PickVisualMediaRequest(
+                            mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly,
+                            maxItems = maxItems,
+                        ),
+                    )
+                }
             }
         }
+    }
+}
+
+/**
+ * Reads, EXIF-tags, and orientation-normalizes ONE gallery [uri] — the per-item pipeline shared by
+ * the single- and multi-select gallery launchers. Always [PhotoPickResult.Picked] or
+ * [PhotoPickResult.Failed], never [PhotoPickResult.Cancelled] (there's no per-item "cancel"; an
+ * empty overall selection is the caller's own Cancelled).
+ */
+private fun pickGalleryUri(context: Context, uri: Uri): PhotoPickResult {
+    return try {
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        if (bytes == null) {
+            PhotoPickResult.Failed("Unreadable image: $uri")
+        } else {
+            // Read EXIF from the RAW bytes — normalization below re-encodes the image (baking in
+            // rotation), which drops EXIF metadata entirely.
+            val metadata = readExifMetadata(bytes)
+            PhotoPickResult.Picked(normalizeExifRotation(bytes), PhotoSource.Gallery, metadata)
+        }
+    } catch (t: Throwable) {
+        PhotoPickResult.Failed(t.message)
     }
 }
 

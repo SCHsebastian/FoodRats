@@ -105,6 +105,21 @@ fun ProfileScreen(
                         vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
                 }
             }
+            is PhotoPickResult.PickedMultiple -> scope.launch {
+                // Defensive only — the avatar picker always launches single-pick
+                // (`launchGallery()`/`launchCamera()`), so this arm should be unreachable; Wave 3
+                // owns any real multi-photo avatar UX. Treat the first photo like a single Picked.
+                val compression = withContext(Dispatchers.Default) {
+                    result.photos.first().bytes.compressAvatarForUpload()
+                }
+                when (compression) {
+                    is AvatarCompression.Fit -> vm.onIntent(ProfileIntent.AvatarPicked(compression.bytes))
+                    AvatarCompression.Unreadable ->
+                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.Unreadable))
+                    AvatarCompression.TooLarge ->
+                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
+                }
+            }
             is PhotoPickResult.Failed -> {
                 FrLog.w(FrLog.Tags.Auth) { "[ProfileScreen] avatar picker error: ${result.message}" }
                 vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.PickFailed))

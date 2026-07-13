@@ -85,6 +85,25 @@ fun CaptureMealScreen(
                     }
                 }
             }
+            is PhotoPickResult.PickedMultiple -> {
+                // Defensive only — CaptureMealScreen always launches single-pick (`launchCamera()`
+                // / the no-arg `launchGallery()`), so this arm should be unreachable; Wave 3 owns
+                // the real multi-photo capture UX. Treat the first photo exactly like a single
+                // Picked (same guard/overlay/resize handling as that arm, duplicated rather than
+                // shared so this stays a minimal, obviously-temporary scaffold).
+                val first = result.photos.first()
+                if (!processing && !state.isCapturing) {
+                    awaitingChoice = false
+                    lastPickFailed = false
+                    processing = true
+                    scope.launch {
+                        val bytes = withContext(Dispatchers.Default) {
+                            first.bytes.resizeForUpload()
+                        }
+                        vm.onIntent(CaptureMealIntent.PhotoTaken(bytes, first.source, first.metadata))
+                    }
+                }
+            }
             PhotoPickResult.Cancelled -> { lastPickFailed = false; awaitingChoice = true }
             is PhotoPickResult.Failed -> { lastPickFailed = true; awaitingChoice = true }
         }

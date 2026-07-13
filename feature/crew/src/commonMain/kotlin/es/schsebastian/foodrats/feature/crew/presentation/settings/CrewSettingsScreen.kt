@@ -897,6 +897,9 @@ private fun BannerSection(
     val picker = rememberPhotoPicker { result ->
         when (result) {
             is PhotoPickResult.Picked -> onPicked(result.bytes)
+            // Defensive only — the banner picker always launches single-pick; Wave 3 owns any
+            // real multi-photo banner UX. Treat the first photo exactly like a single Picked.
+            is PhotoPickResult.PickedMultiple -> onPicked(result.photos.first().bytes)
             PhotoPickResult.Cancelled -> Unit
             is PhotoPickResult.Failed -> onPickFailed()
         }

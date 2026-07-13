@@ -89,9 +89,13 @@ private class IosPhotoPicker(
         present(controller)
     }
 
-    override fun launchGallery() {
+    override fun launchGallery(maxItems: Int) {
+        // PHPickerViewControllerDelegateProtocol.picker(...) gets no signal back about which
+        // selectionLimit the configuration was launched with, so the delegate needs to be told
+        // up front whether this is a single- or multi-select launch.
+        galleryDelegate.wantsMultiple = maxItems > 1
         val configuration = PHPickerConfiguration().apply {
-            selectionLimit = 1L
+            selectionLimit = maxItems.toLong()
             filter = PHPickerFilter.imagesFilter
         }
         val controller = PHPickerViewController(configuration = configuration)
@@ -150,27 +154,55 @@ private class GalleryPickDelegate(
     private val deliverOnMain: (PhotoPickResult) -> Unit,
 ) : NSObject(), PHPickerViewControllerDelegateProtocol {
 
+    /** Set by [IosPhotoPicker.launchGallery] right before presenting — see its call site KDoc. */
+    var wantsMultiple: Boolean = false
+
     override fun picker(picker: PHPickerViewController, didFinishPicking: List<*>) {
         picker.dismissViewControllerAnimated(true, completion = null)
-        val picked = didFinishPicking.firstOrNull() as? PHPickerResult
-        if (picked == null) {
+        val results = didFinishPicking.filterIsInstance<PHPickerResult>()
+        if (results.isEmpty()) {
             deliverOnMain(PhotoPickResult.Cancelled)
             return
         }
-        picked.itemProvider.loadDataRepresentationForTypeIdentifier(
-            typeIdentifier = "public.image",
-        ) { data, error ->
-            // Fires on a background queue — decode + JPEG re-encode here, hop to
-            // the main queue only to deliver the result.
-            val bytes = data?.let { nsData -> UIImage(data = nsData).toNormalizedJpegBytes() }
-            // Metadata MUST be read from the raw NSData, before the JPEG re-encode above
-            // bakes in orientation and drops EXIF entirely.
-            val metadata = data?.let { readGalleryMetadata(it) }
-            dispatch_async(dispatch_get_main_queue()) {
-                deliverOnMain(
-                    if (bytes != null) PhotoPickResult.Picked(bytes, PhotoSource.Gallery, metadata)
-                    else PhotoPickResult.Failed(error?.localizedDescription),
-                )
+        val multiSelect = wantsMultiple
+        // Each item provider resolves asynchronously and completions can race in ANY order —
+        // index-tag the slots so the assembled list preserves the user's original selection
+        // order rather than first-to-finish order.
+        val loaded = arrayOfNulls<PickedPhoto>(results.size)
+        var remaining = results.size
+        var lastError: String? = null
+        results.forEachIndexed { index, result ->
+            result.itemProvider.loadDataRepresentationForTypeIdentifier(
+                typeIdentifier = "public.image",
+            ) { data, error ->
+                // Fires on a background queue — decode + JPEG re-encode here, hop to
+                // the main queue only to touch shared state / deliver the result.
+                val bytes = data?.let { nsData -> UIImage(data = nsData).toNormalizedJpegBytes() }
+                // Metadata MUST be read from the raw NSData, before the JPEG re-encode above
+                // bakes in orientation and drops EXIF entirely.
+                val metadata = data?.let { readGalleryMetadata(it) }
+                dispatch_async(dispatch_get_main_queue()) {
+                    // All mutation of the shared `loaded`/`remaining`/`lastError` state happens
+                    // inside main-queue blocks, which GCD serializes — safe despite each item's
+                    // background-queue completion racing the others.
+                    if (bytes != null) {
+                        loaded[index] = PickedPhoto(bytes, PhotoSource.Gallery, metadata)
+                    } else {
+                        lastError = error?.localizedDescription
+                    }
+                    remaining -= 1
+                    if (remaining == 0) {
+                        val photos = loaded.filterNotNull()
+                        deliverOnMain(
+                            when {
+                                // Every item failed to decode (single- or multi-select alike).
+                                photos.isEmpty() -> PhotoPickResult.Failed(lastError)
+                                !multiSelect -> PhotoPickResult.Picked(photos[0].bytes, photos[0].source, photos[0].metadata)
+                                else -> PhotoPickResult.PickedMultiple(photos)
+                            },
+                        )
+                    }
+                }
             }
         }
     }

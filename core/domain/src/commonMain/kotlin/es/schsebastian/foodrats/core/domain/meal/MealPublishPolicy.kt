@@ -11,4 +11,7 @@ package es.schsebastian.foodrats.core.domain.meal
  */
 object MealPublishPolicy {
     const val MAX_MEALS_PER_CREW_PER_DAY = 10
+
+    /** Absolute cap on [Meal.plates] — the most photos a single meal may carry. */
+    const val MAX_PHOTOS_PER_MEAL = 10
 }
