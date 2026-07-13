@@ -5,6 +5,24 @@ import dev.gitlive.firebase.storage.storageMetadata
 import es.schsebastian.foodrats.core.domain.model.CrewId
 
 /**
+ * The banner-Storage seam the [es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository]
+ * orchestrates over. Exists (mirroring [CrewDataSource]) so the repository's setBanner/removeBanner
+ * error-classification can be unit-tested with a behavioral fake instead of live Firebase Storage.
+ * The concrete [CrewBannerStorageDataSource] is the production implementation.
+ */
+interface CrewBannerStorage {
+    /**
+     * Compresses [bytes] under the Storage byte cap and uploads them; returns the content-versioned
+     * object path. Throws [BannerImageUnreadableException] / [BannerImageTooLargeException] when the
+     * image cannot be compressed (+ raw backend throwables the repository classifies).
+     */
+    suspend fun upload(crewId: CrewId, bytes: ByteArray): String
+
+    /** Deletes the banner object at [path]; NOT_FOUND-tolerant, other exceptions propagate. */
+    suspend fun delete(path: String)
+}
+
+/**
  * Uploads, deletes, and resolve-URL for a crew hero/banner image.
  *
  * Mirrors [es.schsebastian.foodrats.feature.auth.data.firebase.AvatarStorageDataSource] exactly —
@@ -15,12 +33,12 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
  * Read URLs are NOT minted here; they go through `ImageUrlPort.resolve(crewId, [path])` at read
  * time in the caller (repository or port binding), keeping the read-signing concern at the data layer.
  */
-class CrewBannerStorageDataSource(private val storage: FirebaseStorage) {
+class CrewBannerStorageDataSource(private val storage: FirebaseStorage) : CrewBannerStorage {
 
     /**
-     * Downscales + re-encodes [bytes] to a small JPEG (see [resizeBannerForUpload]) and uploads it
-     * to a CONTENT-VERSIONED object PATH — `crew_banners/{crewId}/{token}.jpg`, where `token` is
-     * derived from the (resized) byte content — then returns that path (NOT a download URL).
+     * Shrinks [bytes] under the Storage byte cap (see [compressBannerForUpload]) and uploads the
+     * result to a CONTENT-VERSIONED object PATH — `crew_banners/{crewId}/{token}.jpg`, where `token`
+     * is derived from the (compressed) byte content — then returns that path (NOT a download URL).
      *
      * Why versioned (and not the old fixed `crew_banners/{crewId}/banner.jpg`): a fixed, overwritten
      * path meant `bannerPath` never changed, so [es.schsebastian.foodrats.core.data.image.FirebaseImageUrlResolver]
@@ -34,19 +52,24 @@ class CrewBannerStorageDataSource(private val storage: FirebaseStorage) {
      * The compression is load-bearing, not just an optimization: the Storage rule caps the object
      * at 2 MB and requires `image/jpeg`. The picker hands us the raw, full-resolution gallery photo
      * (commonly several MB, possibly a PNG); uploading it verbatim is rejected with
-     * PERMISSION_DENIED — the "banner does not get uploaded" bug. Re-encoding makes both the size
-     * limit and the declared `contentType = "image/jpeg"` hold. The token hashes the SAME (resized)
-     * bytes that are uploaded, so it faithfully tracks the stored object's content.
+     * PERMISSION_DENIED — the "banner does not get uploaded" bug. A compression failure is a TYPED
+     * boundary exception ([BannerImageUnreadableException] / [BannerImageTooLargeException]) the
+     * repository translates, never a fall-through to the oversized originals. The token hashes the
+     * SAME (compressed) bytes that are uploaded, so it faithfully tracks the stored object's content.
      *
      * The path is persisted to `crews/{crewId}.bannerPath` and resolved to a short-lived,
      * membership-checked V4 signed URL at read time via `ImageUrlPort` — same posture as avatars.
      */
-    suspend fun upload(crewId: CrewId, bytes: ByteArray): String {
-        val resized = bytes.resizeBannerForUpload()
-        val token = resized.contentHashCode().toUInt().toString(16)
+    override suspend fun upload(crewId: CrewId, bytes: ByteArray): String {
+        val compressed = when (val c = bytes.compressBannerForUpload()) {
+            is BannerCompression.Fit -> c.bytes
+            BannerCompression.Unreadable -> throw BannerImageUnreadableException
+            BannerCompression.TooLarge -> throw BannerImageTooLargeException
+        }
+        val token = compressed.contentHashCode().toUInt().toString(16)
         val path = "crew_banners/${crewId.value}/$token.jpg"
         storage.reference(path).putData(
-            data = resized.toStorageData(),
+            data = compressed.toStorageData(),
             metadata = storageMetadata { contentType = "image/jpeg" },
         )
         return path
@@ -62,7 +85,7 @@ class CrewBannerStorageDataSource(private val storage: FirebaseStorage) {
      * — the object to delete is whatever `crews/{crewId}.bannerPath` currently points at, which also
      * covers a legacy fixed `crew_banners/{crewId}/banner.jpg` for crews predating versioning.
      */
-    suspend fun delete(path: String) {
+    override suspend fun delete(path: String) {
         try {
             storage.reference(path).delete()
         } catch (e: Exception) {
@@ -76,3 +99,8 @@ class CrewBannerStorageDataSource(private val storage: FirebaseStorage) {
             e.message?.contains("object-not-found") == true ||
             e.message?.contains("404") == true
 }
+
+// Vendor-adapter boundary exceptions the repository translates into typed CrewError.Banner leaves —
+// same posture as the Firestore datasource's CodeUnknownException et al.
+internal object BannerImageUnreadableException : RuntimeException() { private fun readResolve(): Any = BannerImageUnreadableException }
+internal object BannerImageTooLargeException : RuntimeException() { private fun readResolve(): Any = BannerImageTooLargeException }

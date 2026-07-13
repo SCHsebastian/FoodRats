@@ -99,6 +99,9 @@
     <string name="crew_settings_banner_preview_cd">Vista previa de la portada — arrastra arriba o abajo para reposicionar</string>
     <string name="crew_error_banner_upload_failed">No se pudo subir la portada. Inténtalo de nuevo.</string>
     <string name="crew_error_banner_delete_failed">No se pudo quitar la portada. Inténtalo de nuevo.</string>
+    <string name="crew_error_banner_image_too_large">Esa foto es demasiado grande para subirla. Prueba con una más pequeña.</string>
+    <string name="crew_error_banner_image_unreadable">No se pudo leer esa foto. Prueba con otra.</string>
+    <string name="crew_error_banner_pick_failed">No se pudo abrir esa foto. Inténtalo de nuevo.</string>
     <!-- U5b — etiquetas del logro mostradas junto al nombre del miembro. -->
     <string name="crew_badge_first">Primer Plato</string>
     <string name="crew_badge_ten">10 Platos</string>

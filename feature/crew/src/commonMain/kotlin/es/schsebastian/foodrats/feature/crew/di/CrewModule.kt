@@ -49,6 +49,7 @@ import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SetCrewBannerFocalUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.RemoveCrewBannerUseCase
 import es.schsebastian.foodrats.feature.crew.domain.usecase.SwitchActiveCrewUseCase
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorage
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorageDataSource
 import es.schsebastian.foodrats.feature.crew.presentation.invite.AcceptInviteViewModel
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerViewModel
@@ -66,8 +67,9 @@ val crewModule = module {
     single { CrewCodeGenerator(random = Random.Default) }
     singleOf(::CrewErrorMapper)
     single<CrewDataSource> { CrewFirestoreDataSource(get(), get(), get(), get()) }
-    // C9 — banner storage adapter; FirebaseStorage is bound in :core:data's coreDataModule.
-    singleOf(::CrewBannerStorageDataSource)
+    // C9 — banner storage adapter; FirebaseStorage is bound in :core:data's coreDataModule. Bound
+    // by the CrewBannerStorage seam so the repository's banner error-classification stays fakeable.
+    single<CrewBannerStorage> { CrewBannerStorageDataSource(get()) }
     single<ActiveCrewProvider> { ActiveCrewLocalStore(get()) }   // DataStore<Preferences> from coreDataModule
     // Offline-first local read source-of-truth for the crew list (P3b §P3b-T7). Holds the
     // FoodRatsDatabase queries (FoodRatsDatabase is bound by :core:database's databaseModule); the

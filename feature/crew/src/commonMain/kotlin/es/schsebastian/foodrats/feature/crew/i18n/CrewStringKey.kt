@@ -66,6 +66,9 @@ import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_tit
 import foodrats.feature.crew.generated.resources.crew_settings_banner_remove_body
 import foodrats.feature.crew.generated.resources.crew_error_banner_upload_failed
 import foodrats.feature.crew.generated.resources.crew_error_banner_delete_failed
+import foodrats.feature.crew.generated.resources.crew_error_banner_image_too_large
+import foodrats.feature.crew.generated.resources.crew_error_banner_image_unreadable
+import foodrats.feature.crew.generated.resources.crew_error_banner_pick_failed
 import foodrats.feature.crew.generated.resources.crew_settings_banner_reposition_hint
 import foodrats.feature.crew.generated.resources.crew_settings_banner_preview_cd
 import foodrats.feature.crew.generated.resources.crew_settings_crew_name_label
@@ -228,6 +231,9 @@ enum class CrewStringKey(override val resourceId: StringResource) : StringKey {
     SettingsBannerPreviewCd(Res.string.crew_settings_banner_preview_cd),
     ErrorBannerUploadFailed(Res.string.crew_error_banner_upload_failed),
     ErrorBannerDeleteFailed(Res.string.crew_error_banner_delete_failed),
+    ErrorBannerImageTooLarge(Res.string.crew_error_banner_image_too_large),
+    ErrorBannerImageUnreadable(Res.string.crew_error_banner_image_unreadable),
+    ErrorBannerPickFailed(Res.string.crew_error_banner_pick_failed),
     // U5b — badge labels rendered next to the member display name on crew member rows.
     BadgeFirst(Res.string.crew_badge_first),
     BadgeTen(Res.string.crew_badge_ten),

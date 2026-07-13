@@ -99,6 +99,18 @@ data class ComposePlateState(
         result = 31 * result + (photoBytes?.contentHashCode() ?: 0)
         return result
     }
+
+    // Size-only photoBytes: MviViewModel logs every state via toString(); never render
+    // photo bytes as text (a multi-MB byte dump OOM-crashed the crew banner flow).
+    override fun toString(): String =
+        "ComposePlateState(dish=$dish, dishTooLong=$dishTooLong, descriptionInput=$descriptionInput, " +
+            "descriptionTooLong=$descriptionTooLong, descriptionWarning=$descriptionWarning, " +
+            "dishWarning=$dishWarning, error=$error, selectedSlot=$selectedSlot, " +
+            "dailyLimitReached=$dailyLimitReached, photoBytes=${photoBytes?.size?.let { "${it}B" }}, " +
+            "coordinates=$coordinates, locating=$locating, showConfirm=$showConfirm, " +
+            "canContinue=$canContinue, classifying=$classifying, draftIngredients=$draftIngredients, " +
+            "detectedIngredients=$detectedIngredients, classifierError=$classifierError, " +
+            "availableCrews=$availableCrews, selectedCrewIds=$selectedCrewIds)"
 }
 
 sealed interface ComposePlateIntent : MviIntent {

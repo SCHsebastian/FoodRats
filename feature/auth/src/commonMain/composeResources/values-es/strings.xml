@@ -80,6 +80,9 @@
     <string name="auth_profile_offline">Estás sin conexión. Lo guardaremos cuando vuelvas a estar en línea.</string>
     <string name="auth_profile_session_expired">Tu sesión expiró. Inicia sesión de nuevo.</string>
     <string name="auth_profile_avatar_empty_bytes">No se pudo leer la imagen seleccionada. Prueba con otra.</string>
+    <string name="auth_profile_avatar_too_large">Esa foto es demasiado grande para usarla. Prueba con una más pequeña.</string>
+    <string name="auth_profile_avatar_unreadable">No se pudo leer esa foto. Prueba con otra.</string>
+    <string name="auth_profile_avatar_pick_failed">No se pudo abrir esa foto. Inténtalo de nuevo.</string>
 
     <string name="auth_profile_theme_row">Tema</string>
     <string name="auth_profile_theme_picker_title">Elige el tema</string>

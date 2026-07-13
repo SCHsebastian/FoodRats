@@ -75,6 +75,9 @@ import foodrats.feature.auth.generated.resources.auth_profile_analytics_row
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_off
 import foodrats.feature.auth.generated.resources.auth_profile_analytics_subtitle_on
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_empty_bytes
+import foodrats.feature.auth.generated.resources.auth_profile_avatar_pick_failed
+import foodrats.feature.auth.generated.resources.auth_profile_avatar_too_large
+import foodrats.feature.auth.generated.resources.auth_profile_avatar_unreadable
 import foodrats.feature.auth.generated.resources.auth_profile_avatar_uploading
 import foodrats.feature.auth.generated.resources.auth_profile_backend_unavailable
 import foodrats.feature.auth.generated.resources.auth_profile_offline
@@ -239,6 +242,12 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileOffline(Res.string.auth_profile_offline),
     ProfileSessionExpired(Res.string.auth_profile_session_expired),
     ProfileAvatarEmptyBytes(Res.string.auth_profile_avatar_empty_bytes),
+
+    // Avatar prepare failures — the picked photo never left the device (picker error, or the
+    // compressor refused it before the 1 MB avatars/{accountId} Storage cap could reject it server-side).
+    ProfileAvatarTooLarge(Res.string.auth_profile_avatar_too_large),
+    ProfileAvatarUnreadable(Res.string.auth_profile_avatar_unreadable),
+    ProfileAvatarPickFailed(Res.string.auth_profile_avatar_pick_failed),
 
     ProfileThemeRow(Res.string.auth_profile_theme_row),
     ProfileThemePickerTitle(Res.string.auth_profile_theme_picker_title),

@@ -65,7 +65,10 @@ sealed interface CrewError {
     }
 
     sealed interface Banner : CrewError {
-        data object UploadFailed : Banner          // storage write failed (network / permission)
+        data object UploadFailed : Banner          // storage write failed for an unclassifiable reason
         data object DeleteFailed : Banner          // storage delete failed (network / permission)
+        data object ImageTooLarge : Banner         // could not be shrunk under the Storage byte cap
+        data object ImageUnreadable : Banner       // picked bytes could not be decoded as an image
+        data object PickFailed : Banner            // the system photo picker itself failed
     }
 }

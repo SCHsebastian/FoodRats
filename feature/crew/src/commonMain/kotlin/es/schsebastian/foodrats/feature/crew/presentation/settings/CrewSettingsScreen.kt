@@ -84,6 +84,7 @@ import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
 import es.schsebastian.foodrats.core.domain.share.ShareController
 import es.schsebastian.foodrats.core.i18n.resolve
@@ -388,7 +389,9 @@ fun CrewSettingsScreen(
                                 cacheKey = if (crew.bannerToken != null) crew.bannerPath.orEmpty() else "",
                                 focalY = crew.bannerFocalY,
                                 saving = state.isSavingBanner,
+                                bannerError = state.bannerError,
                                 onPicked = { vm.onIntent(CrewSettingsIntent.BannerPicked(it)) },
+                                onPickFailed = { vm.onIntent(CrewSettingsIntent.BannerPickFailed) },
                                 onRemove = { vm.onIntent(CrewSettingsIntent.RemoveBanner) },
                                 onReposition = { vm.onIntent(CrewSettingsIntent.RepositionBanner(it)) },
                                 modifier = Modifier.frRiseIn(delayMillis = 180),
@@ -884,7 +887,9 @@ private fun BannerSection(
     cacheKey: String,
     focalY: Float,
     saving: Boolean,
+    bannerError: CrewError?,
     onPicked: (ByteArray) -> Unit,
+    onPickFailed: () -> Unit,
     onRemove: () -> Unit,
     onReposition: (Float) -> Unit,
     modifier: Modifier = Modifier,
@@ -892,9 +897,8 @@ private fun BannerSection(
     val picker = rememberPhotoPicker { result ->
         when (result) {
             is PhotoPickResult.Picked -> onPicked(result.bytes)
-            PhotoPickResult.Cancelled,
-            is PhotoPickResult.Failed,
-            -> Unit
+            PhotoPickResult.Cancelled -> Unit
+            is PhotoPickResult.Failed -> onPickFailed()
         }
     }
 
@@ -913,7 +917,11 @@ private fun BannerSection(
                 color = StructuralColors.onMedia.copy(alpha = 0.6f),
             )
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             FrGlassButton(
                 label = resolve(CrewStringKey.SettingsBannerChange),
                 onClick = { picker.launchGallery() },
@@ -931,6 +939,15 @@ private fun BannerSection(
                     modifier = Modifier.weight(1f),
                 )
             }
+            // In-flight upload/delete indicator — same shape as the score-style row's spinner.
+            if (saving) {
+                FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+            }
+        }
+        // Banner-specific failure rendered IN the section (the shared bottom banner is off-screen
+        // from here and is cleared by every crew listener re-emission).
+        bannerError?.let { err ->
+            DangerBanner(text = resolve(err.toStringKey()))
         }
     }
 }

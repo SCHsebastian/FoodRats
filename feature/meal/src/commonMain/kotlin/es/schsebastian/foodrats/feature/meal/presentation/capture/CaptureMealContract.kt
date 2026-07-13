@@ -16,6 +16,8 @@ sealed interface CaptureMealIntent : MviIntent {
     data class PhotoTaken(val bytes: ByteArray) : CaptureMealIntent {
         override fun equals(other: Any?) = other is PhotoTaken && bytes.contentEquals(other.bytes)
         override fun hashCode() = bytes.contentHashCode()
+        // Size-only: MviViewModel logs every intent via toString(); never render photo bytes as text.
+        override fun toString() = "PhotoTaken(bytes=${bytes.size}B)"
     }
     data object OpenSettings : CaptureMealIntent
 }

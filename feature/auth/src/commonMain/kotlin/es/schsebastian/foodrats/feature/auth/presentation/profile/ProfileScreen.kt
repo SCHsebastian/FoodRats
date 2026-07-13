@@ -64,6 +64,7 @@ import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
 import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
+import es.schsebastian.foodrats.feature.auth.domain.error.ProfileError
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -94,12 +95,19 @@ fun ProfileScreen(
     val picker = rememberPhotoPicker { result ->
         when (result) {
             is PhotoPickResult.Picked -> scope.launch {
-                // Resize is CPU-bound — hop off the main thread so the UI keeps painting.
-                val bytes = withContext(Dispatchers.Default) { result.bytes.resizeAvatarForUpload() }
-                vm.onIntent(ProfileIntent.AvatarPicked(bytes))
+                // Compression is CPU-bound — hop off the main thread so the UI keeps painting.
+                val compression = withContext(Dispatchers.Default) { result.bytes.compressAvatarForUpload() }
+                when (compression) {
+                    is AvatarCompression.Fit -> vm.onIntent(ProfileIntent.AvatarPicked(compression.bytes))
+                    AvatarCompression.Unreadable ->
+                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.Unreadable))
+                    AvatarCompression.TooLarge ->
+                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
+                }
             }
             is PhotoPickResult.Failed -> {
                 FrLog.w(FrLog.Tags.Auth) { "[ProfileScreen] avatar picker error: ${result.message}" }
+                vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.PickFailed))
             }
             PhotoPickResult.Cancelled -> Unit
         }

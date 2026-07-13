@@ -8,8 +8,11 @@ import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyMemberException
 import es.schsebastian.foodrats.feature.crew.data.firebase.AlreadyRequestedException
+import es.schsebastian.foodrats.feature.crew.data.firebase.BannerImageTooLargeException
+import es.schsebastian.foodrats.feature.crew.data.firebase.BannerImageUnreadableException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeCollisionExhaustedException
 import es.schsebastian.foodrats.feature.crew.data.firebase.CodeUnknownException
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewBannerStorage
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDto
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.FakeCrewDataSource
@@ -54,8 +57,8 @@ class FirebaseCrewRepositoryTest {
     // it with rebuilt DTOs (mapped through the SAME CrewDto.toDomain as the live path).
     private val localStore = FakeCrewLocalStore()
 
-    private fun repo() =
-        FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock, localStore)
+    private fun repo(bannerStorage: CrewBannerStorage? = null) =
+        FirebaseCrewRepository(ds, dispatchers, CrewErrorMapper(), clock, localStore, bannerStorage)
 
     private fun aid(raw: String): AccountId = (AccountId.of(raw) as Result.Ok).value
     private fun cid(raw: String): CrewId = (CrewId.of(raw) as Result.Ok).value
@@ -369,6 +372,62 @@ class FirebaseCrewRepositoryTest {
         assertEquals(Result.failure(CrewError.Backend.Unknown), r)
     }
 
+    // ---------------- setBanner ----------------
+
+    @Test
+    fun setBanner_success_uploads_then_writes_versioned_pointer() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        val storage = FakeBannerStorage()
+        val r = repo(storage).setBanner(cid("c-1"), aid("owner"), byteArrayOf(1, 2, 3))
+        assertEquals(Result.success(Unit), r)
+        assertEquals(cid("c-1"), storage.lastUploadCrewId)
+        // Token = the versioned path's filename stem.
+        assertEquals("crew_banners/c-1/abc.jpg" to "abc", ds.lastSetBannerPath)
+    }
+
+    @Test
+    fun setBanner_classifies_unreadable_image_as_Banner_ImageUnreadable() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        val storage = FakeBannerStorage().apply { uploadThrows = BannerImageUnreadableException }
+        val r = repo(storage).setBanner(cid("c-1"), aid("owner"), byteArrayOf(1))
+        assertEquals(Result.failure(CrewError.Banner.ImageUnreadable), r)
+        assertNull(ds.lastSetBannerPath)
+    }
+
+    @Test
+    fun setBanner_classifies_unshrinkable_image_as_Banner_ImageTooLarge() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        val storage = FakeBannerStorage().apply { uploadThrows = BannerImageTooLargeException }
+        val r = repo(storage).setBanner(cid("c-1"), aid("owner"), byteArrayOf(1))
+        assertEquals(Result.failure(CrewError.Banner.ImageTooLarge), r)
+        assertNull(ds.lastSetBannerPath)
+    }
+
+    @Test
+    fun setBanner_classifies_permission_denied_throwable_as_Backend_PermissionDenied() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        val storage = FakeBannerStorage().apply { uploadThrows = RuntimeException("PERMISSION_DENIED: rules") }
+        val r = repo(storage).setBanner(cid("c-1"), aid("owner"), byteArrayOf(1))
+        assertEquals(Result.failure(CrewError.Backend.PermissionDenied), r)
+    }
+
+    @Test
+    fun setBanner_classifies_network_throwable_as_Backend_Network() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        val storage = FakeBannerStorage().apply { uploadThrows = RuntimeException("network unavailable") }
+        val r = repo(storage).setBanner(cid("c-1"), aid("owner"), byteArrayOf(1))
+        assertEquals(Result.failure(CrewError.Backend.Network), r)
+    }
+
+    @Test
+    fun setBanner_keeps_banner_specific_UploadFailed_for_unclassifiable_throwables() = runTest {
+        ds.fetchOnceResult = crewOwnedBy("owner")
+        val storage = FakeBannerStorage().apply { uploadThrows = RuntimeException("boom") }
+        val r = repo(storage).setBanner(cid("c-1"), aid("owner"), byteArrayOf(1))
+        // Backend.Unknown is upgraded to the banner-specific message; classified faults pass through.
+        assertEquals(Result.failure(CrewError.Banner.UploadFailed), r)
+    }
+
     // ---------------- renameCrew ----------------
 
     @Test
@@ -511,6 +570,28 @@ class FirebaseCrewRepositoryTest {
  * SQLDelight driver, so the JVM-backed store is exercised in androidHostTest. Here the repository's
  * read-path mapping is unit-tested against canned [CrewDto]s.
  */
+/**
+ * Behavioral fake for the [CrewBannerStorage] seam — throws the stubbed throwable (the typed
+ * boundary exceptions or arbitrary backend throwables) so the repository's setBanner classification
+ * is exercised exactly as in production.
+ */
+private class FakeBannerStorage : CrewBannerStorage {
+    var uploadThrows: Throwable? = null
+    var uploadResult: String = "crew_banners/c-1/abc.jpg"
+    var lastUploadCrewId: CrewId? = null
+    val deletedPaths = mutableListOf<String>()
+
+    override suspend fun upload(crewId: CrewId, bytes: ByteArray): String {
+        lastUploadCrewId = crewId
+        uploadThrows?.let { throw it }
+        return uploadResult
+    }
+
+    override suspend fun delete(path: String) {
+        deletedPaths += path
+    }
+}
+
 private class FakeCrewLocalStore : CrewLocalStore() {
     private var current: List<CrewDto> = emptyList()
     fun emit(dtos: List<CrewDto>) { current = dtos }

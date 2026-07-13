@@ -28,6 +28,7 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.core.domain.notifications.NotificationPermissionPort
+import es.schsebastian.foodrats.feature.auth.domain.error.ProfileError
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.DeleteMyAccountUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.EnableNotificationsUseCase
 import es.schsebastian.foodrats.feature.auth.domain.usecase.profile.ExportMyDataUseCase
@@ -120,7 +121,18 @@ sealed interface ProfileIntent : MviIntent {
     data object SaveDisplayName : ProfileIntent
     data class BioChanged(val value: String) : ProfileIntent
     data object SaveBio : ProfileIntent
-    data class AvatarPicked(val bytes: ByteArray) : ProfileIntent
+    data class AvatarPicked(val bytes: ByteArray) : ProfileIntent {
+        override fun equals(other: Any?) = other is AvatarPicked && bytes.contentEquals(other.bytes)
+        override fun hashCode() = bytes.contentHashCode()
+        // Size-only: MviViewModel logs every intent via toString(); never render photo bytes as text.
+        override fun toString() = "AvatarPicked(bytes=${bytes.size}B)"
+    }
+    /**
+     * The picked photo never became uploadable bytes — the picker errored or the on-device
+     * compressor refused it (see [ProfileError.AvatarPrepare]). Surfaces in the same error slot
+     * as a failed upload; no backend call happens.
+     */
+    data class AvatarPrepareFailed(val reason: ProfileError.AvatarPrepare) : ProfileIntent
     /** User tapped "Remove avatar" — open the confirmation dialog. */
     data object RemoveAvatarRequested : ProfileIntent
     /** User confirmed the removal in the dialog. */
@@ -280,6 +292,8 @@ class ProfileViewModel(
             ProfileIntent.SaveBio -> doSaveBio()
 
             is ProfileIntent.AvatarPicked -> doUploadAvatar(intent.bytes)
+            is ProfileIntent.AvatarPrepareFailed ->
+                update { it.copy(isUploadingAvatar = false, uploadAvatarError = intent.reason.toStringKey()) }
             ProfileIntent.RemoveAvatarRequested ->
                 update { it.copy(removeAvatarConfirmOpen = true, removeAvatarError = null) }
             ProfileIntent.RemoveAvatarConfirmed -> doRemoveAvatar()

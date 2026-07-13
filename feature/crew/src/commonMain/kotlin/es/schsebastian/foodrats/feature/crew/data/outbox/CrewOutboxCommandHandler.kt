@@ -135,6 +135,9 @@ class CrewOutboxCommandHandler(
             // queued via SetCrewBannerFocalY). Listed so the when stays exhaustive.
             CrewError.Banner.UploadFailed -> OutboxExecuteResult.Terminal("crew.error.bannerUploadFailed")
             CrewError.Banner.DeleteFailed -> OutboxExecuteResult.Terminal("crew.error.bannerDeleteFailed")
+            CrewError.Banner.ImageTooLarge -> OutboxExecuteResult.Terminal("crew.error.bannerImageTooLarge")
+            CrewError.Banner.ImageUnreadable -> OutboxExecuteResult.Terminal("crew.error.bannerImageUnreadable")
+            CrewError.Banner.PickFailed -> OutboxExecuteResult.Terminal("crew.error.bannerPickFailed")
         }
     }
 }

@@ -99,6 +99,9 @@
     <string name="crew_settings_banner_preview_cd">Banner preview — drag up or down to reposition</string>
     <string name="crew_error_banner_upload_failed">Failed to upload banner. Try again.</string>
     <string name="crew_error_banner_delete_failed">Failed to remove banner. Try again.</string>
+    <string name="crew_error_banner_image_too_large">That photo is too large to upload. Try a smaller one.</string>
+    <string name="crew_error_banner_image_unreadable">Couldn't read that photo. Try a different one.</string>
+    <string name="crew_error_banner_pick_failed">Couldn't open that photo. Try again.</string>
     <!-- U5b — achievement badge labels rendered next to the member display name. -->
     <string name="crew_badge_first">First Plate</string>
     <string name="crew_badge_ten">10 Plates</string>

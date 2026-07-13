@@ -79,6 +79,23 @@ sealed interface ProfileError {
         data object RemoveFailed : Avatar
     }
 
+    /**
+     * Getting a picked photo ready for upload failed BEFORE any backend call — the picker errored
+     * or the on-device compressor refused the bytes (`AvatarCompression` never passes originals
+     * through, so an unfit photo stops here instead of tripping the 1 MB avatars Storage rule).
+     * Narrower than [Avatar] so the pick-flow intent can only carry prepare reasons.
+     */
+    sealed interface AvatarPrepare : ProfileError {
+        /** Even maximum compression couldn't fit the photo under the upload byte cap. */
+        data object TooLarge : AvatarPrepare
+
+        /** The platform codec couldn't decode/re-encode the picked bytes. */
+        data object Unreadable : AvatarPrepare
+
+        /** The photo picker itself failed to deliver bytes. */
+        data object PickFailed : AvatarPrepare
+    }
+
     sealed interface Accent : ProfileError {
         data object PersistFailed : Accent
     }

@@ -159,6 +159,7 @@ class CrewSettingsViewModel(
         is CrewSettingsIntent.SetScoreStyle -> doSetScoreStyle(intent.style)
         // C9 — banner
         is CrewSettingsIntent.BannerPicked -> doSetBanner(intent.bytes)
+        CrewSettingsIntent.BannerPickFailed -> update { it.copy(bannerError = CrewError.Banner.PickFailed) }
         CrewSettingsIntent.RemoveBanner -> update { it.copy(showRemoveBannerConfirm = true) }
         CrewSettingsIntent.ConfirmRemoveBanner -> doRemoveBanner()
         CrewSettingsIntent.CancelRemoveBanner -> update { it.copy(showRemoveBannerConfirm = false) }
@@ -341,10 +342,13 @@ class CrewSettingsViewModel(
     // C9 — banner ─────────────────────────────────────────────────────────────────────────────────
 
     private suspend fun doSetBanner(bytes: ByteArray) {
-        update { it.copy(isSavingBanner = true, error = null) }
+        // Banner failures live in bannerError (rendered inside the banner section), NOT the shared
+        // bottom `error` — that one is off-screen from the section and gets reset to null by every
+        // crew listener re-emission, which used to make upload failures invisible.
+        update { it.copy(isSavingBanner = true, bannerError = null) }
         when (val r = setCrewBanner(crewId, bytes)) {
-            is Result.Ok  -> update { it.copy(isSavingBanner = false) }
-            is Result.Err -> update { it.copy(isSavingBanner = false, error = r.error) }
+            is Result.Ok  -> update { it.copy(isSavingBanner = false, bannerError = null) }
+            is Result.Err -> update { it.copy(isSavingBanner = false, bannerError = r.error) }
         }
     }
 

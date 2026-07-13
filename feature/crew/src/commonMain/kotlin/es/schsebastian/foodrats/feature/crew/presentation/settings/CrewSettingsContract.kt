@@ -80,6 +80,12 @@ data class CrewSettingsState(
     // ── Banner (C9) ──────────────────────────────────────────────────────────────────────────────
     /** True while a banner upload or delete write is in flight. */
     val isSavingBanner: Boolean = false,
+    /**
+     * Banner-specific failure (pick / compression / upload), rendered inside the banner section —
+     * NOT the shared bottom [error] banner, which sits off-screen from the section AND is reset to
+     * null by every crew listener re-emission. Cleared when a new upload attempt starts.
+     */
+    val bannerError: CrewError? = null,
     /** True while the "Remove banner?" confirmation dialog is showing. */
     val showRemoveBannerConfirm: Boolean = false,
     /**
@@ -161,7 +167,15 @@ sealed interface CrewSettingsIntent : MviIntent {
     // ── Banner (C9) ──────────────────────────────────────────────────────────────────────────────
 
     /** Owner picked a new banner image — [bytes] are the JPEG bytes from the image picker. */
-    data class BannerPicked(val bytes: ByteArray) : CrewSettingsIntent
+    data class BannerPicked(val bytes: ByteArray) : CrewSettingsIntent {
+        override fun equals(other: Any?) = other is BannerPicked && bytes.contentEquals(other.bytes)
+        override fun hashCode() = bytes.contentHashCode()
+        // Size-only: MviViewModel logs every intent via toString(), and rendering multi-MB
+        // raw picker bytes as text OOM-crashed the app (75+ MB StringBuilder on Main).
+        override fun toString() = "BannerPicked(bytes=${bytes.size}B)"
+    }
+    /** The system photo picker itself failed — surface a banner-section error instead of swallowing. */
+    data object BannerPickFailed : CrewSettingsIntent
     /** Owner tapped "Remove banner"; triggers confirmation dialog. */
     data object RemoveBanner : CrewSettingsIntent
     /** Owner confirmed banner removal in the dialog. */
