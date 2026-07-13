@@ -96,6 +96,11 @@ Legend: ✅ done in repo · 🤖 I ran it this session · 👤 you must do it ·
   ```
 - 👤 **Generate + commit the Baseline Profile** on a device/emulator (faster cold start; not in repo):
   `./gradlew :androidApp:generateBaselineProfile` then commit `baseline-prof.txt`. (human.md §E)
+- 👤 **Paste "What's new" release notes into each console, every release** — no lane uploads them
+  (every `fastlane/Fastfile` lane sets `skip_upload_metadata`/`skip_metadata`). Source text (en/es,
+  paste-ready): `docs/store-release/RELEASE-NOTES-vX.Y.Z.md` (current release:
+  `docs/store-release/RELEASE-NOTES-v1.11.0.md`) — Play Console release notes, App Store Connect
+  "What's New in This Version", and TestFlight "Test Details", all per-locale.
 - ✅ **Beta**: merge to `main` → `release-beta.yml` ships Play Internal + TestFlight automatically.
 - ✅ **Production**: `git tag vX.Y.Z && git push origin vX.Y.Z` → `release-production.yml`, held for
   your approval in the `production` environment, then Play 20% staged + App Store phased. (cicd-runbook)
@@ -113,5 +118,7 @@ share card. Quote results.
 - Backend deploy detail + what I ran: `docs/store-release/DEPLOY-LOG.md`
 - Privacy/data-safety answers: `docs/store-release/PUBLICATION.md`
 - Listing copy (en/es): `docs/store-release/LISTING-COPY.md`
+- Per-release "What's new" copy (en/es, paste-ready, one file per version): `docs/store-release/
+  RELEASE-NOTES-vX.Y.Z.md` — current: `docs/store-release/RELEASE-NOTES-v1.11.0.md`
 - Full manual-gate list: `docs/session/human.md`
 - Pipeline operations: `docs/cicd-runbook.md`

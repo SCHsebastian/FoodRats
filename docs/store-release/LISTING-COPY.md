@@ -64,11 +64,16 @@ Una forma ligera y social de seguir en contacto a través de la comida.
 Puedes exportar tus datos o eliminar tu cuenta cuando quieras, desde la propia app.
 ```
 
-**Release notes (What's new) — first release, en/es:**
+**Release notes (What's new)** — per-release; no fastlane lane uploads this (every lane in
+`fastlane/Fastfile` sets `skip_upload_metadata`/`skip_metadata`), so it's a manual console paste
+every time. First release, en/es (historical, v1.0.0):
 ```
 en-US: First release. Create a crew, post your daily meal, and keep the streak going.
 es-ES: Primera versión. Crea una crew, publica tu comida del día y mantén la racha.
 ```
+Current release notes: `docs/store-release/RELEASE-NOTES-v1.11.0.md` (en/es, Play + TestFlight
+variants). Going forward each release gets its own `docs/store-release/RELEASE-NOTES-vX.Y.Z.md`
+instead of overwriting this block.
 
 ---
 
