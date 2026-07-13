@@ -290,6 +290,35 @@ describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
     expect(r.calls.indexOf("deleteBlob:crews/c1/meals/m1_p1.jpg")).toBe(docIdx + 2);
     expect(r.calls.indexOf("deleteBlob:crews/c1/meals/m1_p2.jpg")).toBe(docIdx + 3);
   });
+
+  it("deletes ALL paths for a MIXED authoredMeals list: one legacy meal + one 10-photo meal", async () => {
+    const legacyMeal: MealRef = {
+      path: "crews/c1/meals/legacy1",
+      platePaths: ["crews/c1/meals/legacy1.jpg"],
+    };
+    const bigMealPaths = [
+      "crews/c2/meals/big1.jpg",
+      ...Array.from({ length: 9 }, (_, i) => `crews/c2/meals/big1_p${i + 1}.jpg`),
+    ];
+    const bigMeal: MealRef = { path: "crews/c2/meals/big1", platePaths: bigMealPaths };
+    expect(bigMealPaths).toHaveLength(10); // MealPublishPolicy.MAX_PHOTOS_PER_MEAL
+
+    const r = recordingDeps({
+      expectedPhrase: async () => "DELETE Ana",
+      authoredMeals: async () => [legacyMeal, bigMeal],
+    });
+
+    await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
+
+    expect(r.blobsDeleted).toEqual(
+      expect.arrayContaining([...legacyMeal.platePaths, ...bigMealPaths]),
+    );
+    // Every photo of the 10-photo meal is deleted right after its own doc, all 10 contiguous.
+    const docIdx = r.calls.indexOf("recursiveDelete:crews/c2/meals/big1");
+    bigMealPaths.forEach((p, i) => {
+      expect(r.calls.indexOf(`deleteBlob:${p}`)).toBe(docIdx + 1 + i);
+    });
+  });
 });
 
 describe("planCrewReassignment — §6 owned-crew policy", () => {

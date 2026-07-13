@@ -18,6 +18,17 @@
  *    delete/sign a guessed path" posture for a malformed doc path).
  *  - A `plates` entry with a missing/non-string `path` — or a non-array `plates` field entirely — is
  *    skipped defensively. Firestore data isn't statically typed, so a malformed doc must not throw.
+ *  - NAMESPACE-CONSTRAINED (security): every doc-provided path (`platePath` and each `plates[].path`)
+ *    must live under THIS meal's own `crews/{crewId}/meals/` prefix — derived from `mealDocPath`,
+ *    which every caller passes from a TRUSTED source (a Firestore document's own path — never from
+ *    doc-provided data). `plates[]` is otherwise client-controlled and unvalidated by
+ *    `firestore.rules` (up to 10 arbitrary strings per meal); every caller here acts with the Admin
+ *    SDK, which bypasses `storage.rules` entirely. Without this constraint, a meal's author could
+ *    stash another crew's (or an account's) real object path in their own meal's `plates[]` and have
+ *    it deleted (`onMealDeleted`, `deleteAccount`) or signed into a download URL (`exportMyData`)
+ *    just by acting on their own meal. An out-of-namespace `platePath` is treated the same as
+ *    missing/empty (falls back to the deterministic primary); an out-of-namespace `plates[].path`
+ *    entry is dropped rather than unioned in.
  */
 export function mealPhotoPaths(
   mealDocPath: string,
@@ -26,6 +37,8 @@ export function mealPhotoPaths(
   const match = /^(crews\/[^/]+\/meals)\/([^/]+)$/.exec(mealDocPath);
   if (match === null) return [];
   const [, mealsPrefix, mealId] = match;
+  const ownPrefix = `${mealsPrefix}/`;
+  const isOwnPath = (path: string): boolean => path.startsWith(ownPrefix);
 
   const seen = new Set<string>();
   const out: string[] = [];
@@ -36,15 +49,17 @@ export function mealPhotoPaths(
   };
 
   // `||` (not `??`): a doc that persisted platePath: "" (or a non-string) must fall back too —
-  // targeting "" would silently skip the real primary photo. Mirrors `mealStoragePaths`.
-  const platePath = typeof doc?.platePath === "string" ? doc.platePath : "";
+  // targeting "" would silently skip the real primary photo. Mirrors `mealStoragePaths`. A
+  // foreign-namespace platePath is treated identically to missing/empty rather than honored.
+  const rawPlatePath = typeof doc?.platePath === "string" ? doc.platePath : "";
+  const platePath = isOwnPath(rawPlatePath) ? rawPlatePath : "";
   add(platePath || `${mealsPrefix}/${mealId}.jpg`);
 
   const plates = doc?.plates;
   if (Array.isArray(plates)) {
     for (const entry of plates) {
       const path = (entry as { path?: unknown } | null)?.path;
-      if (typeof path === "string") add(path);
+      if (typeof path === "string" && isOwnPath(path)) add(path);
     }
   }
 

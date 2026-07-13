@@ -10,6 +10,7 @@ import {
   type MealSnap,
   type VoteSnap,
 } from "../src/callables/exportMyData";
+import { mealPhotoPaths } from "../src/meal/mealPhotoPaths";
 
 const UID = "ana";
 const NOW = 1_700_000_000_000;
@@ -239,6 +240,66 @@ describe("exportMyDataCore — assembly + signed URL (§0.4)", () => {
     expect(archive.plates.map((p: { path: string }) => p.path)).toEqual(
       expect.arrayContaining(archive.meals[0].plates.map((p: { path: string }) => p.path)),
     );
+  });
+
+  it("signs + exports ALL paths for a MIXED authoredMeals list: one legacy meal + one 10-photo meal", async () => {
+    const legacyPlate = "crews/c1/meals/legacy1.jpg";
+    const bigMealPaths = [
+      "crews/c2/meals/big1.jpg",
+      ...Array.from({ length: 9 }, (_, i) => `crews/c2/meals/big1_p${i + 1}.jpg`),
+    ];
+    expect(bigMealPaths).toHaveLength(10); // MealPublishPolicy.MAX_PHOTOS_PER_MEAL
+
+    const r = recordingDeps({
+      authoredMeals: async () => [
+        { path: "crews/c1/meals/legacy1", platePaths: [legacyPlate], data: {} },
+        { path: "crews/c2/meals/big1", platePaths: bigMealPaths, data: {} },
+      ],
+    });
+    await exportMyDataCore(r.deps, UID, {});
+    const archive = JSON.parse(r.uploaded[0]);
+
+    // Every one of the 11 total photos was signed exactly once.
+    expect(r.signed.filter((p) => p === legacyPlate || bigMealPaths.includes(p))).toHaveLength(11);
+    // The legacy meal's manifest is untouched (single photo, primary intact).
+    expect(archive.meals[0].plates.map((p: { path: string }) => p.path)).toEqual([legacyPlate]);
+    // The 10-photo meal's manifest preserves order — index 0 is still the primary.
+    expect(archive.meals[1].plates.map((p: { path: string }) => p.path)).toEqual(bigMealPaths);
+    expect(archive.meals[1].plates[0].path).toBe(bigMealPaths[0]);
+    // The flattened top-level list carries the union too (backward-compat shape).
+    expect(archive.plates.map((p: { path: string }) => p.path)).toEqual(
+      expect.arrayContaining([legacyPlate, ...bigMealPaths]),
+    );
+    expect(archive.plates).toHaveLength(11);
+  });
+
+  it("a foreign-crew plates[] path is dropped by mealPhotoPaths before it ever reaches signing (end-to-end composition)", async () => {
+    // Mirrors how the real callable wires authoredMeals: platePaths comes from
+    // mealPhotoPaths(d.ref.path, d.data()), never from the doc's raw plates[] directly — see
+    // mealPhotoPaths.test.ts for the exhaustive unit coverage of the namespace guard itself. This
+    // composes the two exactly as production does, proving a malicious author who stashes another
+    // crew's object path in their own meal's plates[] cannot get it signed into their export.
+    const docPath = "crews/c1/meals/m1";
+    const foreign = "crews/OTHER-CREW/meals/secret.jpg";
+    const doc = {
+      platePath: "crews/c1/meals/m1.jpg",
+      plates: [{ path: "crews/c1/meals/m1.jpg" }, { path: foreign }],
+    };
+    const platePaths = mealPhotoPaths(docPath, doc);
+    expect(platePaths).toEqual(["crews/c1/meals/m1.jpg"]); // foreign path already excluded upstream
+
+    const r = recordingDeps({
+      authoredMeals: async () => [{ path: docPath, platePaths, data: doc }],
+    });
+    await exportMyDataCore(r.deps, UID, {});
+
+    expect(r.signed).not.toContain(foreign);
+    expect(r.signed).toEqual(["crews/c1/meals/m1.jpg", `exports/${UID}/export.json`]);
+    const archive = JSON.parse(r.uploaded[0]);
+    expect(archive.plates.map((p: { path: string }) => p.path)).toEqual(["crews/c1/meals/m1.jpg"]);
+    expect(archive.meals[0].plates.map((p: { path: string }) => p.path)).toEqual([
+      "crews/c1/meals/m1.jpg",
+    ]);
   });
 
   it("a failing gather dependency propagates (the callable wrapper maps it to 'internal')", async () => {

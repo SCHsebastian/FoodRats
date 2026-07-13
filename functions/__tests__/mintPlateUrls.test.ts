@@ -111,6 +111,20 @@ describe("authorizedPaths — crew-scoped allow-list (#15)", () => {
     expect(authorizedPaths("c1", ["alice"], [])).toEqual([]);
   });
 
+  it("authorizes multi-photo extra-photo paths (_p1..p9) exactly like the primary", () => {
+    const paths = [
+      "crews/c1/meals/c1_alice_2026-06-14_lunch.jpg",
+      "crews/c1/meals/c1_alice_2026-06-14_lunch_p1.jpg",
+      "crews/c1/meals/c1_alice_2026-06-14_lunch_p9.jpg",
+    ];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual(paths);
+  });
+
+  it("drops a multi-photo extra-photo path scoped to a FOREIGN crew", () => {
+    const paths = ["crews/c2/meals/c2_alice_2026-06-14_lunch_p1.jpg"];
+    expect(authorizedPaths("c1", ["alice", "bob"], paths)).toEqual([]);
+  });
+
   it("authorizes a nested subpath under this crew's meals/ prefix (documented current behavior)", () => {
     // NOTE: unlike the banner check, the plate check is prefix+suffix only, so a nested
     // `crews/c1/meals/sub/x.jpg` IS signed. Still crew-scoped (no cross-crew leak) and a signed
@@ -222,6 +236,19 @@ describe("buildSignedUrls — membership-checked minting (#15)", () => {
     expect(
       await codeOf(() => buildSignedUrls(deps, undefined, { crewId: "", paths: ["avatars/x.jpg"] })),
     ).toBe("unauthenticated");
+  });
+
+  it("truncates a multi-photo-scale request (205 paths) to exactly MAX_PATHS, preserving order", async () => {
+    // A crew posting heavily with multi-photo meals (up to 10 photos each) can plausibly cross
+    // MAX_PATHS in one mintPlateUrls batch; the contract is "first MAX_PATHS win, in request order".
+    const paths = Array.from(
+      { length: 205 },
+      (_, i) => `crews/c1/meals/c1_alice_2026-06-14_meal${i}.jpg`,
+    );
+    const res = await buildSignedUrls(deps, "alice", { crewId: "c1", paths });
+    const keys = Object.keys(res.urls);
+    expect(keys).toHaveLength(MAX_PATHS);
+    expect(keys).toEqual(paths.slice(0, MAX_PATHS));
   });
 
   it("caps requests at MAX_PATHS paths (functions-03)", async () => {

@@ -112,6 +112,59 @@ describe("classifyPlateObject — multi-photo extra-photo skip", () => {
   });
 });
 
+describe("classifyPlateObject — multi-photo suffix edge cases (test-hardening pass)", () => {
+  it("skips a hypothetical extra-photo thumbnail name (_p1_thumb.jpg) via the thumb-suffix guard", () => {
+    // This exact object never gets generated in production (thumbnails are PRIMARY-ONLY — see
+    // module doc), but the thumb-suffix check fires BEFORE the extra-photo check (fileStem ends
+    // in "_thumb", not "_p1"), so it's excluded either way — defense in depth, locked here.
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p1_thumb.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("skips a ZERO-PADDED extra photo (_p01) — \\d+ has no leading-zero restriction", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p01.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("skips double- and triple-digit extra photos (_p10, _p999)", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p10.jpg", "image/jpeg"),
+    ).toBeNull();
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p999.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("does NOT skip a mealId that merely CONTAINS '_p2_' mid-string, not as a suffix (lock actual)", () => {
+    // EXTRA_PHOTO_SUFFIX is end-anchored (/_p\d+$/): "..._p2_x" doesn't end in digits right after
+    // "p" (it ends in "_x"), so this is processed as an (unusual) PRIMARY plate, not skipped as an
+    // extra photo. This mealId shape can't arise from the real id scheme (dayKey/slot vocabulary
+    // never produces it), so the anchoring only matters against adversarial/synthetic names, not a
+    // real collision risk in practice.
+    const name = "crews/c1/meals/c1_alice_2026-06-14_lunch_p2_x.jpg";
+    expect(EXTRA_PHOTO_SUFFIX.test("c1_alice_2026-06-14_lunch_p2_x")).toBe(false);
+    expect(classifyPlateObject(name, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch_p2_x",
+      platePath: name,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_p2_x_thumb.jpg",
+    });
+  });
+
+  it("still processes a legacy hex-token tail that looks numeric with two digits (_99, no literal 'p')", () => {
+    const name = "crews/c1/meals/c1_alice_2026-06-14_lunch_99.jpg";
+    expect(EXTRA_PHOTO_SUFFIX.test("c1_alice_2026-06-14_lunch_99")).toBe(false);
+    expect(classifyPlateObject(name, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch_99",
+      platePath: name,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_99_thumb.jpg",
+    });
+  });
+});
+
 describe("isGeneratedThumbnail — loop guard by metadata marker", () => {
   it("is true only when the marker is exactly 'true'", () => {
     expect(isGeneratedThumbnail({ [THUMBNAIL_METADATA_MARKER]: "true" })).toBe(true);

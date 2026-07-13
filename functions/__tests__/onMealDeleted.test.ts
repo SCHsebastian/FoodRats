@@ -82,12 +82,14 @@ describe("reclaimMealObjects — plate + thumbnail reclaim", () => {
   it("uses thumbnailPath from the doc when present", async () => {
     const b = blobStore();
 
+    // platePath namespaced under the meal's own crews/{crewId}/meals/ prefix (multi-photo-crew15
+    // test-hardening fix): mealPhotoPaths only honors a persisted platePath within that namespace.
     await reclaimMealObjects(b.store, CREW, MEAL, {
-      platePath: "stored/plate.jpg",
+      platePath: "crews/c1/meals/stored-plate.jpg",
       thumbnailPath: "stored/thumb.jpg",
     });
 
-    expect(b.deletes).toEqual(["stored/plate.jpg", "stored/thumb.jpg"]);
+    expect(b.deletes).toEqual(["crews/c1/meals/stored-plate.jpg", "stored/thumb.jpg"]);
   });
 
   it("still succeeds when the thumbnail is missing (older meal / never thumbnailed)", async () => {
@@ -177,5 +179,42 @@ describe("reclaimMealObjects — plate + thumbnail reclaim", () => {
 
     await expect(reclaimMealObjects(store, CREW, MEAL, doc)).resolves.toBeUndefined();
     expect(deletes).toEqual([PLATE, EXTRA1, EXTRA2, THUMB]);
+  });
+
+  it("deletes the union when plates[] disagrees with a DIFFERENT legacy platePath (never drops either)", async () => {
+    const b = blobStore();
+    const EXTRA1 = `crews/${CREW}/meals/${MEAL}_p1.jpg`;
+    const legacyOnly = "crews/c1/meals/legacy-primary.jpg";
+    const doc = { platePath: legacyOnly, plates: [{ path: PLATE }, { path: EXTRA1 }] };
+
+    await reclaimMealObjects(b.store, CREW, MEAL, doc);
+
+    expect(b.deletes).toEqual([legacyOnly, PLATE, EXTRA1, THUMB]);
+  });
+
+  it("falls back to the deterministic primary when plates is an EMPTY array (not just absent)", async () => {
+    const b = blobStore();
+
+    await reclaimMealObjects(b.store, CREW, MEAL, { plates: [] });
+
+    expect(b.deletes).toEqual([PLATE, THUMB]);
+  });
+
+  it("excludes a foreign-crew plates[] path from the delete set (cannot reach another crew's/account's object)", async () => {
+    // mealPhotoPaths derives the trusted crewId from THIS call's own crewId/mealId params (which
+    // come from the trigger's event.params — never from doc data), and now drops any doc-provided
+    // path outside crews/{crewId}/meals/. A meal author could otherwise stash e.g. another crew's
+    // photo (or a guessable avatar path) in their own meal's plates[] and have it deleted here.
+    const b = blobStore();
+    const FOREIGN = "crews/other-crew/meals/secret.jpg";
+    const EXTRA1 = `crews/${CREW}/meals/${MEAL}_p1.jpg`;
+    const doc = {
+      plates: [{ path: PLATE }, { path: FOREIGN }, { path: EXTRA1 }],
+    };
+
+    await reclaimMealObjects(b.store, CREW, MEAL, doc);
+
+    expect(b.deletes).toEqual([PLATE, EXTRA1, THUMB]);
+    expect(b.deletes).not.toContain(FOREIGN);
   });
 });
