@@ -590,6 +590,9 @@ private fun StructuralMealTile(
         else -> avgRounded
     }
     val galleryChipCd = resolve(FeedStringKey.GalleryChipCd)
+    // multi-photo-crew15 — resolved unconditionally (mirrors galleryChipCd above); only used when
+    // ui.photoCount > 1 below.
+    val photoCountChipCd = resolve(FeedStringKey.TilePhotoCountCd, ui.photoCount)
 
     Box(
         modifier = Modifier
@@ -623,9 +626,10 @@ private fun StructuralMealTile(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             // Leading chips — slot (only when tagged) + gallery marker (only when gallery-sourced,
-            // permanent + non-removable). The empty Spacer keeps the react pill at the row's end
-            // (SpaceBetween) when neither chip is present.
-            val hasLeadingChip = ui.slot != null || ui.plateSource.isGallery
+            // permanent + non-removable) + multi-photo-crew15 photo-count marker (only when the
+            // meal has more than one photo). The empty Spacer keeps the react pill at the row's
+            // end (SpaceBetween) when none of these chips is present.
+            val hasLeadingChip = ui.slot != null || ui.plateSource.isGallery || ui.photoCount > 1
             if (hasLeadingChip) {
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.xs), verticalAlignment = Alignment.CenterVertically) {
                     ui.slot?.let { FrStructuralChip(label = resolve(it.labelKey()).uppercase(), compact = true) }
@@ -636,6 +640,16 @@ private fun StructuralMealTile(
                             compact = true,
                             modifier = Modifier.semantics(mergeDescendants = true) {
                                 contentDescription = galleryChipCd
+                            },
+                        )
+                    }
+                    if (ui.photoCount > 1) {
+                        FrStructuralChip(
+                            label = resolve(FeedStringKey.TilePhotoCount, ui.photoCount),
+                            leadingIcon = FrIcons.GalleryImport,
+                            compact = true,
+                            modifier = Modifier.semantics(mergeDescendants = true) {
+                                contentDescription = photoCountChipCd
                             },
                         )
                     }

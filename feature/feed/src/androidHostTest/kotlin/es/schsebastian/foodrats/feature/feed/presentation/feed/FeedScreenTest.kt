@@ -17,6 +17,7 @@ import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.meal.MealPlate
 import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
 import es.schsebastian.foodrats.core.domain.meal.MealReactions
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
@@ -182,10 +183,17 @@ class FeedScreenTest {
         plateSource = source,
     )
 
-    private fun viewModel(source: PlateSource) = FeedViewModel(
+    /** multi-photo-crew15: a meal with [count] ordered photos, for the tile's photo-count chip. */
+    private fun mealWithPlates(count: Int) = meal(PlateSource.Camera).copy(
+        plates = List(count) { i ->
+            MealPlate(photoUrl = "https://example.test/photo$i.jpg", source = PlateSource.Camera)
+        },
+    )
+
+    private fun viewModel(meal: Meal) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(
             FakeActiveCrewProvider(crew),
-            FakeMealReadPort(listOf(MealWithRatings(meal(source), emptyList()))),
+            FakeMealReadPort(listOf(MealWithRatings(meal, emptyList()))),
             FakeSessionProvider(Session(account, crew)),
             FakeBlockedAccounts(),
         ),
@@ -205,7 +213,7 @@ class FeedScreenTest {
     )
 
     @Test fun gallery_meal_shows_the_gallery_marker_chip() {
-        val vm = viewModel(PlateSource.Gallery)
+        val vm = viewModel(meal(PlateSource.Gallery))
 
         rule.setContent {
             FoodRatsTheme {
@@ -228,7 +236,7 @@ class FeedScreenTest {
     }
 
     @Test fun camera_meal_does_not_show_the_gallery_marker_chip() {
-        val vm = viewModel(PlateSource.Camera)
+        val vm = viewModel(meal(PlateSource.Camera))
 
         rule.setContent {
             FoodRatsTheme {
@@ -248,5 +256,53 @@ class FeedScreenTest {
 
         rule.onNodeWithText("GALLERY").assertDoesNotExist()
         rule.onNodeWithContentDescription("Photo from gallery").assertDoesNotExist()
+    }
+
+    // --- multi-photo-crew15: tile photo-count chip -----------------------------------------
+
+    @Test fun multi_photo_meal_shows_the_photo_count_chip() {
+        val vm = viewModel(mealWithPlates(3))
+
+        rule.setContent {
+            FoodRatsTheme {
+                FeedScreen(
+                    crewName = "Crew",
+                    avatarInitials = "C",
+                    avatarUrl = null,
+                    onPickCrewClick = {},
+                    onProfileClick = {},
+                    onCrewSettingsClick = {},
+                    onMealClick = { _, _ -> },
+                    vm = vm,
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("×3").assertExists()
+        rule.onNodeWithContentDescription("3 photos").assertExists()
+    }
+
+    @Test fun single_photo_meal_does_not_show_the_photo_count_chip() {
+        val vm = viewModel(meal(PlateSource.Camera)) // no plates set -> legacy photoCount == 1
+
+        rule.setContent {
+            FoodRatsTheme {
+                FeedScreen(
+                    crewName = "Crew",
+                    avatarInitials = "C",
+                    avatarUrl = null,
+                    onPickCrewClick = {},
+                    onProfileClick = {},
+                    onCrewSettingsClick = {},
+                    onMealClick = { _, _ -> },
+                    vm = vm,
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("×1").assertDoesNotExist()
+        rule.onNodeWithContentDescription("1 photos").assertDoesNotExist()
     }
 }

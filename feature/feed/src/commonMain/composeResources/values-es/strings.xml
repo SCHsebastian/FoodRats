@@ -158,4 +158,11 @@
          muestra en la miniatura del feed y en el detalle cuando Meal.plateSource es Gallery. -->
     <string name="feed_gallery_chip_label">Galería</string>
     <string name="feed_gallery_chip_cd">Foto de la galería</string>
+    <!-- multi-photo-crew15: chip compacto de la miniatura del feed, solo cuando la comida tiene
+         más de una foto. %1$d = FeedMealUi.photoCount. -->
+    <string name="feed_tile_photo_count">×%1$d</string>
+    <string name="feed_tile_photo_count_cd">%1$d fotos</string>
+    <!-- multi-photo-crew15: descripción del selector de fotos del detalle de comida, se
+         actualiza al deslizar. %1$d = página actual (base 1), %2$d = total de páginas. -->
+    <string name="feed_detail_photo_pager_cd">Foto %1$d de %2$d</string>
 </resources>

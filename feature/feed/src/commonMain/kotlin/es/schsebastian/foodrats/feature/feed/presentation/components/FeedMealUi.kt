@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.feed.presentation.components
 import androidx.compose.runtime.Immutable
 import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealPlate
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.crew.BlindVotingPolicy
@@ -56,6 +57,20 @@ private fun PlateSource.toUi(): PlateSourceUi = when (this) {
 }
 
 /**
+ * One page of a meal's photo pager (multi-photo-crew15) — the detail screen's `HorizontalPager` +
+ * `FrPagerDots` render one of these per page, in order. [cacheKey] mirrors [FeedMealUi.plateCacheKey]'s
+ * stable-storage-path rationale (a signed [photoUrl] rotates per read; the cache key doesn't).
+ * [isGallery] is THIS specific photo's provenance — a meal can mix a live camera shot with gallery
+ * picks across its pages (see [MealPlate.source]), unlike the meal-level [FeedMealUi.plateSource],
+ * which only ever describes the legacy single (primary) photo.
+ */
+data class FeedPlateUi(
+    val photoUrl: String,
+    val cacheKey: String,
+    val isGallery: Boolean,
+)
+
+/**
  * The full-plate Storage object path — the stable Coil cache key. Mirrors the server-owned layout
  * (`MealDto.from`: `crews/{crewId}/meals/{mealId}.jpg`). Used only as a cache key, never to fetch.
  */
@@ -69,6 +84,15 @@ private fun platePathOf(crewId: String, mealId: String): String =
  */
 private fun thumbPathOf(crewId: String, mealId: String): String =
     "crews/$crewId/meals/${mealId}_thumb.jpg"
+
+/**
+ * The Nth (0-based) plate's Storage object PATH — the stable Coil cache key for a
+ * [FeedMealUi.plates] page. Mirrors `MealMapper.platePathForIndex` (`:feature:meal`, not
+ * importable here — cross-feature ban): index 0 is the primary photo path (same as
+ * [platePathOf]); n ≥ 1 is `..._p{n}.jpg` (multi-photo-crew15 storage-naming decision).
+ */
+private fun platePathForIndex(crewId: String, mealId: String, index: Int): String =
+    if (index == 0) platePathOf(crewId, mealId) else "crews/$crewId/meals/${mealId}_p$index.jpg"
 
 /**
  * Marked [Immutable] so Compose can skip recomposing a meal tile whose props are unchanged while the
@@ -183,10 +207,28 @@ data class FeedMealUi(
      */
     val reactionCount: Int = 0,
     val viewerReacted: Boolean = false,
+    /**
+     * Ordered photo pages for the detail pager (multi-photo-crew15). ALWAYS non-empty once built by
+     * [toFeedUi] — a legacy/empty [es.schsebastian.foodrats.core.domain.meal.Meal.plates] synthesizes
+     * exactly one page from [photoUrl]/[plateCacheKey]/[plateSource], so callers (the detail
+     * `HorizontalPager`) read this list directly with no separate legacy-fallback branch of their own.
+     * Defaults to `emptyList()` only for the one other hand-built [FeedMealUi] fixture in this module
+     * ([FeedMealUiShareTest]), which never renders the pager; [photoCount] still reports `1` then via
+     * its `coerceAtLeast`.
+     */
+    val plates: List<FeedPlateUi> = emptyList(),
 ) {
     /** Returns a copy carrying the latest observed reaction read-model values. */
     fun withReactions(count: Int, viewerReacted: Boolean): FeedMealUi =
         copy(reactionCount = count, viewerReacted = viewerReacted)
+
+    /**
+     * Total photo count for this meal, derived from [plates] (never a separately-stored field, so it
+     * can never drift from the list it describes) — never `0` even for a hand-built fixture whose
+     * [plates] default is empty. Mirrors [es.schsebastian.foodrats.core.domain.meal.Meal.photoCount].
+     */
+    val photoCount: Int
+        get() = plates.size.coerceAtLeast(1)
 
     /**
      * The URL a FEED card should load: the lightweight thumbnail when the pipeline has produced
@@ -306,5 +348,26 @@ fun MealWithRatings.toFeedUi(
         // author name/avatar. They are never null when unmasked if the author has them set.
         authorBio = if (authorMasked) null else meal.author.bio?.value,
         authorBadgeId = if (authorMasked) null else meal.author.badgeId,
+        plates = meal.plates.toFeedPlates(meal.crewId.value, meal.id.value).ifEmpty {
+            // Legacy/empty Meal.plates: synthesize the one page every meal has from the fields
+            // every meal already carries, so callers never need a separate legacy branch.
+            listOf(
+                FeedPlateUi(
+                    photoUrl = meal.photoUrl,
+                    cacheKey = platePathOf(meal.crewId.value, meal.id.value),
+                    isGallery = meal.plateSource.toUi().isGallery,
+                ),
+            )
+        },
     )
 }
+
+/** Maps each ordered [MealPlate] to its presentation page, deriving the per-index stable cache key. */
+private fun List<MealPlate>.toFeedPlates(crewId: String, mealId: String): List<FeedPlateUi> =
+    mapIndexed { index, plate ->
+        FeedPlateUi(
+            photoUrl = plate.photoUrl,
+            cacheKey = platePathForIndex(crewId, mealId, index),
+            isGallery = plate.source.toUi().isGallery,
+        )
+    }
