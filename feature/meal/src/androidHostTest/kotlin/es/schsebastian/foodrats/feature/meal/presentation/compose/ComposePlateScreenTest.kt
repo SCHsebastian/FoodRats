@@ -272,6 +272,37 @@ class ComposePlateScreenTest {
         rule.onNodeWithText("Choose from gallery").assertDoesNotExist()
     }
 
+    @Test fun chooser_cancel_exists_only_while_the_add_photo_chooser_is_open() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        // Chooser CLOSED: its "Cancel" action (a TEXT pill inside the Dialog) must not exist
+        // anywhere. The screen's only Cancel-labeled node is the PRE-EXISTING pinned bottom-bar
+        // close button, which carries "Cancel" as a contentDescription — locked to exactly ONE so
+        // an unconditionally-rendered chooser (or any stray overlay) fails this count. Regression
+        // lock for the 2026-07-13 emulator smoke-walk report, which mistook that pinned close
+        // button (screen-anchored by design; predates Wave 3 — ce42be6) for a stray chooser Cancel.
+        rule.onNodeWithText("Cancel").assertDoesNotExist()
+        rule.onAllNodesWithContentDescription("Cancel").assertCountEquals(1)
+
+        rule.onNodeWithContentDescription("Add another photo").performClick()
+        rule.waitForIdle()
+
+        // Chooser OPEN: its Cancel pill exists; the pinned close button stays the only cd-"Cancel".
+        rule.onNodeWithText("Cancel").assertExists()
+        rule.onAllNodesWithContentDescription("Cancel").assertCountEquals(1)
+
+        // Dismiss via the chooser's own Cancel — the pill must leave composition with the dialog.
+        rule.onNodeWithText("Cancel").performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText("Cancel").assertDoesNotExist()
+    }
+
     @Test fun tapping_a_tile_selects_it() {
         val repo = FakeMealRepository().apply {
             runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera, PlateSource.Camera))
