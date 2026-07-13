@@ -220,7 +220,7 @@ fun ComposePlateScreen(
                             modifier = Modifier
                                 .align(Alignment.TopEnd)
                                 .padding(Spacing.sm)
-                                .semantics { contentDescription = galleryA11y },
+                                .semantics(mergeDescendants = true) { contentDescription = galleryA11y },
                         )
                     }
                 }

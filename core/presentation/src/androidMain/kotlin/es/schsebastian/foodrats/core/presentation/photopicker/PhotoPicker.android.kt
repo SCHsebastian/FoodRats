@@ -180,6 +180,7 @@ private fun readExifMetadata(rawBytes: ByteArray): PhotoMetadata {
             // default (device) timezone, matching the "EXIF datetime interpreted in device
             // zone" convention.
             SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
+                .apply { isLenient = false } // reject degenerate EXIF dates like 0000:00:00 …
                 .parse(raw, position)
                 ?.takeIf { position.index > 0 }
                 ?.time
