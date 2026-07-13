@@ -132,8 +132,8 @@ describe("deleteAccountCore — auth + phrase gates (§14.1)", () => {
 
 describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
   const authoredMeals: MealRef[] = [
-    { path: "crews/c1/meals/m1", platePath: "crews/c1/meals/m1.jpg" },
-    { path: "crews/c2/meals/m2", platePath: "crews/c2/meals/m2.jpg" },
+    { path: "crews/c1/meals/m1", platePaths: ["crews/c1/meals/m1.jpg"] },
+    { path: "crews/c2/meals/m2", platePaths: ["crews/c2/meals/m2.jpg"] },
   ];
   const authoredComments: DocRef[] = [
     { path: "crews/c1/meals/x/comments/cm1" },
@@ -141,7 +141,7 @@ describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
     { path: "crews/c2/meals/z/comments/cm3" },
   ];
   const votedMeals: MealRef[] = [
-    { path: "crews/c1/meals/voted1", platePath: "crews/c1/meals/voted1.jpg" },
+    { path: "crews/c1/meals/voted1", platePaths: ["crews/c1/meals/voted1.jpg"] },
   ];
   const memberCrews: CrewSnap[] = [
     { crewId: "c1", ownerId: UID, memberIds: [UID], members: { [UID]: { joinedAt: 1 } }, code: "AAA" },
@@ -251,15 +251,44 @@ describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
     );
   });
 
-  it("skips the blob delete for an authored meal with an unresolvable plate path (null)", async () => {
+  it("skips the blob delete for an authored meal with an unresolvable photo path (empty platePaths)", async () => {
     const r = recordingDeps({
       expectedPhrase: async () => "DELETE Ana",
-      authoredMeals: async () => [{ path: "weird/path", platePath: null }],
+      authoredMeals: async () => [{ path: "weird/path", platePaths: [] }],
     });
     await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
     expect(r.recursiveDeleted).toContain("weird/path");
-    // No plate blob delete for the null path; the fixed identity blobs are still swept.
+    // No plate blob delete for the unresolvable meal; the fixed identity blobs are still swept.
     expect(r.blobsDeleted).toEqual([`avatars/${UID}.jpg`]);
+  });
+
+  it("deletes EVERY photo of a multi-photo authored meal, all right after its doc delete", async () => {
+    const r = recordingDeps({
+      expectedPhrase: async () => "DELETE Ana",
+      authoredMeals: async () => [
+        {
+          path: "crews/c1/meals/m1",
+          platePaths: [
+            "crews/c1/meals/m1.jpg",
+            "crews/c1/meals/m1_p1.jpg",
+            "crews/c1/meals/m1_p2.jpg",
+          ],
+        },
+      ],
+    });
+    await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
+
+    expect(r.blobsDeleted).toEqual(
+      expect.arrayContaining([
+        "crews/c1/meals/m1.jpg",
+        "crews/c1/meals/m1_p1.jpg",
+        "crews/c1/meals/m1_p2.jpg",
+      ]),
+    );
+    const docIdx = r.calls.indexOf("recursiveDelete:crews/c1/meals/m1");
+    expect(r.calls.indexOf("deleteBlob:crews/c1/meals/m1.jpg")).toBe(docIdx + 1);
+    expect(r.calls.indexOf("deleteBlob:crews/c1/meals/m1_p1.jpg")).toBe(docIdx + 2);
+    expect(r.calls.indexOf("deleteBlob:crews/c1/meals/m1_p2.jpg")).toBe(docIdx + 3);
   });
 });
 
@@ -375,7 +404,7 @@ describe("deleteAccountCore — idempotent re-run (§14.1)", () => {
     const r = recordingDeps({
       expectedPhrase: async () => "DELETE Ana",
       authoredMeals: async () => [
-        { path: "crews/c1/meals/m1", platePath: "crews/c1/meals/m1.jpg" },
+        { path: "crews/c1/meals/m1", platePaths: ["crews/c1/meals/m1.jpg"] },
       ],
       memberCrews: async () => [
         { crewId: "c1", ownerId: "bob", memberIds: ["bob"], members: { bob: { joinedAt: 1 } }, code: null },

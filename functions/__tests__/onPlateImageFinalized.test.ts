@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   classifyPlateObject,
+  EXTRA_PHOTO_SUFFIX,
   IMMUTABLE_CACHE_CONTROL,
   isGeneratedThumbnail,
   processPlateImage,
@@ -65,6 +66,49 @@ describe("classifyPlateObject — path filter (§5.1)", () => {
     // but an uppercase variant IS rejected today. Documented so a future relaxation is deliberate.
     expect(classifyPlateObject("crews/c1/meals/x.JPG", "image/jpeg")).toBeNull();
     expect(classifyPlateObject(PLATE, "image/JPEG")).toBeNull();
+  });
+});
+
+describe("classifyPlateObject — multi-photo extra-photo skip", () => {
+  it("skips a first extra photo (_p1) — PRIMARY-ONLY pipeline never sees it", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p1.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("skips a double-digit extra photo (_p12)", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_p12.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("still processes the PRIMARY photo (no _p suffix)", () => {
+    expect(classifyPlateObject(PLATE, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch",
+      platePath: PLATE,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg",
+    });
+  });
+
+  it("still skips the generated thumbnail (both guards live in the same function)", () => {
+    expect(
+      classifyPlateObject("crews/c1/meals/c1_alice_2026-06-14_lunch_thumb.jpg", "image/jpeg"),
+    ).toBeNull();
+  });
+
+  it("does NOT collide with a legacy hex-token mealId that merely ends in a digit (no literal 'p')", () => {
+    // Documents the non-collision the naming scheme relies on: a token tail like "_2" has no
+    // literal "p" before the digits, so EXTRA_PHOTO_SUFFIX does not match it and the object is
+    // still processed as a (legacy) primary plate.
+    const name = "crews/c1/meals/c1_alice_2026-06-14_lunch_2.jpg";
+    expect(EXTRA_PHOTO_SUFFIX.test("c1_alice_2026-06-14_lunch_2")).toBe(false);
+    expect(classifyPlateObject(name, "image/jpeg")).toEqual({
+      crewId: "c1",
+      mealId: "c1_alice_2026-06-14_lunch_2",
+      platePath: name,
+      thumbnailPath: "crews/c1/meals/c1_alice_2026-06-14_lunch_2_thumb.jpg",
+    });
   });
 });
 
@@ -255,6 +299,22 @@ describe("runPlatePipeline — orchestration", () => {
 
     expect(outcome).toBe("ignored-not-plate");
     expect(b.uploads).toEqual([]);
+  });
+
+  it("skips a multi-photo extra-photo object with ZERO Firestore reads (no garbage doc, multi-photo)", async () => {
+    const m = mealStore({ kind: "unprocessed" });
+    const b = blobStore();
+    const readStatus = vi.spyOn(m.store, "readStatus");
+
+    const outcome = await runPlatePipeline(
+      { meals: m.store, blobs: b.store, imageOps: okImageOps },
+      { ...plateObject, name: "crews/c1/meals/c1_alice_2026-06-14_lunch_p1.jpg" },
+    );
+
+    expect(outcome).toBe("ignored-not-plate");
+    expect(readStatus).not.toHaveBeenCalled();
+    expect(b.uploads).toEqual([]);
+    expect(m.written).toEqual([]);
   });
 
   it("ignores non-plate objects (avatars, exports, junk)", async () => {

@@ -71,12 +71,12 @@ describe("exportMyDataCore — assembly + signed URL (§0.4)", () => {
   const meals: MealSnap[] = [
     {
       path: "crews/c1/meals/m1",
-      platePath: "crews/c1/meals/m1.jpg",
+      platePaths: ["crews/c1/meals/m1.jpg"],
       data: { authorId: UID, dishName: "Lasagna" },
     },
     {
       path: "crews/c2/meals/m2",
-      platePath: "crews/c2/meals/m2.jpg",
+      platePaths: ["crews/c2/meals/m2.jpg"],
       data: { authorId: UID, dishName: "Tacos" },
     },
   ];
@@ -149,6 +149,19 @@ describe("exportMyDataCore — assembly + signed URL (§0.4)", () => {
       "crews/c1/meals/m1.jpg",
       "crews/c2/meals/m2.jpg",
     ]);
+    // Each meal also carries its OWN signed photo(s), not just the flattened top-level list.
+    expect(archive.meals[0].plates).toEqual([
+      {
+        path: "crews/c1/meals/m1.jpg",
+        url: `https://signed.example/crews/c1/meals/m1.jpg?exp=${NOW + EXPORT_URL_TTL_MS}`,
+      },
+    ]);
+    expect(archive.meals[1].plates).toEqual([
+      {
+        path: "crews/c2/meals/m2.jpg",
+        url: `https://signed.example/crews/c2/meals/m2.jpg?exp=${NOW + EXPORT_URL_TTL_MS}`,
+      },
+    ]);
   });
 
   it("handles a missing account doc + an account with no data gracefully", async () => {
@@ -161,12 +174,12 @@ describe("exportMyDataCore — assembly + signed URL (§0.4)", () => {
     expect(archive.plates).toEqual([]);
   });
 
-  it("skips plate signing for meals with a null or empty platePath (no delete-at-guessed-path)", async () => {
+  it("skips plate signing for meals with an unresolvable photo set (no sign-at-guessed-path)", async () => {
     const r = recordingDeps({
       authoredMeals: async () => [
-        { path: "crews/c1/meals/m1", platePath: null, data: {} },
-        { path: "crews/c1/meals/m2", platePath: "", data: {} },
-        { path: "crews/c1/meals/m3", platePath: "crews/c1/meals/m3.jpg", data: {} },
+        { path: "crews/c1/meals/m1", platePaths: [], data: {} },
+        { path: "crews/c1/meals/m2", platePaths: [], data: {} },
+        { path: "crews/c1/meals/m3", platePaths: ["crews/c1/meals/m3.jpg"], data: {} },
       ],
     });
     await exportMyDataCore(r.deps, UID, {});
@@ -176,21 +189,56 @@ describe("exportMyDataCore — assembly + signed URL (§0.4)", () => {
     expect(archive.plates.map((p: { path: string }) => p.path)).toEqual([
       "crews/c1/meals/m3.jpg",
     ]);
-    // The meals themselves still export, plate or not.
+    // The meals themselves still export, resolvable photos or not.
     expect(archive.meals).toHaveLength(3);
+    // An unresolvable meal carries an EMPTY per-meal manifest, never a missing field.
+    expect(archive.meals[0].plates).toEqual([]);
+    expect(archive.meals[1].plates).toEqual([]);
+    expect(archive.meals[2].plates.map((p: { path: string }) => p.path)).toEqual([
+      "crews/c1/meals/m3.jpg",
+    ]);
   });
 
-  it("signs a duplicated platePath only ONCE (de-dup before the signing fan-out)", async () => {
+  it("signs a photo path shared by two meals only ONCE (de-dup before the signing fan-out)", async () => {
     const r = recordingDeps({
       authoredMeals: async () => [
-        { path: "crews/c1/meals/m1", platePath: "crews/c1/meals/shared.jpg", data: {} },
-        { path: "crews/c1/meals/m2", platePath: "crews/c1/meals/shared.jpg", data: {} },
+        { path: "crews/c1/meals/m1", platePaths: ["crews/c1/meals/shared.jpg"], data: {} },
+        { path: "crews/c1/meals/m2", platePaths: ["crews/c1/meals/shared.jpg"], data: {} },
       ],
     });
     await exportMyDataCore(r.deps, UID, {});
     expect(r.signed.filter((p) => p === "crews/c1/meals/shared.jpg")).toHaveLength(1);
     const archive = JSON.parse(r.uploaded[0]);
     expect(archive.plates).toHaveLength(1);
+    // Both meals still see the (once-signed) URL in their OWN per-meal manifest.
+    expect(archive.meals[0].plates).toEqual(archive.meals[1].plates);
+  });
+
+  it("includes EVERY one of a meal's photos, in order, each with its own signed URL (multi-photo)", async () => {
+    const r = recordingDeps({
+      authoredMeals: async () => [
+        {
+          path: "crews/c1/meals/m1",
+          platePaths: [
+            "crews/c1/meals/m1.jpg",
+            "crews/c1/meals/m1_p1.jpg",
+            "crews/c1/meals/m1_p2.jpg",
+          ],
+          data: {},
+        },
+      ],
+    });
+    await exportMyDataCore(r.deps, UID, {});
+    const archive = JSON.parse(r.uploaded[0]);
+    expect(archive.meals[0].plates.map((p: { path: string }) => p.path)).toEqual([
+      "crews/c1/meals/m1.jpg",
+      "crews/c1/meals/m1_p1.jpg",
+      "crews/c1/meals/m1_p2.jpg",
+    ]);
+    // Every one of the meal's photos also lands in the flattened, backward-compatible top-level list.
+    expect(archive.plates.map((p: { path: string }) => p.path)).toEqual(
+      expect.arrayContaining(archive.meals[0].plates.map((p: { path: string }) => p.path)),
+    );
   });
 
   it("a failing gather dependency propagates (the callable wrapper maps it to 'internal')", async () => {
@@ -274,20 +322,71 @@ describe("buildExportArchive — pure projection (§0.4)", () => {
     expect(archive.exportedAt).toBe(new Date(NOW).toISOString());
   });
 
-  it("projects meals to path + data only (no internal platePath leak)", () => {
+  it("projects meals to path + data + signed plates only (no internal platePaths leak)", () => {
     const archive = buildExportArchive({
       uid: UID,
       account: null,
       consent: [],
       devices: [],
       crews: [],
-      meals: [{ path: "crews/c1/meals/m1", platePath: "crews/c1/meals/m1.jpg", data: { x: 1 } }],
+      meals: [
+        { path: "crews/c1/meals/m1", platePaths: ["crews/c1/meals/m1.jpg"], data: { x: 1 } },
+      ],
       comments: [],
       votes: [],
-      plates: [],
+      plates: [{ path: "crews/c1/meals/m1.jpg", url: "u1" }],
       exportedAtMs: NOW,
     });
-    expect(archive.meals).toEqual([{ path: "crews/c1/meals/m1", data: { x: 1 } }]);
-    expect(archive.meals[0]).not.toHaveProperty("platePath");
+    expect(archive.meals).toEqual([
+      {
+        path: "crews/c1/meals/m1",
+        data: { x: 1 },
+        plates: [{ path: "crews/c1/meals/m1.jpg", url: "u1" }],
+      },
+    ]);
+    expect(archive.meals[0]).not.toHaveProperty("platePaths");
+  });
+
+  it("associates each meal with ONLY its own signed photo URLs, preserving plates[] order", () => {
+    const archive = buildExportArchive({
+      uid: UID,
+      account: null,
+      consent: [],
+      devices: [],
+      crews: [],
+      meals: [
+        { path: "crews/c1/meals/m1", platePaths: ["p0.jpg", "p1.jpg"], data: {} },
+        { path: "crews/c1/meals/m2", platePaths: ["q0.jpg"], data: {} },
+      ],
+      comments: [],
+      votes: [],
+      plates: [
+        { path: "p0.jpg", url: "u-p0" },
+        { path: "p1.jpg", url: "u-p1" },
+        { path: "q0.jpg", url: "u-q0" },
+      ],
+      exportedAtMs: NOW,
+    });
+    expect(archive.meals[0].plates).toEqual([
+      { path: "p0.jpg", url: "u-p0" },
+      { path: "p1.jpg", url: "u-p1" },
+    ]);
+    expect(archive.meals[1].plates).toEqual([{ path: "q0.jpg", url: "u-q0" }]);
+  });
+
+  it("drops a meal's photo path from its OWN manifest when it has no matching signed URL (never emits an undefined url)", () => {
+    const archive = buildExportArchive({
+      uid: UID,
+      account: null,
+      consent: [],
+      devices: [],
+      crews: [],
+      meals: [{ path: "crews/c1/meals/m1", platePaths: ["p0.jpg", "unsigned.jpg"], data: {} }],
+      comments: [],
+      votes: [],
+      plates: [{ path: "p0.jpg", url: "u-p0" }],
+      exportedAtMs: NOW,
+    });
+    expect(archive.meals[0].plates).toEqual([{ path: "p0.jpg", url: "u-p0" }]);
   });
 });

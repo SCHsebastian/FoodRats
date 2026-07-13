@@ -66,7 +66,7 @@ describe("mealStoragePaths — path resolution", () => {
   it("an EMPTY-STRING stored path falls back to the deterministic scheme (regression: '' orphaned the blob)", () => {
     // Fixed 2026-07-13: `?? fallback` only caught null/undefined, so a doc that persisted
     // platePath: "" targeted "" — a no-op delete that orphaned the real blob. Now `||` treats
-    // "" as missing, matching deleteAccount's platePathOf.
+    // "" as missing, matching `mealPhotoPaths`'s semantics.
     expect(mealStoragePaths(CREW, MEAL, { platePath: "", thumbnailPath: "" })).toEqual({
       platePath: PLATE,
       thumbnailPath: THUMB,
@@ -136,5 +136,50 @@ describe("reclaimMealObjects — plate + thumbnail reclaim", () => {
 
     await expect(reclaimMealObjects(store, CREW, MEAL, undefined)).resolves.toBeUndefined();
     expect(deletes).toEqual([PLATE, THUMB]);
+  });
+
+  it("deletes the FULL multi-photo set: primary + every extra photo + the (primary-only) thumbnail", async () => {
+    const b = blobStore();
+    const EXTRA1 = `crews/${CREW}/meals/${MEAL}_p1.jpg`;
+    const EXTRA2 = `crews/${CREW}/meals/${MEAL}_p2.jpg`;
+    const doc = {
+      plates: [
+        { path: PLATE, source: "camera" },
+        { path: EXTRA1, source: "gallery" },
+        { path: EXTRA2, source: "gallery" },
+      ],
+    };
+
+    await reclaimMealObjects(b.store, CREW, MEAL, doc);
+
+    expect(b.deletes).toEqual([PLATE, EXTRA1, EXTRA2, THUMB]);
+  });
+
+  it("tolerates malformed plates entries when reclaiming a multi-photo meal (defensive)", async () => {
+    const b = blobStore();
+    const EXTRA1 = `crews/${CREW}/meals/${MEAL}_p1.jpg`;
+    const doc = {
+      plates: [{ path: PLATE }, { path: 1 }, {}, null, { path: EXTRA1 }],
+    };
+
+    await reclaimMealObjects(b.store, CREW, MEAL, doc);
+
+    expect(b.deletes).toEqual([PLATE, EXTRA1, THUMB]);
+  });
+
+  it("an extra-photo delete failure does not abort the rest of the multi-photo set or the thumbnail", async () => {
+    const EXTRA1 = `crews/${CREW}/meals/${MEAL}_p1.jpg`;
+    const EXTRA2 = `crews/${CREW}/meals/${MEAL}_p2.jpg`;
+    const deletes: string[] = [];
+    const store: MealBlobStore = {
+      delete: async (path) => {
+        deletes.push(path);
+        if (path === EXTRA1) throw new Error("transient");
+      },
+    };
+    const doc = { plates: [{ path: PLATE }, { path: EXTRA1 }, { path: EXTRA2 }] };
+
+    await expect(reclaimMealObjects(store, CREW, MEAL, doc)).resolves.toBeUndefined();
+    expect(deletes).toEqual([PLATE, EXTRA1, EXTRA2, THUMB]);
   });
 });
