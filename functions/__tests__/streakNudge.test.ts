@@ -20,6 +20,24 @@ describe("todayKey — UTC day key", () => {
     );
     expect(todayKey(local)).toBe("2026-06-14");
   });
+
+  it("rolls BACK to the previous UTC day when the local zone is already past midnight", () => {
+    // 00:30 on the 15th in UTC+2 is 22:30 UTC on the 14th — the UTC day is authoritative.
+    const local = DateTime.fromObject(
+      { year: 2026, month: 6, day: 15, hour: 0, minute: 30 },
+      { zone: "UTC+2" },
+    );
+    expect(todayKey(local)).toBe("2026-06-14");
+  });
+
+  it("rolls FORWARD to the next UTC day for a late-evening western-zone instant", () => {
+    // 22:30 UTC-5 on the 14th is 03:30 UTC on the 15th.
+    const local = DateTime.fromObject(
+      { year: 2026, month: 6, day: 14, hour: 22, minute: 30 },
+      { zone: "UTC-5" },
+    );
+    expect(todayKey(local)).toBe("2026-06-15");
+  });
 });
 
 describe("planCrewNudge — at-risk selection (roadmap §1.1)", () => {
@@ -49,6 +67,21 @@ describe("planCrewNudge — at-risk selection (roadmap §1.1)", () => {
     const plan = planCrewNudge(["a", "b"], new Set(["a", "ghost"]));
     expect(plan).not.toBeNull();
     expect(plan!.nonPosterIds).toEqual(["b"]);
+  });
+
+  it("returns null for an empty crew (deleted-crew / malformed memberIds)", () => {
+    expect(planCrewNudge([], new Set(["ghost"]))).toBeNull();
+  });
+
+  it("works at the minimum viable crew size of exactly 2 members", () => {
+    const plan = planCrewNudge(["a", "b"], new Set(["a"]));
+    expect(plan).not.toBeNull();
+    expect(plan!.crewSize).toBe(2);
+    expect(plan!.nonPosterIds).toEqual(["b"]);
+  });
+
+  it("returns null when ONLY ex-members posted (no in-crew social proof)", () => {
+    expect(planCrewNudge(["a", "b"], new Set(["ghost"]))).toBeNull();
   });
 });
 
@@ -126,5 +159,79 @@ describe("processCrewNudge — fan-out, dedupe, token/permission gating", () => 
 
     expect(count).toBe(0);
     expect(sent).toEqual([]);
+  });
+
+  it("records the dedupe marker only AFTER the send succeeds (per recipient)", async () => {
+    const order: string[] = [];
+    const { deps } = fakeDeps({
+      sendNudge: async (uid) => {
+        order.push(`send:${uid}`);
+      },
+      markNudged: async (uid) => {
+        order.push(`mark:${uid}`);
+      },
+    });
+    await processCrewNudge("crew-1", "2026-06-14", deps);
+    expect(order).toEqual(["send:b", "mark:b", "send:c", "mark:c"]);
+  });
+
+  it("a failed send does NOT burn the dedupe marker (retry can still nudge)", async () => {
+    const { deps, marked } = fakeDeps({
+      sendNudge: async (uid) => {
+        if (uid === "b") throw new Error("fcm down");
+      },
+    });
+    // Current behavior: the error propagates (the crew scan surfaces it), and 'b' is not marked.
+    await expect(processCrewNudge("crew-1", "2026-06-14", deps)).rejects.toThrow("fcm down");
+    expect(marked).not.toContain("b");
+  });
+
+  it("dedupes ACROSS crews: a shared member nudged for crew-1 is skipped for crew-2", async () => {
+    // Shared in-memory `nudges/{uid}/{dayKey}` store, exactly like Firestore backs the real deps.
+    const nudged = new Set<string>();
+    const sent: string[] = [];
+    const depsFor = (memberIds: string[]): NudgeDeps => ({
+      readMemberIds: async () => memberIds,
+      readTodayPosters: async () => new Set([memberIds[0]]),
+      hasToken: async () => true,
+      wasNudgedToday: async (uid, dayKey) => nudged.has(`${uid}|${dayKey}`),
+      markNudged: async (uid, dayKey) => {
+        nudged.add(`${uid}|${dayKey}`);
+      },
+      sendNudge: async (uid) => {
+        sent.push(uid);
+      },
+    });
+
+    // "b" is a non-poster in BOTH crews.
+    const first = await processCrewNudge("crew-1", "2026-06-14", depsFor(["a", "b"]));
+    const second = await processCrewNudge("crew-2", "2026-06-14", depsFor(["z", "b"]));
+
+    expect(first).toBe(1);
+    expect(second).toBe(0); // b already nudged today via crew-1
+    expect(sent).toEqual(["b"]);
+  });
+
+  it("the dedupe is per-DAY: the same member is nudgeable again on the next dayKey", async () => {
+    const nudged = new Set<string>();
+    const sent: string[] = [];
+    const deps: NudgeDeps = {
+      readMemberIds: async () => ["a", "b"],
+      readTodayPosters: async () => new Set(["a"]),
+      hasToken: async () => true,
+      wasNudgedToday: async (uid, dayKey) => nudged.has(`${uid}|${dayKey}`),
+      markNudged: async (uid, dayKey) => {
+        nudged.add(`${uid}|${dayKey}`);
+      },
+      sendNudge: async (uid) => {
+        sent.push(uid);
+      },
+    };
+
+    await processCrewNudge("crew-1", "2026-06-14", deps);
+    await processCrewNudge("crew-1", "2026-06-14", deps); // same day → deduped
+    await processCrewNudge("crew-1", "2026-06-15", deps); // next day → nudged again
+
+    expect(sent).toEqual(["b", "b"]);
   });
 });

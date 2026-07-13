@@ -110,6 +110,24 @@ describe("deleteAccountCore — auth + phrase gates (§14.1)", () => {
     expect(res).toEqual({ deleted: true });
     expect(authDeleted).toEqual([UID]);
   });
+
+  it("rejects a MISSING confirmation field (nullish → empty string) and destroys nothing", async () => {
+    const { deps, calls } = recordingDeps({ expectedPhrase: async () => "DELETE Ana" });
+    expect(
+      await codeOf(() =>
+        deleteAccountCore(deps, UID, { confirmation: undefined as unknown as string }),
+      ),
+    ).toBe("failed-precondition");
+    expect(calls).toEqual([]);
+  });
+
+  it("phrase match is case-sensitive (\"delete\" ≠ \"DELETE\")", async () => {
+    const { deps, calls } = recordingDeps({ expectedPhrase: async () => "DELETE" });
+    expect(await codeOf(() => deleteAccountCore(deps, UID, { confirmation: "delete" }))).toBe(
+      "failed-precondition",
+    );
+    expect(calls).toEqual([]);
+  });
 });
 
 describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
@@ -207,6 +225,42 @@ describe("deleteAccountCore — happy-path cascade (§14.1)", () => {
     expect(authCalls).toEqual([`deleteAuthUser:${UID}`]);
     expect(r.calls[r.calls.length - 1]).toBe(`deleteAuthUser:${UID}`);
   });
+
+  it("cascades in spec order: meals → comments → ratings → crews → identity", async () => {
+    const r = fullDeps();
+    await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
+
+    const idx = (c: string) => r.calls.indexOf(c);
+    expect(idx("recursiveDelete:crews/c2/meals/m2")).toBeLessThan(
+      idx("recursiveDelete:crews/c1/meals/x/comments/cm1"),
+    );
+    expect(idx("recursiveDelete:crews/c2/meals/z/comments/cm3")).toBeLessThan(
+      idx("removeRating:crews/c1/meals/voted1"),
+    );
+    expect(idx("removeRating:crews/c1/meals/voted1")).toBeLessThan(
+      idx("reassignOrDeleteCrew:c1"),
+    );
+    expect(idx("reassignOrDeleteCrew:c2")).toBeLessThan(idx(`recursiveDelete:accounts/${UID}`));
+  });
+
+  it("deletes each authored meal's plate blob right after its doc", async () => {
+    const r = fullDeps();
+    await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
+    expect(r.calls.indexOf("deleteBlob:crews/c1/meals/m1.jpg")).toBe(
+      r.calls.indexOf("recursiveDelete:crews/c1/meals/m1") + 1,
+    );
+  });
+
+  it("skips the blob delete for an authored meal with an unresolvable plate path (null)", async () => {
+    const r = recordingDeps({
+      expectedPhrase: async () => "DELETE Ana",
+      authoredMeals: async () => [{ path: "weird/path", platePath: null }],
+    });
+    await deleteAccountCore(r.deps, UID, { confirmation: "DELETE Ana" });
+    expect(r.recursiveDeleted).toContain("weird/path");
+    // No plate blob delete for the null path; the fixed identity blobs are still swept.
+    expect(r.blobsDeleted).toEqual([`avatars/${UID}.jpg`]);
+  });
 });
 
 describe("planCrewReassignment — §6 owned-crew policy", () => {
@@ -252,6 +306,40 @@ describe("planCrewReassignment — §6 owned-crew policy", () => {
       code: "AAA",
     };
     expect(planCrewReassignment(crew, UID)).toEqual({ kind: "reassign", newOwnerId: "amy" });
+  });
+
+  it("a member MISSING from the members map sorts last but is still eligible when alone", () => {
+    const crew: CrewSnap = {
+      crewId: "c1",
+      ownerId: UID,
+      memberIds: [UID, "orphan"],
+      members: { [UID]: { joinedAt: 1 } }, // orphan has no membership entry
+      code: null,
+    };
+    expect(planCrewReassignment(crew, UID)).toEqual({ kind: "reassign", newOwnerId: "orphan" });
+  });
+
+  it("prefers a member WITH a joinedAt over one missing from the members map", () => {
+    const crew: CrewSnap = {
+      crewId: "c1",
+      ownerId: UID,
+      // "aaa" sorts first alphabetically but has no members entry → +Infinity joinedAt → loses.
+      memberIds: [UID, "aaa", "zoe"],
+      members: { [UID]: { joinedAt: 1 }, zoe: { joinedAt: 999 } },
+      code: null,
+    };
+    expect(planCrewReassignment(crew, UID)).toEqual({ kind: "reassign", newOwnerId: "zoe" });
+  });
+
+  it("an owner listed alone in memberIds deletes the crew even if the members map has ghosts", () => {
+    const crew: CrewSnap = {
+      crewId: "c1",
+      ownerId: UID,
+      memberIds: [UID], // memberIds is authoritative for "who remains"
+      members: { [UID]: { joinedAt: 1 }, ghost: { joinedAt: 2 } },
+      code: "AAA",
+    };
+    expect(planCrewReassignment(crew, UID)).toEqual({ kind: "delete" });
   });
 });
 
