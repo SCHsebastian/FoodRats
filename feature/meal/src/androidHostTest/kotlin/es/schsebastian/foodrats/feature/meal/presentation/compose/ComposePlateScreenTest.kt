@@ -1,6 +1,11 @@
 package es.schsebastian.foodrats.feature.meal.presentation.compose
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -8,6 +13,7 @@ import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.domain.config.FeatureFlagPort
@@ -387,6 +393,63 @@ class ComposePlateScreenTest {
         rule.waitForIdle()
 
         rule.onNodeWithContentDescription("Photo picked from the gallery").assertDoesNotExist()
+    }
+
+    // ── edge-case hardening (2026-07-13 track-edge-presentation) ─────────────────────────
+
+    @Test fun add_tile_exists_at_nine_photos_with_counter_nine_of_ten() {
+        val nine = Array(9) { PlateSource.Camera }
+        val repo = FakeMealRepository().apply { runBlockingSaveDraft(draftWithPhotos(*nine)) }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        // One under the cap: the counter reads "9 / 10" and the add tile is still offered — the
+        // precise boundary immediately below the already-covered "10 / 10, tile gone" case.
+        rule.onNodeWithText("9 / ${MealPublishPolicy.MAX_PHOTOS_PER_MEAL}").assertExists()
+        // At 9 tiles the strip's content (9 * 76dp tiles + the add tile, all inside the 480dp
+        // form-max width) overflows the viewport, so the LazyRow only composes what's currently
+        // visible — the add tile (index 9, the very last item) needs a scroll before it exists in
+        // the semantics tree. Target the LazyRow via its own horizontal-scroll semantics rather
+        // than a testTag (none is set in production, and this track may not add one).
+        val horizontalScrollableRow = SemanticsMatcher("hasHorizontalScrollAxisRange") { node ->
+            node.config.getOrNull(SemanticsProperties.HorizontalScrollAxisRange) != null
+        }
+        rule.onNode(horizontalScrollableRow).performScrollToIndex(9)
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Add another photo").assertExists()
+    }
+
+    @Test fun move_left_button_is_disabled_when_the_first_photo_is_selected() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera, PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+
+        // Default selection is the first photo (index 0) — move-left has nowhere to go, so it must
+        // be disabled (not hidden — the row's width stays stable per PhotoActionRow's kdoc).
+        rule.onNodeWithContentDescription("Move photo left").assertIsNotEnabled()
+        rule.onNodeWithContentDescription("Move photo right").assertIsEnabled()
+    }
+
+    @Test fun move_right_button_is_disabled_when_the_last_photo_is_selected() {
+        val repo = FakeMealRepository().apply {
+            runBlockingSaveDraft(draftWithPhotos(PlateSource.Camera, PlateSource.Camera, PlateSource.Camera))
+        }
+        val vm = viewModel(repo)
+
+        rule.setContent { FoodRatsTheme { ComposePlateScreen(onPublishStarted = {}, onEditIngredients = {}, onClose = {}, vm = vm) } }
+        rule.waitForIdle()
+        rule.onNodeWithContentDescription("Photo 3 of 3").performClick() // select the last photo
+        rule.waitForIdle()
+
+        rule.onNodeWithContentDescription("Move photo right").assertIsNotEnabled()
+        rule.onNodeWithContentDescription("Move photo left").assertIsEnabled()
     }
 
     /** [FakeMealRepository.saveDraft] is a suspend fun; the `apply {}` fixture builders above need

@@ -59,4 +59,28 @@ class FrPagerDotsTest {
         }
         rule.onAllNodesWithTag("pagerDot").assertCountEquals(0)
     }
+
+    // ── edge-case hardening (2026-07-13 track-edge-presentation) ─────────────────────────
+
+    @Test
+    fun currentPageNegative_stillRendersPageCountDotsWithoutCrashing() {
+        // `active = index == currentPage` never matches for a negative currentPage, so every dot
+        // simply renders in its "inactive" state — no crash, dot count unaffected.
+        rule.setContent {
+            FoodRatsTheme(darkTheme = true) {
+                FrPagerDots(pageCount = 3, currentPage = -1)
+            }
+        }
+        rule.onAllNodesWithTag("pagerDot").assertCountEquals(3)
+    }
+
+    @Test
+    fun currentPageAtOrBeyondPageCount_stillRendersPageCountDotsWithoutCrashing() {
+        rule.setContent {
+            FoodRatsTheme(darkTheme = true) {
+                FrPagerDots(pageCount = 3, currentPage = 10)
+            }
+        }
+        rule.onAllNodesWithTag("pagerDot").assertCountEquals(3)
+    }
 }

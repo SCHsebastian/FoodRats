@@ -18,6 +18,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealAuthor
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.meal.MealPlate
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealReactionPort
 import es.schsebastian.foodrats.core.domain.meal.MealReactions
 import es.schsebastian.foodrats.core.domain.meal.MealReadError
@@ -190,10 +191,16 @@ class FeedScreenTest {
         },
     )
 
-    private fun viewModel(meal: Meal) = FeedViewModel(
+    private fun viewModel(meal: Meal) = viewModelForMeals(listOf(meal))
+
+    /** Multi-meal variant (edge-case hardening, 2026-07-13): lets a test place a specific meal at a
+     *  chosen bento rank (see [feedBentoItems]'s span table) instead of always landing on the wide
+     *  hero tile. Duplicated wiring rather than reusing [viewModel] to avoid touching that existing,
+     *  already-covered single-meal call site. */
+    private fun viewModelForMeals(meals: List<Meal>) = FeedViewModel(
         observeFeed = ObserveFeedUseCase(
             FakeActiveCrewProvider(crew),
-            FakeMealReadPort(listOf(MealWithRatings(meal, emptyList()))),
+            FakeMealReadPort(meals.map { MealWithRatings(it, emptyList()) }),
             FakeSessionProvider(Session(account, crew)),
             FakeBlockedAccounts(),
         ),
@@ -304,5 +311,88 @@ class FeedScreenTest {
 
         rule.onNodeWithText("×1").assertDoesNotExist()
         rule.onNodeWithContentDescription("1 photos").assertDoesNotExist()
+    }
+
+    // ── edge-case hardening (2026-07-13 track-edge-presentation) ─────────────────────────
+
+    @Test fun photo_count_chip_pluralizes_correctly_at_two_photos() {
+        // The chip is only ever shown for photoCount > 1, so N=2 is the smallest value the
+        // FeedPluralKey.TilePhotoCountCd "other" form is ever actually rendered for.
+        val vm = viewModel(mealWithPlates(2))
+
+        rule.setContent {
+            FoodRatsTheme {
+                FeedScreen(
+                    crewName = "Crew",
+                    avatarInitials = "C",
+                    avatarUrl = null,
+                    onPickCrewClick = {},
+                    onProfileClick = {},
+                    onCrewSettingsClick = {},
+                    onMealClick = { _, _ -> },
+                    vm = vm,
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("×2").assertExists()
+        rule.onNodeWithContentDescription("2 photos").assertExists()
+    }
+
+    @Test fun photo_count_chip_pluralizes_correctly_at_the_ten_photo_cap() {
+        val vm = viewModel(mealWithPlates(MealPublishPolicy.MAX_PHOTOS_PER_MEAL))
+
+        rule.setContent {
+            FoodRatsTheme {
+                FeedScreen(
+                    crewName = "Crew",
+                    avatarInitials = "C",
+                    avatarUrl = null,
+                    onPickCrewClick = {},
+                    onProfileClick = {},
+                    onCrewSettingsClick = {},
+                    onMealClick = { _, _ -> },
+                    vm = vm,
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("×${MealPublishPolicy.MAX_PHOTOS_PER_MEAL}").assertExists()
+        rule.onNodeWithContentDescription("${MealPublishPolicy.MAX_PHOTOS_PER_MEAL} photos").assertExists()
+    }
+
+    @Test fun photo_count_chip_renders_on_a_narrow_non_hero_tile_too() {
+        // feedBentoItems ranks by averageScore (all three tie at null -> -1.0, so the stable sort
+        // keeps input order) and assigns span 6/4/2/3/... by rank; the 3rd-ranked meal here lands at
+        // bento index 2 (span 2, `wide = false`) — the narrowest non-hero tile shape, distinct from
+        // the wide hero every other test in this file exercises via a single-meal feed. The chip
+        // logic isn't gated on tile width in StructuralMealTile, so it must still render here.
+        val meals = listOf(
+            meal(PlateSource.Camera).copy(id = (MealId.of("meal-1") as Result.Ok).value),
+            meal(PlateSource.Camera).copy(id = (MealId.of("meal-2") as Result.Ok).value),
+            mealWithPlates(4).copy(id = (MealId.of("meal-3") as Result.Ok).value),
+        )
+        val vm = viewModelForMeals(meals)
+
+        rule.setContent {
+            FoodRatsTheme {
+                FeedScreen(
+                    crewName = "Crew",
+                    avatarInitials = "C",
+                    avatarUrl = null,
+                    onPickCrewClick = {},
+                    onProfileClick = {},
+                    onCrewSettingsClick = {},
+                    onMealClick = { _, _ -> },
+                    vm = vm,
+                )
+            }
+        }
+        rule.waitForIdle()
+
+        rule.onNodeWithText("×4").assertExists()
+        rule.onNodeWithContentDescription("4 photos").assertExists()
     }
 }

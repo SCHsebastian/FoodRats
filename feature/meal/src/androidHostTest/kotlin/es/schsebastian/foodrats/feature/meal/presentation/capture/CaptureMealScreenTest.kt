@@ -143,4 +143,29 @@ class CaptureMealScreenTest {
         rule.onNodeWithText("Couldn't get that photo. Try again or pick one from your gallery.")
             .assertDoesNotExist()
     }
+
+    @Test fun retry_action_re_attempts_the_camera_and_never_leaves_a_stuck_processing_overlay() {
+        val vm = viewModel()
+
+        rule.setContent {
+            FoodRatsTheme {
+                CaptureMealScreen(onCaptured = {}, onCancelled = {}, onOpenSettings = {}, vm = vm)
+            }
+        }
+        rule.waitForIdle()
+        rule.onNodeWithText("Take a photo").assertExists()
+
+        // The FileProvider authority is still missing in this harness (see the class kdoc), so the
+        // retry fails again immediately. `PhotoPickResult.Failed` never touches `processing`/
+        // `isCapturing`, so this must cleanly re-render the fallback chooser — never get stuck on
+        // the "Saving your plate…" overlay (which would only show if one of those flags were left
+        // true with no matching reset).
+        rule.onNodeWithText("Take a photo").performClick()
+        rule.waitForIdle()
+
+        rule.onNodeWithText("Saving your plate…").assertDoesNotExist()
+        rule.onNodeWithText("Couldn't get that photo. Try again or pick one from your gallery.").assertExists()
+        rule.onNodeWithText("Take a photo").assertExists()
+        rule.onNodeWithText("Cancel").assertExists()
+    }
 }
