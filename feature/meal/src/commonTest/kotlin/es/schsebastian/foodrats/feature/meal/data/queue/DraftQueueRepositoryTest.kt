@@ -61,7 +61,7 @@ class DraftQueueRepositoryTest {
         ),
         authorId = (AccountId.of("acc-1") as Result.Ok).value,
         day = MealDay(LocalDate(2026, 6, 14), TimeZone.UTC),
-        plate = Plate(byteArrayOf(1, 2, 3, 4, 5), overlayApplied = true),
+        plates = listOf(Plate(byteArrayOf(1, 2, 3, 4, 5), overlayApplied = true)),
         dish = null,
         description = Description.EMPTY,
         slot = MealSlot.Lunch,
@@ -102,7 +102,7 @@ class DraftQueueRepositoryTest {
         val clock = FixedClock(Instant.parse("2026-06-14T10:00:00Z"))
         val repo1 = DraftQueueRepository(DraftQueueLocalStore(AppPreferences(backing)), clock, dispatchers())
         val galleryDraft = draft().copy(
-            plate = Plate(byteArrayOf(1, 2, 3, 4, 5), overlayApplied = true, source = PlateSource.Gallery),
+            plates = listOf(Plate(byteArrayOf(1, 2, 3, 4, 5), overlayApplied = true, source = PlateSource.Gallery)),
         )
         assertTrue(repo1.enqueue(galleryDraft) is Result.Ok)
 

@@ -26,6 +26,15 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.serializer
 
+/** One photo entry in [MealDraftJson.plates] — mirrors [es.schsebastian.foodrats.feature.meal.domain.model.Plate]. */
+@Serializable
+private data class PlateJson(
+    val photoBase64: String,
+    val overlayApplied: Boolean = false,
+    // PlateSource.key(); null reads back as camera.
+    val source: String? = null,
+)
+
 @Serializable
 private data class MealDraftJson(
     // The chosen publish audience. `crewId` (singular) is the legacy field a pre-multi-crew
@@ -35,8 +44,15 @@ private data class MealDraftJson(
     val authorId: String,
     val dayIso: String,
     val zoneId: String,
-    val photoBase64: String?,
-    val overlayApplied: Boolean,
+    // Ordered photos. Written by every current save; a draft persisted before multi-photo
+    // existed has this empty and is read from the legacy fields below instead.
+    val plates: List<PlateJson> = emptyList(),
+    // Legacy single-photo fields — READ FALLBACK ONLY (a draft persisted before `plates`
+    // existed). Never written by [MealDraftJson.from] — only [plates] is written going forward.
+    val photoBase64: String? = null,
+    val overlayApplied: Boolean = false,
+    // PlateSource.key(); null (legacy persisted drafts) reads back as camera.
+    val plateSource: String? = null,
     val dish: String?,
     val description: String = "",
     val slot: String? = null,
@@ -46,8 +62,6 @@ private data class MealDraftJson(
     val detectedIngredients: List<String> = emptyList(),
     val detectedDishSlug: String? = null,
     val classifierVersion: String? = null,
-    // PlateSource.key(); null (legacy persisted drafts) reads back as camera.
-    val plateSource: String? = null,
 )
 
 @OptIn(ExperimentalEncodingApi::class)
@@ -72,7 +86,11 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
         val acc  = AccountId.of(authorId).getOrElse { return null }
         val day  = runCatching { LocalDate.parse(dayIso) }.getOrNull() ?: return null
         val zone = runCatching { TimeZone.of(zoneId) }.getOrNull() ?: TimeZone.UTC
-        val plate = photoBase64?.let { Plate(Base64.decode(it), overlayApplied, PlateSource.fromKey(plateSource)) }
+        // The new array format wins when present; a draft persisted before `plates` existed
+        // (empty array) falls back to the legacy single photoBase64 field as a 1-item list.
+        val platesList = plates.ifEmpty {
+            photoBase64?.let { listOf(PlateJson(it, overlayApplied, plateSource)) }.orEmpty()
+        }.map { Plate(Base64.decode(it.photoBase64), it.overlayApplied, PlateSource.fromKey(it.source)) }
         val d = dish?.let { DishName.of(it).getOrElse { return null } }
         val desc = Description.of(description).getOrElse { Description.EMPTY }
         val coords = if (latitude != null && longitude != null) {
@@ -82,7 +100,7 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             audienceCrewIds = audience,
             authorId = acc,
             day = MealDay(day, zone),
-            plate = plate,
+            plates = platesList,
             dish = d,
             description = desc,
             slot = slot?.let(MealSlot::fromKey),
@@ -101,8 +119,10 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             authorId = d.authorId.value,
             dayIso = d.day.date.toString(),
             zoneId = d.day.zone.id,
-            photoBase64 = d.plate?.photoBytes?.let { Base64.encode(it) },
-            overlayApplied = d.plate?.overlayApplied ?: false,
+            // WRITE only the new array field — the legacy photoBase64/overlayApplied/plateSource
+            // fields above are read-fallback only and stay at their defaults (never serialized;
+            // the default Json config skips default-valued fields).
+            plates = d.plates.map { PlateJson(Base64.encode(it.photoBytes), it.overlayApplied, it.source.key()) },
             dish = d.dish?.value,
             description = d.description.value,
             slot = d.slot?.key(),
@@ -112,7 +132,6 @@ class MealDraftLocalStore(private val prefs: AppPreferences, private val json: J
             detectedIngredients = d.detectedIngredients.map { it.value },
             detectedDishSlug = d.detectedDishSlug,
             classifierVersion = d.classifierVersion,
-            plateSource = d.plate?.source?.key(),
         )
     }
 }

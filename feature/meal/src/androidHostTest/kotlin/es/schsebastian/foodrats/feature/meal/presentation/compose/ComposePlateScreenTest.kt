@@ -87,7 +87,7 @@ class ComposePlateScreenTest {
         audienceCrewIds = setOf(crew),
         authorId = account,
         day = MealDay(LocalDate(2026, 5, 24), zone),
-        plate = Plate(realJpegBytes(), source = source),
+        plates = listOf(Plate(realJpegBytes(), source = source)),
         dish = null,
         description = Description.EMPTY,
     )

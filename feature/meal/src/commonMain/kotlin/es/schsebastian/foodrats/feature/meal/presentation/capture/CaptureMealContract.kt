@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.presentation.mvi.MviIntent
 import es.schsebastian.foodrats.core.presentation.mvi.MviState
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoMetadata
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
+import es.schsebastian.foodrats.core.presentation.photopicker.PickedPhoto
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 
 data class CaptureMealState(
@@ -32,6 +33,20 @@ sealed interface CaptureMealIntent : MviIntent {
         override fun hashCode() = bytes.contentHashCode() * 31 + source.hashCode()
         // Size-only: MviViewModel logs every intent via toString(); never render photo bytes as text.
         override fun toString() = "PhotoTaken(bytes=${bytes.size}B, source=$source, metadata=$metadata)"
+    }
+
+    /**
+     * A multi-select gallery pick (`PhotoPickResult.PickedMultiple`), handled as ONE atomic batch
+     * append in a single `handle()` coroutine — unlike dispatching [PhotoTaken] once per photo,
+     * which would race the `isCapturing` reentrancy guard and drop all but the first (see
+     * [CaptureMealViewModel]). [photos] carries already-resized bytes (mirrors [PhotoTaken.bytes]),
+     * in the order the user selected them; the handler trims to the remaining photo capacity and
+     * applies EXIF prefill from the first photo in the batch that carries metadata (mirrors
+     * [PhotoTaken]'s per-photo prefill, gated the same only-if-unset way).
+     */
+    data class PhotosTaken(val photos: List<PickedPhoto>) : CaptureMealIntent {
+        // Size-only: MviViewModel logs every intent via toString(); never render photo bytes as text.
+        override fun toString() = "PhotosTaken(photos=${photos.size})"
     }
     data object OpenSettings : CaptureMealIntent
 }

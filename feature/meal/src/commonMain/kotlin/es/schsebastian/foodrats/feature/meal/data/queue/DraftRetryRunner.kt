@@ -197,7 +197,8 @@ class DraftRetryRunner(
                 ingredientCount = draft.ingredients.size,
                 hasDescription = draft.description.value.isNotBlank(),
                 audienceCrewCount = draft.audienceCrewIds.size,
-                source = draft.plate.toPublishSource(),
+                source = draft.plates.toPublishSource(),
+                photoCount = draft.plates.size,
             ),
         )
     }
@@ -247,6 +248,7 @@ internal fun MealError.uploadErrorKey(): String = when (this) {
     MealError.Validation.TooLong         -> "meal.error.tooLong"
     MealError.Validation.DescriptionTooLong -> "meal.error.descriptionTooLong"
     MealError.Validation.TooManyIngredients -> "meal.error.tooManyIngredients"
+    MealError.Validation.TooManyPhotos   -> "meal.error.tooManyPhotos"
     MealError.Validation.OutOfRange      -> "meal.error.outOfRange"
     MealError.Read.Unauthorized          -> "meal.error.readUnauthorized"
     MealError.Read.CrewNotFound          -> "meal.error.readCrewNotFound"

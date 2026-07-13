@@ -66,10 +66,15 @@ class ComposePlateViewModel(
     init {
         analytics.track(AnalyticsEvent.MealComposerOpened)
         repository.observeDraft().onEach { draft ->
+            // PRIMARY-photo derivation (plates[0]): the composer's hero preview/gallery-marker/
+            // classification target is always the FIRST photo — Wave 3 owns the multi-photo strip
+            // UI on top of the full draft.plates list; this VM's single-photo-shaped state fields
+            // stay a faithful mirror of the primary until then.
+            val primary = draft?.plates?.firstOrNull()
             update {
                 it.copy(
-                    photoBytes = draft?.plate?.photoBytes,
-                    plateSource = draft?.plate?.source ?: PlateSource.Camera,
+                    photoBytes = primary?.photoBytes,
+                    plateSource = primary?.source ?: PlateSource.Camera,
                     coordinates = draft?.coordinates,
                     draftIngredients = draft?.ingredients ?: emptyList(),
                     detectedIngredients = draft?.detectedIngredients ?: emptyList(),
@@ -82,7 +87,7 @@ class ComposePlateViewModel(
                         descriptionTooLong = it.descriptionTooLong,
                         descriptionFlagged = it.descriptionWarning,
                         dishFlagged = it.dishWarning,
-                        photo = draft?.plate?.photoBytes,
+                        photo = primary?.photoBytes,
                         audience = draft?.audienceCrewIds ?: emptySet(),
                         dailyLimitReached = it.dailyLimitReached,
                     ),

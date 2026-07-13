@@ -97,18 +97,19 @@ internal class FakePlateStorage : PlateStorage {
     var deleteFault: Throwable? = null
     var url: String = "https://fake/plate.jpg"
 
-    data class UploadCall(val crewId: CrewId, val mealId: String, val plate: Plate)
+    data class UploadCall(val crewId: CrewId, val mealId: String, val index: Int, val plate: Plate)
     val uploads = mutableListOf<UploadCall>()
-    val deletes = mutableListOf<Pair<CrewId, String>>()
+    val deletes = mutableListOf<Triple<CrewId, String, Int>>()
 
-    override suspend fun upload(crewId: CrewId, mealId: String, plate: Plate): String {
-        uploads += UploadCall(crewId, mealId, plate)
+    /** Index 0 returns the (single-photo-compatible) [url] verbatim; extras get an index suffix. */
+    override suspend fun upload(crewId: CrewId, mealId: String, index: Int, plate: Plate): String {
+        uploads += UploadCall(crewId, mealId, index, plate)
         uploadFault?.let { throw it }
-        return url
+        return if (index == 0) url else "$url.p$index"
     }
 
-    override suspend fun delete(crewId: CrewId, mealId: String) {
-        deletes += crewId to mealId
+    override suspend fun delete(crewId: CrewId, mealId: String, index: Int) {
+        deletes += Triple(crewId, mealId, index)
         deleteFault?.let { throw it }
     }
 }

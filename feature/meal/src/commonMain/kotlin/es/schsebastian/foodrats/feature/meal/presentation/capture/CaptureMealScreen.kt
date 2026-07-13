@@ -35,6 +35,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
+import es.schsebastian.foodrats.core.presentation.photopicker.PickedPhoto
 import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
 import es.schsebastian.foodrats.feature.meal.presentation.components.resizeForUpload
@@ -87,20 +88,22 @@ fun CaptureMealScreen(
             }
             is PhotoPickResult.PickedMultiple -> {
                 // Defensive only — CaptureMealScreen always launches single-pick (`launchCamera()`
-                // / the no-arg `launchGallery()`), so this arm should be unreachable; Wave 3 owns
-                // the real multi-photo capture UX. Treat the first photo exactly like a single
-                // Picked (same guard/overlay/resize handling as that arm, duplicated rather than
-                // shared so this stays a minimal, obviously-temporary scaffold).
-                val first = result.photos.first()
+                // / the no-arg `launchGallery()`), so this arm should be unreachable today; Wave 3
+                // owns the real multi-photo capture UX (the launcher affordance itself). Still,
+                // append EVERY photo (not just the first) via ONE PhotosTaken batch intent — the
+                // VM processes the whole list atomically in a single coroutine, which is what lets
+                // "append every photo" actually append every photo (dispatching one PhotoTaken per
+                // photo here would race the VM's isCapturing guard and drop all but the first).
                 if (!processing && !state.isCapturing) {
                     awaitingChoice = false
                     lastPickFailed = false
                     processing = true
                     scope.launch {
-                        val bytes = withContext(Dispatchers.Default) {
-                            first.bytes.resizeForUpload()
+                        val resized = result.photos.map { photo ->
+                            val bytes = withContext(Dispatchers.Default) { photo.bytes.resizeForUpload() }
+                            PickedPhoto(bytes, photo.source, photo.metadata)
                         }
-                        vm.onIntent(CaptureMealIntent.PhotoTaken(bytes, first.source, first.metadata))
+                        vm.onIntent(CaptureMealIntent.PhotosTaken(resized))
                     }
                 }
             }

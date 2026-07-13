@@ -102,7 +102,7 @@ class DraftRetryRunnerTest {
         audienceCrewIds = setOf((CrewId.of("crew-1") as Result.Ok).value),
         authorId = (AccountId.of("acc-1") as Result.Ok).value,
         day = MealDay(LocalDate(2026, 6, 14), TimeZone.UTC),
-        plate = Plate(byteArrayOf(9, 8, 7)),
+        plates = listOf(Plate(byteArrayOf(9, 8, 7))),
         dish = (es.schsebastian.foodrats.core.domain.meal.DishName.of("Pasta") as Result.Ok).value,
         description = Description.EMPTY,
         slot = MealSlot.Lunch,
@@ -155,9 +155,11 @@ class DraftRetryRunnerTest {
         val q = queue()
         q.enqueue(
             draft().copy(
-                plate = es.schsebastian.foodrats.feature.meal.domain.model.Plate(
-                    byteArrayOf(9, 8, 7),
-                    source = es.schsebastian.foodrats.core.domain.meal.PlateSource.Gallery,
+                plates = listOf(
+                    es.schsebastian.foodrats.feature.meal.domain.model.Plate(
+                        byteArrayOf(9, 8, 7),
+                        source = es.schsebastian.foodrats.core.domain.meal.PlateSource.Gallery,
+                    ),
                 ),
             ),
         )

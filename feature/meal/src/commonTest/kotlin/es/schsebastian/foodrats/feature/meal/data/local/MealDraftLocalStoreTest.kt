@@ -45,7 +45,6 @@ class MealDraftLocalStoreTest {
             ),
             authorId = (AccountId.of("acc-1") as Result.Ok).value,
             day = MealDay(LocalDate(2026, 5, 24), TimeZone.UTC),
-            plate = null,
             dish = null,
             description = Description.EMPTY,
             ingredients = listOf(IngredientSlug.of("tomato").getOrNull()!!, IngredientSlug.of("pasta").getOrNull()!!),
@@ -71,7 +70,7 @@ class MealDraftLocalStoreTest {
             audienceCrewIds = setOf((CrewId.of("crew-1") as Result.Ok).value),
             authorId = (AccountId.of("acc-1") as Result.Ok).value,
             day = MealDay(LocalDate(2026, 7, 13), TimeZone.UTC),
-            plate = Plate(byteArrayOf(1, 2, 3), source = PlateSource.Gallery),
+            plates = listOf(Plate(byteArrayOf(1, 2, 3), source = PlateSource.Gallery)),
             dish = null,
             description = Description.EMPTY,
         )
@@ -100,5 +99,55 @@ class MealDraftLocalStoreTest {
 
         assertEquals(PlateSource.Camera, restored.plate?.source)
         assertContentEquals(byteArrayOf(1, 2, 3), restored.plate?.photoBytes)
+    }
+
+    @Test fun round_trips_multiple_photos_in_order_with_mixed_sources() = runTest {
+        val store = MealDraftLocalStore(AppPreferences(FakeDataStore()))
+        val draft = MealDraft(
+            audienceCrewIds = setOf((CrewId.of("crew-1") as Result.Ok).value),
+            authorId = (AccountId.of("acc-1") as Result.Ok).value,
+            day = MealDay(LocalDate(2026, 7, 13), TimeZone.UTC),
+            plates = listOf(
+                Plate(byteArrayOf(1, 2, 3), source = PlateSource.Camera),
+                Plate(byteArrayOf(4, 5, 6), source = PlateSource.Gallery),
+                Plate(byteArrayOf(7, 8, 9), source = PlateSource.Camera),
+            ),
+            dish = null,
+            description = Description.EMPTY,
+        )
+
+        store.save(draft)
+        val restored = store.observe().first()!!
+
+        assertEquals(3, restored.plates.size)
+        assertContentEquals(byteArrayOf(1, 2, 3), restored.plates[0].photoBytes)
+        assertContentEquals(byteArrayOf(4, 5, 6), restored.plates[1].photoBytes)
+        assertContentEquals(byteArrayOf(7, 8, 9), restored.plates[2].photoBytes)
+        assertEquals(
+            listOf(PlateSource.Camera, PlateSource.Gallery, PlateSource.Camera),
+            restored.plates.map { it.source },
+        )
+        // The primary convenience derivation mirrors plates[0].
+        assertContentEquals(byteArrayOf(1, 2, 3), restored.plate?.photoBytes)
+    }
+
+    @Test fun legacy_persisted_draft_without_plates_array_reads_as_a_one_item_list() = runTest {
+        // A draft persisted before the `plates` array existed: raw JSON with only the legacy
+        // single-photo fields, no `plates` key at all. Must read back as a 1-item list.
+        val prefs = AppPreferences(FakeDataStore())
+        prefs.set(
+            Keys.MealDraftJson,
+            """
+            {"audienceCrewIds":["crew-1"],"authorId":"acc-1","dayIso":"2026-07-13","zoneId":"UTC",
+             "photoBase64":"AQID","overlayApplied":false,"plateSource":"gallery","dish":null}
+            """.trimIndent(),
+        )
+        val store = MealDraftLocalStore(prefs)
+
+        val restored = store.observe().first()!!
+
+        assertEquals(1, restored.plates.size)
+        assertEquals(PlateSource.Gallery, restored.plates.single().source)
+        assertContentEquals(byteArrayOf(1, 2, 3), restored.plates.single().photoBytes)
     }
 }

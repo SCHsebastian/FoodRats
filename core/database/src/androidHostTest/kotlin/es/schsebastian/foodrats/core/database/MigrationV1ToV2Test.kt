@@ -223,11 +223,44 @@ class MigrationV1ToV2Test {
             dishName = "Pizza", description = "", latitude = null, longitude = null,
             publishedAtEpochMs = 1_000L, ratingSum = 0L, voterCount = 0L, ingredientsCsv = "",
             classifierVersion = null, cuisine = null, kind = "solo", plateSource = "gallery",
-            pending = 0L, idempotencyKey = null,
+            platesJson = null, pending = 0L, idempotencyKey = null,
         )
 
         val row = db.mealQueries.selectFeedByCrewDay("c1", "2026-07-13").executeAsList().single()
         assertEquals("gallery", row.plateSource, "plateSource must round-trip on a migrated DB")
+        // The write landed in the right column (index-mapped SELECT * would smear neighbours on drift).
+        assertEquals(0L, row.pending)
+        assertEquals(null, row.idempotencyKey)
+
+        driver.close()
+    }
+
+    /**
+     * v5→v6 drift guard (5.sqm — `platesJson`): a migrated DB must accept and round-trip the new
+     * column through the GENERATED queries, exactly like the v4→v5 `plateSource` guard above —
+     * `upsertMeal` names every column, `selectFeedByCrewDay` is a `SELECT *` mapped by index, so
+     * this fails loudly if `5.sqm` drifts from `Meal.sq` or the column order diverges between a
+     * fresh `Schema.create()` table and the ALTER-appended migrated one.
+     */
+    @Test
+    fun migrated_db_round_trips_plates_json_through_generated_queries() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createV1Schema(driver)
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
+        val db = FoodRatsDatabase(driver)
+        val platesJson = """[{"path":"crews/c1/meals/m-multi.jpg","source":"camera"},{"path":"crews/c1/meals/m-multi_p1.jpg","source":"gallery"}]"""
+
+        db.mealQueries.upsertMeal(
+            mealId = "m-multi", crewId = "c1", authorId = "a1", authorName = null,
+            dayKey = "2026-07-13", slot = "", platePath = null, thumbnailPath = null, thumbHash = null,
+            dishName = "Pizza", description = "", latitude = null, longitude = null,
+            publishedAtEpochMs = 1_000L, ratingSum = 0L, voterCount = 0L, ingredientsCsv = "",
+            classifierVersion = null, cuisine = null, kind = "solo", plateSource = "camera",
+            platesJson = platesJson, pending = 0L, idempotencyKey = null,
+        )
+
+        val row = db.mealQueries.selectFeedByCrewDay("c1", "2026-07-13").executeAsList().single()
+        assertEquals(platesJson, row.platesJson, "platesJson must round-trip on a migrated DB")
         // The write landed in the right column (index-mapped SELECT * would smear neighbours on drift).
         assertEquals(0L, row.pending)
         assertEquals(null, row.idempotencyKey)

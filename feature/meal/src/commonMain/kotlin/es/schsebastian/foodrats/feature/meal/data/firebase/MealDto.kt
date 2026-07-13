@@ -57,6 +57,23 @@ data class MealDto(
     // Listed in the firestore.rules meal-create hasOnly whitelist (GitLive encodeDefaults=true
     // sends this field, even as null, on every publish).
     val plateSource: String? = null,
+    // Ordered photos (up to MealPublishPolicy.MAX_PHOTOS_PER_MEAL), index 0 = primary — mirrors
+    // platePath/plateSource above. Empty/absent = the legacy single-photo shape; readers fall back
+    // to platePath/plateSource for the one photo (see MealMapper.toDomain). Listed in the
+    // firestore.rules meal-create hasOnly whitelist alongside a size<=10 guard.
+    val plates: List<PlateEntryDto> = emptyList(),
 ) {
     companion object
 }
+
+/**
+ * One entry in [MealDto.plates]. [path] is the Storage object PATH (never a URL, mirrors
+ * [MealDto.platePath]); `null`/blank is dropped on read (never emitted mid-list, but tolerated).
+ * [source] is [es.schsebastian.foodrats.core.domain.meal.PlateSource.key] ("camera"/"gallery");
+ * `null` reads back as camera, mirroring [MealDto.plateSource].
+ */
+@Serializable
+data class PlateEntryDto(
+    val path: String? = null,
+    val source: String? = null,
+)

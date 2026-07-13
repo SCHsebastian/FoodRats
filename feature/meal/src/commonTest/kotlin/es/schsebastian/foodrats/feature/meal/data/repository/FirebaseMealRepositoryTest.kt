@@ -147,11 +147,12 @@ class FirebaseMealRepositoryTest {
         detectedDishSlug: String? = null,
         slot: MealSlot? = MealSlot.Lunch,
         plate: Plate? = Plate(photoBytes = byteArrayOf(1, 2, 3)),
+        plates: List<Plate> = listOfNotNull(plate),
     ) = MealDraft(
         audienceCrewIds = setOf(crew),
         authorId = account,
         day = today,
-        plate = plate,
+        plates = plates,
         dish = dish,
         description = Description.EMPTY,
         slot = slot,
@@ -321,8 +322,8 @@ class FirebaseMealRepositoryTest {
         // The upload landed first, then the write failed → the original publish error is returned.
         assertEquals(1, f.storage.uploads.size)
         assertEquals(Result.failure(MealError.Publish.PublishUnavailable), result)
-        // The orphan was cleaned up at the deterministic upload path (crew + meal id).
-        assertEquals(crew to mealId.value, f.storage.deletes.single())
+        // The orphan was cleaned up at the deterministic upload path (crew + meal id + index 0).
+        assertEquals(Triple(crew, mealId.value, 0), f.storage.deletes.single())
     }
 
     /** Regression: the double-fire publish race. A concurrent publish of the SAME draft creates
@@ -444,6 +445,123 @@ class FirebaseMealRepositoryTest {
         val result = repo.publish(draft().copy(audienceCrewIds = emptySet()))
 
         assertEquals(Result.failure(MealError.Publish.NoCrewSelected), result)
+        assertEquals(0, f.storage.uploads.size)
+        assertEquals(0, f.firestore.writes.size)
+    }
+
+    // ---------------------------------------------------------------------------------
+    // multi-photo: idempotency token formula (decision 4)
+    // ---------------------------------------------------------------------------------
+
+    /** Single-photo publish keeps the EXACT legacy token formula — ids minted before multi-photo
+     *  existed must not shift. (`token`/`mealId` class fields already use that exact formula.) */
+    @Test fun publish_single_photo_token_matches_legacy_formula() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+
+        val result = repo.publish(draft())
+
+        assertTrue(result is Result.Ok)
+        assertEquals(mealId.value, f.firestore.writes.single().docId)
+    }
+
+    /** Multi-photo publish uses the ordered fold formula, deterministic across independent
+     *  publish attempts of the SAME photo set in the SAME order (a retry re-derives the
+     *  identical id, not just "stable within one call"). */
+    @Test fun publish_multi_photo_token_is_deterministic_across_calls() = runTest {
+        val bytesA = byteArrayOf(1, 2, 3)
+        val bytesB = byteArrayOf(4, 5, 6)
+        val multiToken = listOf(bytesA, bytesB).fold(17) { acc, b -> 31 * acc + b.contentHashCode() }.toUInt().toString(16)
+        val expectedMealId = "crew-1_acc-1_2026-05-18_$multiToken"
+
+        val result1 = repository(Fixture()).publish(draft(plates = listOf(Plate(bytesA), Plate(bytesB))))
+        assertTrue(result1 is Result.Ok)
+        assertEquals(expectedMealId, result1.value.id.value)
+
+        val f2 = Fixture()
+        val result2 = repository(f2).publish(draft(plates = listOf(Plate(bytesA), Plate(bytesB))))
+        assertTrue(result2 is Result.Ok)
+        assertEquals(expectedMealId, f2.firestore.writes.single().docId)
+    }
+
+    /** Reordering the SAME photos changes the token — a reorder is a different logical post, not
+     *  an idempotent retry of the same one. */
+    @Test fun publish_multi_photo_token_changes_when_photos_are_reordered() = runTest {
+        val bytesA = byteArrayOf(1, 2, 3)
+        val bytesB = byteArrayOf(4, 5, 6)
+
+        val forward = Fixture()
+        val forwardResult = repository(forward).publish(draft(plates = listOf(Plate(bytesA), Plate(bytesB))))
+        assertTrue(forwardResult is Result.Ok)
+
+        val reversed = Fixture()
+        val reversedResult = repository(reversed).publish(draft(plates = listOf(Plate(bytesB), Plate(bytesA))))
+        assertTrue(reversedResult is Result.Ok)
+
+        assertTrue(
+            forward.firestore.writes.single().docId != reversed.firestore.writes.single().docId,
+            "reordering photos must change the deterministic id (a different logical post)",
+        )
+    }
+
+    // ---------------------------------------------------------------------------------
+    // multi-photo: N uploads, doc write once, orphan cleanup deletes all N on failure
+    // ---------------------------------------------------------------------------------
+
+    /** A 3-photo draft uploads exactly 3 objects, in order, at index-aware paths, and writes the
+     *  Firestore doc exactly ONCE with all 3 entries mirrored into `plates`. */
+    @Test fun publish_multi_photo_uploads_n_objects_and_writes_doc_once() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+        val plates = listOf(
+            Plate(byteArrayOf(1, 2, 3), source = PlateSource.Camera),
+            Plate(byteArrayOf(4, 5, 6), source = PlateSource.Gallery),
+            Plate(byteArrayOf(7, 8, 9), source = PlateSource.Camera),
+        )
+
+        val result = repo.publish(draft(plates = plates))
+
+        assertTrue(result is Result.Ok)
+        assertEquals(1, f.firestore.writes.size, "exactly ONE doc write per crew regardless of photo count")
+        assertEquals(3, f.storage.uploads.size)
+        assertEquals(listOf(0, 1, 2), f.storage.uploads.map { it.index })
+        val writtenDto = f.firestore.writes.single().dto
+        assertEquals(3, writtenDto.plates.size)
+        assertEquals(listOf("camera", "gallery", "camera"), writtenDto.plates.map { it.source })
+        // The top-level platePath/plateSource mirror the PRIMARY (plates[0]) exactly.
+        assertEquals(writtenDto.plates[0].path, writtenDto.platePath)
+        assertEquals("camera", writtenDto.plateSource)
+        // The representative Meal's plates round-trip too (paths, pre-enrichment).
+        assertEquals(3, result.value.plates.size)
+    }
+
+    /** A doc-write failure AFTER all N uploads succeeded best-effort deletes ALL N uploaded
+     *  objects — not just the primary. */
+    @Test fun publish_multi_photo_write_failure_cleans_up_all_n_uploaded_objects() = runTest {
+        val f = Fixture().apply {
+            firestore.writeFault = RuntimeException("PERMISSION_DENIED: write rejected after upload")
+        }
+        val repo = repository(f)
+        val plates = listOf(Plate(byteArrayOf(1, 2, 3)), Plate(byteArrayOf(4, 5, 6)), Plate(byteArrayOf(7, 8, 9)))
+
+        val result = repo.publish(draft(plates = plates))
+
+        assertEquals(Result.failure(MealError.Publish.PublishUnavailable), result)
+        assertEquals(3, f.storage.uploads.size, "all 3 photos were uploaded before the write failed")
+        assertEquals(3, f.storage.deletes.size, "cleanup must delete every uploaded object, not just the primary")
+        assertEquals(listOf(0, 1, 2), f.storage.deletes.map { it.third })
+    }
+
+    /** A draft exceeding the photo cap is rejected before any IO — the repository is the hard
+     *  backstop even if some upstream layer somehow let a too-large list through. */
+    @Test fun publish_with_too_many_photos_returns_too_many_photos_and_uploads_nothing() = runTest {
+        val f = Fixture()
+        val repo = repository(f)
+        val tooMany = (1..11).map { Plate(byteArrayOf(it.toByte())) }
+
+        val result = repo.publish(draft(plates = tooMany))
+
+        assertEquals(Result.failure(MealError.Validation.TooManyPhotos), result)
         assertEquals(0, f.storage.uploads.size)
         assertEquals(0, f.firestore.writes.size)
     }

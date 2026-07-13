@@ -33,7 +33,7 @@ class PublishMealUseCaseTest {
 
     private fun draftForDay(day: MealDay) = MealDraft(
         audienceCrewIds = setOf(crew), authorId = account, day = day,
-        plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
+        plates = listOf(Plate(photoBytes = byteArrayOf(1, 2, 3))),
         dish = dish, description = Description.EMPTY,
         slot = MealSlot.Lunch,
     )
@@ -43,7 +43,7 @@ class PublishMealUseCaseTest {
         slot: MealSlot? = MealSlot.Lunch,
     ) = MealDraft(
         audienceCrewIds = setOf(crew), authorId = account, day = day,
-        plate = Plate(photoBytes = byteArrayOf(1, 2, 3)),
+        plates = listOf(Plate(photoBytes = byteArrayOf(1, 2, 3))),
         dish = dish, description = Description.EMPTY,
         slot = slot,
     )
@@ -73,6 +73,20 @@ class PublishMealUseCaseTest {
 
         assertTrue(result is Result.Ok)
         assertEquals(1, repo.publishedDrafts.size)
+    }
+
+    @Test fun rejects_publish_when_draft_plates_exceed_the_cap() = runTest {
+        val clock = FixedClock(Instant.parse("2026-05-16T12:00:00Z"))
+        val today = MealDay.today(clock, zone)
+        val tooMany = (1..11).map { Plate(byteArrayOf(it.toByte())) }
+        val repo = FakeMealRepository()
+        val useCase = PublishMealUseCase(repo, clock, zone)
+
+        val result = useCase(draftForDay(today).copy(plates = tooMany))
+
+        assertTrue(result is Result.Err)
+        assertEquals(MealError.Validation.TooManyPhotos, (result as Result.Err).error)
+        assertEquals(0, repo.publishedDrafts.size)
     }
 
     @Test fun rejects_publish_when_draft_day_is_not_today() = runTest {

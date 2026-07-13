@@ -67,7 +67,7 @@ class ComposePlateViewModelTest {
         audienceCrewIds = setOf(crew),
         authorId = account,
         day = MealDay(LocalDate(2026, 5, 24), zone),
-        plate = Plate(bytes(label)),
+        plates = listOf(Plate(bytes(label))),
         dish = null,
         description = Description.EMPTY,
     )

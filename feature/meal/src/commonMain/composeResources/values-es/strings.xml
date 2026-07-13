@@ -28,6 +28,7 @@
     <string name="meal_error_validation_no_photo">Saca una foto primero.</string>
     <string name="meal_error_validation_description_too_long">La descripción es demasiado larga (máx. %1$d caracteres).</string>
     <string name="meal_error_validation_too_many_ingredients">Demasiados ingredientes (máx. 30).</string>
+    <string name="meal_error_validation_too_many_photos">Una comida puede tener como máximo 10 fotos.</string>
     <string name="meal_compose_description_counter">%1$d / %2$d</string>
     <string name="meal_compose_dish_counter">%1$d / %2$d</string>
     <string name="meal_compose_counter_a11y">%1$d de %2$d caracteres usados</string>

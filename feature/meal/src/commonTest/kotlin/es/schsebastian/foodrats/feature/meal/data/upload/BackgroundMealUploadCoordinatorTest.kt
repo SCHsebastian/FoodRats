@@ -88,7 +88,7 @@ class BackgroundMealUploadCoordinatorTest {
         audienceCrewIds = setOf((CrewId.of("crew-1") as Result.Ok).value),
         authorId = (AccountId.of("acc-1") as Result.Ok).value,
         day = MealDay(LocalDate(2026, 6, 14), TimeZone.UTC),
-        plate = Plate(byteArrayOf(9, 8, 7)),
+        plates = listOf(Plate(byteArrayOf(9, 8, 7))),
         dish = (es.schsebastian.foodrats.core.domain.meal.DishName.of("Pasta") as Result.Ok).value,
         description = Description.EMPTY,
         slot = MealSlot.Lunch,
@@ -177,11 +177,11 @@ class BackgroundMealUploadCoordinatorTest {
     /** The FALLBACK (no durable queue) publisher — `doUpload()` — also stamps `meal_published.source`
      *  via the same [toPublishSource] mapping the durable [DraftRetryRunner] path uses. This is the
      *  in-process executor unit tests exercise; production always binds a durable queue, but the
-     *  mapping must stay correct here too since it's shared code (`Plate?.toPublishSource()`). */
+     *  mapping must stay correct here too since it's shared code (`List<Plate>.toPublishSource()`). */
     @Test
     fun fallback_upload_stamps_gallery_publish_source_from_the_plate() = runTest {
         val repository = FakeMealRepository()
-        repository.saveDraft(draft().copy(plate = Plate(byteArrayOf(9, 8, 7), source = PlateSource.Gallery)))
+        repository.saveDraft(draft().copy(plates = listOf(Plate(byteArrayOf(9, 8, 7), source = PlateSource.Gallery))))
         val analytics = RecordingAnalyticsTracker()
         val coordinator = BackgroundMealUploadCoordinator(
             repository = repository,

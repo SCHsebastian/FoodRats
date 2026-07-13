@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.analytics.RecordingAnalyticsTracker
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.location.Coordinates
+import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.PlateSource
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -20,6 +21,7 @@ import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoMetadata
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoSource
+import es.schsebastian.foodrats.core.presentation.photopicker.PickedPhoto
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.MealDraft
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
@@ -236,6 +238,101 @@ class CaptureMealViewModelTest {
         assertEquals(false, vm.state.value.isCapturing)
         // The persisted plate is the FIRST photo; the duplicate never overwrote it.
         assertContentEquals(byteArrayOf(1), repo.observeDraft().first()?.plate?.photoBytes)
+    }
+
+    // ── PhotosTaken: atomic multi-photo batch append ──────────────────────
+
+    @Test fun photos_taken_appends_every_photo_in_order() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+
+        vm.onIntent(
+            CaptureMealIntent.PhotosTaken(
+                listOf(
+                    PickedPhoto(byteArrayOf(1), PhotoSource.Camera),
+                    PickedPhoto(byteArrayOf(2), PhotoSource.Gallery),
+                    PickedPhoto(byteArrayOf(3), PhotoSource.Camera),
+                ),
+            ),
+        )
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(3, draft.plates.size)
+        assertContentEquals(byteArrayOf(1), draft.plates[0].photoBytes)
+        assertContentEquals(byteArrayOf(2), draft.plates[1].photoBytes)
+        assertContentEquals(byteArrayOf(3), draft.plates[2].photoBytes)
+        assertEquals(listOf(PlateSource.Camera, PlateSource.Gallery, PlateSource.Camera), draft.plates.map { it.source })
+    }
+
+    @Test fun photos_taken_navigates_to_compose_once_for_the_whole_batch() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+
+        vm.effects.test {
+            vm.onIntent(
+                CaptureMealIntent.PhotosTaken(
+                    listOf(PickedPhoto(byteArrayOf(1), PhotoSource.Camera), PickedPhoto(byteArrayOf(2), PhotoSource.Camera)),
+                ),
+            )
+            assertEquals(CaptureMealEffect.NavigateToCompose, awaitItem())
+            expectNoEvents() // exactly ONE navigation for the whole batch, not one per photo
+        }
+    }
+
+    @Test fun photos_taken_trims_to_the_photo_cap() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+        val overCap = (1..MealPublishPolicy.MAX_PHOTOS_PER_MEAL + 3).map { PickedPhoto(byteArrayOf(it.toByte()), PhotoSource.Camera) }
+
+        vm.onIntent(CaptureMealIntent.PhotosTaken(overCap))
+
+        assertEquals(MealPublishPolicy.MAX_PHOTOS_PER_MEAL, repo.observeDraft().first()!!.plates.size)
+    }
+
+    @Test fun photos_taken_with_empty_list_is_a_noop() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+
+        vm.effects.test {
+            vm.onIntent(CaptureMealIntent.PhotosTaken(emptyList()))
+            expectNoEvents()
+        }
+        assertEquals(emptyList(), repo.observeDraft().first()!!.plates)
+    }
+
+    @Test fun photos_taken_gallery_batch_prefills_from_the_first_photo_carrying_metadata() = runTest {
+        val repo = FakeMealRepository()
+        val vm = viewModel(repo = repo)
+        vm.onIntent(CaptureMealIntent.Start)
+
+        vm.onIntent(
+            CaptureMealIntent.PhotosTaken(
+                listOf(
+                    // First photo carries no metadata — nothing to prefill from it.
+                    PickedPhoto(byteArrayOf(1), PhotoSource.Gallery, metadata = null),
+                    // Second photo's EXIF is the first WITH metadata — it wins the prefill.
+                    PickedPhoto(
+                        byteArrayOf(2), PhotoSource.Gallery,
+                        metadata = PhotoMetadata(takenAtEpochMs = lunchTakenAtMs, latitude = 41.4, longitude = 2.17),
+                    ),
+                    // A third photo's metadata must NOT override the already-set fields.
+                    PickedPhoto(
+                        byteArrayOf(3), PhotoSource.Gallery,
+                        metadata = PhotoMetadata(takenAtEpochMs = null, latitude = 10.0, longitude = 20.0),
+                    ),
+                ),
+            ),
+        )
+
+        val draft = repo.observeDraft().first()!!
+        assertEquals(3, draft.plates.size)
+        assertEquals(MealSlot.Lunch, draft.slot)
+        assertEquals(41.4, draft.coordinates?.latitude)
+        assertEquals(2.17, draft.coordinates?.longitude)
     }
 
     @Test fun no_active_crew_saved_default_outside_current_crews_falls_back_to_all_crews() = runTest {

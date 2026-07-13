@@ -287,7 +287,8 @@ class BackgroundMealUploadCoordinator(
                         ingredientCount = draft.ingredients.size,
                         hasDescription = draft.description.value.isNotBlank(),
                         audienceCrewCount = draft.audienceCrewIds.size,
-                        source = draft.plate.toPublishSource(),
+                        source = draft.plates.toPublishSource(),
+                        photoCount = draft.plates.size,
                     ),
                 )
                 // No local streak nudge is scheduled here. The server-side `streakNudge` Cloud
@@ -322,11 +323,13 @@ class BackgroundMealUploadCoordinator(
 }
 
 /**
- * Maps the draft plate's provenance onto the `meal_published` [PublishSource] dimension.
- * A null plate can't happen on a successful publish (the repo rejects photo-less drafts), but the
- * draft type allows it — UNKNOWN keeps the mapping total without inventing a source.
+ * Maps the draft's PRIMARY (first) photo provenance onto the `meal_published` [PublishSource]
+ * dimension. An empty list can't happen on a successful publish (the repo rejects photo-less
+ * drafts), but the draft type allows it — UNKNOWN keeps the mapping total without inventing a
+ * source. A mixed camera+gallery multi-photo draft is stamped by its primary photo only — the
+ * dimension is single-valued and Wave 3's per-photo markers carry the rest.
  */
-internal fun Plate?.toPublishSource(): PublishSource = when (this?.source) {
+internal fun List<Plate>.toPublishSource(): PublishSource = when (firstOrNull()?.source) {
     PlateSource.Camera -> PublishSource.CAMERA
     PlateSource.Gallery -> PublishSource.GALLERY
     null -> PublishSource.UNKNOWN
