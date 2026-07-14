@@ -190,7 +190,7 @@ platform :ios do
   # it locked and never prompts. Recreated fresh each run so an interrupted
   # prior run can't leave a stale/locked keychain behind.
   def setup_signing_keychain
-    path = File.expand_path("~/Library/Keychains/#{KEYCHAIN_NAME}-db")
+    path = signing_keychain_db
     delete_keychain(name: KEYCHAIN_NAME) if File.exist?(path)
     create_keychain(
       name: KEYCHAIN_NAME,
@@ -206,6 +206,24 @@ platform :ios do
     # non-interactively without the separate "codesign wants to use key" prompt.
     ENV["MATCH_KEYCHAIN_NAME"] = KEYCHAIN_NAME
     ENV["MATCH_KEYCHAIN_PASSWORD"] = KEYCHAIN_PASSWORD
+  end
+
+  # Absolute path of the dedicated signing keychain's on-disk file.
+  def signing_keychain_db
+    File.expand_path("~/Library/Keychains/#{KEYCHAIN_NAME}-db")
+  end
+
+  # Re-assert the private-key partition list on the dedicated keychain AFTER
+  # match has imported the signing key. match sets `apple-tool:,apple:` itself,
+  # but this is cheap, idempotent, and version-proof — and it must run after
+  # import (before_all runs too early, the key isn't there yet). CI-only: the
+  # keychain doesn't exist on developer machines.
+  def authorize_headless_codesign
+    return unless ENV["CI"]
+
+    sh("security set-key-partition-list -S apple-tool:,apple:,codesign: " \
+       "-s -k #{KEYCHAIN_PASSWORD.shellescape} #{signing_keychain_db.shellescape} " \
+       ">/dev/null 2>&1")
   end
 
   # Tear down the signing keychain created in before_all: delete it (which also
@@ -262,19 +280,29 @@ platform :ios do
       team_id: "2AH7L26L78",
       code_sign_identity: "Apple Distribution",
     )
+    authorize_headless_codesign
+    xcargs = [
+      # Version only. NO global signing xcargs: a global CODE_SIGN_IDENTITY /
+      # PROVISIONING_PROFILE_SPECIFIER leaks onto the SPM packages and their resource
+      # bundles, which reject profiles / fail to sign. Signing is set per user-project
+      # target by the two update_code_signing_settings calls above.
+      "MARKETING_VERSION=#{ENV.fetch('VERSION_NAME')}",
+      "CURRENT_PROJECT_VERSION=#{ENV.fetch('VERSION_CODE')}",
+    ]
+    # Pin codesign's key lookup to the dedicated CI keychain. The persistent
+    # runner's login keychain carries DUPLICATE "Apple Distribution" identities
+    # whose private keys are prompt-guarded; without the pin codesign resolves
+    # those (search-list order) and dies headless with errSecInternalComponent —
+    # exactly how the v1.11.0 beta archive failed on MealAiVision (2026-07-13).
+    # A keychain pin only scopes key LOOKUP, so ad-hoc-signed SPM bundles are
+    # unaffected (unlike the global-identity leak documented above).
+    xcargs << "OTHER_CODE_SIGN_FLAGS='--keychain #{signing_keychain_db}'" if ENV["CI"]
     build_app(
       workspace: "iosApp/iosApp.xcworkspace",
       scheme: "iosApp",
       export_method: "app-store",
       output_directory: "build/ios",
-      xcargs: [
-        # Version only. NO global signing xcargs: a global CODE_SIGN_IDENTITY /
-        # PROVISIONING_PROFILE_SPECIFIER leaks onto the SPM packages and their resource
-        # bundles, which reject profiles / fail to sign. Signing is set per user-project
-        # target by the two update_code_signing_settings calls above.
-        "MARKETING_VERSION=#{ENV.fetch('VERSION_NAME')}",
-        "CURRENT_PROJECT_VERSION=#{ENV.fetch('VERSION_CODE')}",
-      ].join(" "),
+      xcargs: xcargs.join(" "),
       export_options: {
         provisioningProfiles: {
           IOS_BUNDLE_ID => profile,
