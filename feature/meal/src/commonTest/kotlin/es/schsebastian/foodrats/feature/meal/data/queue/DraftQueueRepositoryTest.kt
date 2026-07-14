@@ -121,7 +121,8 @@ class DraftQueueRepositoryTest {
         )
         val id = (repo.enqueue(draft()) as Result.Ok).value.id
 
-        repo.markUploading(id)
+        val claimed = repo.markUploading(id)
+        assertEquals(Result.Ok(true), claimed, "the entry was Pending, so the CAS claim must succeed")
         assertEquals(QueuedDraftStatus.Uploading, repo.observe().first().single().status)
 
         repo.markFailed(id, errorKey = "meal.upload.unknown", retryable = true)
@@ -130,6 +131,48 @@ class DraftQueueRepositoryTest {
         assertTrue(failed.status is QueuedDraftStatus.Failed)
         assertEquals("meal.upload.unknown", (failed.status as QueuedDraftStatus.Failed).errorKey)
         assertTrue((failed.status as QueuedDraftStatus.Failed).retryable)
+    }
+
+    // ── CAS claim (BUG FIX: orphaned Uploading entries) ───────────────────────
+
+    @Test
+    fun markUploading_claims_a_pending_entry_and_persists_a_replacement_draft() = runTest {
+        val backing = SharedDataStore()
+        val repo = DraftQueueRepository(
+            DraftQueueLocalStore(AppPreferences(backing)),
+            FixedClock(Instant.parse("2026-06-14T10:00:00Z")),
+            dispatchers(),
+        )
+        val entry = (repo.enqueue(draft()) as Result.Ok).value
+        val restamped = entry.draft.copy(day = MealDay(LocalDate(2026, 6, 15), TimeZone.UTC))
+
+        val claimed = repo.markUploading(entry.id, restamped)
+
+        assertEquals(Result.Ok(true), claimed, "a Pending entry must be claimable")
+        val row = repo.observe().first().single()
+        assertEquals(QueuedDraftStatus.Uploading, row.status)
+        assertEquals(MealDay(LocalDate(2026, 6, 15), TimeZone.UTC), row.draft.day, "restamped draft must be persisted by the claim")
+    }
+
+    @Test
+    fun markUploading_on_an_already_uploading_entry_is_a_cas_miss_and_leaves_it_untouched() = runTest {
+        val backing = SharedDataStore()
+        val repo = DraftQueueRepository(
+            DraftQueueLocalStore(AppPreferences(backing)),
+            FixedClock(Instant.parse("2026-06-14T10:00:00Z")),
+            dispatchers(),
+        )
+        val entry = (repo.enqueue(draft()) as Result.Ok).value
+        assertEquals(Result.Ok(true), repo.markUploading(entry.id), "first claim succeeds")
+
+        // A second claim attempt (e.g. a concurrent drain) must be denied — the entry is no
+        // longer Pending.
+        val secondAttempt = repo.markUploading(entry.id, entry.draft.copy(day = MealDay(LocalDate(2026, 6, 20), TimeZone.UTC)))
+
+        assertEquals(Result.Ok(false), secondAttempt, "an Uploading entry must not be re-claimable")
+        val row = repo.observe().first().single()
+        assertEquals(QueuedDraftStatus.Uploading, row.status)
+        assertEquals(entry.draft.day, row.draft.day, "a CAS-missed claim must NOT overwrite the persisted draft")
     }
 
     @Test

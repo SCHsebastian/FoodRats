@@ -27,10 +27,11 @@ import kotlinx.coroutines.withContext
  * persistence failure means the upload subsystem is, for now, unavailable.
  *
  * The `attemptCount` / `lastAttemptAt` bookkeeping lives here (the port contract
- * says the implementation owns it): [markUploading] stamps `lastAttemptAt` and,
- * for a re-attempt of a previously-failed entry, leaves the count intact;
- * [markFailed] increments `attemptCount` (it counts attempts that have FAILED,
- * 1-based, matching `DraftRetryPolicy`).
+ * says the implementation owns it): [markUploading] is a CAS claim (delegates to
+ * [DraftQueueLocalStore.claimForUpload]) — it only transitions an entry that is
+ * currently Pending, stamping `lastAttemptAt` and leaving `attemptCount` intact for
+ * a re-attempt of a previously-failed entry; [markFailed] increments `attemptCount`
+ * (it counts attempts that have FAILED, 1-based, matching `DraftRetryPolicy`).
  */
 @OptIn(ExperimentalUuidApi::class)
 class DraftQueueRepository(
@@ -68,18 +69,11 @@ class DraftQueueRepository(
             .fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("updateStatus", it) })
     }
 
-    override suspend fun markUploading(id: QueueEntryId, draft: MealDraft?): Result<Unit, MealError> =
+    override suspend fun markUploading(id: QueueEntryId, draft: MealDraft?): Result<Boolean, MealError> =
         withContext(dispatchers.io) {
             val now = clock.now()
-            runCatching {
-                store.update(id) {
-                    it.copy(
-                        status = QueuedDraftStatus.Uploading,
-                        lastAttemptAt = now,
-                        draft = draft ?: it.draft,
-                    )
-                }
-            }.fold(onSuccess = { Result.Ok(Unit) }, onFailure = { fail("markUploading", it) })
+            runCatching { store.claimForUpload(id, now, draft) }
+                .fold(onSuccess = { Result.Ok(it) }, onFailure = { fail("markUploading", it) })
         }
 
     override suspend fun markFailed(

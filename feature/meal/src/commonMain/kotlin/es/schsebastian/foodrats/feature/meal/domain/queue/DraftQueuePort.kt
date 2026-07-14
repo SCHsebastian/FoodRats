@@ -60,16 +60,29 @@ interface DraftQueuePort {
     suspend fun updateStatus(id: QueueEntryId, status: QueuedDraftStatus): Result<Unit, MealError>
 
     /**
-     * Convenience transition to [QueuedDraftStatus.Uploading] before a publish attempt.
+     * Conditional claim: atomically transitions entry [id] from [QueuedDraftStatus.Pending]
+     * to [QueuedDraftStatus.Uploading]. Returns [Result.Ok] with `true` if the claim
+     * succeeded (the entry was Pending and is now Uploading); [Result.Ok] with `false` if
+     * the entry was already Uploading, a (retryable or terminal) Failed, Succeeded, or
+     * absent — another drain owns it, or it is no longer claimable. The caller must NOT
+     * call [es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository.publish]
+     * when `false` is returned.
      *
-     * @param draft when non-null, ALSO overwrites the entry's persisted [QueuedDraft.draft]
-     *   with this value before the transition. The runner uses this to re-stamp a stale
-     *   `MealDraft.day` (composed just before midnight, drained after) the one time it's
-     *   safe to do so (`attemptCount == 0`) — persisting it here means every subsequent
-     *   retry of THIS entry sees the corrected day too, so a partial multi-crew fan-out
-     *   never straddles two different days' deterministic `MealId`s.
+     * This CAS is what makes a crash/cancellation between the claim and the publish
+     * outcome safe: only one caller can ever win the claim, so a boot-time reconcile can
+     * always trust that an [QueuedDraftStatus.Uploading] row found at startup is an orphan
+     * from a previous process (see `DraftRetryRunner.reconcileStaleUploading`), never a
+     * currently-in-flight publish.
+     *
+     * @param draft when non-null AND the claim succeeds, ALSO overwrites the entry's
+     *   persisted [QueuedDraft.draft] with this value before the transition. The runner
+     *   uses this to re-stamp a stale `MealDraft.day` (composed just before midnight,
+     *   drained after) the one time it's safe to do so (`attemptCount == 0`) —
+     *   persisting it here means every subsequent retry of THIS entry sees the corrected
+     *   day too, so a partial multi-crew fan-out never straddles two different days'
+     *   deterministic `MealId`s.
      */
-    suspend fun markUploading(id: QueueEntryId, draft: MealDraft? = null): Result<Unit, MealError>
+    suspend fun markUploading(id: QueueEntryId, draft: MealDraft? = null): Result<Boolean, MealError>
 
     /**
      * Record a failed attempt: set [QueuedDraftStatus.Failed] with [errorKey] and

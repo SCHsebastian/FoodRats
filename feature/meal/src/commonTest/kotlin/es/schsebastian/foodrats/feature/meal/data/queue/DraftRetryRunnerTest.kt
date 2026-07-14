@@ -28,17 +28,23 @@ import es.schsebastian.foodrats.feature.meal.domain.queue.DraftQueuePort
 import es.schsebastian.foodrats.feature.meal.domain.queue.DraftRetryPolicy
 import es.schsebastian.foodrats.feature.meal.domain.repository.MealRepository
 import es.schsebastian.foodrats.feature.meal.domain.test.FakeMealRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlin.time.Instant
 
@@ -69,6 +75,13 @@ class DraftRetryRunnerTest {
 
     private class AlwaysOnline : ConnectivityPort {
         override fun isOnline(): Flow<Boolean> = flowOf(true)
+    }
+
+    /** Connectivity backed by a [MutableStateFlow] that never emits `true` — isolates the boot
+     *  reconcile / pending-count trigger from the connectivity trigger in [start] tests. */
+    private class NeverOnline : ConnectivityPort {
+        private val state = MutableStateFlow(false)
+        override fun isOnline(): Flow<Boolean> = state
     }
 
     /**
@@ -395,5 +408,130 @@ class DraftRetryRunnerTest {
             repo.publishedDrafts.last().day,
             "day must stay stable across retries of the same entry once an attempt has been made",
         )
+    }
+
+    // ── BUG FIX: orphaned Uploading entries ───────────────────────────────────
+
+    /**
+     * A row can be left durably [QueuedDraftStatus.Uploading] forever if the process (or the
+     * coroutine carrying the publish call) dies right after the CAS claim
+     * ([DraftQueuePort.markUploading]) committed but before the outcome was recorded. Only
+     * [QueuedDraftStatus.Pending] entries are ever picked up by a drain, so without a boot-time
+     * reconciliation the entry is silently stuck. [DraftRetryRunner.start] must flip such a row
+     * back to Pending so it is retried on the very next drain.
+     */
+    @Test
+    fun start_reconciles_a_stale_uploading_row_to_pending_and_drains_it() = runTest(StandardTestDispatcher()) {
+        val q = queue()
+        val id = (q.enqueue(draft()) as Result.Ok).value.id
+        // Simulate a previous process dying mid-publish: the CAS claim committed the row to
+        // Uploading, but no outcome (markFailed / remove) ever followed.
+        q.markUploading(id)
+        assertEquals(
+            QueuedDraftStatus.Uploading,
+            q.observe().first().single { it.id == id }.status,
+            "sanity: entry is stuck Uploading before start()",
+        )
+
+        val repo = ScriptedPublishRepository(ArrayDeque(listOf(Result.Ok(true))))
+        // Stays offline throughout — isolates the reconciliation/pending-count trigger from the
+        // connectivity trigger.
+        val runner = DraftRetryRunner(q, repo, NeverOnline(), DraftRetryPolicy(), clock = sameDayClock, zone = zone)
+
+        runner.start(backgroundScope)
+        advanceTimeBy(100)
+        advanceUntilIdle()
+
+        assertEquals(1, repo.publishCount, "the reconciled entry must actually be retried, not stuck forever")
+        assertTrue(q.observe().first().isEmpty(), "reconciled entry drains normally once un-stuck")
+    }
+
+    /**
+     * If [MealRepository.publish] throws an unexpected [Throwable] (not a modeled `Result.Err`),
+     * the entry must not be left claimed [QueuedDraftStatus.Uploading] forever — it must be
+     * treated exactly like a modeled failure and flow through the normal backoff/retry machinery.
+     */
+    @Test
+    fun publish_throwing_leaves_the_entry_retryable_not_stuck_uploading() = runTest {
+        val q = queue()
+        val id = (q.enqueue(draft()) as Result.Ok).value.id
+        val throwingRepo = object : MealRepository by FakeMealRepository() {
+            override suspend fun publish(
+                draft: MealDraft,
+            ): Result<es.schsebastian.foodrats.core.domain.meal.Meal, MealError> =
+                throw IllegalStateException("boom")
+        }
+        val runner = DraftRetryRunner(
+            q, throwingRepo, AlwaysOnline(), DraftRetryPolicy(maxAttempts = 5), clock = sameDayClock, zone = zone,
+        )
+
+        val drained = runner.runOnce(scope = null)
+
+        assertFalse(drained, "a thrown publish must not look like a fully drained queue")
+        val entry = q.observe().first().single { it.id == id }
+        assertNotEquals(
+            QueuedDraftStatus.Uploading,
+            entry.status,
+            "must not stay claimed Uploading after a thrown publish — that's the bug this fixes",
+        )
+        val status = entry.status
+        assertTrue(status is QueuedDraftStatus.Failed, "a thrown publish must be treated as a retryable failure")
+        assertTrue(status.retryable, "budget not exhausted yet — must remain retryable")
+        assertEquals(1, entry.attemptCount)
+    }
+
+    /**
+     * A [CancellationException] thrown out of [MealRepository.publish] (the coroutine carrying
+     * the drain being cancelled mid-call) must restore the entry to Pending — never left claimed
+     * Uploading — and must propagate, never be swallowed as a modeled failure.
+     */
+    @Test
+    fun publish_cancellation_restores_pending_and_rethrows() = runTest {
+        val q = queue()
+        val id = (q.enqueue(draft()) as Result.Ok).value.id
+        val cancellingRepo = object : MealRepository by FakeMealRepository() {
+            override suspend fun publish(
+                draft: MealDraft,
+            ): Result<es.schsebastian.foodrats.core.domain.meal.Meal, MealError> =
+                throw CancellationException("cancelled")
+        }
+        val runner = DraftRetryRunner(q, cancellingRepo, AlwaysOnline(), DraftRetryPolicy(), clock = sameDayClock, zone = zone)
+
+        var rethrew = false
+        try {
+            runner.runOnce(scope = null)
+        } catch (e: CancellationException) {
+            rethrew = true
+        }
+
+        assertTrue(rethrew, "CancellationException must propagate, never be swallowed")
+        val entry = q.observe().first().single { it.id == id }
+        assertEquals(
+            QueuedDraftStatus.Pending,
+            entry.status,
+            "must be restored to Pending, not left stuck Uploading, when the drain is cancelled mid-publish",
+        )
+    }
+
+    /** A CAS miss (another drain already owns the entry, or it's no longer Pending) must skip
+     *  publishing entirely — the claim, not the drain loop, is the single source of truth for
+     *  "who owns this entry right now". */
+    @Test
+    fun cas_miss_skips_publish() = runTest {
+        val q = queue()
+        q.enqueue(draft())
+        val repo = ScriptedPublishRepository(ArrayDeque(listOf(Result.Ok(true))))
+
+        // A port wrapper that delegates everything to `q` except markUploading always denies the
+        // claim, simulating a concurrent drain that already owns the entry.
+        val portThatDeniesClaim = object : DraftQueuePort by q {
+            override suspend fun markUploading(id: QueueEntryId, draft: MealDraft?): Result<Boolean, MealError> =
+                Result.Ok(false)
+        }
+
+        val runner = DraftRetryRunner(portThatDeniesClaim, repo, AlwaysOnline(), DraftRetryPolicy(), clock = sameDayClock, zone = zone)
+        runner.runOnce(scope = null)
+
+        assertEquals(0, repo.publishCount, "publish must not be called when the CAS claim returns false")
     }
 }

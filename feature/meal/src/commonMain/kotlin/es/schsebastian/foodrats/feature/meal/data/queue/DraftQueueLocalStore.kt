@@ -87,6 +87,34 @@ class DraftQueueLocalStore(
     }
 
     /**
+     * Conditional claim: atomically transitions the entry [id] to [QueuedDraftStatus.Uploading]
+     * ONLY if it is currently [QueuedDraftStatus.Pending] — the check-and-write happens inside the
+     * single [mutate] read-modify-write, so it can't race a concurrent claim/status flip the way two
+     * separate `read()` + `update()` calls could. Returns `true` iff a claim actually happened; `false`
+     * if the entry was already Uploading/Failed/Succeeded, or absent. [now] stamps `lastAttemptAt`;
+     * [draft], when non-null, overwrites the persisted [QueuedDraft.draft] — but ONLY when the claim
+     * succeeds (a CAS miss must never silently apply the day-restamp override).
+     */
+    suspend fun claimForUpload(id: QueueEntryId, now: Instant, draft: MealDraft?): Boolean {
+        var claimed = false
+        mutate { current ->
+            current.map { entry ->
+                if (entry.id == id && entry.status is QueuedDraftStatus.Pending) {
+                    claimed = true
+                    entry.copy(
+                        status = QueuedDraftStatus.Uploading,
+                        lastAttemptAt = now,
+                        draft = draft ?: entry.draft,
+                    )
+                } else {
+                    entry
+                }
+            }
+        }
+        return claimed
+    }
+
+    /**
      * Atomic read-modify-write of the whole list through one DataStore string key.
      * Held under [mutateLock] so concurrent mutations serialize and compose rather
      * than racing (a later write clobbering an earlier one — lost update).
