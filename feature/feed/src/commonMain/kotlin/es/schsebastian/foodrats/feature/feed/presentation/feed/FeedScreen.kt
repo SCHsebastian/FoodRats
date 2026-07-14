@@ -124,6 +124,7 @@ fun FeedScreen(
     vm: FeedViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val semantic = LocalFrSemanticColors.current
     val meals = state.meals
     // C9 — signed banner URL to open in the full-screen viewer (null = closed).
     var bannerToView by remember { mutableStateOf<String?>(null) }
@@ -268,19 +269,19 @@ fun FeedScreen(
                                 FrText(
                                     text = resolve(err.toStringKey()),
                                     style = StructuralType.body,
-                                    color = MaterialTheme.colorScheme.error,
+                                    color = semantic.danger,
                                 )
                             }
                         }
                     }
                     state.rateError?.let { err ->
                         item(key = "rate-error") {
-                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = semantic.danger)
                         }
                     }
                     state.reactError?.let { err ->
                         item(key = "react-error") {
-                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = semantic.danger)
                         }
                     }
 

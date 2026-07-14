@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
@@ -46,14 +47,16 @@ fun FrSettingsRow(
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    val semantic = LocalFrSemanticColors.current
+
     val titleColor = when (tone) {
         FrSettingsRowTone.Neutral -> MaterialTheme.colorScheme.onSurface
-        FrSettingsRowTone.Danger  -> MaterialTheme.colorScheme.error
+        FrSettingsRowTone.Danger  -> semantic.danger
     }.let { if (enabled) it else it.copy(alpha = 0.5f) }
 
     val iconTint = when (tone) {
         FrSettingsRowTone.Neutral -> MaterialTheme.colorScheme.onSurfaceVariant
-        FrSettingsRowTone.Danger  -> MaterialTheme.colorScheme.error
+        FrSettingsRowTone.Danger  -> semantic.danger
     }.let { if (enabled) it else it.copy(alpha = 0.5f) }
 
     val rowModifier = modifier

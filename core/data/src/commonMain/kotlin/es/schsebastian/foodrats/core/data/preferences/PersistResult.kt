@@ -7,7 +7,11 @@ import es.schsebastian.foodrats.core.domain.result.Result
  * thrown failure to [error]. Callers still own their own `withContext(dispatchers.io)` boundary.
  */
 internal inline fun <E> persistResult(error: () -> E, block: () -> Unit): Result<Unit, E> =
-    runCatching(block).fold(
-        onSuccess = { Result.success(Unit) },
-        onFailure = { Result.failure(error()) },
-    )
+    try {
+        block()
+        Result.success(Unit)
+    } catch (e: kotlinx.coroutines.CancellationException) {
+        throw e
+    } catch (_: Throwable) {
+        Result.failure(error())
+    }

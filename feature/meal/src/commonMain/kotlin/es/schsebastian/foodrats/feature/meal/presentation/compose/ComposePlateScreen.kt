@@ -31,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -622,11 +624,11 @@ private fun LocationSection(
  */
 @Composable
 private fun TileRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     trailing: @Composable () -> Unit,
 ) {
-    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -815,7 +817,7 @@ private fun PhotoStripTile(
 ) {
     val thumbnail = rememberDecodedBitmap(plate.photoBytes, THUMBNAIL_DECODE_MAX_DIMENSION)
     val positionA11y = resolve(MealStringKey.ComposePhotoTileA11y, position, total)
-    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(Radius.md)
     val isSelected = selected
     Box(
@@ -1015,7 +1017,7 @@ private fun CharacterCounter(
     current: Int,
     max: Int,
     overLimit: Boolean,
-    color: androidx.compose.ui.graphics.Color,
+    color: Color,
     keyText: String,
 ) {
     val a11y = resolve(MealStringKey.ComposeCounterA11y, current, max)

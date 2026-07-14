@@ -102,6 +102,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
@@ -399,6 +400,7 @@ internal fun MealDetailBody(
     onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     val meal = state.meal ?: return
+    val semantic = LocalFrSemanticColors.current
     val galleryChipCd = resolve(FeedStringKey.GalleryChipCd)
     val headHeight = rememberHeadHeight()
     // FIREST-2: the live comment listener is bounded to the newest [commentLimit] comments. When the
@@ -643,7 +645,7 @@ internal fun MealDetailBody(
                             FrText(
                                 text = resolve(state.commentReadError.toStringKey()),
                                 style = StructuralType.body,
-                                color = MaterialTheme.colorScheme.error,
+                                color = semantic.danger,
                             )
                         }
                     }
@@ -683,7 +685,7 @@ internal fun MealDetailBody(
                         FrText(
                             text = resolve(state.commentWriteError.toStringKey()),
                             style = StructuralType.body,
-                            color = MaterialTheme.colorScheme.error,
+                            color = semantic.danger,
                         )
                     }
                 }
@@ -1101,6 +1103,7 @@ private fun StructuralCommentRow(
     onEditSave: () -> Unit,
     onEditCancel: () -> Unit,
 ) {
+    val semantic = LocalFrSemanticColors.current
     val nameLabel = when {
         isDeleted -> resolve(FeedStringKey.DeletedAuthor)
         loading   -> "…"
@@ -1192,9 +1195,9 @@ private fun StructuralCommentRow(
                                 }
                                 if (canDelete) {
                                     DropdownMenuItem(
-                                        text = { FrText(resolve(FeedStringKey.DeleteCommentCta), color = MaterialTheme.colorScheme.error) },
+                                        text = { FrText(resolve(FeedStringKey.DeleteCommentCta), color = semantic.danger) },
                                         onClick = { menuExpanded = false; onDelete() },
-                                        leadingIcon = { FrIcon(FrIcons.Delete, tint = MaterialTheme.colorScheme.error) },
+                                        leadingIcon = { FrIcon(FrIcons.Delete, tint = semantic.danger) },
                                     )
                                 }
                             }
@@ -1213,7 +1216,7 @@ private fun StructuralCommentRow(
                 )
                 if (editError != null) {
                     Spacer(Modifier.height(Spacing.xs))
-                    FrText(text = editError, style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                    FrText(text = editError, style = StructuralType.body, color = semantic.danger)
                 }
                 Spacer(Modifier.height(Spacing.sm))
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {

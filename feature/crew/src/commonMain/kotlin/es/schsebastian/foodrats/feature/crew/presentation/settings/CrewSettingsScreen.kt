@@ -93,6 +93,7 @@ import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicke
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
 import es.schsebastian.foodrats.feature.crew.presentation.components.CrewDangerBanner
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
+import es.schsebastian.foodrats.feature.crew.presentation.components.memberDisplayName
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.LeaveCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
@@ -131,6 +132,7 @@ fun CrewSettingsScreen(
     var memberPendingRemoval by remember { mutableStateOf<AccountId?>(null) }
     var showQr by remember { mutableStateOf(false) }
     val deletedMemberFallback = resolve(CrewStringKey.MemberDeleted)
+    val unnamedMemberFallback = resolve(CrewStringKey.MemberUnnamed)
     // Name to show in the success toast; set by the MemberRemoved effect, cleared once shown.
     var memberRemovedName by remember { mutableStateOf<String?>(null) }
     var memberApprovedName by remember { mutableStateOf<String?>(null) }
@@ -694,6 +696,7 @@ fun CrewSettingsScreen(
                 identities = state.identities,
                 selectedSuccessor = state.selectedSuccessor,
                 deletedFallback = deletedMemberFallback,
+                unnamedFallback = unnamedMemberFallback,
                 onSelect = { vm.onIntent(CrewSettingsIntent.SelectSuccessor(it)) },
                 onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmLeave) },
                 onDismiss = { vm.onIntent(CrewSettingsIntent.CancelLeave) },
@@ -710,7 +713,7 @@ fun CrewSettingsScreen(
     // Transfer-ownership confirm.
     state.transferTarget?.let { targetId ->
         val identity = state.identities[targetId]
-        val name = displayNameOrFallback(identity, deletedMemberFallback)
+        val name = memberDisplayName(identity, deletedMemberFallback, unnamedMemberFallback)
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsTransferConfirmTitle, name),
             message = resolve(CrewStringKey.SettingsTransferConfirmBody, name),
@@ -775,7 +778,7 @@ fun CrewSettingsScreen(
     // Remove-member confirm.
     memberPendingRemoval?.let { pendingId ->
         val identity = state.identities[pendingId]
-        val memberName = displayNameOrFallback(identity, deletedMemberFallback)
+        val memberName = memberDisplayName(identity, deletedMemberFallback, unnamedMemberFallback)
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName),
             message = resolve(CrewStringKey.SettingsRemoveMemberConfirmBody, memberName),
@@ -792,11 +795,6 @@ fun CrewSettingsScreen(
 }
 
 // ---- Structural building blocks -------------------------------------------------------------------
-
-private fun displayNameOrFallback(identity: Account?, fallback: String): String =
-    identity?.displayName?.takeIf { it.isNotBlank() }
-        ?: identity?.handle?.takeIf { it.isNotBlank() }
-        ?: fallback
 
 /** A glass tile holding a labelled underline field + a Save button gated by [saveEnabled]. */
 @Composable
@@ -1109,6 +1107,7 @@ private fun LeaveOwnerDialog(
     identities: Map<AccountId, Account?>,
     selectedSuccessor: AccountId?,
     deletedFallback: String,
+    unnamedFallback: String,
     onSelect: (AccountId?) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
@@ -1132,7 +1131,7 @@ private fun LeaveOwnerDialog(
             )
             members.forEach { m ->
                 val identity = identities[m.accountId]
-                val name = displayNameOrFallback(identity, deletedFallback)
+                val name = memberDisplayName(identity, deletedFallback, unnamedFallback)
                 SuccessorOption(
                     label = name,
                     selected = selectedSuccessor == m.accountId,
