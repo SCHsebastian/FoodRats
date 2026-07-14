@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -142,10 +141,11 @@ fun SelectIngredientsScreen(
                     LazyColumn(modifier = Modifier.weight(1f).frContentWidth()) {
                         // A single running counter cascades the whole list — headers and rows
                         // alike — so the picker feels assembled top-to-bottom on load. The
-                        // `% 6` window keeps later items popping promptly when scrolled in.
+                        // `% CascadeWindow` window keeps later items popping promptly when scrolled in.
                         var cascade = 0
+                        fun nextDelay() = (cascade++ % CascadeWindow) * CascadeDelayMs
                         if (detectedRows.isNotEmpty()) {
-                            val headerDelay = (cascade++ % 6) * 40
+                            val headerDelay = nextDelay()
                             item(key = "detected-header") {
                                 SectionHeader(
                                     text = resolve(IngredientStringKey.DetectedSectionTitle),
@@ -153,7 +153,7 @@ fun SelectIngredientsScreen(
                                 )
                             }
                             detectedRows.forEach { ing ->
-                                val delay = (cascade++ % 6) * 40
+                                val delay = nextDelay()
                                 item(key = "detected-${ing.slug.value}") {
                                     FrIngredientRow(
                                         name = ing.displayName,
@@ -171,7 +171,7 @@ fun SelectIngredientsScreen(
                             // While searching, force every matching group open so results are
                             // never hidden inside a collapsed section.
                             val expanded = searching || category in state.expandedCategories
-                            val headerDelay = (cascade++ % 6) * 40
+                            val headerDelay = nextDelay()
                             item(key = "cat-${category::class.simpleName}") {
                                 SectionHeader(
                                     text = resolve(category.toStringKey()),
@@ -185,7 +185,7 @@ fun SelectIngredientsScreen(
                             }
                             if (expanded) {
                                 rows.forEach { ing ->
-                                    val delay = (cascade++ % 6) * 40
+                                    val delay = nextDelay()
                                     item(key = "cat-${ing.slug.value}") {
                                         FrIngredientRow(
                                             name = ing.displayName,
@@ -223,8 +223,17 @@ fun SelectIngredientsScreen(
 /** Number of placeholder rows shown while the catalog loads. */
 private const val SkeletonRowCount = 7
 
+/** Cascade window for the picker's top-to-bottom rise-in animation. */
+private const val CascadeWindow = 6
+
+/** Per-item delay step (ms) within the cascade window. */
+private const val CascadeDelayMs = 40
+
 /** Height of a placeholder text-line bar — roughly a single line of body text. */
 private val SkeletonLineHeight = 18.dp
+
+/** Fraction of row width the placeholder text-line bar spans. */
+private const val SkeletonTextWidthFraction = 0.6f
 
 /**
  * Decorative loading silhouette for the ingredient picker: a stack of rows that
@@ -248,7 +257,7 @@ private fun IngredientPickerSkeleton(modifier: Modifier = Modifier) {
                 FrShimmerBox(
                     modifier = Modifier
                         .padding(start = Spacing.md)
-                        .fillMaxWidth(0.6f)
+                        .fillMaxWidth(SkeletonTextWidthFraction)
                         .height(SkeletonLineHeight),
                     shape = RoundedCornerShape(Radius.sm),
                 )

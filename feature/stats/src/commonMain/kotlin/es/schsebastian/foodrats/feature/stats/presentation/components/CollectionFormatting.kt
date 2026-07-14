@@ -40,6 +40,18 @@ internal fun rememberCaptionSlotHeight(): Dp {
 }
 
 /**
+ * Two-line name slot height (body line-height × 2), shared by the collection grid cells so 1-line and
+ * 2-line names never change tile height. Memoized against the current density instead of recomputed on
+ * every recomposition.
+ */
+@Composable
+internal fun rememberNameSlotHeight(): Dp {
+    val density = LocalDensity.current
+    val bodyFontSize = StructuralType.body.fontSize
+    return remember(density, bodyFontSize) { with(density) { (bodyFontSize * 1.5f * 2).toDp() } }
+}
+
+/**
  * Caption-text color shared by the pokédex and passport grid cells — a foreground tint dimmed a touch
  * more in light theme so the caption reads as secondary against the warm-white floor without going
  * invisible.

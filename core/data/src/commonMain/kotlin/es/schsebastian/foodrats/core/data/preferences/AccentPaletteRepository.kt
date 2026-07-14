@@ -23,10 +23,8 @@ class AccentPaletteRepository(
 
     override suspend fun set(palette: AccentPalette): Result<Unit, AccentPaletteError> =
         withContext(dispatchers.io) {
-            runCatching { prefs.set(Keys.AccentPalette, palette.name) }
-                .fold(
-                    onSuccess = { Result.success(Unit) },
-                    onFailure = { Result.failure(AccentPaletteError.Persist.Unavailable) },
-                )
+            persistResult({ AccentPaletteError.Persist.Unavailable }) {
+                prefs.set(Keys.AccentPalette, palette.name)
+            }
         }
 }

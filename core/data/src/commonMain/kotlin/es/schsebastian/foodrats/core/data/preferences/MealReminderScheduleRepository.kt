@@ -28,11 +28,9 @@ class MealReminderScheduleRepository(
         withContext(dispatchers.io) {
             // Normalize before persisting: distinct, chronological, clamped to the max.
             val normalized = times.distinct().sortedWith(compareBy({ it.hour }, { it.minute })).take(MAX_REMINDERS)
-            runCatching { prefs.set(Keys.MealReminderTimes, encode(normalized)) }
-                .fold(
-                    onSuccess = { Result.success(Unit) },
-                    onFailure = { Result.failure(MealReminderPreferenceError.Persist.Unavailable) },
-                )
+            persistResult({ MealReminderPreferenceError.Persist.Unavailable }) {
+                prefs.set(Keys.MealReminderTimes, encode(normalized))
+            }
         }
 
     private fun encode(times: List<LocalTime>): String =

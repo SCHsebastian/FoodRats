@@ -20,10 +20,8 @@ class AiPreferenceRepository(
 
     override suspend fun set(enabled: Boolean): Result<Unit, AiPreferenceError> =
         withContext(dispatchers.io) {
-            runCatching { prefs.set(Keys.AiUsageEnabled, enabled) }
-                .fold(
-                    onSuccess = { Result.success(Unit) },
-                    onFailure = { Result.failure(AiPreferenceError.Persist.Unavailable) },
-                )
+            persistResult({ AiPreferenceError.Persist.Unavailable }) {
+                prefs.set(Keys.AiUsageEnabled, enabled)
+            }
         }
 }

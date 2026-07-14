@@ -18,7 +18,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,7 +82,7 @@ internal fun FrCuisineFlagCell(
         // "Estadounidense" / "De Oriente Medio" overflow bug). Derived from the body line metrics
         // (14 sp × 1.5 em × 2 lines) via the current density so it scales with the user's font size
         // instead of a brittle hardcoded dp that clips a second line at large accessibility scales.
-        val nameSlotHeight = with(LocalDensity.current) { (StructuralType.body.fontSize * 1.5f * 2).toDp() }
+        val nameSlotHeight = rememberNameSlotHeight()
         Box(
             modifier = Modifier.fillMaxWidth().height(nameSlotHeight),
             contentAlignment = Alignment.TopCenter,

@@ -170,7 +170,7 @@ class MealDetailViewModel(
      * subscribes only on crew switch, `null` when no crew active). Replaces two `.first()` snapshots
      * of [CrewOwnerPort.observeOwner] that used to re-subscribe-then-drop on every feed/catalog/blind
      * re-emission inside the meal-tracking collector below; also makes an owner handover reactive,
-     * matching [observeComments]'s already-reactive `ownerIdFlow`.
+     * Also reused directly by [observeComments] for comment-row deletability.
      */
     @OptIn(ExperimentalCoroutinesApi::class)
     private val ownerIdFlow =
@@ -255,11 +255,6 @@ class MealDetailViewModel(
         // instead of going stale for the lifetime of the screen.
         val viewerIdFlow = session.current
             .map { it?.accountId }
-            .distinctUntilChanged()
-        val ownerIdFlow = activeCrew.current
-            .flatMapLatest { crewId ->
-                if (crewId == null) flowOf(null) else crewOwner.observeOwner(crewId)
-            }
             .distinctUntilChanged()
         // UGC compliance §5 — the viewer's live block list, so blocked commenters vanish reactively.
         val blockedFlow = viewerIdFlow

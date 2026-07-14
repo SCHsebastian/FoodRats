@@ -21,19 +21,15 @@ class NotificationsPreferenceRepository(
 
     override suspend fun set(enabled: Boolean): Result<Unit, NotificationsPreferenceError> =
         withContext(dispatchers.io) {
-            runCatching { prefs.set(Keys.NotificationsAllowed, enabled) }
-                .fold(
-                    onSuccess = { Result.success(Unit) },
-                    onFailure = { Result.failure(NotificationsPreferenceError.Persist.Unavailable) },
-                )
+            persistResult({ NotificationsPreferenceError.Persist.Unavailable }) {
+                prefs.set(Keys.NotificationsAllowed, enabled)
+            }
         }
 
     override suspend fun markPrompted(): Result<Unit, NotificationsPreferenceError> =
         withContext(dispatchers.io) {
-            runCatching { prefs.set(Keys.NotificationsPermissionPrompted, true) }
-                .fold(
-                    onSuccess = { Result.success(Unit) },
-                    onFailure = { Result.failure(NotificationsPreferenceError.Persist.Unavailable) },
-                )
+            persistResult({ NotificationsPreferenceError.Persist.Unavailable }) {
+                prefs.set(Keys.NotificationsPermissionPrompted, true)
+            }
         }
 }

@@ -57,14 +57,6 @@ fun CuisineSlug.humanized(): String =
         .replaceFirstChar { it.uppercaseChar() }
 
 /**
- * Builds a slug -> display-name resolver over a catalog snapshot, falling back to
- * [humanized] for any slug the catalog does not (yet) know. Mirrors `ingredientNameResolver`.
- */
-fun cuisineNameResolver(
-    catalog: Map<CuisineSlug, Cuisine>,
-): (CuisineSlug) -> String = { slug -> catalog[slug]?.displayName ?: slug.humanized() }
-
-/**
  * Typed shape failures for [CuisineSlug]. Sealed interface with `data object` leaves — never
  * an enum — per the project error convention (keeps the door open to payloads later).
  */

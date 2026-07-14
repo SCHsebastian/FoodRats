@@ -148,19 +148,13 @@ class CrewFirestoreDataSource(
     }
 
     override suspend fun declineJoinRequest(crewId: CrewId, requester: AccountId): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).collection("joinRequests").document(requester.value).delete()
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).collection("joinRequests").document(requester.value).delete()
         }
 
     override suspend fun transferOwnership(crewId: CrewId, newOwner: AccountId): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).update("ownerId" to newOwner.value)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).update("ownerId" to newOwner.value)
         }
 
     override suspend fun leave(crewId: CrewId, leaver: AccountId, successor: AccountId?) {
@@ -262,94 +256,72 @@ class CrewFirestoreDataSource(
     }
 
     override suspend fun renameCrew(crewId: CrewId, newName: String): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).update("name" to newName)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).update("name" to newName)
         }
 
     override suspend fun deleteCrew(crewId: CrewId, code: CrewCode): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                firestore.batch().apply {
-                    delete(crewsCol.document(crewId.value))
-                    delete(codesCol.document(code.value))
-                }.commit()
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            firestore.batch().apply {
+                delete(crewsCol.document(crewId.value))
+                delete(codesCol.document(code.value))
+            }.commit()
         }
 
     override suspend fun setBlindVoting(crewId: CrewId, enabled: Boolean): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).update("blindVoting" to enabled)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).update("blindVoting" to enabled)
         }
 
     override suspend fun setTagline(crewId: CrewId, tagline: String?): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).update("tagline" to tagline)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).update("tagline" to tagline)
         }
 
     override suspend fun setWelcomeMessage(crewId: CrewId, message: String?): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).update("welcomeMessage" to message)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).update("welcomeMessage" to message)
         }
 
     override suspend fun setWeeklyChallenge(
         crewId: CrewId,
         challenge: String?,
         setAtMillis: Long?,
-    ): Result<Unit, CrewError> = withContext(dispatchers.io) {
-        runCatching {
-            // Both fields are written together — the Firestore rule arm enforces the
-            // ['weeklyChallenge','weeklyChallengeSetAtMillis'] hasOnly constraint server-side.
-            crewsCol.document(crewId.value).update(
-                "weeklyChallenge" to challenge,
-                "weeklyChallengeSetAtMillis" to setAtMillis,
-            )
-            Result.success(Unit)
-        }.getOrElse { Result.failure(errorMapper.map(it)) }
+    ): Result<Unit, CrewError> = writeResult {
+        // Both fields are written together — the Firestore rule arm enforces the
+        // ['weeklyChallenge','weeklyChallengeSetAtMillis'] hasOnly constraint server-side.
+        crewsCol.document(crewId.value).update(
+            "weeklyChallenge" to challenge,
+            "weeklyChallengeSetAtMillis" to setAtMillis,
+        )
     }
 
     override suspend fun setScoreStyle(crewId: CrewId, style: String): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).update("scoreStyle" to style)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).update("scoreStyle" to style)
         }
 
     override suspend fun setBannerFocalY(crewId: CrewId, focalY: Float): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                crewsCol.document(crewId.value).update("bannerFocalY" to focalY.toDouble())
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            crewsCol.document(crewId.value).update("bannerFocalY" to focalY.toDouble())
         }
 
     override suspend fun setBannerPath(crewId: CrewId, path: String, token: String): Result<Unit, CrewError> =
-        withContext(dispatchers.io) {
-            runCatching {
-                // Both fields are written together — the Firestore rule arm enforces the
-                // ['bannerPath','bannerToken'] hasOnly constraint server-side.
-                crewsCol.document(crewId.value).update("bannerPath" to path, "bannerToken" to token)
-                Result.success(Unit)
-            }.getOrElse { Result.failure(errorMapper.map(it)) }
+        writeResult {
+            // Both fields are written together — the Firestore rule arm enforces the
+            // ['bannerPath','bannerToken'] hasOnly constraint server-side.
+            crewsCol.document(crewId.value).update("bannerPath" to path, "bannerToken" to token)
         }
 
     override suspend fun clearBannerPath(crewId: CrewId): Result<Unit, CrewError> =
+        writeResult {
+            crewsCol.document(crewId.value).update("bannerPath" to null, "bannerToken" to null)
+        }
+
+    private suspend fun writeResult(block: suspend () -> Unit): Result<Unit, CrewError> =
         withContext(dispatchers.io) {
             runCatching {
-                crewsCol.document(crewId.value).update("bannerPath" to null, "bannerToken" to null)
+                block()
                 Result.success(Unit)
             }.getOrElse { Result.failure(errorMapper.map(it)) }
         }

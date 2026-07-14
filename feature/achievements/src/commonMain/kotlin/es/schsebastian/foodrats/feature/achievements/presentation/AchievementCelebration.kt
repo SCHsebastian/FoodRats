@@ -7,7 +7,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +23,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -93,13 +92,13 @@ internal fun AchievementUnlockedCelebration(
     val semantic = LocalFrSemanticColors.current
     val celebration = semantic.celebration
     val onCelebration = semantic.onCelebration
-    val revealValue = reveal.value.coerceIn(0f, 1f)
+    val scrimColor = MaterialTheme.colorScheme.scrim
     val dismissSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.62f * revealValue))
+            .drawBehind { drawRect(scrimColor.copy(alpha = 0.62f * reveal.value.coerceIn(0f, 1f))) }
             .clickable(
                 interactionSource = dismissSource,
                 indication = null,
@@ -109,7 +108,7 @@ internal fun AchievementUnlockedCelebration(
     ) {
         Canvas(modifier = Modifier.size(320.dp)) {
             val b = burst.value
-            val r = revealValue
+            val r = reveal.value.coerceIn(0f, 1f)
             val maxR = size.minDimension / 2f
             val center = this.center
 
@@ -149,7 +148,11 @@ internal fun AchievementUnlockedCelebration(
             Surface(
                 modifier = Modifier
                     .size(112.dp)
-                    .graphicsLayer { scaleX = reveal.value; scaleY = reveal.value; alpha = revealValue },
+                    .graphicsLayer {
+                        scaleX = reveal.value
+                        scaleY = reveal.value
+                        alpha = reveal.value.coerceIn(0f, 1f)
+                    },
                 shape = CircleShape,
                 color = celebration,
             ) {
@@ -166,19 +169,19 @@ internal fun AchievementUnlockedCelebration(
                 text = resolve(AchievementStringKey.CelebrationTitle),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.inverseOnSurface,
-                modifier = Modifier.alpha(revealValue),
+                modifier = Modifier.graphicsLayer { alpha = reveal.value.coerceIn(0f, 1f) },
             )
             FrText(
                 text = resolve(titleKey),
                 style = MaterialTheme.typography.titleMedium,
                 color = celebration,
-                modifier = Modifier.alpha(revealValue),
+                modifier = Modifier.graphicsLayer { alpha = reveal.value.coerceIn(0f, 1f) },
             )
             FrText(
                 text = resolve(AchievementStringKey.CelebrationAck),
                 style = MaterialTheme.typography.labelLarge.copy(textAlign = TextAlign.Center),
                 color = MaterialTheme.colorScheme.inverseOnSurface.copy(alpha = 0.7f),
-                modifier = Modifier.alpha(revealValue).padding(top = Spacing.sm),
+                modifier = Modifier.graphicsLayer { alpha = reveal.value.coerceIn(0f, 1f) }.padding(top = Spacing.sm),
             )
         }
     }

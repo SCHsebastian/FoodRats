@@ -3,6 +3,9 @@ package es.schsebastian.foodrats.core.designsystem.structural
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.Dp
@@ -175,4 +178,21 @@ object StructuralDepth {
     val tile: Dp = 26.dp
     val tileDeep: Dp = 40.dp
     val dock: Dp = 30.dp
+}
+
+/**
+ * The 1px inner top-light (glass edge-catch) shared by every frosted stratum ([FrGlassTile],
+ * [FrDock], `FrGlassSheet`, `FrGlassDialog`) — never a box outline or divider. [color] defaults to
+ * the theme-aware [StructuralColors.topLight], so this must stay `@Composable` to read it.
+ */
+@Composable
+fun Modifier.frTopLightEdge(color: Color = StructuralColors.topLight): Modifier = drawWithContent {
+    drawContent()
+    val y = 0.5.dp.toPx()
+    drawLine(
+        color = color,
+        start = Offset(0f, y),
+        end = Offset(size.width, y),
+        strokeWidth = 1.dp.toPx(),
+    )
 }

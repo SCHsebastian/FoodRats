@@ -385,7 +385,7 @@ fun CrewSettingsScreen(
                                         subtitle = styleLabel,
                                         trailing = {
                                             if (state.isSavingScoreStyle) {
-                                                FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                                                InlineSpinner()
                                             } else {
                                                 Chevron()
                                             }
@@ -441,7 +441,7 @@ fun CrewSettingsScreen(
                                             FrCrewMemberRow(
                                                 account = state.identities[req.accountId],
                                                 trailing = if (processing) {
-                                                    { FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp) }
+                                                    { InlineSpinner() }
                                                 } else {
                                                     null
                                                 },
@@ -505,7 +505,7 @@ fun CrewSettingsScreen(
                                         trailing = if (canManage) {
                                             {
                                                 if (isRemoving) {
-                                                    FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                                                    InlineSpinner()
                                                 } else {
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,
@@ -898,6 +898,11 @@ private fun Chevron() {
 }
 
 @Composable
+private fun InlineSpinner() {
+    FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+}
+
+@Composable
 private fun BannerSection(
     hasBanner: Boolean,
     imageUrl: String?,
@@ -961,7 +966,7 @@ private fun BannerSection(
             }
             // In-flight upload/delete indicator — same shape as the score-style row's spinner.
             if (saving) {
-                FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                InlineSpinner()
             }
         }
         // Banner-specific failure rendered IN the section (the shared bottom banner is off-screen

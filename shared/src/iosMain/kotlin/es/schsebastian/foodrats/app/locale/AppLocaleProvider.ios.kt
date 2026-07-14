@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.app.locale
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidedValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import platform.Foundation.NSLocale
 import platform.Foundation.NSUserDefaults
@@ -27,12 +28,14 @@ actual object LocalAppLocale {
     @Composable
     actual infix fun provides(value: String?): ProvidedValue<*> {
         val defaults = NSUserDefaults.standardUserDefaults
-        val applied = if (value == null) {
-            defaults.removeObjectForKey(APPLE_LANGUAGES)
-            systemDefault
-        } else {
-            defaults.setObject(listOf(value), APPLE_LANGUAGES)
-            value
+        val applied = remember(value) {
+            if (value == null) {
+                defaults.removeObjectForKey(APPLE_LANGUAGES)
+                systemDefault
+            } else {
+                defaults.setObject(listOf(value), APPLE_LANGUAGES)
+                value
+            }
         }
         return local.provides(applied)
     }

@@ -21,6 +21,7 @@ import es.schsebastian.foodrats.feature.ingredient.presentation.select.SelectIng
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import org.koin.core.module.dsl.factoryOf
 import org.koin.core.module.dsl.viewModel
@@ -30,6 +31,14 @@ import org.koin.dsl.module
 
 /** App-lifetime scope that keeps the cache-backed catalog `StateFlow` warm across screens. */
 private val AppScope = named("appScope")
+
+/**
+ * Active display language: the explicit in-app override when set, else the device
+ * language (System). The DTO mapper falls back to "en" when the resolved language
+ * has no name for an ingredient.
+ */
+private fun languageTagFlow(locale: LocalePort): Flow<String> =
+    locale.locale.map { l -> if (l == AppLocale.System) deviceLanguageTag() else l.tag }
 
 /**
  * Wires the ingredient catalog + picker. The `IngredientRepository` is the single
@@ -44,16 +53,11 @@ val ingredientModule = module {
     single<IngredientDataSource> { IngredientFirestoreDataSource(get()) }
     single<CatalogCache> { IngredientCatalogCache(prefs = get(), json = get()) }
     single {
-        // Active display language: the explicit in-app override when set, else the
-        // device language (System). The DTO mapper falls back to "en" when the
-        // resolved language has no name for an ingredient.
-        val language = get<LocalePort>().locale
-            .map { locale -> if (locale == AppLocale.System) deviceLanguageTag() else locale.tag }
         IngredientRepository(
             datasource = get(),
             cache = get(),
             dispatchers = get(),
-            language = language,
+            language = languageTagFlow(get()),
             scope = get(AppScope),
         )
     } bind IngredientReadPort::class
@@ -81,13 +85,11 @@ val cuisineModule = module {
     single<CuisineDataSource> { CuisineFirestoreDataSource(get()) }
     single<CuisineCache> { CuisineCatalogCache(prefs = get(), json = get()) }
     single {
-        val language = get<LocalePort>().locale
-            .map { locale -> if (locale == AppLocale.System) deviceLanguageTag() else locale.tag }
         CuisineRepository(
             datasource = get(),
             cache = get(),
             dispatchers = get(),
-            language = language,
+            language = languageTagFlow(get()),
             scope = get(AppScope),
         )
     } bind CuisineReadPort::class

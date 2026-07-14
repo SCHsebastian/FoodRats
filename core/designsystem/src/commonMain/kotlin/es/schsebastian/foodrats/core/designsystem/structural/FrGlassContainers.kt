@@ -14,9 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
@@ -39,7 +37,6 @@ fun FrGlassSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
     val isLight = StructuralColors.isLight
     Column(
         modifier = modifier
@@ -49,16 +46,7 @@ fun FrGlassSheet(
             .shadow(if (isLight) 16.dp else 34.dp, shape, clip = false)
             .clip(shape)
             .background(if (isLight) StructuralColors.sheet.copy(alpha = 1f) else StructuralColors.sheet, shape)
-            .drawWithContent {
-                drawContent()
-                val y = 0.5.dp.toPx()
-                drawLine(
-                    color = edgeLight,
-                    start = Offset(0f, y),
-                    end = Offset(size.width, y),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            },
+            .frTopLightEdge(),
     ) {
         if (showGrabHandle) {
             // The handle was `foreground` @22% (≈1.4:1) — invisible on the warm-white light sheet; raise
@@ -91,7 +79,6 @@ fun FrGlassDialog(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val shape = RoundedCornerShape(26.dp)
-    val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
     val isLight = StructuralColors.isLight
     Column(
         modifier = modifier
@@ -101,16 +88,7 @@ fun FrGlassDialog(
             .shadow(if (isLight) 18.dp else 40.dp, shape, clip = false)
             .clip(shape)
             .background(if (isLight) StructuralColors.dialog.copy(alpha = 1f) else StructuralColors.dialog, shape)
-            .drawWithContent {
-                drawContent()
-                val y = 0.5.dp.toPx()
-                drawLine(
-                    color = edgeLight,
-                    start = Offset(0f, y),
-                    end = Offset(size.width, y),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            }
+            .frTopLightEdge()
             .padding(contentPadding),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         content = content,

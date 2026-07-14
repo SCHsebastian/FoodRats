@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -229,55 +230,20 @@ fun ComposePlateScreen(
 
             // The captured plate, sharp, as a hero stratum.
             if (plate != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp)
-                        .clip(RoundedCornerShape(Radius.lg)),
-                ) {
-                    Image(
-                        bitmap = plate,
-                        // Confirm to screen readers that a photo is attached (the blurred floor copy stays
-                        // decorative so the same image isn't announced twice).
-                        contentDescription = resolve(MealStringKey.ComposePhotoDescription),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                HeroPhoto(
+                    plate = plate,
                     // Keyed to the PRIMARY photo (index 0), not the selected one: classification
                     // always runs against plates[0] (see the LaunchedEffect above), so the "analyzing"
                     // badge only makes sense while that same photo is the one on screen — otherwise a
                     // user browsing photo 3 while photo 1 classifies in the background would see a
                     // misleading "analyzing" badge on a photo that isn't actually being analyzed.
-                    if (state.classifying && state.selectedIndex == 0) {
-                        FrStructuralChip(
-                            label = resolve(MealStringKey.IngredientsClassifying),
-                            tone = FrChipTone.Ember,
-                            leadingIcon = FrIcons.Star,
-                            compact = true,
-                            // Announce "Analyzing ingredients…" when the AI starts looking at the plate.
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(Spacing.sm)
-                                .semantics { liveRegion = LiveRegionMode.Polite },
-                        )
-                    }
+                    classifying = state.classifying && state.selectedIndex == 0,
                     // Non-removable provenance marker: a gallery-sourced plate is permanently
                     // labelled so every crew member can tell it wasn't shot live. No onClick —
                     // the marker cannot be dismissed or toggled. Reflects the SELECTED photo (each
                     // photo carries its own source); the strip's own tiles carry a matching mini marker.
-                    if (state.selectedPhoto?.source == PlateSource.Gallery) {
-                        val galleryA11y = resolve(MealStringKey.ComposeGalleryChipA11y)
-                        FrStructuralChip(
-                            label = resolve(MealStringKey.ComposeGalleryChip),
-                            leadingIcon = FrIcons.GalleryImport,
-                            compact = true,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(Spacing.sm)
-                                .semantics(mergeDescendants = true) { contentDescription = galleryA11y },
-                        )
-                    }
-                }
+                    gallerySourced = state.selectedPhoto?.source == PlateSource.Gallery,
+                )
                 Spacer(Modifier.height(Spacing.lg))
             }
 
@@ -693,6 +659,60 @@ private fun Chevron() {
         tint = StructuralColors.foreground.copy(alpha = 0.4f),
         modifier = Modifier.size(Sizes.iconMd),
     )
+}
+
+/**
+ * The captured plate, sharp, as a hero stratum: the selected photo plus its floating badges — an
+ * "analyzing" chip while classification is in flight against the primary photo, and a
+ * non-removable gallery-provenance marker when the selected photo wasn't shot live.
+ */
+@Composable
+private fun HeroPhoto(
+    plate: ImageBitmap,
+    classifying: Boolean,
+    gallerySourced: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .clip(RoundedCornerShape(Radius.lg)),
+    ) {
+        Image(
+            bitmap = plate,
+            // Confirm to screen readers that a photo is attached (the blurred floor copy stays
+            // decorative so the same image isn't announced twice).
+            contentDescription = resolve(MealStringKey.ComposePhotoDescription),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (classifying) {
+            FrStructuralChip(
+                label = resolve(MealStringKey.IngredientsClassifying),
+                tone = FrChipTone.Ember,
+                leadingIcon = FrIcons.Star,
+                compact = true,
+                // Announce "Analyzing ingredients…" when the AI starts looking at the plate.
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(Spacing.sm)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        if (gallerySourced) {
+            val galleryA11y = resolve(MealStringKey.ComposeGalleryChipA11y)
+            FrStructuralChip(
+                label = resolve(MealStringKey.ComposeGalleryChip),
+                leadingIcon = FrIcons.GalleryImport,
+                compact = true,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(Spacing.sm)
+                    .semantics(mergeDescendants = true) { contentDescription = galleryA11y },
+            )
+        }
+    }
 }
 
 /**

@@ -22,10 +22,8 @@ class ThemeModeRepository(
 
     override suspend fun set(mode: ThemeMode): Result<Unit, ThemePreferenceError> =
         withContext(dispatchers.io) {
-            runCatching { prefs.set(Keys.ThemeMode, mode.name) }
-                .fold(
-                    onSuccess = { Result.success(Unit) },
-                    onFailure = { Result.failure(ThemePreferenceError.Persist.Unavailable) },
-                )
+            persistResult({ ThemePreferenceError.Persist.Unavailable }) {
+                prefs.set(Keys.ThemeMode, mode.name)
+            }
         }
 }

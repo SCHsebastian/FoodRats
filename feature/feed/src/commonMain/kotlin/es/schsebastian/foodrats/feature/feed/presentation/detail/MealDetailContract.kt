@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
+import es.schsebastian.foodrats.core.domain.account.BlockError
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
@@ -75,7 +76,7 @@ data class MealDetailState(
     /** Transient success toast shown after a report is accepted. */
     val reportSuccess: Boolean = false,
     val reportError: ReportError? = null,
-    val blockError: es.schsebastian.foodrats.core.domain.account.BlockError? = null,
+    val blockError: BlockError? = null,
     /** Transient success toast shown after a block succeeds. */
     val blockSuccess: Boolean = false,
     /**

@@ -21,6 +21,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.rememberNavController
 import es.schsebastian.foodrats.app.navigation.EventsEffect
@@ -76,8 +77,10 @@ fun FoodRatsApp() {
                 // restored screen — so if Main is already in the stack we're already in
                 // authenticated content and the landing is a no-op. Other targets (SignIn on
                 // sign-out, gates) always apply, so they clear the stack as before.
-                val alreadyInAuthedContent = eff.route == Route.Main &&
-                    rootController.currentBackStack.value.any { it.destination.hasRoute<Route.Main>() }
+                val alreadyInAuthedContent = isAlreadyInAuthedContent(
+                    stack = rootController.currentBackStack.value,
+                    route = eff.route,
+                )
                 if (alreadyInAuthedContent) {
                     FrLog.d(FrLog.Tags.RootNav) { "app: skip Main landing — already in authenticated content" }
                 } else {
@@ -93,12 +96,10 @@ fun FoodRatsApp() {
                 // there. launchSingleTop avoids stacking duplicates when the same notification is tapped
                 // twice. The base is Main for the usual case, CrewPicker for a pre-crew invite (so Back
                 // returns to the picker, not an empty Feed — see RootNavViewModel.emitNeedsCrew).
-                val baseAlreadyInStack = rootController.currentBackStack.value.any { entry ->
-                    when (eff.base) {
-                        Route.CrewPicker -> entry.destination.hasRoute<Route.CrewPicker>()
-                        else             -> entry.destination.hasRoute<Route.Main>()
-                    }
-                }
+                val baseAlreadyInStack = isDeepLinkBaseInStack(
+                    stack = rootController.currentBackStack.value,
+                    base = eff.base,
+                )
                 if (!baseAlreadyInStack) {
                     FrLog.d(FrLog.Tags.RootNav) { "app: deepLink → establish ${eff.base::class.simpleName} base then push ${eff.route::class.simpleName}" }
                     rootController.navigateTopLevel(eff.base)
@@ -215,6 +216,27 @@ fun FoodRatsApp() {
       }
     }
 }
+
+/**
+ * Guard for [RootNavEffect.NavigateTopLevel]: true when [route] targets Main and Main is already on
+ * [stack], meaning we're already in authenticated content and the landing must be a no-op (see the
+ * call-site comment in [FoodRatsApp] for the process-death-restore rationale this protects).
+ */
+private fun isAlreadyInAuthedContent(stack: List<NavBackStackEntry>, route: Route): Boolean =
+    route == Route.Main && stack.any { it.destination.hasRoute<Route.Main>() }
+
+/**
+ * Guard for [RootNavEffect.NavigateDeepLink]: true when [base] is already present on [stack], meaning
+ * the deep link can push its leaf without first re-establishing the base (see the call-site comment in
+ * [FoodRatsApp] for the mid-flow-tap rationale this protects).
+ */
+private fun isDeepLinkBaseInStack(stack: List<NavBackStackEntry>, base: Route): Boolean =
+    stack.any { entry ->
+        when (base) {
+            Route.CrewPicker -> entry.destination.hasRoute<Route.CrewPicker>()
+            else             -> entry.destination.hasRoute<Route.Main>()
+        }
+    }
 
 /**
  * Presentation-layer mapping from the domain [AccentPalette] enum to the design-system [FrAccent]

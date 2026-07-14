@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.preview.FrPreview
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
@@ -91,7 +92,7 @@ fun FrGlassToggle(
             Box(
                 modifier = Modifier
                     .align(Alignment.CenterStart)
-                    .offset(x = knobX)
+                    .offset { IntOffset(x = knobX.roundToPx(), y = 0) }
                     .size(22.dp)
                     .clip(CircleShape)
                     .background(knobColor, CircleShape),

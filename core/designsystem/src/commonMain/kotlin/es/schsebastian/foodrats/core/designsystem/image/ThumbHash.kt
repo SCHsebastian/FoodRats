@@ -5,7 +5,6 @@ import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 /**
  * Pure-Kotlin port of the reference [ThumbHash](https://evanw.github.io/thumbhash/) decoder
@@ -208,8 +207,4 @@ object ThumbHash {
             return value
         }
     }
-
-    /** Unused but kept for parity with the reference's clamp helper. */
-    @Suppress("unused")
-    private fun normalize(v: Float): Float = sqrt(v)
 }
