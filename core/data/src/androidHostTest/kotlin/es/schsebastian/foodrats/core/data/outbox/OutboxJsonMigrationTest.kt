@@ -92,4 +92,64 @@ class OutboxJsonMigrationTest {
         migration().run()
         assertEquals(1, store.read().size)
     }
+
+    // ─── malformed-blob tolerance ──────────────────────────────────────────────
+
+    /**
+     * A totally corrupt/truncated top-level blob (not even valid JSON) fails to decode as a whole
+     * — `runCatching { json.decodeFromString<...> }` catches the `SerializationException`,
+     * `getOrNull()` yields `null`, and `.orEmpty()` treats it as zero entries. `run()` must not
+     * crash and must still clear the legacy key (documents current behavior: an unparsable blob
+     * has no recoverable entries, and clearing it prevents retrying the same corrupt blob forever).
+     */
+    @Test
+    fun corrupt_top_level_blob_is_skipped_without_crashing_and_clears_the_key() = runTest {
+        prefs.set(Keys.OutboxJson, "{not-even-json[[[")
+
+        migration().run()
+
+        assertTrue(store.read().isEmpty(), "a fully corrupt blob yields no migrated entries")
+        assertNull(prefs.observe(Keys.OutboxJson).first(), "legacy key must still be cleared, not retried forever")
+    }
+
+    /** A truncated (cut-off mid-object) blob is the same "fails to decode at all" case as above. */
+    @Test
+    fun truncated_top_level_blob_is_skipped_without_crashing_and_clears_the_key() = runTest {
+        prefs.set(Keys.OutboxJson, """[{"id":"e1","command":{"type":"rate_meal""")
+
+        migration().run()
+
+        assertTrue(store.read().isEmpty(), "a truncated blob yields no migrated entries")
+        assertNull(prefs.observe(Keys.OutboxJson).first())
+    }
+
+    /**
+     * The top-level JSON list itself decodes fine, but individual entries are malformed in ways
+     * [OutboxJsonMigration]'s per-entry mapping is null-tolerant to: an unknown command
+     * discriminator, a `rate_meal` missing its required `score`, and a blank `id`. Each malformed
+     * entry is dropped via `mapNotNull`, and does NOT block the sibling valid entry from migrating.
+     */
+    @Test
+    fun partially_valid_list_imports_only_the_valid_entries() = runTest {
+        val legacy = """
+            [
+              {"id":"valid-1","command":{"type":"rate_meal","crewId":"c1","mealId":"m1","accountId":"a1","score":4},
+               "status":{"kind":"pending"},"attemptCount":0,"createdAtEpochMs":1000},
+              {"id":"unknown-type","command":{"type":"unknown_op","crewId":"c1"},
+               "status":{"kind":"pending"},"attemptCount":0,"createdAtEpochMs":2000},
+              {"id":"missing-score","command":{"type":"rate_meal","crewId":"c1","mealId":"m1","accountId":"a1"},
+               "status":{"kind":"pending"},"attemptCount":0,"createdAtEpochMs":3000},
+              {"id":"","command":{"type":"rate_meal","crewId":"c1","mealId":"m1","accountId":"a1","score":5},
+               "status":{"kind":"pending"},"attemptCount":0,"createdAtEpochMs":4000}
+            ]
+        """.trimIndent()
+        prefs.set(Keys.OutboxJson, legacy)
+
+        migration().run()
+
+        val rows = store.read()
+        assertEquals(1, rows.size, "only the single fully-valid entry must be imported")
+        assertEquals("valid-1", rows.single().id.value)
+        assertNull(prefs.observe(Keys.OutboxJson).first(), "legacy key cleared even with partial import")
+    }
 }

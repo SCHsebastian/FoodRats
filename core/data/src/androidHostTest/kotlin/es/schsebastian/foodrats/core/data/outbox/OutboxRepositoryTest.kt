@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.time.FixedClock
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -132,6 +133,41 @@ class OutboxRepositoryTest {
         assertEquals(
             OutboxEntryStatus.Pending, requeued.status,
             "requeue returns status to Pending",
+        )
+    }
+
+    // ─── H1 CAS: two coroutines racing the same claim ─────────────────────────
+
+    /**
+     * Two coroutines call [OutboxRepository.markUploading] on the SAME entry concurrently
+     * (launched together, then joined). The underlying claim ([OutboxLocalStore.claimForUpload])
+     * is a single conditional `UPDATE ... WHERE statusKind = 'pending'` transaction, so exactly one
+     * of the two racing calls must observe the CAS hit (`true`) and transition the entry to
+     * Uploading; the loser must observe a miss (`false`) rather than a second, phantom claim.
+     */
+    @Test
+    fun concurrent_markUploading_on_the_same_entry_exactly_one_claim_wins() = runTest {
+        val repo = repo(FixedClock(Instant.parse("2026-06-19T10:00:00Z")))
+        val id = (repo.enqueue(rateCommand()) as Result.Ok).value.id
+
+        var claim1: Boolean? = null
+        var claim2: Boolean? = null
+        val job1 = launch(db.dispatchers.io) {
+            claim1 = (repo.markUploading(id) as Result.Ok).value
+        }
+        val job2 = launch(db.dispatchers.io) {
+            claim2 = (repo.markUploading(id) as Result.Ok).value
+        }
+        job1.join()
+        job2.join()
+
+        val winners = listOfNotNull(claim1, claim2).count { it }
+        assertEquals(1, winners, "exactly one of the two racing claims must win the CAS")
+        assertTrue(claim1 != claim2, "the loser must observe a miss (false), not a second success")
+        assertEquals(
+            OutboxEntryStatus.Uploading,
+            repo.observePending().first().single().status,
+            "the winning claim transitions the entry to Uploading exactly once",
         )
     }
 
