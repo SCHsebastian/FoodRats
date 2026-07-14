@@ -213,6 +213,24 @@ class ObserveAchievementsUseCaseTest {
     }
 
     @Test
+    fun success_emits_snapshot_with_newly_unlocked_map() = runTest {
+        val uc = useCase(
+            activeCrew = fakeActiveCrew(crewId),
+            session = fakeSession(Session(me, crewId)),
+            mealRead = fakeMealRead(Result.success(listOf(meal("m1", "me")))),
+            progress = FakeProgress(Result.success(emptyMap())),
+        )
+        uc().test {
+            testScheduler.advanceUntilIdle()
+            val result = expectMostRecentItem()
+            assertTrue(result is Result.Ok)
+            // first_plate is met (one plate) and not yet persisted → surfaces as newly unlocked.
+            assertTrue("first_plate" in result.value.newlyUnlocked.keys)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun debounce_collapses_rapid_emissions_into_one() = runTest {
         val progress = FakeProgress(Result.success(emptyMap()))
         val uc = useCase(

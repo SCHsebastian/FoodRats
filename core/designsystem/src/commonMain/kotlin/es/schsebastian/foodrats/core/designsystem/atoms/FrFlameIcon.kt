@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 
@@ -41,7 +41,10 @@ fun FrFlameIcon(
     )
     FrIcon(
         image = FrIcons.Flame,
-        modifier = modifier.size(size).scale(scale),
+        modifier = modifier.size(size).graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+        },
         tint = tint,
         contentDescription = contentDescription,
     )

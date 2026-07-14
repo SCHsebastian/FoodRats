@@ -34,7 +34,7 @@ val notificationsModule = module {
     singleOf(::NotificationBus)
     singleOf(::DeviceTokenFirestoreDataSource)
     single<DeviceTokenRepository> {
-        DeviceTokenRepositoryImpl(get(), get(), get(), platformLabel = get(qualifier = org.koin.core.qualifier.named("platform-label")))
+        DeviceTokenRepositoryImpl(get(), get(), get(), platformLabel = get(qualifier = named("platform-label")))
     }
     single { PushPayloadMapper(clock = get()) }
 

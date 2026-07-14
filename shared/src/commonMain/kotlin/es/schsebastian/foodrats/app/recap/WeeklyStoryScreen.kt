@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -195,13 +194,13 @@ private fun LoadingOrEmpty(loading: Boolean, onTap: () -> Unit = {}) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                Text(
+                FrText(
                     text = resolve(SharedStringKey.RecapEmptyTitle),
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
-                Text(
+                FrText(
                     text = resolve(SharedStringKey.RecapEmptySubtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White,

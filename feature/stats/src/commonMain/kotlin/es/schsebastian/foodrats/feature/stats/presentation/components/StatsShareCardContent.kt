@@ -9,7 +9,6 @@ import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
-import kotlin.math.round
 
 /**
  * Off-screen content the platform renderer rasterizes for an AWARD share (spec §8.2). Wrapped in
@@ -20,7 +19,7 @@ import kotlin.math.round
  */
 @Composable
 fun AwardShareCardContent(model: AwardShareCardModel, plate: ImageBitmap?) {
-    val rounded = (round(model.score * 10) / 10.0).toString()
+    val rounded = formatOneDecimal(model.score.toFloat())
     val scoreLabel = if (model.ratingCount > 0) {
         resolve(StatsStringKey.ShareScoreFormat, rounded, model.ratingCount)
     } else {

@@ -19,6 +19,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,17 +102,19 @@ fun BlockedUsersScreen(
                 item {
                     FrGlassTile {
                         state.blockedIds.forEachIndexed { index, id ->
-                            if (index > 0) {
-                                HorizontalDivider(
-                                    color = StructuralColors.dividerSoft,
-                                    modifier = Modifier.padding(vertical = Spacing.xxs),
+                            key(id.value) {
+                                if (index > 0) {
+                                    HorizontalDivider(
+                                        color = StructuralColors.dividerSoft,
+                                        modifier = Modifier.padding(vertical = Spacing.xxs),
+                                    )
+                                }
+                                FrBlockedUserRow(
+                                    account = state.identities[id],
+                                    unblocking = id in state.unblockingIds,
+                                    onUnblock = { vm.onIntent(BlockedUsersIntent.Unblock(id)) },
                                 )
                             }
-                            FrBlockedUserRow(
-                                account = state.identities[id],
-                                unblocking = id in state.unblockingIds,
-                                onUnblock = { vm.onIntent(BlockedUsersIntent.Unblock(id)) },
-                            )
                         }
                     }
                 }

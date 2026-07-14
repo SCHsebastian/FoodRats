@@ -26,6 +26,9 @@ import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -86,7 +89,10 @@ actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker
                     // Same per-URI pipeline as the single-select path, run in ORDER (uris is
                     // already selection-ordered) — partial per-item failures are dropped, keeping
                     // only the successes; an all-failed batch surfaces as Failed.
-                    val picks = trimmed.mapNotNull { uri -> (pickGalleryUri(context, uri) as? PhotoPickResult.Picked) }
+                    val picks = coroutineScope {
+                        trimmed.map { uri -> async { pickGalleryUri(context, uri) } }.awaitAll()
+                    }
+                        .filterIsInstance<PhotoPickResult.Picked>()
                         .map { picked -> PickedPhoto(picked.bytes, picked.source, picked.metadata) }
                     if (picks.isEmpty()) PhotoPickResult.Failed("Unreadable images") else PhotoPickResult.PickedMultiple(picks)
                 }

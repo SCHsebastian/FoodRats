@@ -14,12 +14,12 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.rememberNavController
@@ -135,11 +135,11 @@ fun FoodRatsApp() {
     }
 
     val themePort = koinInject<ThemeModePort>()
-    val themeMode by themePort.mode.collectAsState(initial = ThemeMode.System)
+    val themeMode by themePort.mode.collectAsStateWithLifecycle(initialValue = ThemeMode.System)
     // Observed in-app language. Drives ProvideAppLocale below so picking En/Es actually flips
     // the UI text (the link that was previously missing — see app/locale/AppLocaleProvider).
     val localePort = koinInject<LocalePort>()
-    val appLocale by localePort.locale.collectAsState(initial = AppLocale.System)
+    val appLocale by localePort.locale.collectAsStateWithLifecycle(initialValue = AppLocale.System)
     val appLanguageTag = appLocale.tag.ifBlank { null }
     // Honor the user's stored theme choice. System follows the OS; Light/Dark are explicit overrides.
     val systemDark = isSystemInDarkTheme()
@@ -152,7 +152,7 @@ fun FoodRatsApp() {
     // The AccentPalette→FrAccent mapping lives here in :shared (presentation), not in
     // :core:designsystem, to keep the design system domain-free.
     val accentPort = koinInject<AccentPalettePort>()
-    val accentPalette by accentPort.palette.collectAsState(initial = AccentPalette.Ember)
+    val accentPalette by accentPort.palette.collectAsStateWithLifecycle(initialValue = AccentPalette.Ember)
     val frAccent = accentPalette.toFrAccent()
 
     // Foreground/in-app push surface: the OS suppresses tray notifications while the app is
@@ -166,7 +166,7 @@ fun FoodRatsApp() {
     // it overlays every screen. `visible = !isOnline` — hidden by default (assumes online until the
     // port reports otherwise). Message is resolved here through SharedStringKey, not in the atom.
     val connectivityVm: ConnectivityViewModel = koinViewModel()
-    val isOnline by connectivityVm.isOnline.collectAsState()
+    val isOnline by connectivityVm.isOnline.collectAsStateWithLifecycle()
 
     FoodRatsTheme(darkTheme = darkTheme, accent = frAccent) {
       // Re-keys the UI subtree on the chosen language so every resolve(...) re-resolves. The root

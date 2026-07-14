@@ -7,7 +7,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
+import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.notifications.domain.bus.NotificationBus
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
 
@@ -38,10 +40,11 @@ fun InAppPushBanner(
     snackbarHostState: SnackbarHostState,
 ) {
     val owner = LocalLifecycleOwner.current
-    LaunchedEffect(bus, snackbarHostState, owner) {
+    val separator = resolve(SharedStringKey.NotificationSeparator)
+    LaunchedEffect(bus, snackbarHostState, owner, separator) {
         owner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             bus.stream.collect { reminder ->
-                val message = reminderToSnackbarMessage(reminder)
+                val message = reminderToSnackbarMessage(reminder, separator)
                 if (message.isBlank()) return@collect
                 FrLog.d(FrLog.Tags.Lifecycle) { "InAppPushBanner show kind=${reminder.kind} id=${reminder.id}" }
                 snackbarHostState.showSnackbar(
@@ -59,7 +62,7 @@ fun InAppPushBanner(
  * Material3 snackbars render one message; we lead with the title and append the body when present.
  * Pure + internal so it can be unit-tested without Compose.
  */
-internal fun reminderToSnackbarMessage(reminder: Reminder): String =
+internal fun reminderToSnackbarMessage(reminder: Reminder, separator: String): String =
     listOf(reminder.title, reminder.body)
         .filter { it.isNotBlank() }
-        .joinToString(separator = " — ")
+        .joinToString(separator = separator)

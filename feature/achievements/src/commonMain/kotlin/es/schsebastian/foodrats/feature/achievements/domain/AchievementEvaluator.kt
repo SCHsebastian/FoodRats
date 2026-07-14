@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.achievements.domain
 
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.feature.achievements.domain.model.Achievement
 import es.schsebastian.foodrats.feature.achievements.domain.model.AchievementCriterion
 import es.schsebastian.foodrats.feature.achievements.domain.model.AchievementProgress
@@ -21,21 +22,24 @@ class AchievementEvaluator {
     fun evaluate(
         catalog: List<Achievement>,
         signals: AchievementSignals,
-    ): List<AchievementStatus> = catalog.map { achievement ->
-        AchievementStatus(
-            achievement = achievement,
-            progress = progressFor(achievement.criterion, signals),
-            unlockedAtEpochMs = null,
-        )
+    ): List<AchievementStatus> {
+        // Personal criteria score against the member's OWN plates only; a crew-mate's plates never
+        // advance a Personal criterion.
+        val mine = signals.crewMeals.filter { it.meal.author.accountId == signals.accountId }
+        return catalog.map { achievement ->
+            AchievementStatus(
+                achievement = achievement,
+                progress = progressFor(achievement.criterion, signals, mine),
+                unlockedAtEpochMs = null,
+            )
+        }
     }
 
     private fun progressFor(
         criterion: AchievementCriterion,
         s: AchievementSignals,
+        mine: List<MealWithRatings>,
     ): AchievementProgress {
-        // Personal criteria score against the member's OWN plates only; a crew-mate's plates never
-        // advance a Personal criterion.
-        val mine = s.crewMeals.filter { it.meal.author.accountId == s.accountId }
         return when (criterion) {
             AchievementCriterion.FirstPlate ->
                 AchievementProgress(if (mine.isNotEmpty()) 1 else 0, 1)

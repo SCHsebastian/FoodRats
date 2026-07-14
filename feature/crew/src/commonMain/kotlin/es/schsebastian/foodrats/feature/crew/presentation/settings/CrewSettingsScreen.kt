@@ -91,6 +91,7 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
 import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
+import es.schsebastian.foodrats.feature.crew.presentation.components.CrewDangerBanner
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.LeaveCrewConfirmDialog
@@ -561,7 +562,7 @@ fun CrewSettingsScreen(
                     // (l) Trailing error banner.
                     state.error?.let { err ->
                         item {
-                            DangerBanner(text = resolve(err.toStringKey()))
+                            CrewDangerBanner(text = resolve(err.toStringKey()))
                         }
                     }
                 }
@@ -950,7 +951,7 @@ private fun BannerSection(
         // Banner-specific failure rendered IN the section (the shared bottom banner is off-screen
         // from here and is cleared by every crew listener re-emission).
         bannerError?.let { err ->
-            DangerBanner(text = resolve(err.toStringKey()))
+            CrewDangerBanner(text = resolve(err.toStringKey()))
         }
     }
 }
@@ -1002,24 +1003,6 @@ private fun BannerRepositionPreview(
                 )
             },
     )
-}
-
-/** Crimson banner for the trailing publish/save error. */
-@Composable
-private fun DangerBanner(text: String) {
-    val semantic = LocalFrSemanticColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.md))
-            .background(semantic.danger)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        FrIcon(image = FrIcons.Warning, contentDescription = null, tint = semantic.onDanger)
-        FrText(text = text, color = semantic.onDanger, style = StructuralType.body)
-    }
 }
 
 /** A brief, auto-dismissing bottom glass toast (replaces the matte snackbar). */

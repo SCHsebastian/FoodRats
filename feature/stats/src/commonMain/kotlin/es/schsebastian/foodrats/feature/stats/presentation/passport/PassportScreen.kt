@@ -37,6 +37,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
 import es.schsebastian.foodrats.core.designsystem.layout.frContentWidth
 import es.schsebastian.foodrats.core.designsystem.layout.frSafeHorizontalPadding
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.cuisine.CuisinePassport
@@ -76,7 +77,7 @@ fun PassportScreen(vm: StatsViewModel = koinViewModel()) {
                 FrText(
                     text = resolve(error.toStringKey()),
                     style = StructuralType.body,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                    color = LocalFrSemanticColors.current.danger,
                 )
             }
             else -> {

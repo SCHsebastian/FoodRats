@@ -117,6 +117,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedPlateUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrLocationMap
 import es.schsebastian.foodrats.feature.feed.presentation.components.MealSlotUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.dishBrushFor
 import es.schsebastian.foodrats.feature.feed.presentation.components.RaterVoteUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.RelativeTimestamp
 import es.schsebastian.foodrats.feature.feed.presentation.components.stablePlateRequest
@@ -1409,15 +1410,4 @@ private fun ShareOutcomeToast(message: String, onDismiss: () -> Unit) {
 @Composable
 private fun FrMediaFloorBrush() {
     FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft)
-}
-
-/** Appetizing brush shown behind the plate while it loads (or when the meal has none). */
-private fun dishBrushFor(slot: MealSlotUi?): Brush = when (slot) {
-    MealSlotUi.Breakfast -> StructuralColors.dishSalad
-    MealSlotUi.Brunch -> StructuralColors.dishTacos
-    MealSlotUi.Lunch -> StructuralColors.dishMackerel
-    MealSlotUi.Snack -> StructuralColors.dishTacos
-    MealSlotUi.Merienda -> StructuralColors.dishSalad
-    MealSlotUi.Dinner -> StructuralColors.dishRamen
-    null -> StructuralColors.dishMackerel
 }

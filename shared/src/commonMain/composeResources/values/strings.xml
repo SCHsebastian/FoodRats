@@ -66,6 +66,9 @@
     <!-- App-wide offline banner (offline-first §P1-T2): shown at the NavHost root on every screen. -->
     <string name="offline_banner">You're offline — changes sync when you're back.</string>
 
+    <!-- In-app push snackbar (InAppPushBanner): separator joining a reminder's title and body. -->
+    <string name="notification_separator"> — </string>
+
     <!-- Weekly recap story (roadmap §2.4) -->
     <string name="recap_entry_cta">See your week</string>
     <string name="recap_close">Close recap</string>

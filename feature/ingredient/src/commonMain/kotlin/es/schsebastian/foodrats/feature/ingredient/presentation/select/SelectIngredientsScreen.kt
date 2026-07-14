@@ -112,17 +112,15 @@ fun SelectIngredientsScreen(
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             )
 
-            // ingredient-02: build detectedSlugs set once; exclude from category rows
-            val detectedSlugs = remember(state.detected) { state.detected.toSet() }
             // Group the (already-remembered) filtered catalog once per search/detected change instead
             // of re-running these O(categories × catalog) filters inside the LazyColumn content lambda
             // on every recomposition (selection toggles, cap changes, expand/collapse all recompose it).
-            val detectedRows = remember(filtered, detectedSlugs) {
-                filtered.filter { it.slug in detectedSlugs }
+            val detectedRows = remember(filtered, state.detected) {
+                filtered.filter { it.slug in state.detected }
             }
-            val categoryRows = remember(filtered, detectedSlugs) {
+            val categoryRows = remember(filtered, state.detected) {
                 IngredientCategory.all.mapNotNull { category ->
-                    val rows = filtered.filter { it.category == category && it.slug !in detectedSlugs }
+                    val rows = filtered.filter { it.category == category && it.slug !in state.detected }
                     if (rows.isEmpty()) null else category to rows
                 }
             }

@@ -41,6 +41,7 @@
     <string name="auth_profile_title">Settings</string>
     <string name="auth_profile_back_cta">Back</string>
     <string name="auth_profile_identity_section">General</string>
+    <string name="auth_profile_identity_loading">…</string>
     <string name="auth_profile_preferences_section">Preferences</string>
     <string name="auth_profile_danger_zone_section">Danger Zone</string>
     <string name="auth_profile_danger_zone_subtitle">Irreversible actions. Read carefully.</string>

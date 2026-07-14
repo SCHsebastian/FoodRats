@@ -99,7 +99,7 @@ internal fun FrCuisineFlagCell(
         // Fixed two-line caption slot. The collected caption ("Conseguida 22/06") is wider than the
         // narrow 4-up cell even after shortening the date — the WORD overflows — so a single line clipped
         // to "Conseguid…". Two lines (in a fixed slot so every cell stays the same height) lets it wrap.
-        val captionSlotHeight = with(LocalDensity.current) { (StructuralType.micro.fontSize * 1.3f * 2).toDp() }
+        val captionSlotHeight = rememberCaptionSlotHeight()
         Box(
             modifier = Modifier.fillMaxWidth().height(captionSlotHeight),
             contentAlignment = Alignment.TopCenter,

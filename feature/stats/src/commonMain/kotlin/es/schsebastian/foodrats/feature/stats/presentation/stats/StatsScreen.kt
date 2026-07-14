@@ -62,6 +62,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.FrTileTone
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
@@ -224,7 +225,7 @@ private fun StatsContent(
         val historicError = state.historicError
         if (state.selectedTab == Tab.Historic && historicError != null) {
             item(key = "window-error") {
-                FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = LocalFrSemanticColors.current.danger)
             }
         } else if (window == null || state.historicLoading) {
             // `historicLoading` is the VM's explicit "Historic is being pulled/recomputed" flag —

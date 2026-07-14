@@ -1,6 +1,5 @@
 package es.schsebastian.foodrats.feature.auth.presentation.profile
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -47,11 +44,11 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
-import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
+import es.schsebastian.foodrats.feature.auth.presentation.components.StructuralDangerBanner
 
 /**
  * Structural delete-account confirmation. An adaptive olive [FrMediaFloor] (dark charcoal in dark
@@ -158,7 +155,7 @@ internal fun DeleteAccountScreen(
                     state.deleteConfirmation != expectedPhrase,
             )
 
-            state.deleteError?.let { DangerBanner(text = resolve(it)) }
+            state.deleteError?.let { StructuralDangerBanner(text = resolve(it)) }
 
             // Actions.
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -244,32 +241,6 @@ private fun ConsequenceRow(text: String, emphasised: Boolean = false) {
             text = text,
             style = StructuralType.body,
             color = StructuralColors.foreground.copy(alpha = if (emphasised) 1f else 0.82f),
-        )
-    }
-}
-
-/** A crimson structural banner reusing the inline danger-tile pattern from Profile / CrewSettings. */
-@Composable
-private fun DangerBanner(text: String) {
-    val semantic = LocalFrSemanticColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.md))
-            .background(semantic.danger.copy(alpha = 0.16f))
-            .padding(Spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        FrIcon(
-            image = FrIcons.Warning,
-            tint = semantic.danger,
-            modifier = Modifier.size(Sizes.iconMd),
-        )
-        FrText(
-            text = text,
-            style = StructuralType.body,
-            color = StructuralColors.foreground,
         )
     }
 }

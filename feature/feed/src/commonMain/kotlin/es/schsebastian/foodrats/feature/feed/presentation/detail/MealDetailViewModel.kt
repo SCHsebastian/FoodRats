@@ -27,12 +27,16 @@ import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.moderation.ReportError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -157,6 +161,22 @@ class MealDetailViewModel(
             }
             .distinctUntilChanged()
 
+    /**
+     * Live crew-owner id for the active crew — mirrors [blindVotingFlow]/[scoreStyleFlow] (re-
+     * subscribes only on crew switch, `null` when no crew active). Replaces two `.first()` snapshots
+     * of [CrewOwnerPort.observeOwner] that used to re-subscribe-then-drop on every feed/catalog/blind
+     * re-emission inside the meal-tracking collector below; also makes an owner handover reactive,
+     * matching [observeComments]'s already-reactive `ownerIdFlow`.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val ownerIdFlow =
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(null) else crewOwner.observeOwner(crewId)
+            }
+            .distinctUntilChanged()
+
     init {
         viewModelScope.launch {
             scoreStyleFlow.collect { style -> update { it.copy(scoreStyle = style) } }
@@ -176,12 +196,13 @@ class MealDetailViewModel(
                     observeFeed(flowOf(feedDay)),
                     ingredientRead.observeCatalog(),
                     blindVotingFlow,
-                ) { r, catalog, blind -> Triple(r, catalog, blind) }.collect { (r, catalog, blind) ->
+                    ownerIdFlow,
+                ) { r, catalog, blind, ownerId ->
+                    MealDetailFeedTick(r, catalog, blind, ownerId)
+                }.collect { (r, catalog, blind, ownerId) ->
                     when (r) {
                         is Result.Ok -> {
                             val viewerId = session.current.first()?.accountId
-                            val ownerId = activeCrew.current.first()
-                                ?.let { crewOwner.observeOwner(it).first() }
                             val todayMealDay = MealDay.today(clock, zone)
                             val matched = r.value.firstOrNull { it.meal.id.value == mealId }
                             matchedMeal = matched?.meal
@@ -299,6 +320,14 @@ class MealDetailViewModel(
                 }
             }
     }
+
+    /** Carrier for the meal-tracking [combine] tick (feed result, ingredient catalog, blind-voting, owner). */
+    private data class MealDetailFeedTick(
+        val result: Result<List<MealWithRatings>, FeedError>,
+        val catalog: Map<IngredientSlug, Ingredient>,
+        val blind: Boolean,
+        val ownerId: AccountId?,
+    )
 
     /** Internal carrier so the identity-join flatMapLatest can propagate either rows or a read error. */
     private sealed interface CommentRowsResult {

@@ -9,6 +9,8 @@ import kotlin.time.Instant
 
 class InAppPushBannerTest {
 
+    private val separator = " — "
+
     private fun reminder(title: String, body: String) = Reminder(
         id = "r1",
         kind = ReminderKind.NewMealPost,
@@ -22,7 +24,7 @@ class InAppPushBannerTest {
     fun joins_title_and_body_with_separator() {
         assertEquals(
             "Sam posted a meal — Tortilla — tap to view",
-            reminderToSnackbarMessage(reminder("Sam posted a meal", "Tortilla — tap to view")),
+            reminderToSnackbarMessage(reminder("Sam posted a meal", "Tortilla — tap to view"), separator),
         )
     }
 
@@ -30,7 +32,7 @@ class InAppPushBannerTest {
     fun omits_blank_body() {
         assertEquals(
             "Your week in food",
-            reminderToSnackbarMessage(reminder("Your week in food", "")),
+            reminderToSnackbarMessage(reminder("Your week in food", ""), separator),
         )
     }
 
@@ -38,12 +40,12 @@ class InAppPushBannerTest {
     fun omits_blank_title() {
         assertEquals(
             "Tap to read",
-            reminderToSnackbarMessage(reminder("", "Tap to read")),
+            reminderToSnackbarMessage(reminder("", "Tap to read"), separator),
         )
     }
 
     @Test
     fun returns_blank_when_both_blank() {
-        assertEquals("", reminderToSnackbarMessage(reminder("", "")))
+        assertEquals("", reminderToSnackbarMessage(reminder("", ""), separator))
     }
 }

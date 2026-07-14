@@ -61,6 +61,7 @@ import es.schsebastian.foodrats.core.domain.preferences.AppLocale
 import es.schsebastian.foodrats.core.domain.preferences.MealReminderSchedulePort
 import es.schsebastian.foodrats.core.domain.preferences.ThemeMode
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.core.i18n.StringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
 import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
@@ -94,31 +95,12 @@ fun ProfileScreen(
     val scope = rememberCoroutineScope()
     val picker = rememberPhotoPicker { result ->
         when (result) {
-            is PhotoPickResult.Picked -> scope.launch {
-                // Compression is CPU-bound — hop off the main thread so the UI keeps painting.
-                val compression = withContext(Dispatchers.Default) { result.bytes.compressAvatarForUpload() }
-                when (compression) {
-                    is AvatarCompression.Fit -> vm.onIntent(ProfileIntent.AvatarPicked(compression.bytes))
-                    AvatarCompression.Unreadable ->
-                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.Unreadable))
-                    AvatarCompression.TooLarge ->
-                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
-                }
-            }
+            is PhotoPickResult.Picked -> scope.launch { handlePickedAvatarBytes(vm, result.bytes) }
             is PhotoPickResult.PickedMultiple -> scope.launch {
                 // Defensive only — the avatar picker always launches single-pick
                 // (`launchGallery()`/`launchCamera()`), so this arm should be unreachable; Wave 3
                 // owns any real multi-photo avatar UX. Treat the first photo like a single Picked.
-                val compression = withContext(Dispatchers.Default) {
-                    result.photos.first().bytes.compressAvatarForUpload()
-                }
-                when (compression) {
-                    is AvatarCompression.Fit -> vm.onIntent(ProfileIntent.AvatarPicked(compression.bytes))
-                    AvatarCompression.Unreadable ->
-                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.Unreadable))
-                    AvatarCompression.TooLarge ->
-                        vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
-                }
+                handlePickedAvatarBytes(vm, result.photos.first().bytes)
             }
             is PhotoPickResult.Failed -> {
                 FrLog.w(FrLog.Tags.Auth) { "[ProfileScreen] avatar picker error: ${result.message}" }
@@ -169,8 +151,19 @@ fun ProfileScreen(
             AchievementsSection(onOpenAchievements)
             SafetySection(onOpenBlockedUsers)
             LegalSection(onOpenEula = onOpenEula, onOpenGuidelines = onOpenGuidelines)
-            DataExportSection(state, vm)
-            DangerZoneSection(state, vm)
+            DataExportSection(
+                isExportingData = state.isExportingData,
+                exportError = state.exportError,
+                exportDownloadUrl = state.exportDownloadUrl,
+                onExport = { vm.onIntent(ProfileIntent.ExportMyData) },
+                onDismissExport = { vm.onIntent(ProfileIntent.DismissExportResult) },
+            )
+            DangerZoneSection(
+                isSigningOut = state.isSigningOut,
+                signOutError = state.signOutError,
+                onSignOut = { vm.onIntent(ProfileIntent.SignOut) },
+                onOpenDeleteAccount = { vm.onIntent(ProfileIntent.OpenDeleteAccount) },
+            )
             Spacer(Modifier.navigationBarsPadding().height(Spacing.xl))
         }
     }
@@ -228,6 +221,22 @@ fun ProfileScreen(
             onDismiss = { vm.onIntent(ProfileIntent.AccentPickerDismiss) },
             onSelect = { id -> vm.onIntent(ProfileIntent.AccentSelected(AccentPalette.valueOf(id))) },
         )
+    }
+}
+
+/**
+ * Compresses a freshly picked avatar photo off the main thread and dispatches the matching
+ * [ProfileIntent] — shared by the single-pick and defensive multi-pick picker branches.
+ */
+private suspend fun handlePickedAvatarBytes(vm: ProfileViewModel, bytes: ByteArray) {
+    // Compression is CPU-bound — hop off the main thread so the UI keeps painting.
+    val compression = withContext(Dispatchers.Default) { bytes.compressAvatarForUpload() }
+    when (compression) {
+        is AvatarCompression.Fit -> vm.onIntent(ProfileIntent.AvatarPicked(compression.bytes))
+        AvatarCompression.Unreadable ->
+            vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.Unreadable))
+        AvatarCompression.TooLarge ->
+            vm.onIntent(ProfileIntent.AvatarPrepareFailed(ProfileError.AvatarPrepare.TooLarge))
     }
 }
 
@@ -330,7 +339,7 @@ private fun GeneralSection(state: ProfileState, vm: ProfileViewModel, onPickAvat
     StructuralSection(eyebrow = resolve(AuthStringKey.ProfileIdentitySection)) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             if (identityLoading) {
-                FrText(text = "…", style = StructuralType.titleLg, color = StructuralColors.foreground.copy(alpha = 0.5f))
+                FrText(text = resolve(AuthStringKey.ProfileIdentityLoading), style = StructuralType.titleLg, color = StructuralColors.foreground.copy(alpha = 0.5f))
             } else {
                 // Identity header — avatar + name + badge + change button.
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.md)) {
@@ -595,19 +604,25 @@ private fun LegalSection(onOpenEula: () -> Unit, onOpenGuidelines: () -> Unit) {
 }
 
 @Composable
-private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
+private fun DataExportSection(
+    isExportingData: Boolean,
+    exportError: StringKey?,
+    exportDownloadUrl: String?,
+    onExport: () -> Unit,
+    onDismissExport: () -> Unit,
+) {
     val uriHandler = LocalUriHandler.current
     StructuralSection(eyebrow = resolve(AuthStringKey.ProfileAccountSection)) {
         SettingsRow(
             title = resolve(AuthStringKey.ExportDataRow),
-            subtitle = if (state.isExportingData) resolve(AuthStringKey.ExportDataInFlight) else resolve(AuthStringKey.ExportDataSubtitle),
+            subtitle = if (isExportingData) resolve(AuthStringKey.ExportDataInFlight) else resolve(AuthStringKey.ExportDataSubtitle),
             icon = FrIcons.Stats,
             topHairline = false,
-            enabled = !state.isExportingData,
-            onClick = { vm.onIntent(ProfileIntent.ExportMyData) },
+            enabled = !isExportingData,
+            onClick = onExport,
         )
-        state.exportError?.let { RowError(resolve(it)) }
-        state.exportDownloadUrl?.let { url ->
+        exportError?.let { RowError(resolve(it)) }
+        exportDownloadUrl?.let { url ->
             Spacer(Modifier.height(Spacing.sm))
             FrText(
                 text = resolve(AuthStringKey.ExportDataReadySubtitle),
@@ -619,7 +634,7 @@ private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
                 label = resolve(AuthStringKey.ExportDataReadyCta),
                 onClick = {
                     uriHandler.openUri(url)
-                    vm.onIntent(ProfileIntent.DismissExportResult)
+                    onDismissExport()
                 },
                 tone = FrButtonTone.Glass,
                 compact = true,
@@ -629,7 +644,12 @@ private fun DataExportSection(state: ProfileState, vm: ProfileViewModel) {
 }
 
 @Composable
-private fun DangerZoneSection(state: ProfileState, vm: ProfileViewModel) {
+private fun DangerZoneSection(
+    isSigningOut: Boolean,
+    signOutError: StringKey?,
+    onSignOut: () -> Unit,
+    onOpenDeleteAccount: () -> Unit,
+) {
     StructuralSection(
         eyebrow = resolve(AuthStringKey.ProfileDangerZoneSection),
         subtitle = resolve(AuthStringKey.ProfileDangerZoneSubtitle),
@@ -639,18 +659,18 @@ private fun DangerZoneSection(state: ProfileState, vm: ProfileViewModel) {
             title = resolve(AuthStringKey.ProfileSignOutCta),
             icon = FrIcons.Logout,
             topHairline = false,
-            enabled = !state.isSigningOut,
+            enabled = !isSigningOut,
             danger = true,
-            onClick = { vm.onIntent(ProfileIntent.SignOut) },
+            onClick = onSignOut,
         )
-        state.signOutError?.let { RowError(resolve(it)) }
+        signOutError?.let { RowError(resolve(it)) }
         SettingsRow(
             title = resolve(AuthStringKey.ProfileDeleteAccountRow),
             subtitle = resolve(AuthStringKey.ProfileDeleteAccountSubtitle),
             icon = FrIcons.Delete,
             topHairline = true,
             danger = true,
-            onClick = { vm.onIntent(ProfileIntent.OpenDeleteAccount) },
+            onClick = onOpenDeleteAccount,
         )
     }
 }

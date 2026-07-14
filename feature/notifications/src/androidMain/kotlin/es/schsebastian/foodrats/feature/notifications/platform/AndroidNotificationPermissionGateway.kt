@@ -19,14 +19,14 @@ class AndroidNotificationPermissionGateway(
 ) : NotificationPermissionGateway {
 
     override suspend fun current(): NotificationPermission {
-        if (Build.VERSION.SDK_INT < 33) return NotificationPermission.Granted   // implicit pre-Tiramisu
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return NotificationPermission.Granted   // implicit pre-Tiramisu
         val granted = ContextCompat.checkSelfPermission(appContext, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
         return if (granted) NotificationPermission.Granted else NotificationPermission.NotYetRequested
     }
 
     override suspend fun request(): NotificationPermission {
-        if (Build.VERSION.SDK_INT < 33) return NotificationPermission.Granted
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return NotificationPermission.Granted
         val activity = activityProvider() ?: return NotificationPermission.Denied
         val granted = launcherHolder.requestAsync(Manifest.permission.POST_NOTIFICATIONS)
         if (granted) return NotificationPermission.Granted

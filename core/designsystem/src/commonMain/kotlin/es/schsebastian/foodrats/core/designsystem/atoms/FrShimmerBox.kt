@@ -5,13 +5,14 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.RectangleShape
@@ -44,6 +45,7 @@ fun FrShimmerBox(
 ) {
     val base = MaterialTheme.colorScheme.surfaceVariant
     val highlight = MaterialTheme.colorScheme.surface
+    val colors = remember(base, highlight) { listOf(base, highlight, base) }
     val transition = rememberInfiniteTransition(label = "frShimmer")
     val phase by transition.animateFloat(
         initialValue = -300f,
@@ -54,15 +56,20 @@ fun FrShimmerBox(
         ),
         label = "frShimmerPhase",
     )
-    val brush = Brush.linearGradient(
-        colors = listOf(base, highlight, base),
-        start = Offset(phase - 300f, 0f),
-        end = Offset(phase, 0f),
-    )
     Box(
         modifier = modifier
             .clip(shape)
-            .background(brush)
+            .drawWithCache {
+                onDrawBehind {
+                    drawRect(
+                        brush = Brush.linearGradient(
+                            colors = colors,
+                            start = Offset(phase - 300f, 0f),
+                            end = Offset(phase, 0f),
+                        ),
+                    )
+                }
+            }
             .semantics(mergeDescendants = true) {
                 liveRegion = LiveRegionMode.Polite
                 progressBarRangeInfo = ProgressBarRangeInfo.Indeterminate
