@@ -46,7 +46,17 @@ platform :android do
 
   desc "Upload the signed AAB to 'production' with a staged 20% rollout"
   lane :release do
-    upload_to_play_store(
+    # First-ever production release bootstrap: a never-published (draft) Play
+    # app rejects staged rollouts too — "Invalid request - Precondition check
+    # failed." on `Updating track 'production'` (the v1.11.0 prod fail; there
+    # are no existing users to stage across). For the bootstrap release set
+    # PLAY_RELEASE_STATUS=draft in the runner's signing.env: the AAB lands on
+    # the production track as a DRAFT that the Play Console then publishes
+    # (Google's first-publish review is console-only anyway). Remove the
+    # override once the app is published so tagged releases resume the 20%
+    # staged rollout.
+    status = ENV.fetch("PLAY_RELEASE_STATUS", "inProgress")
+    args = {
       track: "production",
       aab: aab_path,
       json_key: ENV.fetch("PLAY_JSON_KEY_PATH"),
@@ -58,9 +68,10 @@ platform :android do
       # release_status to "completed" and sends completed + userFraction 0.2 —
       # a contradiction (completed = 100%) that the Play API rejects with
       # "Invalid request - Precondition check failed." (the v1.10.3 prod fail).
-      release_status: "inProgress",
-      rollout: "0.2",
-    )
+      release_status: status,
+    }
+    args[:rollout] = "0.2" if status == "inProgress"
+    upload_to_play_store(**args)
   end
 
   def aab_path
@@ -131,7 +142,15 @@ platform :ios do
       # the beta lane works). Passing it errored: "Could not find option
       # 'apple_id' in the list of available options".
       app_identifier: "es.schsebastian.foodrats",
-      submit_for_review: true,
+      # First-submission bootstrap: review submission requires a complete ASC
+      # listing (pricing, age rating, screenshots incl. iPad Pro 12.9,
+      # copyright) that only the console can seed — the v1.11.0 submission
+      # failed on exactly those attributes AFTER the binary had uploaded and
+      # been selected for the version. IOS_SUBMIT_FOR_REVIEW=false (runner
+      # signing.env) keeps the upload + build selection but skips the review
+      # submission — finish it in App Store Connect. Remove after the first
+      # published release.
+      submit_for_review: ENV.fetch("IOS_SUBMIT_FOR_REVIEW", "true") == "true",
       phased_release: true,
       precheck_include_in_app_purchases: false,
       skip_metadata: true,
