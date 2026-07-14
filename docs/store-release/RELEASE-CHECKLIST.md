@@ -104,6 +104,16 @@ Legend: ✅ done in repo · 🤖 I ran it this session · 👤 you must do it ·
 - ✅ **Beta**: merge to `main` → `release-beta.yml` ships Play Internal + TestFlight automatically.
 - ✅ **Production**: `git tag vX.Y.Z && git push origin vX.Y.Z` → `release-production.yml`, held for
   your approval in the `production` environment, then Play 20% staged + App Store phased. (cicd-runbook)
+- 👤 **FIRST production release only (bootstrap — learned from the v1.11.0 attempt, 2026-07-14):**
+  a never-published Play app rejects staged rollouts ("Precondition check failed"), and the first
+  App Store review submission fails until the ASC listing is complete (pricing, age-rating
+  questionnaire, copyright, screenshots incl. iPad Pro 12.9 — the binary upload itself succeeds).
+  The runner's `~/.config/foodrats/signing.env` carries two bootstrap flags the lanes honor:
+  `PLAY_RELEASE_STATUS=draft` (AAB lands as a DRAFT release on the production track — publish it
+  in the Play Console, which is also where Google's first-publish review starts) and
+  `IOS_SUBMIT_FOR_REVIEW=false` (build uploads + attaches to the version; complete the listing and
+  press "Submit for Review" in ASC). **Remove both flags after each store has its first published
+  release** so tagged releases resume the fully automatic staged/phased flow.
 
 ## Phase 6 — On-device smoke before trusting the release (👤, the only real end-to-end check)
 
