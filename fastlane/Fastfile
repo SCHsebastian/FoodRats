@@ -79,15 +79,21 @@ platform :ios do
     # On CI, import signing assets into a dedicated keychain.
     #
     # We deliberately do NOT call fastlane's `setup_ci` here. setup_ci is built
-    # for *ephemeral* CI hosts (GitHub-hosted runners destroyed after the job):
-    # it makes the temp keychain the session DEFAULT and gives it a 1h auto-lock
-    # plus lock-on-sleep. On our *persistent* self-hosted Mac that produced the
-    # recurring "security wants to use the fastlane_tmp_keychain-db keychain —
-    # enter the keychain password" prompt: every GUI app got redirected to the
-    # temp default keychain, and the keychain locked mid-build / on sleep so a
-    # plain `security`/`codesign` call had nothing to unlock it with.
-    # setup_signing_keychain below creates the keychain WITHOUT hijacking the
-    # default and WITHOUT any auto-lock, so it never prompts. See
+    # for *ephemeral* CI hosts: it makes the temp keychain the session DEFAULT
+    # with a 1h auto-lock plus lock-on-sleep and never restores it. On our
+    # *persistent* self-hosted Mac that produced the recurring "security wants
+    # to use the fastlane_tmp_keychain-db keychain" prompt: every GUI app got
+    # redirected to the locked temp default forever.
+    #
+    # The keychain DOES have to be the session default while the lane runs,
+    # though: the v1.11.0 beta failed twice with errSecInternalComponent at
+    # CodeSign even with the identity imported + partition-listed in a
+    # non-default keychain and codesign pinned to it via --keychain — on this
+    # runner codesign only signs headlessly through the DEFAULT keychain's key
+    # ACL context (the exact configuration every green v1.10.x release used).
+    # So: default for the lane's duration ONLY, with no auto-lock and no
+    # lock-on-sleep (no prompts even mid-lane), and teardown_ci_keychain
+    # restores the previous default on success AND error. See
     # docs/cicd-runbook.md.
     setup_signing_keychain if ENV["CI"]
   end
@@ -192,10 +198,16 @@ platform :ios do
   def setup_signing_keychain
     path = signing_keychain_db
     delete_keychain(name: KEYCHAIN_NAME) if File.exist?(path)
+    # Remember the session's real default so teardown can restore it — leaving
+    # the temp keychain as default forever was the June prompt bug.
+    ENV["FR_PREV_DEFAULT_KEYCHAIN"] =
+      `security default-keychain -d user`.strip.delete('"')
     create_keychain(
       name: KEYCHAIN_NAME,
       password: KEYCHAIN_PASSWORD,
-      default_keychain: false,  # do NOT hijack the GUI session's default keychain
+      default_keychain: true,   # required: headless codesign resolves key ACLs
+                                # through the default keychain (see before_all);
+                                # teardown restores the previous default
       unlock: true,
       timeout: 0,               # 0 = never auto-lock (setup_ci uses 3600)
       lock_when_sleeps: false,  # do NOT lock on sleep
@@ -221,18 +233,24 @@ platform :ios do
   def authorize_headless_codesign
     return unless ENV["CI"]
 
+    # stdout silenced (it dumps key attributes); stderr kept so a failure of
+    # this step is visible in the CI log instead of dying later at CodeSign.
     sh("security set-key-partition-list -S apple-tool:,apple:,codesign: " \
        "-s -k #{KEYCHAIN_PASSWORD.shellescape} #{signing_keychain_db.shellescape} " \
-       ">/dev/null 2>&1")
+       ">/dev/null")
   end
 
-  # Tear down the signing keychain created in before_all: delete it (which also
-  # drops it from the search list). We never touched the session's default
-  # keychain, so there is nothing to restore. Runs on both success (after_all)
-  # and failure (error). No-op when not on CI.
+  # Tear down the signing keychain created in before_all: restore the session's
+  # previous default keychain, then delete the temp one (which also drops it
+  # from the search list). Runs on both success (after_all) and failure (error).
+  # No-op when not on CI.
   def teardown_ci_keychain
     return unless ENV["CI"]
 
+    prev = ENV["FR_PREV_DEFAULT_KEYCHAIN"]
+    if prev && !prev.empty?
+      sh("security default-keychain -d user -s #{prev.shellescape}")
+    end
     delete_keychain(name: KEYCHAIN_NAME)
   rescue StandardError => e
     UI.important("Keychain teardown skipped: #{e.message}")
