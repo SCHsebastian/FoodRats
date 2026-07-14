@@ -28,7 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -266,7 +266,7 @@ private fun SectionHeader(
     // A low-contrast filled band sets each section apart from its rows without
     // competing with the (now bolder) selected-row fill above it. The chevron
     // rotates on a spring so expanding a category reads as a single gesture.
-    val chevronRotation by animateFloatAsState(targetValue = if (expanded == true) 90f else 0f)
+    val chevronRotation = animateFloatAsState(targetValue = if (expanded == true) 90f else 0f)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -286,7 +286,7 @@ private fun SectionHeader(
         if (expanded != null) {
             FrIcon(
                 image = FrIcons.ChevronRight,
-                modifier = Modifier.rotate(chevronRotation),
+                modifier = Modifier.graphicsLayer { rotationZ = chevronRotation.value },
             )
         }
     }

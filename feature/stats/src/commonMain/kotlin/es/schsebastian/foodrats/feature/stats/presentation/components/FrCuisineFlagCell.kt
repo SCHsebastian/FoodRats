@@ -107,7 +107,7 @@ internal fun FrCuisineFlagCell(
             FrText(
                 text = cell.caption(),
                 style = StructuralType.micro.copy(textAlign = TextAlign.Center),
-                color = StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.65f else 0.5f),
+                color = captionTextColor(),
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )

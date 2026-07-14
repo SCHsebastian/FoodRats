@@ -60,6 +60,10 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcBlockedAccountsPort
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcCrewWelcomePort
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcReportPort
+import es.schsebastian.foodrats.feature.feed.presentation.toReason
 import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.PlateShareCardContent
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
@@ -96,7 +100,7 @@ class MealDetailViewModel(
     // C8 — active crew's Score vocabulary, so the voting picker renders Stars/Emoji/Numeric to
     // match the feed. Default no-op keeps the large existing test surface compiling; the Koin
     // binding passes the real port explicitly.
-    private val welcomePort: CrewWelcomePort = NoopMealDetailWelcomePort,
+    private val welcomePort: CrewWelcomePort = NoopUgcCrewWelcomePort,
     private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
@@ -110,8 +114,8 @@ class MealDetailViewModel(
     // existing test surface compiling; the Koin binding passes the real ports explicitly.
     private val textModeration: TextModerationPort = TextModerationPort { _, _ -> TextModerationVerdict.Clean },
     private val languageTag: Flow<String> = flowOf("en"),
-    private val reportPort: ReportPort = NoopReportPort,
-    private val blockedAccounts: BlockedAccountsPort = NoopBlockedAccountsPort,
+    private val reportPort: ReportPort = NoopUgcReportPort,
+    private val blockedAccounts: BlockedAccountsPort = NoopUgcBlockedAccountsPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<MealDetailState, MealDetailIntent, MealDetailEffect>(MealDetailState()) {
 
@@ -424,17 +428,6 @@ class MealDetailViewModel(
         MealDetailIntent.DismissBlockSuccess       -> update { it.copy(blockSuccess = false) }
     }
 
-    /** Maps the presentation reason option to the domain [ReportReason]. */
-    private fun FrReportReasonOption.toReason(): ReportReason = when (this) {
-        FrReportReasonOption.CHILD_SAFETY -> ReportReason.ChildSafety
-        FrReportReasonOption.SPAM       -> ReportReason.Spam
-        FrReportReasonOption.HARASSMENT -> ReportReason.Harassment
-        FrReportReasonOption.HATE       -> ReportReason.Hate
-        FrReportReasonOption.SEXUAL     -> ReportReason.Sexual
-        FrReportReasonOption.VIOLENCE   -> ReportReason.Violence
-        FrReportReasonOption.OTHER      -> ReportReason.Other
-    }
-
     /** Submits a report for the currently-open [MealDetailState.reportTarget] (UGC compliance §4). */
     private suspend fun submitReport(reasonOption: FrReportReasonOption) {
         val target = currentState.reportTarget ?: return
@@ -682,44 +675,4 @@ class MealDetailViewModel(
         outbox.enqueue(PendingCommand.PostComment(crewId, mealId, commentId, text, authorId))
         update { it.copy(isPostingComment = false, commentInput = "") }
     }
-}
-
-/**
- * No-op [ReportPort] used as the constructor default so the existing test surface keeps compiling.
- * The Koin binding always passes the real Firestore-backed port; production never sees this.
- */
-private object NoopReportPort : ReportPort {
-    override suspend fun report(
-        reporter: AccountId,
-        target: ReportTarget,
-        reason: ReportReason,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.moderation.ReportError> = Result.success(Unit)
-}
-
-/** No-op [BlockedAccountsPort] default (see [NoopReportPort]). Reports nothing blocked. */
-private object NoopBlockedAccountsPort : BlockedAccountsPort {
-    override fun observeBlocked(owner: AccountId): kotlinx.coroutines.flow.Flow<Set<AccountId>> =
-        flowOf(emptySet())
-    override suspend fun block(
-        owner: AccountId,
-        target: AccountId,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
-    override suspend fun unblock(
-        owner: AccountId,
-        target: AccountId,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
-}
-
-/** No-op [CrewWelcomePort] default for [MealDetailViewModel] tests — always Stars (C8). */
-private object NoopMealDetailWelcomePort : CrewWelcomePort {
-    override fun observeWelcomeMessage(crewId: CrewId): Flow<String?> = flowOf(null)
-    override fun isWelcomeDismissed(crewId: CrewId): Flow<Boolean> = flowOf(false)
-    override suspend fun dismissWelcome(crewId: CrewId) = Unit
-    override fun observeWeeklyChallenge(
-        crewId: CrewId,
-    ): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
-    override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
-    override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
-    override fun observeBannerCacheKey(crewId: CrewId): Flow<String> = flowOf("")
-    override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
 }

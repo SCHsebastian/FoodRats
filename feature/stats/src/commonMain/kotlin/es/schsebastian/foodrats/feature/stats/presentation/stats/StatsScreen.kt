@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
@@ -492,9 +493,9 @@ private fun LazyListScope.tabBody(
 @Composable
 private fun MetricTile(value: String, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     FrGlassTile(depth = FrTileDepth.Default, modifier = modifier.height(124.dp)) {
-        es.schsebastian.foodrats.core.designsystem.atoms.FrIcon(
+        FrIcon(
             image = icon,
-            tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+            tint = StructuralColors.foreground,
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.weight(1f))

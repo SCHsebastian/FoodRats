@@ -18,9 +18,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
+import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 
 /**
  * App-wide "you're offline" notice pinned to the top of the screen.
@@ -65,7 +65,7 @@ fun FrOfflineBanner(
                 .fillMaxWidth()
                 .background(semantic.warning)
                 .semantics { liveRegion = LiveRegionMode.Assertive }
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {

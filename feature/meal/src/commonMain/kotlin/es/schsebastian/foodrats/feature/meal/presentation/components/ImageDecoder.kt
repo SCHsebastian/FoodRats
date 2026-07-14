@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.meal.presentation.components
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.ImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -34,7 +35,8 @@ internal expect fun decodeImageBitmap(bytes: ByteArray, maxDimension: Int = Int.
  */
 @Composable
 internal fun rememberDecodedBitmap(bytes: ByteArray?, maxDimension: Int): ImageBitmap? {
-    val bitmap by produceState<ImageBitmap?>(initialValue = null, bytes?.contentHashCode()) {
+    val contentHash = remember(bytes) { bytes?.contentHashCode() }
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, contentHash) {
         value = bytes?.let { withContext(Dispatchers.Default) { decodeImageBitmap(it, maxDimension) } }
     }
     return bitmap

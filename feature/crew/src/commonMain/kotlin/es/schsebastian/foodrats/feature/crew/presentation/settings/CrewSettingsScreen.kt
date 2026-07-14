@@ -170,8 +170,23 @@ fun CrewSettingsScreen(
         // Z0 — the crew banner blurred as the floor (dark mode only); otherwise the light atmospheric floor.
         val bannerUrl = state.bannerImageUrl
         if (bannerUrl != null && !isLight) {
+            val floorCtx = LocalPlatformContext.current
+            // IMAGE-2: key Coil's caches on the immutable versioned path (when present) so the rotating
+            // signed URL doesn't force a re-download/redecode of the full-bleed floor photo.
+            val floorCacheKey = if (crew?.bannerToken != null) crew.bannerPath.orEmpty() else ""
+            val floorRequest = remember(bannerUrl, floorCacheKey, floorCtx) {
+                ImageRequest.Builder(floorCtx)
+                    .data(bannerUrl)
+                    .apply {
+                        if (floorCacheKey.isNotBlank()) {
+                            diskCacheKey(floorCacheKey)
+                            memoryCacheKey(floorCacheKey)
+                        }
+                    }
+                    .build()
+            }
             FrMediaFloor(
-                painter = coil3.compose.rememberAsyncImagePainter(bannerUrl),
+                painter = coil3.compose.rememberAsyncImagePainter(floorRequest),
                 blur = StructuralBlur.Heavy,
                 dim = 0.5f,
                 scrim = FrScrimStyle.Even,
@@ -695,9 +710,7 @@ fun CrewSettingsScreen(
     // Transfer-ownership confirm.
     state.transferTarget?.let { targetId ->
         val identity = state.identities[targetId]
-        val name = identity?.displayName?.takeIf { it.isNotBlank() }
-            ?: identity?.handle?.takeIf { it.isNotBlank() }
-            ?: deletedMemberFallback
+        val name = displayNameOrFallback(identity, deletedMemberFallback)
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsTransferConfirmTitle, name),
             message = resolve(CrewStringKey.SettingsTransferConfirmBody, name),
@@ -762,9 +775,7 @@ fun CrewSettingsScreen(
     // Remove-member confirm.
     memberPendingRemoval?.let { pendingId ->
         val identity = state.identities[pendingId]
-        val memberName = identity?.displayName?.takeIf { it.isNotBlank() }
-            ?: identity?.handle?.takeIf { it.isNotBlank() }
-            ?: resolve(CrewStringKey.MemberDeleted)
+        val memberName = displayNameOrFallback(identity, deletedMemberFallback)
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName),
             message = resolve(CrewStringKey.SettingsRemoveMemberConfirmBody, memberName),
@@ -781,6 +792,11 @@ fun CrewSettingsScreen(
 }
 
 // ---- Structural building blocks -------------------------------------------------------------------
+
+private fun displayNameOrFallback(identity: Account?, fallback: String): String =
+    identity?.displayName?.takeIf { it.isNotBlank() }
+        ?: identity?.handle?.takeIf { it.isNotBlank() }
+        ?: fallback
 
 /** A glass tile holding a labelled underline field + a Save button gated by [saveEnabled]. */
 @Composable
@@ -1111,9 +1127,7 @@ private fun LeaveOwnerDialog(
             )
             members.forEach { m ->
                 val identity = identities[m.accountId]
-                val name = identity?.displayName?.takeIf { it.isNotBlank() }
-                    ?: identity?.handle?.takeIf { it.isNotBlank() }
-                    ?: deletedFallback
+                val name = displayNameOrFallback(identity, deletedFallback)
                 SuccessorOption(
                     label = name,
                     selected = selectedSuccessor == m.accountId,

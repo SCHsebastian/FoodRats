@@ -2,8 +2,10 @@ package es.schsebastian.foodrats.feature.stats.presentation.components
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -36,3 +38,12 @@ internal fun rememberCaptionSlotHeight(): Dp {
     val microFontSize = StructuralType.micro.fontSize
     return remember(density, microFontSize) { with(density) { (microFontSize * 1.3f * 2).toDp() } }
 }
+
+/**
+ * Caption-text color shared by the pokédex and passport grid cells — a foreground tint dimmed a touch
+ * more in light theme so the caption reads as secondary against the warm-white floor without going
+ * invisible.
+ */
+@Composable
+internal fun captionTextColor(): Color =
+    StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.65f else 0.5f)

@@ -171,7 +171,8 @@ fun ComposePlateScreen(
     // re-entry is a no-op and re-capture re-classifies. Key on the content hash, not the ByteArray
     // identity — recomposition can hand us an equal-but-distinct array. ALWAYS the primary (index 0)
     // photo, independent of which photo is currently selected/previewed in the strip.
-    LaunchedEffect(state.primaryPhoto?.photoBytes?.contentHashCode()) {
+    val primaryHash = remember(state.primaryPhoto?.photoBytes) { state.primaryPhoto?.photoBytes?.contentHashCode() }
+    LaunchedEffect(primaryHash) {
         state.primaryPhoto?.photoBytes?.let { vm.onPhotoCaptured(it) }
     }
 

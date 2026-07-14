@@ -491,8 +491,8 @@ class OutboxLocalStore(
         }
         else -> null // unknown discriminator from a newer build → drop the row
     }
-
-    private fun String?.toCrewId(): CrewId? = this?.let { CrewId.of(it).getOrNull() }
-    private fun String?.toMealId(): MealId? = this?.let { MealId.of(it).getOrNull() }
-    private fun String?.toAccountId(): AccountId? = this?.let { AccountId.of(it).getOrNull() }
 }
+
+internal fun String?.toCrewId(): CrewId? = this?.let { CrewId.of(it).getOrNull() }
+internal fun String?.toMealId(): MealId? = this?.let { MealId.of(it).getOrNull() }
+internal fun String?.toAccountId(): AccountId? = this?.let { AccountId.of(it).getOrNull() }
