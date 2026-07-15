@@ -23,4 +23,5 @@
     <string name="notifications_inactivity_body">You haven't posted a meal today. Snap one before dinner.</string>
     <string name="notifications_social_nudge_title">Your crew is eating 👀</string>
     <string name="notifications_social_nudge_body">%1$d of %2$d crewmates already posted today — your turn</string>
+    <string name="notifications_channel_streak_nudges">Streak nudges</string>
 </resources>

@@ -31,6 +31,7 @@ import es.schsebastian.foodrats.app.navigation.navigateTopLevel
 import es.schsebastian.foodrats.app.connectivity.ConnectivityViewModel
 import es.schsebastian.foodrats.app.i18n.SharedStringKey
 import es.schsebastian.foodrats.app.locale.ProvideAppLocale
+import es.schsebastian.foodrats.app.locale.SyncNotificationChannelName
 import es.schsebastian.foodrats.app.notifications.InAppPushBanner
 import es.schsebastian.foodrats.core.designsystem.atoms.FrOfflineBanner
 import es.schsebastian.foodrats.core.designsystem.theme.FoodRatsTheme
@@ -173,6 +174,9 @@ fun FoodRatsApp() {
       // Re-keys the UI subtree on the chosen language so every resolve(...) re-resolves. The root
       // NavController is created above this block, so the back stack survives a language switch.
       ProvideAppLocale(languageTag = appLanguageTag) {
+        // Rename the streak-nudge notification channel to the (now applied) in-app language.
+        // Must live inside ProvideAppLocale — see SyncNotificationChannelName.
+        SyncNotificationChannelName()
         InAppPushBanner(bus = notificationBus, snackbarHostState = snackbarHostState)
         Scaffold(
             // Host whose only job is to position the SnackbarHost above every screen; the NavGraph

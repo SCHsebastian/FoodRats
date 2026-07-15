@@ -36,7 +36,6 @@ import es.schsebastian.foodrats.core.data.image.installImageLoader
 import es.schsebastian.foodrats.feature.meal.di.mealAndroidModule
 import es.schsebastian.foodrats.feature.mealai.di.mealAiAndroidModule
 import es.schsebastian.foodrats.feature.notifications.di.notificationsAndroidModule
-import es.schsebastian.foodrats.feature.notifications.platform.NotificationChannels
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -50,7 +49,6 @@ class FoodRatsApplication : Application() {
         installAndroidDataStoreContext(filesDir)
         installAndroidFirebaseContext(this)
         FirebaseInitializer.init()
-        NotificationChannels.ensure(this)
         installImageLoader()
         // Track the foreground Activity so the off-screen share-card renderer has a window to host
         // its capture in. Must register before MainActivity resumes (see ForegroundActivityHolder).
@@ -77,6 +75,11 @@ class FoodRatsApplication : Application() {
                 ),
             )
         }
+
+        // Note: the streak-nudge notification channel is NOT created here. Its user-visible name
+        // must resolve against the in-app locale, which only becomes authoritative during
+        // composition (LocalAppLocale.provides) — so SyncNotificationChannelName() in FoodRatsApp
+        // owns create/rename, and DailyInactivityWorker.ensureExists covers background creation.
 
         // Silence the FrLog println path in release builds (security #8): FrLog.d/w write account
         // UIDs, session/sign-out state, and DataStore key names to logcat, which must not ship in

@@ -23,4 +23,5 @@
     <string name="notifications_inactivity_body">Aún no has publicado ninguna comida hoy. Saca una antes de la cena.</string>
     <string name="notifications_social_nudge_title">Tu cuadrilla está comiendo 👀</string>
     <string name="notifications_social_nudge_body">%1$d de %2$d compañeros ya han publicado hoy — te toca</string>
+    <string name="notifications_channel_streak_nudges">Avisos de racha</string>
 </resources>

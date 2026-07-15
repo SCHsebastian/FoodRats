@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.notifications.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.notifications.generated.resources.Res
+import foodrats.feature.notifications.generated.resources.notifications_channel_streak_nudges
 import foodrats.feature.notifications.generated.resources.notifications_error_denied
 import foodrats.feature.notifications.generated.resources.notifications_error_denied_forever
 import foodrats.feature.notifications.generated.resources.notifications_error_payload_parse
@@ -51,4 +52,5 @@ enum class NotificationStringKey(override val resourceId: StringResource) : Stri
     ErrorTokenPersist(Res.string.notifications_error_token_persist),
     ErrorScheduleFailed(Res.string.notifications_error_schedule_failed),
     ErrorPayloadParse(Res.string.notifications_error_payload_parse),
+    ChannelStreakNudges(Res.string.notifications_channel_streak_nudges),
 }
