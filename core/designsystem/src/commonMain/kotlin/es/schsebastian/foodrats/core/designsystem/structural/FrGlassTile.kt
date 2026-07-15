@@ -19,9 +19,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -103,9 +101,6 @@ fun FrGlassTile(
         }
     }
 
-    // Read the theme-aware edge-light here — DrawScope lambdas are not @Composable.
-    val edgeLight = StructuralColors.topLight
-
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val scale by animateFloatAsState(
@@ -122,16 +117,7 @@ fun FrGlassTile(
             .shadow(elevation, shape, clip = false)
             .clip(shape)
             .background(fill, shape)
-            .drawWithContent {
-                drawContent()
-                val y = 0.5.dp.toPx()
-                drawLine(
-                    color = edgeLight,
-                    start = Offset(0f, y),
-                    end = Offset(size.width, y),
-                    strokeWidth = 1.dp.toPx(),
-                )
-            }
+            .frTopLightEdge()
             .then(
                 if (onClick != null) {
                     Modifier.clickable(interactionSource = interaction, indication = null, onClick = onClick)

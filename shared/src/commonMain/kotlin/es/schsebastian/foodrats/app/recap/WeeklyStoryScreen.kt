@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,6 +67,46 @@ fun WeeklyStoryScreen(
         }
     }
 
+    // The weekly-recap player is an immersive Instagram-Stories surface — full-bleed dark media in
+    // both themes (the scenes are dish/photo floors with white-on-scrim type). Force dark so light
+    // mode doesn't flip the story chrome/type to dark-on-dark.
+    FoodRatsTheme(darkTheme = true) {
+    // On a Light-theme device the OS keeps dark status-bar icons by default, which are nearly
+    // invisible on the dark recap background. Force white icons while this screen is in
+    // composition and restore on exit.
+    StatusBarIconsAppearance(lightIcons = true)
+    Box(modifier = Modifier.fillMaxSize()) {
+    when {
+        state.isLoading -> LoadingOrEmpty(loading = true)
+        state.failed || state.recap == null || state.recap!!.isEmpty -> {
+            // A failed read or quiet week: show the gentle empty card; tapping anywhere dismisses.
+            LoadingOrEmpty(loading = false, onTap = { vm.onIntent(WeeklyStoryIntent.Close) })
+        }
+        else -> StoryPlayer(state = state, vm = vm)
+    }
+
+        // Share-outcome toast (spec §10). Resolved here; auto-clears after a short window.
+        state.shareOutcome?.let { outcome ->
+            val message = resolve(
+                when (outcome) {
+                    ShareOutcomeUi.Succeeded   -> ShareCardStringKey.ShareSucceeded
+                    ShareOutcomeUi.OpenedSheet -> ShareCardStringKey.ShareOpenedSheet
+                    ShareOutcomeUi.Failed      -> ShareCardStringKey.ShareFailed
+                },
+            )
+            ShareOutcomeToast(message = message, onDismiss = { vm.onIntent(WeeklyStoryIntent.DismissShareOutcome) })
+        }
+    }
+    }
+}
+
+/**
+ * The active story surface: the auto-advance progress clock, the share CTA, and [FrStoryScaffold]
+ * itself. Split out of [WeeklyStoryScreen] so the 20Hz `progress` tick recomposes only this scope,
+ * not the sibling `when` dispatch or share-outcome toast that also live in the screen's root [Box].
+ */
+@Composable
+private fun StoryPlayer(state: WeeklyStoryState, vm: WeeklyStoryViewModel) {
     // Auto-advance progress for the active segment. Restarts whenever the scene index changes; halts
     // while paused or loading. At 100% it asks the VM to advance (the VM decides last-scene = finish).
     var progress by remember { mutableFloatStateOf(0f) }
@@ -85,73 +124,41 @@ fun WeeklyStoryScreen(
         }
     }
 
-    // The weekly-recap player is an immersive Instagram-Stories surface — full-bleed dark media in
-    // both themes (the scenes are dish/photo floors with white-on-scrim type). Force dark so light
-    // mode doesn't flip the story chrome/type to dark-on-dark.
-    FoodRatsTheme(darkTheme = true) {
-    // On a Light-theme device the OS keeps dark status-bar icons by default, which are nearly
-    // invisible on the dark recap background. Force white icons while this screen is in
-    // composition and restore on exit.
-    StatusBarIconsAppearance(lightIcons = true)
-    Box(modifier = Modifier.fillMaxSize()) {
-    when {
-        state.isLoading -> LoadingOrEmpty(loading = true)
-        state.failed || state.recap == null || state.recap!!.isEmpty -> {
-            // A failed read or quiet week: show the gentle empty card; tapping anywhere dismisses.
-            LoadingOrEmpty(loading = false, onTap = { vm.onIntent(WeeklyStoryIntent.Close) })
-        }
-        else -> {
-            val scene = state.currentScene
-            // The share CTA lives in the scaffold's overlay action slot — drawn ABOVE the tap zones
-            // so a tap on it shares the scene instead of advancing the story. Only shown for the
-            // shareable scenes (top-meal / streak / your-week); shows a spinner while rasterizing.
-            val shareLabel = resolve(SharedStringKey.RecapShareCta)
-            val action: (@Composable () -> Unit)? = if (state.canShareCurrentScene) {
-                {
-                    if (state.isPreparingShare) {
-                        FrProgressIndicator(color = Color.White)
-                    } else {
-                        FrButton(
-                            label = shareLabel,
-                            onClick = { vm.onIntent(WeeklyStoryIntent.ShareScene) },
-                        )
-                    }
-                }
+    val scene = state.currentScene
+    // The share CTA lives in the scaffold's overlay action slot — drawn ABOVE the tap zones
+    // so a tap on it shares the scene instead of advancing the story. Only shown for the
+    // shareable scenes (top-meal / streak / your-week); shows a spinner while rasterizing.
+    val shareLabel = resolve(SharedStringKey.RecapShareCta)
+    val action: (@Composable () -> Unit)? = if (state.canShareCurrentScene) {
+        {
+            if (state.isPreparingShare) {
+                FrProgressIndicator(color = Color.White)
             } else {
-                null
-            }
-            FrStoryScaffold(
-                segmentCount = state.sceneCount,
-                currentIndex = state.currentIndex,
-                currentProgress = progress,
-                onPrev = { vm.onIntent(WeeklyStoryIntent.Back) },
-                onNext = { vm.onIntent(WeeklyStoryIntent.Advance) },
-                onClose = { vm.onIntent(WeeklyStoryIntent.Close) },
-                onHoldStart = { vm.onIntent(WeeklyStoryIntent.Pause) },
-                onHoldEnd = { vm.onIntent(WeeklyStoryIntent.Resume) },
-                closeContentDescription = resolve(SharedStringKey.RecapClose),
-                progressContentDescription = resolve(SharedStringKey.RecapProgress),
-                action = action,
-            ) {
-                Crossfade(targetState = scene, label = "RecapScene") { current ->
-                    if (current != null) RecapSceneView(current, Modifier.fillMaxSize())
-                }
+                FrButton(
+                    label = shareLabel,
+                    onClick = { vm.onIntent(WeeklyStoryIntent.ShareScene) },
+                )
             }
         }
+    } else {
+        null
     }
-
-        // Share-outcome toast (spec §10). Resolved here; auto-clears after a short window.
-        state.shareOutcome?.let { outcome ->
-            val message = resolve(
-                when (outcome) {
-                    ShareOutcomeUi.Succeeded   -> ShareCardStringKey.ShareSucceeded
-                    ShareOutcomeUi.OpenedSheet -> ShareCardStringKey.ShareOpenedSheet
-                    ShareOutcomeUi.Failed      -> ShareCardStringKey.ShareFailed
-                },
-            )
-            ShareOutcomeToast(message = message, onDismiss = { vm.onIntent(WeeklyStoryIntent.DismissShareOutcome) })
+    FrStoryScaffold(
+        segmentCount = state.sceneCount,
+        currentIndex = state.currentIndex,
+        currentProgress = progress,
+        onPrev = { vm.onIntent(WeeklyStoryIntent.Back) },
+        onNext = { vm.onIntent(WeeklyStoryIntent.Advance) },
+        onClose = { vm.onIntent(WeeklyStoryIntent.Close) },
+        onHoldStart = { vm.onIntent(WeeklyStoryIntent.Pause) },
+        onHoldEnd = { vm.onIntent(WeeklyStoryIntent.Resume) },
+        closeContentDescription = resolve(SharedStringKey.RecapClose),
+        progressContentDescription = resolve(SharedStringKey.RecapProgress),
+        action = action,
+    ) {
+        Crossfade(targetState = scene, label = "RecapScene") { current ->
+            if (current != null) RecapSceneView(current, Modifier.fillMaxSize())
         }
-    }
     }
 }
 
@@ -195,13 +202,13 @@ private fun LoadingOrEmpty(loading: Boolean, onTap: () -> Unit = {}) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(Spacing.md),
             ) {
-                Text(
+                FrText(
                     text = resolve(SharedStringKey.RecapEmptyTitle),
                     style = MaterialTheme.typography.headlineSmall,
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
-                Text(
+                FrText(
                     text = resolve(SharedStringKey.RecapEmptySubtitle),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White,

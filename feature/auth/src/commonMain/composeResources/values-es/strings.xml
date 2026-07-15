@@ -41,6 +41,7 @@
     <string name="auth_profile_title">Ajustes</string>
     <string name="auth_profile_back_cta">Atrás</string>
     <string name="auth_profile_identity_section">General</string>
+    <string name="auth_profile_identity_loading">…</string>
     <string name="auth_profile_preferences_section">Preferencias</string>
     <string name="auth_profile_danger_zone_section">Zona peligrosa</string>
     <string name="auth_profile_danger_zone_subtitle">Acciones irreversibles. Léelas con cuidado.</string>

@@ -133,6 +133,70 @@ class OutboxLocalStoreTest {
     }
 
     @Test
+    fun round_trips_comment_mentions() = runTest {
+        // Non-empty mentions on both PostComment and EditComment must round-trip through the
+        // JSON-encoded `mentions` column (order preserved — dedup/cap is the caller's job upstream).
+        val mentionA = (AccountId.of("acc-a") as Result.Ok).value
+        val mentionB = (AccountId.of("acc-b") as Result.Ok).value
+        val commands: List<PendingCommand> = listOf(
+            PendingCommand.PostComment(
+                crewId = crew, mealId = meal,
+                commentId = MealCommentId("c-mention-1"),
+                text = CommentText.of("hi @a @b").getOrNull()!!,
+                authorId = acc,
+                mentions = listOf(mentionA, mentionB),
+            ),
+            PendingCommand.EditComment(
+                crewId = crew, mealId = meal,
+                commentId = MealCommentId("c-mention-2"),
+                text = CommentText.of("edited, still mentions @a").getOrNull()!!,
+                mentions = listOf(mentionA),
+            ),
+        )
+        commands.forEachIndexed { idx, cmd -> store.add(entry(idx, cmd)) }
+
+        assertEquals(commands.toSet(), store.read().map { it.command }.toSet())
+    }
+
+    @Test
+    fun row_persisted_before_mentions_existed_deserializes_to_empty_list() = runTest {
+        // Simulates a pre-mentions row: insert straight through the generated query with the new
+        // `mentions` column left NULL (mirrors what an app built before this change would have
+        // written), then confirm OutboxLocalStore.read() surfaces PendingCommand.PostComment with
+        // an empty mentions list rather than dropping the row or crashing.
+        db.database.outboxQueries.upsertByIdem(
+            id = "entry-legacy",
+            type = "post_comment",
+            idempotencyKey = "comment:${crew.value}:${meal.value}:c-legacy",
+            statusKind = "pending",
+            errorKey = null,
+            retryable = 0L,
+            attemptCount = 0L,
+            createdAtEpochMs = 1_000L,
+            lastAttemptAtEpochMs = null,
+            crewId = crew.value,
+            mealId = meal.value,
+            accountId = acc.value,
+            commentId = "c-legacy",
+            text = "a pre-mentions comment",
+            score = null,
+            reactionKindKey = null,
+            desiredPresent = null,
+            enabled = null,
+            targetAccountId = null,
+            newName = null,
+            focalY = null,
+            setAtMillis = null,
+            styleKey = null,
+            mentions = null,
+        )
+
+        val restored = store.read().single().command
+        assertTrue(restored is PendingCommand.PostComment)
+        assertEquals(emptyList(), (restored as PendingCommand.PostComment).mentions)
+    }
+
+    @Test
     fun round_trips_crew_settings_clear_commands_with_null_text() = runTest {
         // Tagline/welcome/challenge "clear" = null text. A null text column must round-trip as null
         // (not be mistaken for a malformed row that gets dropped).

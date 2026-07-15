@@ -26,6 +26,9 @@ import java.text.ParsePosition
 import java.text.SimpleDateFormat
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -86,7 +89,10 @@ actual fun rememberPhotoPicker(onResult: (PhotoPickResult) -> Unit): PhotoPicker
                     // Same per-URI pipeline as the single-select path, run in ORDER (uris is
                     // already selection-ordered) — partial per-item failures are dropped, keeping
                     // only the successes; an all-failed batch surfaces as Failed.
-                    val picks = trimmed.mapNotNull { uri -> (pickGalleryUri(context, uri) as? PhotoPickResult.Picked) }
+                    val picks = coroutineScope {
+                        trimmed.map { uri -> async { pickGalleryUri(context, uri) } }.awaitAll()
+                    }
+                        .filterIsInstance<PhotoPickResult.Picked>()
                         .map { picked -> PickedPhoto(picked.bytes, picked.source, picked.metadata) }
                     if (picks.isEmpty()) PhotoPickResult.Failed("Unreadable images") else PhotoPickResult.PickedMultiple(picks)
                 }
@@ -179,10 +185,12 @@ private fun pickGalleryUri(context: Context, uri: Uri): PhotoPickResult {
         if (bytes == null) {
             PhotoPickResult.Failed("Unreadable image: $uri")
         } else {
-            // Read EXIF from the RAW bytes — normalization below re-encodes the image (baking in
-            // rotation), which drops EXIF metadata entirely.
-            val metadata = readExifMetadata(bytes)
-            PhotoPickResult.Picked(normalizeExifRotation(bytes), PhotoSource.Gallery, metadata)
+            // Parse EXIF from the RAW bytes ONCE and thread it into both readers below —
+            // normalization re-encodes the image (baking in rotation), which drops EXIF
+            // metadata entirely, so both need the pre-normalization parse.
+            val exif = tryParseExif(bytes)
+            val metadata = readExifMetadata(exif)
+            PhotoPickResult.Picked(normalizeExifRotation(bytes, exif), PhotoSource.Gallery, metadata)
         }
     } catch (t: Throwable) {
         PhotoPickResult.Failed(t.message)
@@ -190,18 +198,27 @@ private fun pickGalleryUri(context: Context, uri: Uri): PhotoPickResult {
 }
 
 /**
- * Bakes the EXIF orientation into the pixels (re-encoding as JPEG q95) so downstream
- * consumers never need to read EXIF. Best-effort: any decode failure returns the
- * original bytes unchanged, matching the project's image-compressor style.
+ * Best-effort [ExifInterface] parse of [bytes]. Returns null on any failure so callers can
+ * fall back independently — mirrors the fail-soft contract [normalizeExifRotation] and
+ * [readExifMetadata] each already had before this parse was hoisted out of them.
  */
-private fun normalizeExifRotation(bytes: ByteArray): ByteArray {
+private fun tryParseExif(bytes: ByteArray): ExifInterface? = try {
+    ByteArrayInputStream(bytes).use { ExifInterface(it) }
+} catch (_: Throwable) {
+    null
+}
+
+/**
+ * Bakes the EXIF orientation into the pixels (re-encoding as JPEG q95) so downstream
+ * consumers never need to read EXIF. Best-effort: a null/failed [exif] or any decode failure
+ * returns the original bytes unchanged, matching the project's image-compressor style.
+ */
+private fun normalizeExifRotation(bytes: ByteArray, exif: ExifInterface? = tryParseExif(bytes)): ByteArray {
     return try {
-        val orientation = ByteArrayInputStream(bytes).use { stream ->
-            ExifInterface(stream).getAttributeInt(
-                ExifInterface.TAG_ORIENTATION,
-                ExifInterface.ORIENTATION_NORMAL,
-            )
-        }
+        val orientation = exif?.getAttributeInt(
+            ExifInterface.TAG_ORIENTATION,
+            ExifInterface.ORIENTATION_NORMAL,
+        ) ?: ExifInterface.ORIENTATION_NORMAL
         // Transpose/transverse are rotation+flip; treating them as plain 90/270 keeps
         // the image upright, which is all the composer needs.
         val degrees = when (orientation) {
@@ -224,14 +241,15 @@ private fun normalizeExifRotation(bytes: ByteArray): ByteArray {
 }
 
 /**
- * Best-effort EXIF read from the RAW (pre-normalization) picked bytes: capture time (device-zone
- * epoch millis) + GPS lat/long, when present. The Android system photo picker frequently redacts
- * GPS by design — that's expected, [PhotoMetadata]'s fields are nullable for exactly this. Any
- * failure (corrupt/absent EXIF) yields an all-null [PhotoMetadata] rather than failing the pick.
+ * Best-effort EXIF read from an already-parsed [exif] (or null, if parsing failed): capture
+ * time (device-zone epoch millis) + GPS lat/long, when present. The Android system photo
+ * picker frequently redacts GPS by design — that's expected, [PhotoMetadata]'s fields are
+ * nullable for exactly this. Any failure (null/corrupt/absent EXIF) yields an all-null
+ * [PhotoMetadata] rather than failing the pick.
  */
-private fun readExifMetadata(rawBytes: ByteArray): PhotoMetadata {
+private fun readExifMetadata(exif: ExifInterface?): PhotoMetadata {
+    if (exif == null) return PhotoMetadata(takenAtEpochMs = null, latitude = null, longitude = null)
     return try {
-        val exif = ByteArrayInputStream(rawBytes).use { ExifInterface(it) }
         val latLong = exif.latLong
         val dateString = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
             ?: exif.getAttribute(ExifInterface.TAG_DATETIME)

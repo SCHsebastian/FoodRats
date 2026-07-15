@@ -35,12 +35,9 @@ class DefaultAudienceRepository(
 
     override suspend fun set(crewIds: Set<CrewId>): Result<Unit, DefaultAudienceError> =
         withContext(dispatchers.io) {
-            runCatching {
+            persistResult({ DefaultAudienceError.Persist.Unavailable }) {
                 val encoded = crewIds.joinToString(SEPARATOR) { it.value }
                 prefs.set(Keys.DefaultAudienceCrewIds, encoded)
-            }.fold(
-                onSuccess = { Result.success(Unit) },
-                onFailure = { Result.failure(DefaultAudienceError.Persist.Unavailable) },
-            )
+            }
         }
 }

@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,7 +57,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -102,6 +108,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.structural.FrScrimStyle
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
@@ -109,6 +116,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.i18n.resolvePlural
+import es.schsebastian.foodrats.feature.feed.domain.mention.MENTION_TOKEN_REGEX
 import es.schsebastian.foodrats.feature.feed.i18n.FeedPluralKey
 import es.schsebastian.foodrats.feature.feed.i18n.FeedStringKey
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
@@ -117,6 +125,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FeedPlateUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrLocationMap
 import es.schsebastian.foodrats.feature.feed.presentation.components.MealSlotUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.dishBrushFor
 import es.schsebastian.foodrats.feature.feed.presentation.components.RaterVoteUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.RelativeTimestamp
 import es.schsebastian.foodrats.feature.feed.presentation.components.stablePlateRequest
@@ -398,6 +407,7 @@ internal fun MealDetailBody(
     onRequestBlockCommentAuthor: (String) -> Unit = {},
 ) {
     val meal = state.meal ?: return
+    val semantic = LocalFrSemanticColors.current
     val galleryChipCd = resolve(FeedStringKey.GalleryChipCd)
     val headHeight = rememberHeadHeight()
     // FIREST-2: the live comment listener is bounded to the newest [commentLimit] comments. When the
@@ -642,7 +652,7 @@ internal fun MealDetailBody(
                             FrText(
                                 text = resolve(state.commentReadError.toStringKey()),
                                 style = StructuralType.body,
-                                color = MaterialTheme.colorScheme.error,
+                                color = semantic.danger,
                             )
                         }
                     }
@@ -682,7 +692,7 @@ internal fun MealDetailBody(
                         FrText(
                             text = resolve(state.commentWriteError.toStringKey()),
                             style = StructuralType.body,
-                            color = MaterialTheme.colorScheme.error,
+                            color = semantic.danger,
                         )
                     }
                 }
@@ -742,15 +752,29 @@ internal fun MealDetailBody(
             }
         }
 
-        // Sticky comment composer — a glass pill pinned to the bottom; rises with the IME.
-        StructuralCommentComposer(
-            value = state.commentInput,
-            enabled = !state.isPostingComment,
-            sendEnabled = !state.isPostingComment && state.commentInput.isNotBlank(),
-            onChange = { onIntent(MealDetailIntent.CommentInputChanged(it)) },
-            onSend = { onIntent(MealDetailIntent.PostComment) },
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
+        // Sticky comment composer — a glass pill pinned to the bottom; rises with the IME. The
+        // @-mention suggestion row (when non-empty) floats directly above it, inside the same
+        // bottom-aligned column so both rise together with the IME.
+        Column(modifier = Modifier.align(Alignment.BottomCenter)) {
+            if (state.mentionSuggestions.isNotEmpty()) {
+                MentionSuggestionsRow(
+                    suggestions = state.mentionSuggestions,
+                    onPick = { handle -> onIntent(MealDetailIntent.MentionSuggestionPicked(handle)) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .frSafeHorizontalPadding()
+                        .padding(horizontal = Spacing.md)
+                        .padding(bottom = Spacing.xs),
+                )
+            }
+            StructuralCommentComposer(
+                value = state.commentInput,
+                enabled = !state.isPostingComment,
+                sendEnabled = !state.isPostingComment && state.commentInput.isNotBlank(),
+                onChange = { onIntent(MealDetailIntent.CommentInputChanged(it)) },
+                onSend = { onIntent(MealDetailIntent.PostComment) },
+            )
+        }
     }
 
     viewerPlate?.let { plate ->
@@ -1100,6 +1124,7 @@ private fun StructuralCommentRow(
     onEditSave: () -> Unit,
     onEditCancel: () -> Unit,
 ) {
+    val semantic = LocalFrSemanticColors.current
     val nameLabel = when {
         isDeleted -> resolve(FeedStringKey.DeletedAuthor)
         loading   -> "…"
@@ -1191,9 +1216,9 @@ private fun StructuralCommentRow(
                                 }
                                 if (canDelete) {
                                     DropdownMenuItem(
-                                        text = { FrText(resolve(FeedStringKey.DeleteCommentCta), color = MaterialTheme.colorScheme.error) },
+                                        text = { FrText(resolve(FeedStringKey.DeleteCommentCta), color = semantic.danger) },
                                         onClick = { menuExpanded = false; onDelete() },
-                                        leadingIcon = { FrIcon(FrIcons.Delete, tint = MaterialTheme.colorScheme.error) },
+                                        leadingIcon = { FrIcon(FrIcons.Delete, tint = semantic.danger) },
                                     )
                                 }
                             }
@@ -1212,7 +1237,7 @@ private fun StructuralCommentRow(
                 )
                 if (editError != null) {
                     Spacer(Modifier.height(Spacing.xs))
-                    FrText(text = editError, style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                    FrText(text = editError, style = StructuralType.body, color = semantic.danger)
                 }
                 Spacer(Modifier.height(Spacing.sm))
                 Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -1232,13 +1257,43 @@ private fun StructuralCommentRow(
                     )
                 }
             } else {
-                FrText(text = text, style = StructuralType.body, color = StructuralColors.foreground.copy(alpha = 0.92f))
+                MentionHighlightedText(
+                    text = text,
+                    style = StructuralType.body,
+                    color = StructuralColors.foreground.copy(alpha = 0.92f),
+                )
             }
         }
         if (isOwn) avatar()
         // Everyone else's comments hug the left: the flexible gutter sits on the right.
         if (!isOwn) Spacer(Modifier.weight(COMMENT_GUTTER_WEIGHT))
     }
+}
+
+/**
+ * Renders [text] with every `@token` occurrence (see
+ * [es.schsebastian.foodrats.feature.feed.domain.mention.MENTION_TOKEN_REGEX]) styled in the primary
+ * color + SemiBold, mirroring [es.schsebastian.foodrats.core.designsystem.structural.FrMetric]'s
+ * `buildAnnotatedString` precedent. A private feature-local helper — `Fr*` atoms don't carry an
+ * `AnnotatedString` overload, and `:core:designsystem` stays untouched per the mention-feature brief.
+ */
+@Composable
+private fun MentionHighlightedText(text: String, style: TextStyle, color: Color) {
+    val primary = MaterialTheme.colorScheme.primary
+    val annotated = remember(text, primary) {
+        buildAnnotatedString {
+            var cursor = 0
+            for (match in MENTION_TOKEN_REGEX.findAll(text)) {
+                if (match.range.first > cursor) append(text.substring(cursor, match.range.first))
+                withStyle(SpanStyle(color = primary, fontWeight = FontWeight.SemiBold)) {
+                    append(match.value)
+                }
+                cursor = match.range.last + 1
+            }
+            if (cursor < text.length) append(text.substring(cursor))
+        }
+    }
+    Text(text = annotated, style = style, color = color)
 }
 
 @Composable
@@ -1331,6 +1386,39 @@ private fun MealPhotoViewer(photoUrl: String, cacheKey: String, onDismiss: () ->
 }
 
 // ----------------------------------------------------------------------------------------------
+// @-mention suggestions
+// ----------------------------------------------------------------------------------------------
+
+/**
+ * Up to [es.schsebastian.foodrats.feature.feed.domain.mention.MENTION_SUGGESTIONS_LIMIT] tappable
+ * roster-candidate chips, shown above the composer while the active comment input has an in-progress
+ * `@fragment` ([MealDetailState.mentionSuggestions]). Each label carries both the handle and the
+ * display name ([FeedStringKey.MentionSuggestionLabel]) so a viewer can tell same-first-name members
+ * apart. Tapping a chip fires [MealDetailIntent.MentionSuggestionPicked] with the candidate's handle.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MentionSuggestionsRow(
+    suggestions: List<MentionSuggestionUi>,
+    onPick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    FlowRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
+    ) {
+        suggestions.forEach { s ->
+            FrStructuralChip(
+                label = resolve(FeedStringKey.MentionSuggestionLabel, s.handle, s.displayName),
+                compact = true,
+                onClick = { onPick(s.handle) },
+            )
+        }
+    }
+}
+
+// ----------------------------------------------------------------------------------------------
 // Sticky composer
 // ----------------------------------------------------------------------------------------------
 
@@ -1409,15 +1497,4 @@ private fun ShareOutcomeToast(message: String, onDismiss: () -> Unit) {
 @Composable
 private fun FrMediaFloorBrush() {
     FrMediaFloor(brush = StructuralColors.fieldFloor, blur = StructuralBlur.Soft)
-}
-
-/** Appetizing brush shown behind the plate while it loads (or when the meal has none). */
-private fun dishBrushFor(slot: MealSlotUi?): Brush = when (slot) {
-    MealSlotUi.Breakfast -> StructuralColors.dishSalad
-    MealSlotUi.Brunch -> StructuralColors.dishTacos
-    MealSlotUi.Lunch -> StructuralColors.dishMackerel
-    MealSlotUi.Snack -> StructuralColors.dishTacos
-    MealSlotUi.Merienda -> StructuralColors.dishSalad
-    MealSlotUi.Dinner -> StructuralColors.dishRamen
-    null -> StructuralColors.dishMackerel
 }

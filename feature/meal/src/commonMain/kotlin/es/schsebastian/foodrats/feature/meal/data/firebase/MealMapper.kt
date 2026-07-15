@@ -106,7 +106,7 @@ fun MealDto.Companion.from(meal: Meal): MealDto = MealDto(
     slot = meal.slot?.key() ?: "",
     // Persist the deterministic plate PATH, derived from the ids — never `meal.photoUrl`,
     // which at this layer holds a (resolved, expiring) signed URL.
-    platePath = "crews/${meal.crewId.value}/meals/${meal.id.value}.jpg",
+    platePath = platePathForIndex(meal.crewId.value, meal.id.value, 0),
     // `thumbHash`/`thumbnailPath` are OWNED BY THE SERVER pipeline (the storage rule forbids the
     // client writing them), so this inverse never mints `thumbnailPath`; it only carries the hash
     // through for a faithful round-trip.

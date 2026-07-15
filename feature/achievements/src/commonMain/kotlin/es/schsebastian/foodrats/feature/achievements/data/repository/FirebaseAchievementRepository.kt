@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.feature.achievements.data.firebase.AchievementEr
 import es.schsebastian.foodrats.feature.achievements.data.firebase.AchievementUnlockStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 
@@ -36,6 +37,7 @@ internal class FirebaseAchievementRepository(
             .map<Map<String, Long>, Result<Map<String, Long>, AchievementProgressError>> {
                 Result.success(it)
             }
+            .distinctUntilChanged()
             .catch { emit(Result.failure(errorMapper.map(it))) }
 
     override suspend fun recordUnlocks(

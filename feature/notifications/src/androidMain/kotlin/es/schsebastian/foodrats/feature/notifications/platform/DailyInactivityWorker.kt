@@ -49,7 +49,7 @@ class DailyInactivityWorker(
         }
         if (!shouldFire) return Result.success()
 
-        NotificationChannels.ensure(applicationContext)
+        NotificationChannels.ensureExists(applicationContext)
         val title = inputData.getString(KEY_TITLE).orEmpty()
         val body = inputData.getString(KEY_BODY).orEmpty()
         // A status-bar small icon MUST be a monochrome silhouette; the app launcher icon renders

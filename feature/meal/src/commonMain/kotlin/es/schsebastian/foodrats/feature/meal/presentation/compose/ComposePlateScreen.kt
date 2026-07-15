@@ -31,11 +31,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -45,6 +45,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
@@ -82,11 +83,13 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Sizes
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.meal.Description
 import es.schsebastian.foodrats.core.domain.meal.DishName
 import es.schsebastian.foodrats.core.domain.meal.MealPublishPolicy
 import es.schsebastian.foodrats.core.domain.meal.MealSlot
 import es.schsebastian.foodrats.core.domain.meal.PlateSource
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.i18n.CommonStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.i18n.toFixed
@@ -96,7 +99,7 @@ import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicke
 import es.schsebastian.foodrats.feature.meal.domain.error.MealError
 import es.schsebastian.foodrats.feature.meal.domain.model.Plate
 import es.schsebastian.foodrats.feature.meal.i18n.MealStringKey
-import es.schsebastian.foodrats.feature.meal.presentation.components.decodeImageBitmap
+import es.schsebastian.foodrats.feature.meal.presentation.components.rememberDecodedBitmap
 import es.schsebastian.foodrats.feature.meal.presentation.components.resizeForUpload
 import es.schsebastian.foodrats.feature.meal.presentation.toStringKey
 import kotlinx.coroutines.Dispatchers
@@ -171,7 +174,8 @@ fun ComposePlateScreen(
     // re-entry is a no-op and re-capture re-classifies. Key on the content hash, not the ByteArray
     // identity — recomposition can hand us an equal-but-distinct array. ALWAYS the primary (index 0)
     // photo, independent of which photo is currently selected/previewed in the strip.
-    LaunchedEffect(state.primaryPhoto?.photoBytes?.contentHashCode()) {
+    val primaryHash = remember(state.primaryPhoto?.photoBytes) { state.primaryPhoto?.photoBytes?.contentHashCode() }
+    LaunchedEffect(primaryHash) {
         state.primaryPhoto?.photoBytes?.let { vm.onPhotoCaptured(it) }
     }
 
@@ -180,20 +184,13 @@ fun ComposePlateScreen(
     val bytes = state.selectedPhoto?.photoBytes
     // Decode OFF the main thread: the synchronous full-res decode (bytes are capped at 2048px,
     // ~16 MB of ARGB) used to run in composition and froze the first frame on every entry and
-    // recapture. produceState keys on the photo's content hash (recomposition can hand an
-    // equal-but-distinct array — same convention as the classification LaunchedEffect above)
-    // and shows the theme-adaptive field floor / no hero until the bitmap lands.
-    // Dispatchers.Default is used directly rather than DispatcherProvider because this is a
-    // presentation-layer CPU-bound decode, not a data-layer IO boundary (the house
-    // one-withContext-per-repository-method rule governs repositories), and Default exists on
-    // every KMP target. The decode is also downsampled to display size (PLATE_DECODE_MAX_DIMENSION):
-    // the sharp copy is a 300dp-tall crop and the floor copy is heavily blurred, so 1024px is
-    // more than enough and quarters the retained bitmap.
-    val plateState by produceState<ImageBitmap?>(initialValue = null, bytes?.contentHashCode()) {
-        value = bytes?.let { withContext(Dispatchers.Default) { decodeImageBitmap(it, PLATE_DECODE_MAX_DIMENSION) } }
-    }
-    // Plain local so the null-checks below smart-cast (a delegated property can't).
-    val plate = plateState
+    // recapture. rememberDecodedBitmap keys on the photo's content hash (recomposition can hand
+    // an equal-but-distinct array — same convention as the classification LaunchedEffect above)
+    // and shows the theme-adaptive field floor / no hero until the bitmap lands. The decode is
+    // also downsampled to display size (PLATE_DECODE_MAX_DIMENSION): the sharp copy is a 300dp-tall
+    // crop and the floor copy is heavily blurred, so 1024px is more than enough and quarters the
+    // retained bitmap.
+    val plate = rememberDecodedBitmap(bytes, PLATE_DECODE_MAX_DIMENSION)
     val floorPainter = remember(plate) { plate?.let { BitmapPainter(it) } }
 
     // When a photo is present the floor is always dark-scrimmed (photo dim+scrim), so white onMedia
@@ -235,55 +232,20 @@ fun ComposePlateScreen(
 
             // The captured plate, sharp, as a hero stratum.
             if (plate != null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(300.dp)
-                        .clip(RoundedCornerShape(Radius.lg)),
-                ) {
-                    Image(
-                        bitmap = plate,
-                        // Confirm to screen readers that a photo is attached (the blurred floor copy stays
-                        // decorative so the same image isn't announced twice).
-                        contentDescription = resolve(MealStringKey.ComposePhotoDescription),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                HeroPhoto(
+                    plate = plate,
                     // Keyed to the PRIMARY photo (index 0), not the selected one: classification
                     // always runs against plates[0] (see the LaunchedEffect above), so the "analyzing"
                     // badge only makes sense while that same photo is the one on screen — otherwise a
                     // user browsing photo 3 while photo 1 classifies in the background would see a
                     // misleading "analyzing" badge on a photo that isn't actually being analyzed.
-                    if (state.classifying && state.selectedIndex == 0) {
-                        FrStructuralChip(
-                            label = resolve(MealStringKey.IngredientsClassifying),
-                            tone = FrChipTone.Ember,
-                            leadingIcon = FrIcons.Star,
-                            compact = true,
-                            // Announce "Analyzing ingredients…" when the AI starts looking at the plate.
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .padding(Spacing.sm)
-                                .semantics { liveRegion = LiveRegionMode.Polite },
-                        )
-                    }
+                    classifying = state.classifying && state.selectedIndex == 0,
                     // Non-removable provenance marker: a gallery-sourced plate is permanently
                     // labelled so every crew member can tell it wasn't shot live. No onClick —
                     // the marker cannot be dismissed or toggled. Reflects the SELECTED photo (each
                     // photo carries its own source); the strip's own tiles carry a matching mini marker.
-                    if (state.selectedPhoto?.source == PlateSource.Gallery) {
-                        val galleryA11y = resolve(MealStringKey.ComposeGalleryChipA11y)
-                        FrStructuralChip(
-                            label = resolve(MealStringKey.ComposeGalleryChip),
-                            leadingIcon = FrIcons.GalleryImport,
-                            compact = true,
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(Spacing.sm)
-                                .semantics(mergeDescendants = true) { contentDescription = galleryA11y },
-                        )
-                    }
-                }
+                    gallerySourced = state.selectedPhoto?.source == PlateSource.Gallery,
+                )
                 Spacer(Modifier.height(Spacing.lg))
             }
 
@@ -339,149 +301,55 @@ fun ComposePlateScreen(
             Spacer(Modifier.height(Spacing.lg))
 
             // Slot — an OPTIONAL "meal moment" label. Tapping a chip toggles it (tap again to clear).
-            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
-                FrEyebrow(
-                    text = resolve(MealStringKey.ComposeSlotLabel).uppercase(),
-                    color = onFloorColor.copy(alpha = 0.85f),
-                    modifier = Modifier.semantics { heading() },
-                )
-                FrEyebrow(text = resolve(MealStringKey.ComposeSlotOptional).uppercase(), color = onFloorColor.copy(alpha = 0.5f))
-            }
-            Spacer(Modifier.height(Spacing.sm))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                MealSlot.entries.forEach { slot ->
-                    FrStructuralChip(
-                        label = resolve(slot.slotLabel()),
-                        selected = slot == state.selectedSlot,
-                        onClick = { vm.onIntent(ComposePlateIntent.SelectSlot(slot)) },
-                    )
-                }
-            }
-            // The author has reached the per-crew daily cap in every selected crew: Continue is
-            // gated. Explain why instead of leaving them stuck.
-            AnimatedVisibility(
-                visible = state.dailyLimitReached,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
-            ) {
-                DangerBanner(
-                    text = resolve(MealStringKey.ComposeAllSlotsTaken),
-                    modifier = Modifier.padding(top = Spacing.sm),
-                )
-            }
+            SlotSection(
+                selectedSlot = state.selectedSlot,
+                dailyLimitReached = state.dailyLimitReached,
+                onFloorColor = onFloorColor,
+                onSlotSelected = { vm.onIntent(ComposePlateIntent.SelectSlot(it)) },
+            )
             Spacer(Modifier.height(Spacing.lg))
 
             // Audience: which crews this plate is shared with. Hidden for single-crew authors.
             if (state.showCrewPicker) {
-                FrEyebrow(
-                    text = resolve(MealStringKey.ComposeAudienceLabel).uppercase(),
-                    color = onFloorColor.copy(alpha = 0.85f),
-                    modifier = Modifier.semantics { heading() },
+                AudienceSection(
+                    availableCrews = state.availableCrews,
+                    selectedCrewIds = state.selectedCrewIds,
+                    onFloorColor = onFloorColor,
+                    onAllCrewsSelected = { vm.onIntent(ComposePlateIntent.AllCrewsSelected) },
+                    onCrewToggled = { vm.onIntent(ComposePlateIntent.CrewToggled(it)) },
                 )
-                Spacer(Modifier.height(Spacing.sm))
-                val allSelected = state.availableCrews.isNotEmpty() &&
-                    state.availableCrews.all { it.id in state.selectedCrewIds }
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-                    FrStructuralChip(
-                        label = resolve(MealStringKey.ComposeAudienceAll),
-                        selected = allSelected,
-                        onClick = { vm.onIntent(ComposePlateIntent.AllCrewsSelected) },
-                    )
-                    state.availableCrews.forEach { crew ->
-                        FrStructuralChip(
-                            label = crew.name,
-                            selected = !allSelected && crew.id in state.selectedCrewIds,
-                            onClick = { vm.onIntent(ComposePlateIntent.CrewToggled(crew.id)) },
-                        )
-                    }
-                }
                 Spacer(Modifier.height(Spacing.lg))
             }
 
             // Dish.
-            FrUnderlineFieldLabeled(
-                value = state.dish,
-                onValueChange = { vm.onIntent(ComposePlateIntent.DishChanged(it)) },
-                label = resolve(MealStringKey.ComposeDishLabel),
+            DishSection(
+                dish = state.dish,
+                dishTooLong = state.dishTooLong,
+                dishWarning = state.dishWarning,
                 onMedia = floorPainter != null,
+                onFloorColor = onFloorColor,
+                onDishChanged = { vm.onIntent(ComposePlateIntent.DishChanged(it)) },
             )
-            CharacterCounter(
-                current = state.dish.length,
-                max = DishName.MAX_LEN,
-                overLimit = state.dishTooLong,
-                color = onFloorColor,
-                keyText = resolve(MealStringKey.ComposeDishCounter, state.dish.length, DishName.MAX_LEN),
-            )
-            AnimatedVisibility(
-                visible = state.dishWarning,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
-            ) {
-                DangerBanner(
-                    text = resolve(MealStringKey.DishModerationWarning),
-                    modifier = Modifier.padding(top = Spacing.sm),
-                )
-            }
             Spacer(Modifier.height(Spacing.lg))
 
             // Description + counter.
-            FrUnderlineFieldLabeled(
-                value = state.descriptionInput,
-                onValueChange = { vm.onIntent(ComposePlateIntent.DescriptionChanged(it)) },
-                label = resolve(MealStringKey.ComposeDescriptionLabel),
-                singleLine = false,
+            DescriptionSection(
+                description = state.descriptionInput,
+                descriptionTooLong = state.descriptionTooLong,
+                descriptionWarning = state.descriptionWarning,
                 onMedia = floorPainter != null,
+                onFloorColor = onFloorColor,
+                onDescriptionChanged = { vm.onIntent(ComposePlateIntent.DescriptionChanged(it)) },
             )
-            CharacterCounter(
-                current = state.descriptionInput.length,
-                max = Description.MAX_LEN,
-                overLimit = state.descriptionTooLong,
-                color = onFloorColor,
-                keyText = resolve(
-                    MealStringKey.ComposeDescriptionCounter,
-                    state.descriptionInput.length,
-                    Description.MAX_LEN,
-                ),
-            )
-            AnimatedVisibility(
-                visible = state.descriptionWarning,
-                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
-                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
-            ) {
-                DangerBanner(
-                    text = resolve(MealStringKey.DescriptionModerationWarning),
-                    modifier = Modifier.padding(top = Spacing.sm),
-                )
-            }
             Spacer(Modifier.height(Spacing.lg))
 
             // Location pin.
-            val pinned = coordinatesLabel != null
-            FrGlassTile(
-                depth = FrTileDepth.Deep,
-                onClick = if (state.locating || pinned) null else ({ vm.onIntent(ComposePlateIntent.RequestLocation) }),
-            ) {
-                TileRow(
-                    icon = FrIcons.Place,
-                    title = when {
-                        state.locating -> resolve(MealStringKey.ComposeLocating)
-                        pinned -> coordinatesLabel!!
-                        else -> resolve(MealStringKey.ComposeAddLocation)
-                    },
-                    trailing = {
-                        if (pinned) {
-                            FrGlassCircleButton(
-                                icon = FrIcons.Close,
-                                onClick = { vm.onIntent(ComposePlateIntent.ClearLocation) },
-                                contentDescription = resolve(MealStringKey.ComposeClearLocation),
-                                size = 36.dp,
-                            )
-                        } else {
-                            Chevron()
-                        }
-                    },
-                )
-            }
+            LocationSection(
+                locating = state.locating,
+                coordinatesLabel = coordinatesLabel,
+                onRequestLocation = { vm.onIntent(ComposePlateIntent.RequestLocation) },
+                onClearLocation = { vm.onIntent(ComposePlateIntent.ClearLocation) },
+            )
 
             AnimatedVisibility(
                 visible = state.error != null,
@@ -563,16 +431,204 @@ private fun MealSlot.slotLabel(): MealStringKey = when (this) {
 }
 
 /**
+ * The "meal moment" chip row (optional — tapping the selected chip again clears it) plus the
+ * daily-cap-reached banner. Extracted so a slot tap only recomposes this section, not the whole
+ * screen body.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun SlotSection(
+    selectedSlot: MealSlot?,
+    dailyLimitReached: Boolean,
+    onFloorColor: Color,
+    onSlotSelected: (MealSlot) -> Unit,
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm), verticalAlignment = Alignment.CenterVertically) {
+        FrEyebrow(
+            text = resolve(MealStringKey.ComposeSlotLabel).uppercase(),
+            color = onFloorColor.copy(alpha = 0.85f),
+            modifier = Modifier.semantics { heading() },
+        )
+        FrEyebrow(text = resolve(MealStringKey.ComposeSlotOptional).uppercase(), color = onFloorColor.copy(alpha = 0.5f))
+    }
+    Spacer(Modifier.height(Spacing.sm))
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        MealSlot.entries.forEach { slot ->
+            FrStructuralChip(
+                label = resolve(slot.slotLabel()),
+                selected = slot == selectedSlot,
+                onClick = { onSlotSelected(slot) },
+            )
+        }
+    }
+    // The author has reached the per-crew daily cap in every selected crew: Continue is
+    // gated. Explain why instead of leaving them stuck.
+    AnimatedVisibility(
+        visible = dailyLimitReached,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+        exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+    ) {
+        DangerBanner(
+            text = resolve(MealStringKey.ComposeAllSlotsTaken),
+            modifier = Modifier.padding(top = Spacing.sm),
+        )
+    }
+}
+
+/**
+ * Which crews this plate is shared with. Only rendered by the caller when the author belongs to
+ * more than one crew ([ComposePlateState.showCrewPicker]).
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AudienceSection(
+    availableCrews: List<CrewSummary>,
+    selectedCrewIds: Set<CrewId>,
+    onFloorColor: Color,
+    onAllCrewsSelected: () -> Unit,
+    onCrewToggled: (CrewId) -> Unit,
+) {
+    FrEyebrow(
+        text = resolve(MealStringKey.ComposeAudienceLabel).uppercase(),
+        color = onFloorColor.copy(alpha = 0.85f),
+        modifier = Modifier.semantics { heading() },
+    )
+    Spacer(Modifier.height(Spacing.sm))
+    val allSelected = availableCrews.isNotEmpty() && availableCrews.all { it.id in selectedCrewIds }
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+        FrStructuralChip(
+            label = resolve(MealStringKey.ComposeAudienceAll),
+            selected = allSelected,
+            onClick = onAllCrewsSelected,
+        )
+        availableCrews.forEach { crew ->
+            FrStructuralChip(
+                label = crew.name,
+                selected = !allSelected && crew.id in selectedCrewIds,
+                onClick = { onCrewToggled(crew.id) },
+            )
+        }
+    }
+}
+
+/** The dish-name field, its character counter, and the moderation-warning banner. */
+@Composable
+private fun DishSection(
+    dish: String,
+    dishTooLong: Boolean,
+    dishWarning: Boolean,
+    onMedia: Boolean,
+    onFloorColor: Color,
+    onDishChanged: (String) -> Unit,
+) {
+    FrUnderlineFieldLabeled(
+        value = dish,
+        onValueChange = onDishChanged,
+        label = resolve(MealStringKey.ComposeDishLabel),
+        onMedia = onMedia,
+    )
+    CharacterCounter(
+        current = dish.length,
+        max = DishName.MAX_LEN,
+        overLimit = dishTooLong,
+        color = onFloorColor,
+        keyText = resolve(MealStringKey.ComposeDishCounter, dish.length, DishName.MAX_LEN),
+    )
+    AnimatedVisibility(
+        visible = dishWarning,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+        exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+    ) {
+        DangerBanner(
+            text = resolve(MealStringKey.DishModerationWarning),
+            modifier = Modifier.padding(top = Spacing.sm),
+        )
+    }
+}
+
+/** The description field, its character counter, and the moderation-warning banner. */
+@Composable
+private fun DescriptionSection(
+    description: String,
+    descriptionTooLong: Boolean,
+    descriptionWarning: Boolean,
+    onMedia: Boolean,
+    onFloorColor: Color,
+    onDescriptionChanged: (String) -> Unit,
+) {
+    FrUnderlineFieldLabeled(
+        value = description,
+        onValueChange = onDescriptionChanged,
+        label = resolve(MealStringKey.ComposeDescriptionLabel),
+        singleLine = false,
+        onMedia = onMedia,
+    )
+    CharacterCounter(
+        current = description.length,
+        max = Description.MAX_LEN,
+        overLimit = descriptionTooLong,
+        color = onFloorColor,
+        keyText = resolve(MealStringKey.ComposeDescriptionCounter, description.length, Description.MAX_LEN),
+    )
+    AnimatedVisibility(
+        visible = descriptionWarning,
+        enter = fadeIn() + slideInVertically(initialOffsetY = { it / 2 }),
+        exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 2 }),
+    ) {
+        DangerBanner(
+            text = resolve(MealStringKey.DescriptionModerationWarning),
+            modifier = Modifier.padding(top = Spacing.sm),
+        )
+    }
+}
+
+/** The optional location-pin tile: request/clear a coordinate, or show it once pinned. */
+@Composable
+private fun LocationSection(
+    locating: Boolean,
+    coordinatesLabel: String?,
+    onRequestLocation: () -> Unit,
+    onClearLocation: () -> Unit,
+) {
+    val pinned = coordinatesLabel != null
+    FrGlassTile(
+        depth = FrTileDepth.Deep,
+        onClick = if (locating || pinned) null else onRequestLocation,
+    ) {
+        TileRow(
+            icon = FrIcons.Place,
+            title = when {
+                locating -> resolve(MealStringKey.ComposeLocating)
+                pinned -> coordinatesLabel!!
+                else -> resolve(MealStringKey.ComposeAddLocation)
+            },
+            trailing = {
+                if (pinned) {
+                    FrGlassCircleButton(
+                        icon = FrIcons.Close,
+                        onClick = onClearLocation,
+                        contentDescription = resolve(MealStringKey.ComposeClearLocation),
+                        size = 36.dp,
+                    )
+                } else {
+                    Chevron()
+                }
+            },
+        )
+    }
+}
+
+/**
  * A single tappable glass-tile row: an olive icon badge, a title that grows to fill, and a trailing
  * affordance (chevron / clear button). The structural replacement for the old matte list rows.
  */
 @Composable
 private fun TileRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     title: String,
     trailing: @Composable () -> Unit,
 ) {
-    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -605,6 +661,60 @@ private fun Chevron() {
         tint = StructuralColors.foreground.copy(alpha = 0.4f),
         modifier = Modifier.size(Sizes.iconMd),
     )
+}
+
+/**
+ * The captured plate, sharp, as a hero stratum: the selected photo plus its floating badges — an
+ * "analyzing" chip while classification is in flight against the primary photo, and a
+ * non-removable gallery-provenance marker when the selected photo wasn't shot live.
+ */
+@Composable
+private fun HeroPhoto(
+    plate: ImageBitmap,
+    classifying: Boolean,
+    gallerySourced: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(300.dp)
+            .clip(RoundedCornerShape(Radius.lg)),
+    ) {
+        Image(
+            bitmap = plate,
+            // Confirm to screen readers that a photo is attached (the blurred floor copy stays
+            // decorative so the same image isn't announced twice).
+            contentDescription = resolve(MealStringKey.ComposePhotoDescription),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        if (classifying) {
+            FrStructuralChip(
+                label = resolve(MealStringKey.IngredientsClassifying),
+                tone = FrChipTone.Ember,
+                leadingIcon = FrIcons.Star,
+                compact = true,
+                // Announce "Analyzing ingredients…" when the AI starts looking at the plate.
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(Spacing.sm)
+                    .semantics { liveRegion = LiveRegionMode.Polite },
+            )
+        }
+        if (gallerySourced) {
+            val galleryA11y = resolve(MealStringKey.ComposeGalleryChipA11y)
+            FrStructuralChip(
+                label = resolve(MealStringKey.ComposeGalleryChip),
+                leadingIcon = FrIcons.GalleryImport,
+                compact = true,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(Spacing.sm)
+                    .semantics(mergeDescendants = true) { contentDescription = galleryA11y },
+            )
+        }
+    }
 }
 
 /**
@@ -649,7 +759,7 @@ private fun PhotoStrip(
         }
         Spacer(Modifier.height(Spacing.sm))
         LazyRow(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
-            itemsIndexed(photos) { index, plate ->
+            itemsIndexed(photos, key = { index, plate -> photoStripKey(photos, index, plate) }) { index, plate ->
                 PhotoStripTile(
                     plate = plate,
                     position = index + 1,
@@ -679,6 +789,19 @@ private fun PhotoStrip(
 }
 
 /**
+ * Stable [itemsIndexed] key for a strip photo, based on content rather than position — so a
+ * MovePhoto/RemovePhotoAt keeps each tile's already-decoded thumbnail instead of Compose
+ * recycling slots by index and re-decoding. [Plate] has no identity of its own (content-based
+ * equals/hashCode), so two byte-identical photos in the same draft would collide on content hash
+ * alone; disambiguate by counting how many equal-content photos precede this one.
+ */
+private fun photoStripKey(photos: List<Plate>, index: Int, plate: Plate): String {
+    val hash = plate.photoBytes.contentHashCode()
+    val occurrence = (0 until index).count { photos[it].photoBytes.contentHashCode() == hash }
+    return "$hash-$occurrence"
+}
+
+/**
  * One thumbnail in the [PhotoStrip]. The whole tile is the tap target (selects it); a selected tile
  * gets a primary-colored border. A gallery-sourced photo carries its own mini provenance marker
  * (mirrors the hero's non-removable "Gallery" chip, at thumbnail scale) — reuses the same a11y
@@ -692,12 +815,9 @@ private fun PhotoStripTile(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    val bytes = plate.photoBytes
-    val thumbnail by produceState<ImageBitmap?>(initialValue = null, bytes.contentHashCode()) {
-        value = withContext(Dispatchers.Default) { decodeImageBitmap(bytes, THUMBNAIL_DECODE_MAX_DIMENSION) }
-    }
+    val thumbnail = rememberDecodedBitmap(plate.photoBytes, THUMBNAIL_DECODE_MAX_DIMENSION)
     val positionA11y = resolve(MealStringKey.ComposePhotoTileA11y, position, total)
-    val scheme = androidx.compose.material3.MaterialTheme.colorScheme
+    val scheme = MaterialTheme.colorScheme
     val shape = RoundedCornerShape(Radius.md)
     val isSelected = selected
     Box(
@@ -897,7 +1017,7 @@ private fun CharacterCounter(
     current: Int,
     max: Int,
     overLimit: Boolean,
-    color: androidx.compose.ui.graphics.Color,
+    color: Color,
     keyText: String,
 ) {
     val a11y = resolve(MealStringKey.ComposeCounterA11y, current, max)

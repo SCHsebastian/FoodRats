@@ -109,6 +109,7 @@ class MigrationV1ToV2Test {
             focalY = 0.25,
             setAtMillis = 1_700_000_000_000L,
             styleKey = "emoji",
+            mentions = null,
         )
         val rows = db.outboxQueries.selectAll().executeAsList()
         assertEquals(1, rows.size, "outbox: expected 1 row after insert")
@@ -294,6 +295,69 @@ class MigrationV1ToV2Test {
         val db = FoodRatsDatabase(driver)
         val row = db.mealQueries.selectFeedByCrewDay("c1", "2026-06-19").executeAsList().single()
         assertEquals(null, row.platesJson, "a row written before platesJson existed must read back NULL")
+
+        driver.close()
+    }
+
+    /**
+     * v6→v7 drift guard (6.sqm — `mentions`): a migrated DB must accept and round-trip the new
+     * column through the GENERATED queries, exactly like the plateSource/platesJson guards above —
+     * `upsertByIdem` names every column, `selectAll` is a `SELECT *` mapped by index, so this fails
+     * loudly if `6.sqm` drifts from `Outbox.sq` or the column order diverges between a fresh
+     * `Schema.create()` table and the ALTER-appended migrated one.
+     */
+    @Test
+    fun migrated_db_round_trips_mentions_through_generated_queries() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createV1Schema(driver)
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
+        val db = FoodRatsDatabase(driver)
+        val mentionsJson = """["acc-1","acc-2"]"""
+
+        db.outboxQueries.upsertByIdem(
+            id = "entry-mention", type = "post_comment", idempotencyKey = "comment:c1:m1:cm1",
+            statusKind = "pending", errorKey = null, retryable = 0L, attemptCount = 0L,
+            createdAtEpochMs = 1_000L, lastAttemptAtEpochMs = null,
+            crewId = "c1", mealId = "m1", accountId = "a1", commentId = "cm1", text = "hi @bob",
+            score = null, reactionKindKey = null, desiredPresent = null, enabled = null,
+            targetAccountId = null, newName = null, focalY = null, setAtMillis = null, styleKey = null,
+            mentions = mentionsJson,
+        )
+
+        val row = db.outboxQueries.selectAll().executeAsList().single()
+        assertEquals(mentionsJson, row.mentions, "mentions must round-trip on a migrated DB")
+        // The write landed in the right column (index-mapped SELECT * would smear neighbours on drift).
+        assertEquals("cm1", row.commentId)
+        assertEquals("hi @bob", row.text)
+
+        driver.close()
+    }
+
+    /**
+     * Companion to the `plates_json`/`plate_source` "pre-existing row reads NULL" locks: a v1-queued
+     * outbox row migrated all the way to the CURRENT version must read its appended `mentions`
+     * column as NULL (never a parse crash, never a stray default) — [OutboxLocalStore.toDomain]
+     * treats a NULL `mentions` column as `emptyList()`.
+     */
+    @Test
+    fun migrated_pre_existing_outbox_row_reads_mentions_null() {
+        val driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        createV1Schema(driver)
+        FoodRatsDatabase.Schema.migrate(driver, oldVersion = 1, newVersion = FoodRatsDatabase.Schema.version)
+        val db = FoodRatsDatabase(driver)
+
+        db.outboxQueries.upsertByIdem(
+            id = "entry-pre", type = "rate_meal", idempotencyKey = "rate:c1:m1:a1",
+            statusKind = "pending", errorKey = null, retryable = 0L, attemptCount = 0L,
+            createdAtEpochMs = 1_000L, lastAttemptAtEpochMs = null,
+            crewId = "c1", mealId = "m1", accountId = "a1", commentId = null, text = null,
+            score = 4L, reactionKindKey = null, desiredPresent = null, enabled = null,
+            targetAccountId = null, newName = null, focalY = null, setAtMillis = null, styleKey = null,
+            mentions = null,
+        )
+
+        val row = db.outboxQueries.selectAll().executeAsList().single()
+        assertEquals(null, row.mentions, "a row written before mentions existed must read back NULL")
 
         driver.close()
     }

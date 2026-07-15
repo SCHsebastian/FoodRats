@@ -114,7 +114,7 @@ class MealOutboxCommandHandler(
         }
 
     private suspend fun post(cmd: PendingCommand.PostComment): OutboxExecuteResult =
-        when (val r = comments.post(cmd.crewId, cmd.mealId, cmd.commentId, cmd.text)) {
+        when (val r = comments.post(cmd.crewId, cmd.mealId, cmd.commentId, cmd.text, cmd.mentions)) {
             is Result.Ok -> OutboxExecuteResult.Success
             is Result.Err -> when (r.error) {
                 // Transient — back off and retry.
@@ -130,7 +130,7 @@ class MealOutboxCommandHandler(
         }
 
     private suspend fun edit(cmd: PendingCommand.EditComment): OutboxExecuteResult =
-        when (val r = comments.edit(cmd.crewId, cmd.mealId, cmd.commentId, cmd.text)) {
+        when (val r = comments.edit(cmd.crewId, cmd.mealId, cmd.commentId, cmd.text, cmd.mentions)) {
             is Result.Ok -> OutboxExecuteResult.Success
             is Result.Err -> when (r.error) {
                 // Transient — back off and retry.

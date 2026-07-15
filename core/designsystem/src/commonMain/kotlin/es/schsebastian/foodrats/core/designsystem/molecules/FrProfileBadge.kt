@@ -65,9 +65,9 @@ fun FrProfileBadge(
                 color = MaterialTheme.colorScheme.secondaryContainer,
                 shape = RoundedCornerShape(50),
             )
-            .padding(horizontal = Spacing.sm, vertical = 4.dp)
+            .padding(horizontal = Spacing.sm, vertical = Spacing.xs)
             .semantics(mergeDescendants = true) { contentDescription = label },
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(

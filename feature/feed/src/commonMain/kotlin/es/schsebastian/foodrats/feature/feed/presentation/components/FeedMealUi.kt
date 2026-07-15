@@ -1,6 +1,8 @@
 package es.schsebastian.foodrats.feature.feed.presentation.components
 
 import androidx.compose.runtime.Immutable
+import androidx.compose.ui.graphics.Brush
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.domain.meal.DailyEmote
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealPlate
@@ -40,6 +42,17 @@ private fun MealSlot.toUi(): MealSlotUi = when (this) {
     MealSlot.Snack -> MealSlotUi.Snack
     MealSlot.Merienda -> MealSlotUi.Merienda
     MealSlot.Dinner -> MealSlotUi.Dinner
+}
+
+/** Appetizing brush shown behind the plate while it loads (or when the meal has none). */
+fun dishBrushFor(slot: MealSlotUi?): Brush = when (slot) {
+    MealSlotUi.Breakfast -> StructuralColors.dishSalad
+    MealSlotUi.Brunch -> StructuralColors.dishTacos
+    MealSlotUi.Lunch -> StructuralColors.dishMackerel
+    MealSlotUi.Snack -> StructuralColors.dishTacos
+    MealSlotUi.Merienda -> StructuralColors.dishSalad
+    MealSlotUi.Dinner -> StructuralColors.dishRamen
+    null -> StructuralColors.dishMackerel
 }
 
 /** Presentation mirror of [PlateSource] so the row never imports a domain type. */

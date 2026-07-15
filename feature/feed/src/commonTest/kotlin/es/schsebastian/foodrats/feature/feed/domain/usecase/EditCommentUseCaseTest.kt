@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
@@ -29,6 +30,7 @@ private class EditRecordingCommentPort : MealCommentPort {
         mealId: MealId,
         commentId: MealCommentId,
         text: CommentText,
+        mentions: List<AccountId>,
     ): Result<Unit, CommentError.Write> = Result.success(Unit)
 
     override suspend fun edit(
@@ -36,6 +38,7 @@ private class EditRecordingCommentPort : MealCommentPort {
         mealId: MealId,
         commentId: MealCommentId,
         text: CommentText,
+        mentions: List<AccountId>,
     ): Result<Unit, CommentError.Edit> {
         editCalls += EditCall(crewId.value, mealId.value, commentId.value, text.value)
         return nextEdit

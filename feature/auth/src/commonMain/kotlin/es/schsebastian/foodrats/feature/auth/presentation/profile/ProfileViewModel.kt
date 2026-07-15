@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.feature.auth.presentation.profile
 
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import es.schsebastian.foodrats.core.domain.account.Account
 import es.schsebastian.foodrats.core.domain.account.AccountReadPort
@@ -51,6 +52,7 @@ import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.datetime.LocalTime
 
+@Immutable
 data class ProfileState(
     val account: Account? = null,
     val editingDisplayName: String = "",

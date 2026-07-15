@@ -7,6 +7,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -61,17 +62,20 @@ internal class FirebaseCommentRepository(
         mealId: MealId,
         commentId: MealCommentId,
         text: CommentText,
+        mentions: List<AccountId>,
     ): Result<Unit, CommentError.Write> = withContext(dispatchers.io) {
-        val uid = authorIdentity.current()?.uid
+        val author = authorIdentity.current()
             ?: return@withContext Result.failure(CommentError.Write.Unauthorized)
         runCatching {
             ds.create(
                 crewId, mealId,
                 CommentDto(
                     id = commentId.value,
-                    authorId = uid,
+                    authorId = author.uid,
                     text = text.value,
                     createdAtEpochMs = clock.now().toEpochMilliseconds(),
+                    mentions = mentions.map { it.value },
+                    authorName = author.displayName,
                 ),
             )
             Result.success(Unit) as Result<Unit, CommentError.Write>
@@ -90,6 +94,7 @@ internal class FirebaseCommentRepository(
         mealId: MealId,
         commentId: MealCommentId,
         text: CommentText,
+        mentions: List<AccountId>,
     ): Result<Unit, CommentError.Edit> = withContext(dispatchers.io) {
         authorIdentity.current()?.uid
             ?: return@withContext Result.failure(CommentError.Edit.NotAuthor)
@@ -98,6 +103,7 @@ internal class FirebaseCommentRepository(
                 crewId, mealId, commentId.value,
                 text = text.value,
                 editedAtEpochMs = clock.now().toEpochMilliseconds(),
+                mentions = mentions.map { it.value },
             )
             Result.success(Unit) as Result<Unit, CommentError.Edit>
         }.getOrElse { t ->

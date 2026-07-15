@@ -91,7 +91,9 @@ import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.presentation.photopicker.PhotoPickResult
 import es.schsebastian.foodrats.core.presentation.photopicker.rememberPhotoPicker
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
+import es.schsebastian.foodrats.feature.crew.presentation.components.CrewDangerBanner
 import es.schsebastian.foodrats.feature.crew.presentation.components.FrCrewMemberRow
+import es.schsebastian.foodrats.feature.crew.presentation.components.memberDisplayName
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.DeleteCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.settings.components.LeaveCrewConfirmDialog
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
@@ -130,6 +132,7 @@ fun CrewSettingsScreen(
     var memberPendingRemoval by remember { mutableStateOf<AccountId?>(null) }
     var showQr by remember { mutableStateOf(false) }
     val deletedMemberFallback = resolve(CrewStringKey.MemberDeleted)
+    val unnamedMemberFallback = resolve(CrewStringKey.MemberUnnamed)
     // Name to show in the success toast; set by the MemberRemoved effect, cleared once shown.
     var memberRemovedName by remember { mutableStateOf<String?>(null) }
     var memberApprovedName by remember { mutableStateOf<String?>(null) }
@@ -169,8 +172,23 @@ fun CrewSettingsScreen(
         // Z0 — the crew banner blurred as the floor (dark mode only); otherwise the light atmospheric floor.
         val bannerUrl = state.bannerImageUrl
         if (bannerUrl != null && !isLight) {
+            val floorCtx = LocalPlatformContext.current
+            // IMAGE-2: key Coil's caches on the immutable versioned path (when present) so the rotating
+            // signed URL doesn't force a re-download/redecode of the full-bleed floor photo.
+            val floorCacheKey = if (crew?.bannerToken != null) crew.bannerPath.orEmpty() else ""
+            val floorRequest = remember(bannerUrl, floorCacheKey, floorCtx) {
+                ImageRequest.Builder(floorCtx)
+                    .data(bannerUrl)
+                    .apply {
+                        if (floorCacheKey.isNotBlank()) {
+                            diskCacheKey(floorCacheKey)
+                            memoryCacheKey(floorCacheKey)
+                        }
+                    }
+                    .build()
+            }
             FrMediaFloor(
-                painter = coil3.compose.rememberAsyncImagePainter(bannerUrl),
+                painter = coil3.compose.rememberAsyncImagePainter(floorRequest),
                 blur = StructuralBlur.Heavy,
                 dim = 0.5f,
                 scrim = FrScrimStyle.Even,
@@ -369,7 +387,7 @@ fun CrewSettingsScreen(
                                         subtitle = styleLabel,
                                         trailing = {
                                             if (state.isSavingScoreStyle) {
-                                                FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                                                InlineSpinner()
                                             } else {
                                                 Chevron()
                                             }
@@ -425,7 +443,7 @@ fun CrewSettingsScreen(
                                             FrCrewMemberRow(
                                                 account = state.identities[req.accountId],
                                                 trailing = if (processing) {
-                                                    { FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp) }
+                                                    { InlineSpinner() }
                                                 } else {
                                                     null
                                                 },
@@ -489,7 +507,7 @@ fun CrewSettingsScreen(
                                         trailing = if (canManage) {
                                             {
                                                 if (isRemoving) {
-                                                    FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                                                    InlineSpinner()
                                                 } else {
                                                     Row(
                                                         verticalAlignment = Alignment.CenterVertically,
@@ -561,7 +579,7 @@ fun CrewSettingsScreen(
                     // (l) Trailing error banner.
                     state.error?.let { err ->
                         item {
-                            DangerBanner(text = resolve(err.toStringKey()))
+                            CrewDangerBanner(text = resolve(err.toStringKey()))
                         }
                     }
                 }
@@ -678,6 +696,7 @@ fun CrewSettingsScreen(
                 identities = state.identities,
                 selectedSuccessor = state.selectedSuccessor,
                 deletedFallback = deletedMemberFallback,
+                unnamedFallback = unnamedMemberFallback,
                 onSelect = { vm.onIntent(CrewSettingsIntent.SelectSuccessor(it)) },
                 onConfirm = { vm.onIntent(CrewSettingsIntent.ConfirmLeave) },
                 onDismiss = { vm.onIntent(CrewSettingsIntent.CancelLeave) },
@@ -694,9 +713,7 @@ fun CrewSettingsScreen(
     // Transfer-ownership confirm.
     state.transferTarget?.let { targetId ->
         val identity = state.identities[targetId]
-        val name = identity?.displayName?.takeIf { it.isNotBlank() }
-            ?: identity?.handle?.takeIf { it.isNotBlank() }
-            ?: deletedMemberFallback
+        val name = memberDisplayName(identity, deletedMemberFallback, unnamedMemberFallback)
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsTransferConfirmTitle, name),
             message = resolve(CrewStringKey.SettingsTransferConfirmBody, name),
@@ -761,9 +778,7 @@ fun CrewSettingsScreen(
     // Remove-member confirm.
     memberPendingRemoval?.let { pendingId ->
         val identity = state.identities[pendingId]
-        val memberName = identity?.displayName?.takeIf { it.isNotBlank() }
-            ?: identity?.handle?.takeIf { it.isNotBlank() }
-            ?: resolve(CrewStringKey.MemberDeleted)
+        val memberName = memberDisplayName(identity, deletedMemberFallback, unnamedMemberFallback)
         FrConfirmDialog(
             title = resolve(CrewStringKey.SettingsRemoveMemberConfirmTitle, memberName),
             message = resolve(CrewStringKey.SettingsRemoveMemberConfirmBody, memberName),
@@ -881,6 +896,11 @@ private fun Chevron() {
 }
 
 @Composable
+private fun InlineSpinner() {
+    FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+}
+
+@Composable
 private fun BannerSection(
     hasBanner: Boolean,
     imageUrl: String?,
@@ -944,13 +964,13 @@ private fun BannerSection(
             }
             // In-flight upload/delete indicator — same shape as the score-style row's spinner.
             if (saving) {
-                FrProgressIndicator(modifier = Modifier.size(Sizes.iconMd), strokeWidth = 2.dp)
+                InlineSpinner()
             }
         }
         // Banner-specific failure rendered IN the section (the shared bottom banner is off-screen
         // from here and is cleared by every crew listener re-emission).
         bannerError?.let { err ->
-            DangerBanner(text = resolve(err.toStringKey()))
+            CrewDangerBanner(text = resolve(err.toStringKey()))
         }
     }
 }
@@ -1002,24 +1022,6 @@ private fun BannerRepositionPreview(
                 )
             },
     )
-}
-
-/** Crimson banner for the trailing publish/save error. */
-@Composable
-private fun DangerBanner(text: String) {
-    val semantic = LocalFrSemanticColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.md))
-            .background(semantic.danger)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        FrIcon(image = FrIcons.Warning, contentDescription = null, tint = semantic.onDanger)
-        FrText(text = text, color = semantic.onDanger, style = StructuralType.body)
-    }
 }
 
 /** A brief, auto-dismissing bottom glass toast (replaces the matte snackbar). */
@@ -1105,6 +1107,7 @@ private fun LeaveOwnerDialog(
     identities: Map<AccountId, Account?>,
     selectedSuccessor: AccountId?,
     deletedFallback: String,
+    unnamedFallback: String,
     onSelect: (AccountId?) -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
@@ -1128,9 +1131,7 @@ private fun LeaveOwnerDialog(
             )
             members.forEach { m ->
                 val identity = identities[m.accountId]
-                val name = identity?.displayName?.takeIf { it.isNotBlank() }
-                    ?: identity?.handle?.takeIf { it.isNotBlank() }
-                    ?: deletedFallback
+                val name = memberDisplayName(identity, deletedFallback, unnamedFallback)
                 SuccessorOption(
                     label = name,
                     selected = selectedSuccessor == m.accountId,

@@ -21,6 +21,9 @@ import es.schsebastian.foodrats.core.domain.result.getOrNull
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 /**
  * Durable, multi-entry local store for the write outbox (offline-first P3b §2.5 / P3b-T6).
@@ -98,6 +101,7 @@ class OutboxLocalStore(
                     focalY = payload.focalY,
                     setAtMillis = payload.setAtMillis,
                     styleKey = payload.styleKey,
+                    mentions = payload.mentions,
                     idempotencyKey = idem,
                 )
             } else {
@@ -126,6 +130,7 @@ class OutboxLocalStore(
                     focalY = payload.focalY,
                     setAtMillis = payload.setAtMillis,
                     styleKey = payload.styleKey,
+                    mentions = payload.mentions,
                 )
             }
         }
@@ -233,6 +238,7 @@ class OutboxLocalStore(
         val focalY: Double? = null,
         val setAtMillis: Long? = null,
         val styleKey: String? = null,
+        val mentions: String? = null,
     )
 
     private class StatusColumns(val kind: String, val errorKey: String?, val retryable: Long)
@@ -262,6 +268,7 @@ class OutboxLocalStore(
             commentId = commentId.value,
             text = text.value,
             accountId = authorId.value,
+            mentions = mentions.toMentionsJson(),
         )
         is PendingCommand.EditComment -> CommandPayload(
             type = CommandType.EDIT_COMMENT,
@@ -269,6 +276,7 @@ class OutboxLocalStore(
             mealId = mealId.value,
             commentId = commentId.value,
             text = text.value,
+            mentions = mentions.toMentionsJson(),
         )
         is PendingCommand.DeleteComment -> CommandPayload(
             type = CommandType.DELETE_COMMENT,
@@ -376,38 +384,51 @@ class OutboxLocalStore(
         else        -> null
     }
 
+    private fun OutboxRow.crewAndRequester(): Pair<CrewId, AccountId>? {
+        val crew = crewId.toCrewId() ?: return null
+        val by = accountId.toAccountId() ?: return null
+        return crew to by
+    }
+
+    private fun OutboxRow.crewAndMeal(): Pair<CrewId, MealId>? {
+        val crew = crewId.toCrewId() ?: return null
+        val meal = mealId.toMealId() ?: return null
+        return crew to meal
+    }
+
     private fun OutboxRow.toCommand(): PendingCommand? = when (type) {
         CommandType.RATE_MEAL -> {
-            val crew = crewId.toCrewId() ?: return null
-            val meal = mealId.toMealId() ?: return null
+            val (crew, meal) = crewAndMeal() ?: return null
             val rater = accountId.toAccountId() ?: return null
             val s = score?.toInt()?.let { Score.of(it).getOrNull() } ?: return null
             PendingCommand.RateMeal(crewId = crew, mealId = meal, raterId = rater, score = s)
         }
         CommandType.POST_COMMENT -> {
-            val crew = crewId.toCrewId() ?: return null
-            val meal = mealId.toMealId() ?: return null
+            val (crew, meal) = crewAndMeal() ?: return null
             val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
             val body = text?.let { CommentText.of(it).getOrNull() } ?: return null
             val author = accountId.toAccountId() ?: return null
-            PendingCommand.PostComment(crewId = crew, mealId = meal, commentId = cId, text = body, authorId = author)
+            PendingCommand.PostComment(
+                crewId = crew, mealId = meal, commentId = cId, text = body, authorId = author,
+                mentions = mentions.toMentionsList(),
+            )
         }
         CommandType.EDIT_COMMENT -> {
-            val crew = crewId.toCrewId() ?: return null
-            val meal = mealId.toMealId() ?: return null
+            val (crew, meal) = crewAndMeal() ?: return null
             val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
             val body = text?.let { CommentText.of(it).getOrNull() } ?: return null
-            PendingCommand.EditComment(crewId = crew, mealId = meal, commentId = cId, text = body)
+            PendingCommand.EditComment(
+                crewId = crew, mealId = meal, commentId = cId, text = body,
+                mentions = mentions.toMentionsList(),
+            )
         }
         CommandType.DELETE_COMMENT -> {
-            val crew = crewId.toCrewId() ?: return null
-            val meal = mealId.toMealId() ?: return null
+            val (crew, meal) = crewAndMeal() ?: return null
             val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
             PendingCommand.DeleteComment(crewId = crew, mealId = meal, commentId = cId)
         }
         CommandType.TOGGLE_REACTION -> {
-            val crew = crewId.toCrewId() ?: return null
-            val meal = mealId.toMealId() ?: return null
+            val (crew, meal) = crewAndMeal() ?: return null
             val reactor = accountId.toAccountId() ?: return null
             val kindKey = reactionKindKey?.takeIf { it.isNotBlank() } ?: return null
             val present = desiredPresent ?: return null
@@ -420,20 +441,17 @@ class OutboxLocalStore(
             )
         }
         CommandType.RENAME_CREW -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             val name = newName ?: return null
             PendingCommand.RenameCrew(crewId = crew, requestedBy = by, newName = name)
         }
         CommandType.SET_BLIND_VOTING -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             val on = enabled ?: return null
             PendingCommand.SetBlindVoting(crewId = crew, requestedBy = by, enabled = on != 0L)
         }
         CommandType.REMOVE_MEMBER -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             val tgt = targetAccountId.toAccountId() ?: return null
             PendingCommand.RemoveMember(crewId = crew, requestedBy = by, target = tgt)
         }
@@ -443,19 +461,16 @@ class OutboxLocalStore(
             PendingCommand.LeaveCrew(crewId = crew, leaver = leaver)
         }
         CommandType.SET_TAGLINE -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             // `text` null is legitimate here — it means "clear the tagline".
             PendingCommand.SetCrewTagline(crewId = crew, requestedBy = by, tagline = text)
         }
         CommandType.SET_WELCOME_MESSAGE -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             PendingCommand.SetCrewWelcomeMessage(crewId = crew, requestedBy = by, message = text)
         }
         CommandType.SET_WEEKLY_CHALLENGE -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             // Both `text` and `setAtMillis` null = "clear the challenge" — both legitimately nullable.
             PendingCommand.SetCrewWeeklyChallenge(
                 crewId = crew,
@@ -465,14 +480,12 @@ class OutboxLocalStore(
             )
         }
         CommandType.SET_SCORE_STYLE -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             val key = styleKey?.takeIf { it.isNotBlank() } ?: return null
             PendingCommand.SetCrewScoreStyle(crewId = crew, requestedBy = by, styleKey = key)
         }
         CommandType.SET_BANNER_FOCAL -> {
-            val crew = crewId.toCrewId() ?: return null
-            val by = accountId.toAccountId() ?: return null
+            val (crew, by) = crewAndRequester() ?: return null
             val focal = focalY ?: return null
             PendingCommand.SetCrewBannerFocalY(crewId = crew, requestedBy = by, focalY = focal.toFloat())
         }
@@ -491,8 +504,26 @@ class OutboxLocalStore(
         }
         else -> null // unknown discriminator from a newer build → drop the row
     }
-
-    private fun String?.toCrewId(): CrewId? = this?.let { CrewId.of(it).getOrNull() }
-    private fun String?.toMealId(): MealId? = this?.let { MealId.of(it).getOrNull() }
-    private fun String?.toAccountId(): AccountId? = this?.let { AccountId.of(it).getOrNull() }
 }
+
+internal fun String?.toCrewId(): CrewId? = this?.let { CrewId.of(it).getOrNull() }
+internal fun String?.toMealId(): MealId? = this?.let { MealId.of(it).getOrNull() }
+internal fun String?.toAccountId(): AccountId? = this?.let { AccountId.of(it).getOrNull() }
+
+/**
+ * Comment `@mentions` are flattened as a JSON-encoded `List<String>` of account uids into a single
+ * nullable TEXT column (mirrors [es.schsebastian.foodrats.feature.meal.data.local.LocalMeal]'s
+ * `platesJson` pattern). Empty list encodes to `null` (no mentions is the overwhelmingly common
+ * case — matches every other "absent" leaf in this store).
+ */
+private val mentionsJsonFormat = Json
+
+private fun List<AccountId>.toMentionsJson(): String? =
+    if (isEmpty()) null else mentionsJsonFormat.encodeToString(serializer<List<String>>(), map { it.value })
+
+/** Null-tolerant: a malformed/legacy row (pre-mentions, or an undecodable value) reads back empty. */
+private fun String?.toMentionsList(): List<AccountId> =
+    if (this == null) emptyList()
+    else runCatching { mentionsJsonFormat.decodeFromString(serializer<List<String>>(), this) }
+        .getOrElse { emptyList() }
+        .mapNotNull { it.toAccountId() }

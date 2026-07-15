@@ -18,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.backhandler.BackHandler
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -404,7 +404,7 @@ private fun MainScaffold(rootController: NavHostController) {
         previousTab = selectedTab
     }
     val captureNudgeVm: CaptureNudgeViewModel = koinViewModel()
-    val captureNudge by captureNudgeVm.state.collectAsState()
+    val captureNudge by captureNudgeVm.state.collectAsStateWithLifecycle()
 
     // Header chrome that the structural Feed renders inline (crew name + viewer avatar) is resolved
     // here and passed down, so :feature:feed gains no new cross-context dependency. The crew name
@@ -412,9 +412,9 @@ private fun MainScaffold(rootController: NavHostController) {
     val sessionProvider = koinInject<SessionProvider>()
     val membership = koinInject<CrewMembershipPort>()
     val activeCrewProvider = koinInject<ActiveCrewProvider>()
-    val activeCrewId by activeCrewProvider.current.collectAsState(initial = null)
+    val activeCrewId by activeCrewProvider.current.collectAsStateWithLifecycle(initialValue = null)
     val topBarAvatarVm: TopBarAvatarViewModel = koinViewModel()
-    val topBarAvatar by topBarAvatarVm.state.collectAsState()
+    val topBarAvatar by topBarAvatarVm.state.collectAsStateWithLifecycle()
     val crewName by remember(sessionProvider, membership, activeCrewProvider) {
         sessionProvider.current.flatMapLatest { session ->
             if (session == null) {
@@ -430,7 +430,7 @@ private fun MainScaffold(rootController: NavHostController) {
                 }
             }
         }.distinctUntilChanged()
-    }.collectAsState(initial = null)
+    }.collectAsStateWithLifecycle(initialValue = null)
 
     // Structural chrome: zero top bar, a floating frosted dock. Each tab screen owns its own
     // edge-to-edge FrMediaFloor and fills the whole Box (drawing behind the dock); the screen adds its

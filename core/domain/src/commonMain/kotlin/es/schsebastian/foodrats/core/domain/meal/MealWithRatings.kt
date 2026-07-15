@@ -10,7 +10,7 @@ data class MealWithRatings(
 
     val averageScore: Double? get() =
         if (ratings.isEmpty()) null
-        else ratings.map { it.score.value }.average()
+        else ratings.sumOf { it.score.value }.toDouble() / ratings.size
 
     fun ratingBy(accountId: AccountId): MealRating? =
         ratings.firstOrNull { it.raterId == accountId }

@@ -208,30 +208,51 @@ platform :ios do
     upload_dsyms_to_crashlytics(dsym_paths: paths)
   end
 
-  # Create the dedicated signing keychain used by match/gym on CI. Unlike
-  # setup_ci it (a) does NOT become the session default — so GUI apps keep using
-  # the login keychain and are never redirected here — and (b) has NO auto-lock
-  # and NO lock-on-sleep, so a `security`/`codesign` call mid-build never finds
-  # it locked and never prompts. Recreated fresh each run so an interrupted
-  # prior run can't leave a stale/locked keychain behind.
+  # Create (or reuse) the dedicated signing keychain used by match/gym on CI.
+  # Unlike setup_ci it (a) does NOT become the session default — so GUI apps
+  # keep using the login keychain and are never redirected here — and (b) has
+  # NO auto-lock and NO lock-on-sleep, so a `security`/`codesign` call
+  # mid-build never finds it locked and never prompts.
+  #
+  # REUSED across runs when it's already in a good state — NOT deleted and
+  # recreated every time. macOS's "<agent> wants to use keychain X" ACL-trust
+  # dialog is tied to the keychain FILE itself, not just its name/path:
+  # recreating it every run gave every system agent that touches the default
+  # keychain (iCloudNotificationAgent, Wi-Fi, ...) a brand-new file to
+  # distrust, so the prompt returned on every single CI run forever, no
+  # matter how many times "Always Allow" was clicked. Reusing the same file
+  # lets that trust decision stick. Falls back to delete+recreate only if the
+  # existing keychain can't be unlocked (e.g. a prior run left it corrupted).
   def setup_signing_keychain
     path = signing_keychain_db
-    delete_keychain(name: KEYCHAIN_NAME) if File.exist?(path)
     # Remember the session's real default so teardown can restore it — leaving
     # the temp keychain as default forever was the June prompt bug.
     ENV["FR_PREV_DEFAULT_KEYCHAIN"] =
       `security default-keychain -d user`.strip.delete('"')
-    create_keychain(
-      name: KEYCHAIN_NAME,
-      password: KEYCHAIN_PASSWORD,
-      default_keychain: true,   # required: headless codesign resolves key ACLs
-                                # through the default keychain (see before_all);
-                                # teardown restores the previous default
-      unlock: true,
-      timeout: 0,               # 0 = never auto-lock (setup_ci uses 3600)
-      lock_when_sleeps: false,  # do NOT lock on sleep
-      add_to_search_list: true, # codesign/gym still find the identity via the search list
-    )
+
+    reusable = File.exist?(path) &&
+      system("security unlock-keychain -p #{KEYCHAIN_PASSWORD.shellescape} #{path.shellescape} >/dev/null 2>&1")
+
+    if reusable
+      # Search-list membership from the original add_to_search_list: true
+      # persists across runs (it's a user-level setting, not tied to this
+      # process) — no need to touch it again here.
+      sh("security set-keychain-settings #{path.shellescape}") # no timeout, no lock-on-sleep
+      sh("security default-keychain -d user -s #{path.shellescape}")
+    else
+      delete_keychain(name: KEYCHAIN_NAME) if File.exist?(path)
+      create_keychain(
+        name: KEYCHAIN_NAME,
+        password: KEYCHAIN_PASSWORD,
+        default_keychain: true,   # required: headless codesign resolves key ACLs
+                                  # through the default keychain (see before_all);
+                                  # teardown restores the previous default
+        unlock: true,
+        timeout: 0,               # 0 = never auto-lock (setup_ci uses 3600)
+        lock_when_sleeps: false,  # do NOT lock on sleep
+        add_to_search_list: true, # codesign/gym still find the identity via the search list
+      )
+    end
     # Point match at this keychain (it would otherwise import into login.keychain).
     # match also sets the key partition list on import, so codesign signs
     # non-interactively without the separate "codesign wants to use key" prompt.
@@ -259,10 +280,10 @@ platform :ios do
        ">/dev/null")
   end
 
-  # Tear down the signing keychain created in before_all: restore the session's
-  # previous default keychain, then delete the temp one (which also drops it
-  # from the search list). Runs on both success (after_all) and failure (error).
-  # No-op when not on CI.
+  # Tear down after the lane: restore the session's previous default keychain.
+  # The temp signing keychain itself is left in place for the next run (see
+  # setup_signing_keychain). Runs on both success (after_all) and failure
+  # (error). No-op when not on CI.
   def teardown_ci_keychain
     return unless ENV["CI"]
 
@@ -270,7 +291,11 @@ platform :ios do
     if prev && !prev.empty?
       sh("security default-keychain -d user -s #{prev.shellescape}")
     end
-    delete_keychain(name: KEYCHAIN_NAME)
+    # Deliberately NOT deleted — see setup_signing_keychain. Keeping the same
+    # keychain file across runs is what lets macOS's per-app ACL trust
+    # ("<agent> wants to use keychain X") stick instead of re-prompting every
+    # run. setup_signing_keychain falls back to delete+recreate on its own if
+    # this file ever ends up unusable.
   rescue StandardError => e
     UI.important("Keychain teardown skipped: #{e.message}")
   end

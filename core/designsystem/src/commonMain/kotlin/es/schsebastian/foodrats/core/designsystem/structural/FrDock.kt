@@ -32,9 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -83,7 +81,6 @@ fun FrDock(
     Box(modifier) {
         val dockShape = RoundedCornerShape(32.dp)
         val leftCount = items.size / 2
-        val edgeLight = StructuralColors.topLight // DrawScope lambdas are not @Composable.
         val isLight = StructuralColors.isLight
         // Light mode: an opaque fill + shallow elevation. A drop shadow over a TRANSLUCENT fill renders
         // a hard double-edge on the light floor ("white square with a wrong fade", user report
@@ -97,16 +94,7 @@ fun FrDock(
                 .shadow(if (isLight) 8.dp else 18.dp, dockShape, clip = false)
                 .clip(dockShape)
                 .background(dockFill)
-                .drawWithContent {
-                    drawContent()
-                    val y = 0.5.dp.toPx()
-                    drawLine(
-                        color = edgeLight,
-                        start = Offset(0f, y),
-                        end = Offset(size.width, y),
-                        strokeWidth = 1.dp.toPx(),
-                    )
-                }
+                .frTopLightEdge()
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

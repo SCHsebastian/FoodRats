@@ -74,6 +74,8 @@
     <string name="feed_load_older_comments">Load older comments</string>
     <string name="feed_comments_input_placeholder">Write a comment…</string>
     <string name="feed_comments_send_cta">Send</string>
+    <!-- @-mentions: composer suggestion row label — %1$s = handle (no @), %2$s = display name. -->
+    <string name="feed_mention_suggestion_label">@%1$s · %2$s</string>
     <string name="feed_comments_error_blank">Comment is empty</string>
     <string name="feed_comments_error_too_long">Max 500 characters</string>
     <string name="feed_comments_error_unavailable">Couldn't post. Try again.</string>

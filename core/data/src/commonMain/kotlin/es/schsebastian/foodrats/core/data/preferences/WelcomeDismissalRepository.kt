@@ -7,6 +7,8 @@ import es.schsebastian.foodrats.core.domain.model.CrewId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 private const val SEPARATOR = "|"
@@ -23,6 +25,8 @@ class WelcomeDismissalRepository(
     private val prefs: AppPreferences,
     private val dispatchers: DispatcherProvider,
 ) {
+    private val mutex = Mutex()
+
     /** Emits the set of crew IDs whose welcome banner has been dismissed. */
     fun observeDismissed(): Flow<Set<String>> =
         prefs.observe(Keys.DismissedWelcomes).map { raw ->
@@ -33,13 +37,15 @@ class WelcomeDismissalRepository(
     /** Marks the given crew's welcome banner as dismissed. Errors are silently dropped. */
     suspend fun dismiss(crewId: CrewId) {
         withContext(dispatchers.io) {
-            runCatching {
-                val raw = prefs.observe(Keys.DismissedWelcomes).first()
-                val set = (raw?.split(SEPARATOR)?.filter { it.isNotBlank() } ?: emptyList()).toMutableSet()
-                set += crewId.value
-                prefs.set(Keys.DismissedWelcomes, set.joinToString(SEPARATOR))
+            mutex.withLock {
+                runCatching {
+                    val raw = prefs.observe(Keys.DismissedWelcomes).first()
+                    val set = (raw?.split(SEPARATOR)?.filter { it.isNotBlank() } ?: emptyList()).toMutableSet()
+                    set += crewId.value
+                    prefs.set(Keys.DismissedWelcomes, set.joinToString(SEPARATOR))
+                }
+                // Dismissal errors are silently dropped — a failed dismiss just re-shows the banner.
             }
-            // Dismissal errors are silently dropped — a failed dismiss just re-shows the banner.
         }
     }
 }

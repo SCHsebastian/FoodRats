@@ -65,6 +65,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.i18n.CrewStringKey
+import es.schsebastian.foodrats.feature.crew.presentation.components.CrewDangerBanner
 import es.schsebastian.foodrats.feature.crew.presentation.toStringKey
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -225,7 +226,7 @@ fun CrewPickerScreen(
                 }
 
                 state.error?.let { err ->
-                    DangerBanner(text = resolve(err.toStringKey()))
+                    CrewDangerBanner(text = resolve(err.toStringKey()))
                 }
 
                 if (requestSent) {
@@ -267,6 +268,8 @@ private fun ConfirmBanner(text: String) {
     }
 }
 
+private val AvatarRings = listOf(FrAvatarRing.Moss, FrAvatarRing.Ember, FrAvatarRing.Rust)
+
 /** A tappable frosted crew row: ringed avatar + name + member-count micro + chevron. */
 @Composable
 private fun CrewRow(
@@ -275,7 +278,7 @@ private fun CrewRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val ring = listOf(FrAvatarRing.Moss, FrAvatarRing.Ember, FrAvatarRing.Rust)[ringIndex % 3]
+    val ring = AvatarRings[ringIndex % 3]
     FrGlassTile(depth = FrTileDepth.Near, onClick = onClick, modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -338,23 +341,6 @@ private fun FormTile(content: @Composable () -> Unit) {
         Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
             content()
         }
-    }
-}
-
-@Composable
-private fun DangerBanner(text: String) {
-    val semantic = LocalFrSemanticColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.md))
-            .background(semantic.danger)
-            .padding(horizontal = Spacing.md, vertical = Spacing.sm),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        FrIcon(image = FrIcons.Warning, contentDescription = null, tint = semantic.onDanger)
-        FrText(text = text, color = semantic.onDanger, style = StructuralType.body)
     }
 }
 

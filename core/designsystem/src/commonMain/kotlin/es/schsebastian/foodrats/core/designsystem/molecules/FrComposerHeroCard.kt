@@ -15,7 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
@@ -48,7 +48,7 @@ fun FrComposerHeroCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(1f)
-            .scale(scale),
+            .graphicsLayer { scaleX = scale; scaleY = scale },
         shape = RoundedCornerShape(Radius.md),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors = CardDefaults.cardColors(

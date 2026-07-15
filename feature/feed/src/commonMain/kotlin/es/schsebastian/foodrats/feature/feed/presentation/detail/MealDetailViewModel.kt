@@ -16,6 +16,7 @@ import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewRosterPort
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
@@ -27,12 +28,16 @@ import es.schsebastian.foodrats.core.domain.meal.RateError
 import es.schsebastian.foodrats.core.domain.moderation.ReportError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.CommentValidationError
+import es.schsebastian.foodrats.core.domain.meal.Ingredient
+import es.schsebastian.foodrats.core.domain.meal.IngredientSlug
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealComment
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealDay
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.feature.feed.domain.error.FeedError
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.meal.Score
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
@@ -49,6 +54,8 @@ import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
+import es.schsebastian.foodrats.feature.feed.domain.mention.MentionCandidate
+import es.schsebastian.foodrats.feature.feed.domain.mention.MentionParser
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteCommentUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.EditCommentUseCase
@@ -56,6 +63,11 @@ import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.DeleteMyMealUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcBlockedAccountsPort
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcCrewRosterPort
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcCrewWelcomePort
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcReportPort
+import es.schsebastian.foodrats.feature.feed.presentation.toReason
 import es.schsebastian.foodrats.feature.feed.presentation.components.CommentRowUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.PlateShareCardContent
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
@@ -92,7 +104,7 @@ class MealDetailViewModel(
     // C8 — active crew's Score vocabulary, so the voting picker renders Stars/Emoji/Numeric to
     // match the feed. Default no-op keeps the large existing test surface compiling; the Koin
     // binding passes the real port explicitly.
-    private val welcomePort: CrewWelcomePort = NoopMealDetailWelcomePort,
+    private val welcomePort: CrewWelcomePort = NoopUgcCrewWelcomePort,
     private val session: SessionProvider,
     private val clock: Clock,
     private val zone: TimeZone,
@@ -102,12 +114,16 @@ class MealDetailViewModel(
     private val editComment: EditCommentUseCase,
     private val crewOwner: CrewOwnerPort,
     private val storyShareController: StoryShareController,
+    // @-mentions — live crew-roster candidates for the comment composer's suggestion list. Default
+    // keeps the large existing test surface compiling; the Koin binding passes the real
+    // :feature:crew-backed adapter explicitly.
+    private val crewRoster: CrewRosterPort = NoopUgcCrewRosterPort,
     // UGC compliance §3/§4/§5 — comment text filter, report, and block. Defaults keep the large
     // existing test surface compiling; the Koin binding passes the real ports explicitly.
     private val textModeration: TextModerationPort = TextModerationPort { _, _ -> TextModerationVerdict.Clean },
     private val languageTag: Flow<String> = flowOf("en"),
-    private val reportPort: ReportPort = NoopReportPort,
-    private val blockedAccounts: BlockedAccountsPort = NoopBlockedAccountsPort,
+    private val reportPort: ReportPort = NoopUgcReportPort,
+    private val blockedAccounts: BlockedAccountsPort = NoopUgcBlockedAccountsPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
 ) : MviViewModel<MealDetailState, MealDetailIntent, MealDetailEffect>(MealDetailState()) {
 
@@ -157,9 +173,77 @@ class MealDetailViewModel(
             }
             .distinctUntilChanged()
 
+    /**
+     * Live crew-owner id for the active crew — mirrors [blindVotingFlow]/[scoreStyleFlow] (re-
+     * subscribes only on crew switch, `null` when no crew active). Replaces two `.first()` snapshots
+     * of [CrewOwnerPort.observeOwner] that used to re-subscribe-then-drop on every feed/catalog/blind
+     * re-emission inside the meal-tracking collector below; also makes an owner handover reactive,
+     * Also reused directly by [observeComments] for comment-row deletability.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val ownerIdFlow =
+        activeCrew.current
+            .distinctUntilChanged()
+            .flatMapLatest { crewId ->
+                if (crewId == null) flowOf(null) else crewOwner.observeOwner(crewId)
+            }
+            .distinctUntilChanged()
+
+    /**
+     * Live @-mention candidates for the active crew: its roster minus the viewer themself, joined to
+     * account docs for handle + display name. Mirrors [blindVotingFlow]/[scoreStyleFlow]/[ownerIdFlow]
+     * (re-subscribes only on crew or viewer change); emits `emptyList()` with no active crew.
+     */
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val mentionCandidatesFlow: Flow<List<MentionCandidate>> =
+        combine(
+            activeCrew.current.distinctUntilChanged(),
+            session.current.map { it?.accountId }.distinctUntilChanged(),
+        ) { crewId, viewerId -> crewId to viewerId }
+            .flatMapLatest { (crewId, viewerId) ->
+                if (crewId == null) {
+                    flowOf(emptyMap())
+                } else {
+                    crewRoster.observeMembers(crewId).flatMapLatest { memberIds ->
+                        val candidateIds = memberIds.filterNot { it == viewerId }.toSet()
+                        if (candidateIds.isEmpty()) flowOf(emptyMap()) else accountReadPort.observeMany(candidateIds)
+                    }
+                }
+            }
+            .map { accountsById ->
+                accountsById.values.filterNotNull().map { MentionCandidate(it.id, it.handle, it.displayName) }
+            }
+            .distinctUntilChanged()
+
     init {
         viewModelScope.launch {
             scoreStyleFlow.collect { style -> update { it.copy(scoreStyle = style) } }
+        }
+    }
+
+    /**
+     * Derives [MealDetailState.mentionSuggestions] from the trailing `@fragment` of whichever comment
+     * input is currently active (composer, or the inline edit field while editing) crossed with the
+     * live roster candidates. Single source of truth: reads `state`, writes `state`, never a parallel
+     * `MutableStateFlow` (mirrors [FeedViewModel]'s `day`-derived-use-case-feed pattern).
+     */
+    init {
+        val activeInputFlow = state
+            .map { s -> if (s.editingCommentId != null) s.commentEditInput else s.commentInput }
+            .distinctUntilChanged()
+        viewModelScope.launch {
+            combine(mentionCandidatesFlow, activeInputFlow) { candidates, activeInput -> candidates to activeInput }
+                .collect { (candidates, activeInput) ->
+                    val fragment = MentionParser.trailingFragment(activeInput)
+                    val suggestions = if (fragment == null) {
+                        emptyList()
+                    } else {
+                        MentionParser.suggestions(fragment, candidates).map {
+                            MentionSuggestionUi(it.accountId.value, it.handle, it.displayName)
+                        }
+                    }
+                    update { it.copy(mentionSuggestions = suggestions) }
+                }
         }
     }
 
@@ -176,12 +260,13 @@ class MealDetailViewModel(
                     observeFeed(flowOf(feedDay)),
                     ingredientRead.observeCatalog(),
                     blindVotingFlow,
-                ) { r, catalog, blind -> Triple(r, catalog, blind) }.collect { (r, catalog, blind) ->
+                    ownerIdFlow,
+                ) { r, catalog, blind, ownerId ->
+                    MealDetailFeedTick(r, catalog, blind, ownerId)
+                }.collect { (r, catalog, blind, ownerId) ->
                     when (r) {
                         is Result.Ok -> {
                             val viewerId = session.current.first()?.accountId
-                            val ownerId = activeCrew.current.first()
-                                ?.let { crewOwner.observeOwner(it).first() }
                             val todayMealDay = MealDay.today(clock, zone)
                             val matched = r.value.firstOrNull { it.meal.id.value == mealId }
                             matchedMeal = matched?.meal
@@ -230,11 +315,6 @@ class MealDetailViewModel(
         // instead of going stale for the lifetime of the screen.
         val viewerIdFlow = session.current
             .map { it?.accountId }
-            .distinctUntilChanged()
-        val ownerIdFlow = activeCrew.current
-            .flatMapLatest { crewId ->
-                if (crewId == null) flowOf(null) else crewOwner.observeOwner(crewId)
-            }
             .distinctUntilChanged()
         // UGC compliance §5 — the viewer's live block list, so blocked commenters vanish reactively.
         val blockedFlow = viewerIdFlow
@@ -299,6 +379,14 @@ class MealDetailViewModel(
                 }
             }
     }
+
+    /** Carrier for the meal-tracking [combine] tick (feed result, ingredient catalog, blind-voting, owner). */
+    private data class MealDetailFeedTick(
+        val result: Result<List<MealWithRatings>, FeedError>,
+        val catalog: Map<IngredientSlug, Ingredient>,
+        val blind: Boolean,
+        val ownerId: AccountId?,
+    )
 
     /** Internal carrier so the identity-join flatMapLatest can propagate either rows or a read error. */
     private sealed interface CommentRowsResult {
@@ -369,6 +457,7 @@ class MealDetailViewModel(
             it.copy(commentInput = intent.value, commentWriteError = null)
         }
         MealDetailIntent.PostComment               -> postComment()
+        is MealDetailIntent.MentionSuggestionPicked -> pickMentionSuggestion(intent.handle)
         MealDetailIntent.LoadOlderComments         -> update {
             it.copy(commentLimit = it.commentLimit + MEAL_DETAIL_COMMENT_PAGE_SIZE)
         }
@@ -393,17 +482,6 @@ class MealDetailViewModel(
         MealDetailIntent.BlockAuthor               -> blockAuthor()
         is MealDetailIntent.BlockCommentAuthor     -> blockAccount(intent.commentAuthorId)
         MealDetailIntent.DismissBlockSuccess       -> update { it.copy(blockSuccess = false) }
-    }
-
-    /** Maps the presentation reason option to the domain [ReportReason]. */
-    private fun FrReportReasonOption.toReason(): ReportReason = when (this) {
-        FrReportReasonOption.CHILD_SAFETY -> ReportReason.ChildSafety
-        FrReportReasonOption.SPAM       -> ReportReason.Spam
-        FrReportReasonOption.HARASSMENT -> ReportReason.Harassment
-        FrReportReasonOption.HATE       -> ReportReason.Hate
-        FrReportReasonOption.SEXUAL     -> ReportReason.Sexual
-        FrReportReasonOption.VIOLENCE   -> ReportReason.Violence
-        FrReportReasonOption.OTHER      -> ReportReason.Other
     }
 
     /** Submits a report for the currently-open [MealDetailState.reportTarget] (UGC compliance §4). */
@@ -521,6 +599,22 @@ class MealDetailViewModel(
         if (r is Result.Err) update { it.copy(commentDeleteError = r.error) }
     }
 
+    /**
+     * Rewrites the trailing `@fragment` of whichever comment input is currently active to `@handle `.
+     * [MealDetailState.mentionSuggestions] clears itself on the next tick — the new text no longer has
+     * a trailing fragment (it ends in a space), so the reactive collector above re-derives an empty
+     * list; this function does not touch it directly.
+     */
+    private fun pickMentionSuggestion(handle: String) {
+        update {
+            if (it.editingCommentId != null) {
+                it.copy(commentEditInput = MentionParser.applySuggestion(it.commentEditInput, handle))
+            } else {
+                it.copy(commentInput = MentionParser.applySuggestion(it.commentInput, handle))
+            }
+        }
+    }
+
     /** Enter inline edit mode, pre-filling the field with the row's current text. */
     private fun startEditComment(id: MealCommentId) {
         val current = currentState.commentRows.firstOrNull { it.id == id } ?: return
@@ -561,7 +655,8 @@ class MealDetailViewModel(
             return update { it.copy(commentEditError = CommentError.Edit.Objectionable) }
         }
         update { it.copy(isEditingComment = true, commentEditError = null) }
-        when (val r = editComment(crewId, parsedMealId, id, text)) {
+        val mentions = MentionParser.parseMentions(text.value, mentionCandidatesFlow.first())
+        when (val r = editComment(crewId, parsedMealId, id, text, mentions)) {
             is Result.Ok  -> update {
                 it.copy(
                     isEditingComment = false,
@@ -625,15 +720,17 @@ class MealDetailViewModel(
         update { it.copy(isPostingComment = true, commentWriteError = null) }
         // Client-minted id so an offline replay (T7) sets the SAME doc — `.set()` is idempotent.
         val commentId = MealCommentId(Uuid.random().toString())
+        // @-mentions: resolved against the live roster at send time — advisory, never blocks posting.
+        val mentions = MentionParser.parseMentions(text.value, mentionCandidatesFlow.first())
         // OFFLINE-FIRST (P2 §0.5): offline — or a connectivity-class write failure — durably
         // parks the comment in the outbox (with this same minted id) and treats it as posted.
         if (!connectivity.isOnline().first()) {
-            return enqueueComment(crewId, parsedMealId, commentId, text, authorId)
+            return enqueueComment(crewId, parsedMealId, commentId, text, authorId, mentions)
         }
-        val r = commentPort.post(crewId, parsedMealId, commentId, text)
+        val r = commentPort.post(crewId, parsedMealId, commentId, text, mentions)
         if (r is Result.Ok) analytics.track(AnalyticsEvent.CommentPosted(parsedMealId))
         if (r is Result.Err && r.error == CommentError.Write.Unavailable) {
-            return enqueueComment(crewId, parsedMealId, commentId, text, authorId)
+            return enqueueComment(crewId, parsedMealId, commentId, text, authorId, mentions)
         }
         update {
             when (r) {
@@ -649,48 +746,9 @@ class MealDetailViewModel(
         commentId: MealCommentId,
         text: CommentText,
         authorId: AccountId,
+        mentions: List<AccountId>,
     ) {
-        outbox.enqueue(PendingCommand.PostComment(crewId, mealId, commentId, text, authorId))
+        outbox.enqueue(PendingCommand.PostComment(crewId, mealId, commentId, text, authorId, mentions))
         update { it.copy(isPostingComment = false, commentInput = "") }
     }
-}
-
-/**
- * No-op [ReportPort] used as the constructor default so the existing test surface keeps compiling.
- * The Koin binding always passes the real Firestore-backed port; production never sees this.
- */
-private object NoopReportPort : ReportPort {
-    override suspend fun report(
-        reporter: AccountId,
-        target: ReportTarget,
-        reason: ReportReason,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.moderation.ReportError> = Result.success(Unit)
-}
-
-/** No-op [BlockedAccountsPort] default (see [NoopReportPort]). Reports nothing blocked. */
-private object NoopBlockedAccountsPort : BlockedAccountsPort {
-    override fun observeBlocked(owner: AccountId): kotlinx.coroutines.flow.Flow<Set<AccountId>> =
-        flowOf(emptySet())
-    override suspend fun block(
-        owner: AccountId,
-        target: AccountId,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
-    override suspend fun unblock(
-        owner: AccountId,
-        target: AccountId,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
-}
-
-/** No-op [CrewWelcomePort] default for [MealDetailViewModel] tests — always Stars (C8). */
-private object NoopMealDetailWelcomePort : CrewWelcomePort {
-    override fun observeWelcomeMessage(crewId: CrewId): Flow<String?> = flowOf(null)
-    override fun isWelcomeDismissed(crewId: CrewId): Flow<Boolean> = flowOf(false)
-    override suspend fun dismissWelcome(crewId: CrewId) = Unit
-    override fun observeWeeklyChallenge(
-        crewId: CrewId,
-    ): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
-    override fun observeScoreStyle(crewId: CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
-    override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
-    override fun observeBannerCacheKey(crewId: CrewId): Flow<String> = flowOf("")
-    override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
 }

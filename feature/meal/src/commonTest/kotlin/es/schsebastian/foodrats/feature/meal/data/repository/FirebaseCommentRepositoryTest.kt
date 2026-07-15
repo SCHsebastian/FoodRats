@@ -5,6 +5,7 @@ import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.time.FixedClock
@@ -54,10 +55,13 @@ private class FakeCommentFirestore(
         commentId: String,
         text: String,
         editedAtEpochMs: Long,
+        mentions: List<String>,
     ) {
         failWith?.let { throw it }
         docs.value = docs.value.map { dto ->
-            if (dto.id == commentId) dto.copy(text = text, editedAtEpochMs = editedAtEpochMs) else dto
+            if (dto.id == commentId) {
+                dto.copy(text = text, editedAtEpochMs = editedAtEpochMs, mentions = mentions)
+            } else dto
         }
     }
 
@@ -70,11 +74,14 @@ private class FakeCommentFirestore(
 
 /**
  * Fake [MealAuthorIdentity]: `null` models "no live auth token", non-null models a signed-in user.
- * The comment repository only reads `uid`, so display fields are left blank.
+ * [displayName] defaults to `null` (unknown) — only the `post` authorName-stamp tests set it.
  */
-private class FakeAuthorIdentity(private val uid: String?) : MealAuthorIdentity {
+private class FakeAuthorIdentity(
+    private val uid: String?,
+    private val displayName: String? = null,
+) : MealAuthorIdentity {
     override fun current(): MealAuthorIdentity.Author? =
-        uid?.let { MealAuthorIdentity.Author(uid = it, displayName = null, avatarUrl = null) }
+        uid?.let { MealAuthorIdentity.Author(uid = it, displayName = displayName, avatarUrl = null) }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -162,6 +169,30 @@ class FirebaseCommentRepositoryTest {
         assertEquals(Instant.parse("2026-06-14T12:00:00Z").toEpochMilliseconds(), created.createdAtEpochMs)
     }
 
+    @Test fun post_threads_mentions_and_stamps_author_name() = runTest {
+        val fake = FakeCommentFirestore()
+        val repo = repository(fake, FakeAuthorIdentity("uid-author", displayName = "Sebas"))
+        val mentionA = (AccountId.of("uid-a") as Result.Ok).value
+        val mentionB = (AccountId.of("uid-b") as Result.Ok).value
+
+        val r = repo.post(crewId, mealId, commentId, text, mentions = listOf(mentionA, mentionB))
+        assertTrue(r is Result.Ok)
+        val created = fake.docs.value.single()
+        assertEquals(listOf("uid-a", "uid-b"), created.mentions)
+        assertEquals("Sebas", created.authorName)
+    }
+
+    @Test fun post_with_no_display_name_stamps_null_author_name() = runTest {
+        val fake = FakeCommentFirestore()
+        val repo = repository(fake, FakeAuthorIdentity("uid-author", displayName = null))
+
+        val r = repo.post(crewId, mealId, commentId, text)
+        assertTrue(r is Result.Ok)
+        val created = fake.docs.value.single()
+        assertNull(created.authorName)
+        assertEquals(emptyList(), created.mentions)
+    }
+
     @Test fun post_without_auth_returns_unauthorized_and_writes_nothing() = runTest {
         val fake = FakeCommentFirestore()
         val repo = repository(fake, FakeAuthorIdentity(uid = null))
@@ -219,6 +250,19 @@ class FirebaseCommentRepositoryTest {
         assertEquals("uid-author", updated.authorId) // author untouched
         assertEquals(1L, updated.createdAtEpochMs)    // createdAt untouched
         assertEquals(Instant.parse("2026-06-14T12:00:00Z").toEpochMilliseconds(), updated.editedAtEpochMs)
+    }
+
+    @Test fun edit_refreshes_mentions() = runTest {
+        val fake = FakeCommentFirestore()
+        fake.docs.value = listOf(
+            CommentDto(id = "c1", authorId = "uid-author", text = "old", createdAtEpochMs = 1L, mentions = listOf("uid-a")),
+        )
+        val repo = repository(fake)
+        val mentionB = (AccountId.of("uid-b") as Result.Ok).value
+
+        val r = repo.edit(crewId, mealId, MealCommentId("c1"), text, mentions = listOf(mentionB))
+        assertTrue(r is Result.Ok)
+        assertEquals(listOf("uid-b"), fake.docs.value.single().mentions)
     }
 
     @Test fun edit_without_auth_returns_not_author_and_writes_nothing() = runTest {

@@ -44,6 +44,7 @@ import foodrats.shared.generated.resources.consent_deny
 import foodrats.shared.generated.resources.consent_privacy_note
 import foodrats.shared.generated.resources.consent_title
 import foodrats.shared.generated.resources.nav_capture_cta
+import foodrats.shared.generated.resources.notification_separator
 import foodrats.shared.generated.resources.offline_banner
 import foodrats.shared.generated.resources.nav_profile_cta
 import foodrats.shared.generated.resources.nav_tab_feed
@@ -133,6 +134,9 @@ enum class SharedStringKey(override val resourceId: StringResource) : StringKey 
 
     // App-wide offline banner (offline-first §P1-T2)
     OfflineBanner(Res.string.offline_banner),
+
+    // In-app push snackbar (InAppPushBanner)
+    NotificationSeparator(Res.string.notification_separator),
 
     // Weekly recap story (roadmap §2.4)
     RecapEntryCta(Res.string.recap_entry_cta),

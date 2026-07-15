@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -28,7 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -112,17 +111,15 @@ fun SelectIngredientsScreen(
                     .padding(horizontal = Spacing.md, vertical = Spacing.sm),
             )
 
-            // ingredient-02: build detectedSlugs set once; exclude from category rows
-            val detectedSlugs = remember(state.detected) { state.detected.toSet() }
             // Group the (already-remembered) filtered catalog once per search/detected change instead
             // of re-running these O(categories × catalog) filters inside the LazyColumn content lambda
             // on every recomposition (selection toggles, cap changes, expand/collapse all recompose it).
-            val detectedRows = remember(filtered, detectedSlugs) {
-                filtered.filter { it.slug in detectedSlugs }
+            val detectedRows = remember(filtered, state.detected) {
+                filtered.filter { it.slug in state.detected }
             }
-            val categoryRows = remember(filtered, detectedSlugs) {
+            val categoryRows = remember(filtered, state.detected) {
                 IngredientCategory.all.mapNotNull { category ->
-                    val rows = filtered.filter { it.category == category && it.slug !in detectedSlugs }
+                    val rows = filtered.filter { it.category == category && it.slug !in state.detected }
                     if (rows.isEmpty()) null else category to rows
                 }
             }
@@ -144,10 +141,11 @@ fun SelectIngredientsScreen(
                     LazyColumn(modifier = Modifier.weight(1f).frContentWidth()) {
                         // A single running counter cascades the whole list — headers and rows
                         // alike — so the picker feels assembled top-to-bottom on load. The
-                        // `% 6` window keeps later items popping promptly when scrolled in.
+                        // `% CascadeWindow` window keeps later items popping promptly when scrolled in.
                         var cascade = 0
+                        fun nextDelay() = (cascade++ % CascadeWindow) * CascadeDelayMs
                         if (detectedRows.isNotEmpty()) {
-                            val headerDelay = (cascade++ % 6) * 40
+                            val headerDelay = nextDelay()
                             item(key = "detected-header") {
                                 SectionHeader(
                                     text = resolve(IngredientStringKey.DetectedSectionTitle),
@@ -155,7 +153,7 @@ fun SelectIngredientsScreen(
                                 )
                             }
                             detectedRows.forEach { ing ->
-                                val delay = (cascade++ % 6) * 40
+                                val delay = nextDelay()
                                 item(key = "detected-${ing.slug.value}") {
                                     FrIngredientRow(
                                         name = ing.displayName,
@@ -173,7 +171,7 @@ fun SelectIngredientsScreen(
                             // While searching, force every matching group open so results are
                             // never hidden inside a collapsed section.
                             val expanded = searching || category in state.expandedCategories
-                            val headerDelay = (cascade++ % 6) * 40
+                            val headerDelay = nextDelay()
                             item(key = "cat-${category::class.simpleName}") {
                                 SectionHeader(
                                     text = resolve(category.toStringKey()),
@@ -187,7 +185,7 @@ fun SelectIngredientsScreen(
                             }
                             if (expanded) {
                                 rows.forEach { ing ->
-                                    val delay = (cascade++ % 6) * 40
+                                    val delay = nextDelay()
                                     item(key = "cat-${ing.slug.value}") {
                                         FrIngredientRow(
                                             name = ing.displayName,
@@ -225,8 +223,17 @@ fun SelectIngredientsScreen(
 /** Number of placeholder rows shown while the catalog loads. */
 private const val SkeletonRowCount = 7
 
+/** Cascade window for the picker's top-to-bottom rise-in animation. */
+private const val CascadeWindow = 6
+
+/** Per-item delay step (ms) within the cascade window. */
+private const val CascadeDelayMs = 40
+
 /** Height of a placeholder text-line bar — roughly a single line of body text. */
 private val SkeletonLineHeight = 18.dp
+
+/** Fraction of row width the placeholder text-line bar spans. */
+private const val SkeletonTextWidthFraction = 0.6f
 
 /**
  * Decorative loading silhouette for the ingredient picker: a stack of rows that
@@ -250,7 +257,7 @@ private fun IngredientPickerSkeleton(modifier: Modifier = Modifier) {
                 FrShimmerBox(
                     modifier = Modifier
                         .padding(start = Spacing.md)
-                        .fillMaxWidth(0.6f)
+                        .fillMaxWidth(SkeletonTextWidthFraction)
                         .height(SkeletonLineHeight),
                     shape = RoundedCornerShape(Radius.sm),
                 )
@@ -268,7 +275,7 @@ private fun SectionHeader(
     // A low-contrast filled band sets each section apart from its rows without
     // competing with the (now bolder) selected-row fill above it. The chevron
     // rotates on a spring so expanding a category reads as a single gesture.
-    val chevronRotation by animateFloatAsState(targetValue = if (expanded == true) 90f else 0f)
+    val chevronRotation = animateFloatAsState(targetValue = if (expanded == true) 90f else 0f)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -288,7 +295,7 @@ private fun SectionHeader(
         if (expanded != null) {
             FrIcon(
                 image = FrIcons.ChevronRight,
-                modifier = Modifier.rotate(chevronRotation),
+                modifier = Modifier.graphicsLayer { rotationZ = chevronRotation.value },
             )
         }
     }

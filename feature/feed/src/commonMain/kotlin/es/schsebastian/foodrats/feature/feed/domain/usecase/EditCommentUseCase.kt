@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
@@ -33,14 +34,15 @@ class EditCommentUseCase(
         mealId: MealId,
         commentId: MealCommentId,
         text: CommentText,
+        mentions: List<AccountId> = emptyList(),
     ): Result<Unit, CommentError.Edit> {
         if (!connectivity.isOnline().first()) {
-            return enqueue(crewId, mealId, commentId, text)
+            return enqueue(crewId, mealId, commentId, text, mentions)
         }
-        return when (val r = comments.edit(crewId, mealId, commentId, text)) {
+        return when (val r = comments.edit(crewId, mealId, commentId, text, mentions)) {
             is Result.Ok -> r
             is Result.Err -> when (r.error) {
-                CommentError.Edit.Unavailable -> enqueue(crewId, mealId, commentId, text)
+                CommentError.Edit.Unavailable -> enqueue(crewId, mealId, commentId, text, mentions)
                 else -> r
             }
         }
@@ -51,8 +53,9 @@ class EditCommentUseCase(
         mealId: MealId,
         commentId: MealCommentId,
         text: CommentText,
+        mentions: List<AccountId>,
     ): Result<Unit, CommentError.Edit> {
-        outbox.enqueue(PendingCommand.EditComment(crewId, mealId, commentId, text))
+        outbox.enqueue(PendingCommand.EditComment(crewId, mealId, commentId, text, mentions))
         return Result.success(Unit)
     }
 }

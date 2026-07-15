@@ -43,4 +43,43 @@ class CommentMapperTest {
         val r = dto.toDomain(crewId, mealId)
         assertTrue(r is Result.Err)
     }
+
+    @Test fun maps_mentions_to_account_ids() {
+        val dto = CommentDto(
+            id = "c1", authorId = "uid-a", text = "hey @b @c",
+            createdAtEpochMs = 1L, mentions = listOf("uid-b", "uid-c"),
+        )
+        val r = dto.toDomain(crewId, mealId)
+        assertTrue(r is Result.Ok)
+        val c = (r as Result.Ok).value
+        assertEquals(listOf("uid-b", "uid-c"), c.mentions.map { it.value })
+    }
+
+    @Test fun null_mentions_maps_to_empty_list() {
+        val dto = CommentDto(id = "c1", authorId = "uid-a", text = "hi", createdAtEpochMs = 1L, mentions = null)
+        val r = dto.toDomain(crewId, mealId)
+        assertTrue(r is Result.Ok)
+        assertEquals(emptyList(), (r as Result.Ok).value.mentions)
+    }
+
+    @Test fun blank_or_invalid_mentions_are_dropped() {
+        val dto = CommentDto(
+            id = "c1", authorId = "uid-a", text = "hi",
+            createdAtEpochMs = 1L, mentions = listOf("uid-b", "   ", ""),
+        )
+        val r = dto.toDomain(crewId, mealId)
+        assertTrue(r is Result.Ok)
+        assertEquals(listOf("uid-b"), (r as Result.Ok).value.mentions.map { it.value })
+    }
+
+    @Test fun author_name_is_not_mapped_into_the_domain_model() {
+        // authorName is a server-push snapshot only (see the DTO's KDoc); it must never leak into
+        // the domain MealComment — MealComment has no authorName field at all, so this test simply
+        // locks that the mapper still succeeds when authorName is present (nothing to assert on it).
+        val dto = CommentDto(
+            id = "c1", authorId = "uid-a", text = "hi", createdAtEpochMs = 1L, authorName = "Sebas",
+        )
+        val r = dto.toDomain(crewId, mealId)
+        assertTrue(r is Result.Ok)
+    }
 }

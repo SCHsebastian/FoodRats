@@ -48,12 +48,10 @@ private val rootNavModule = module {
     viewModel { ConsentViewModel(consent = get(), analytics = get()) }
 }
 
-private val recapModule = weeklyStoryModule
-
 /** Modules common to both platforms. Platform-specific bridges live in `platformModule`. */
 val appModules: List<org.koin.core.module.Module> = listOf(
     rootNavModule,
-    recapModule,
+    weeklyStoryModule,
     coreDataModule,
     // Offline-first local read source-of-truth (P3a §2): builds FoodRatsDatabase over the
     // per-platform SqlDriver (bound in databaseAndroidModule / databaseIosModule). After

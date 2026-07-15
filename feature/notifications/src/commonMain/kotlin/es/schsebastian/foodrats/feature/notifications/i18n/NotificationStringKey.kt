@@ -2,6 +2,9 @@ package es.schsebastian.foodrats.feature.notifications.i18n
 
 import es.schsebastian.foodrats.core.i18n.StringKey
 import foodrats.feature.notifications.generated.resources.Res
+import foodrats.feature.notifications.generated.resources.notifications_channel_streak_nudges
+import foodrats.feature.notifications.generated.resources.notifications_comment_mention_body
+import foodrats.feature.notifications.generated.resources.notifications_comment_mention_title
 import foodrats.feature.notifications.generated.resources.notifications_error_denied
 import foodrats.feature.notifications.generated.resources.notifications_error_denied_forever
 import foodrats.feature.notifications.generated.resources.notifications_error_payload_parse
@@ -38,6 +41,8 @@ enum class NotificationStringKey(override val resourceId: StringResource) : Stri
     InactivityBody(Res.string.notifications_inactivity_body),
     NewCommentTitle(Res.string.notifications_new_comment_title),
     NewCommentBody(Res.string.notifications_new_comment_body),
+    CommentMentionTitle(Res.string.notifications_comment_mention_title),
+    CommentMentionBody(Res.string.notifications_comment_mention_body),
     NewMealPostTitle(Res.string.notifications_new_meal_post_title),
     NewMealPostBody(Res.string.notifications_new_meal_post_body),
     WeeklyDigestTitle(Res.string.notifications_weekly_digest_title),
@@ -51,4 +56,5 @@ enum class NotificationStringKey(override val resourceId: StringResource) : Stri
     ErrorTokenPersist(Res.string.notifications_error_token_persist),
     ErrorScheduleFailed(Res.string.notifications_error_schedule_failed),
     ErrorPayloadParse(Res.string.notifications_error_payload_parse),
+    ChannelStreakNudges(Res.string.notifications_channel_streak_nudges),
 }

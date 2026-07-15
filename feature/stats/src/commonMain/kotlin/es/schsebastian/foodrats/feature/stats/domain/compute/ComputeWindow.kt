@@ -110,18 +110,6 @@ fun computeWindow(
                 .thenBy { it.ingredientName },
         )
 
-    // Meals-per-day across the active span (earliest → latest meal day), gaps zero-filled, so the
-    // trend sparkline reads chronologically without a Clock dependency.
-    val dailyMeals: List<Int> = if (meals.isEmpty()) {
-        emptyList()
-    } else {
-        val earliestDay = meals.minBy { it.meal.day.date }.meal.day
-        val span = meals.maxOf { it.meal.day.daysSince(earliestDay) }
-        val buckets = IntArray(span + 1)
-        meals.forEach { buckets[it.meal.day.daysSince(earliestDay)]++ }
-        buckets.toList()
-    }
-
     return WindowStats(
         window = window,
         totalMeals = total,
@@ -133,7 +121,6 @@ fun computeWindow(
         mostCriticized = mostCriticized,
         mostUsedIngredient = mostUsedIngredient,
         topByMember = topByMember,
-        dailyMeals = dailyMeals,
     )
 }
 

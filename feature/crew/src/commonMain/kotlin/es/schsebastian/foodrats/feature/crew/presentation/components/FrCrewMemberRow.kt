@@ -32,11 +32,11 @@ fun FrCrewMemberRow(
     subtitle: String? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val displayName = when {
-        account == null -> resolve(CrewStringKey.MemberDeleted)
-        account.displayName.isBlank() -> resolve(CrewStringKey.MemberUnnamed)
-        else -> account.displayName
-    }
+    val displayName = memberDisplayName(
+        account = account,
+        deletedFallback = resolve(CrewStringKey.MemberDeleted),
+        unnamedFallback = resolve(CrewStringKey.MemberUnnamed),
+    )
     Row(
         modifier = modifier.fillMaxWidth().padding(vertical = Spacing.sm),
         verticalAlignment = Alignment.CenterVertically,
@@ -102,4 +102,21 @@ private fun crewBadgeLabel(badgeId: String): String? = when (badgeId) {
     "fifty"   -> resolve(CrewStringKey.BadgeFifty)
     "hundred" -> resolve(CrewStringKey.BadgeHundred)
     else      -> null
+}
+
+/**
+ * The one display-name-fallback rule for the crew feature: a deleted account falls back to
+ * [deletedFallback], a blank display name falls back to the member's handle, and a blank handle
+ * falls back to [unnamedFallback]. Shared by [FrCrewMemberRow] and `CrewSettingsScreen`'s confirm
+ * dialogs so a member with only a handle set reads the same way everywhere.
+ */
+internal fun memberDisplayName(
+    account: Account?,
+    deletedFallback: String,
+    unnamedFallback: String,
+): String = when {
+    account == null -> deletedFallback
+    account.displayName.isNotBlank() -> account.displayName
+    account.handle.isNotBlank() -> account.handle
+    else -> unnamedFallback
 }

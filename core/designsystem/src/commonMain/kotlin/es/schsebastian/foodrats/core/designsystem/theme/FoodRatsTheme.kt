@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -25,7 +26,7 @@ fun FoodRatsTheme(
     val baseColors = if (darkTheme) FoodRatsDarkColors else FoodRatsLightColors
     val colors = baseColors.applyAccent(accent, darkTheme)
     val semantic = if (darkTheme) FoodRatsDarkSemanticColors else FoodRatsLightSemanticColors
-    val structural = if (darkTheme) structuralDarkColors() else structuralLightColors()
+    val structural = remember(darkTheme) { if (darkTheme) structuralDarkColors() else structuralLightColors() }
     val fontFamily = rememberFrFontFamily()
     val typography = rememberFoodRatsTypography(fontFamily)
     var minotaurOn by rememberSaveable(minotaur) { mutableStateOf(minotaur) }

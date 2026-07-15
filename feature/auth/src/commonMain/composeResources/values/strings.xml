@@ -41,6 +41,7 @@
     <string name="auth_profile_title">Settings</string>
     <string name="auth_profile_back_cta">Back</string>
     <string name="auth_profile_identity_section">General</string>
+    <string name="auth_profile_identity_loading">…</string>
     <string name="auth_profile_preferences_section">Preferences</string>
     <string name="auth_profile_danger_zone_section">Danger Zone</string>
     <string name="auth_profile_danger_zone_subtitle">Irreversible actions. Read carefully.</string>
@@ -99,7 +100,7 @@
     <string name="auth_profile_language_persist_failed">Couldn't save your language. Try again.</string>
 
     <string name="auth_profile_notifications_row">Notifications</string>
-    <string name="auth_profile_notifications_subtitle_on">Streak nudges, comments and rating updates.</string>
+    <string name="auth_profile_notifications_subtitle_on">Streak nudges, comments and score updates.</string>
     <string name="auth_profile_notifications_subtitle_off">Push notifications are paused.</string>
     <string name="auth_profile_notifications_persist_failed">Couldn't save your preference. Try again.</string>
     <string name="auth_profile_notifications_permission_denied">Notifications were not allowed. You can change this later.</string>
@@ -129,19 +130,19 @@
     <string name="auth_profile_analytics_subtitle_off">Off — no usage analytics are collected. Turn this on to help improve FoodRats; no personal content is ever collected.</string>
 
     <string name="auth_export_data_row">Export my data</string>
-    <string name="auth_export_data_subtitle">Download a copy of your account, meals, ratings and crews (GDPR).</string>
+    <string name="auth_export_data_subtitle">Download a copy of your account, meals, scores and crews (GDPR).</string>
     <string name="auth_export_data_in_flight">Preparing your export…</string>
     <string name="auth_export_data_ready_subtitle">Your export is ready. The download link is valid for about 15 minutes.</string>
     <string name="auth_export_data_ready_cta">Download</string>
     <string name="auth_export_data_error_backend">Couldn't prepare your export. Try again.</string>
 
     <string name="auth_profile_delete_account_row">Delete my account</string>
-    <string name="auth_profile_delete_account_subtitle">Permanently removes your meals, ratings and memberships.</string>
+    <string name="auth_profile_delete_account_subtitle">Permanently removes your meals, scores and memberships.</string>
 
     <string name="auth_delete_account_title">Delete your account</string>
     <string name="auth_delete_account_intro">This action is permanent and cannot be undone. Before continuing, make sure you understand what happens.</string>
     <string name="auth_delete_account_warning_meals">Every meal you've posted will be removed from every crew.</string>
-    <string name="auth_delete_account_warning_ratings">Your ratings on other meals will be removed.</string>
+    <string name="auth_delete_account_warning_ratings">Your scores on other meals will be removed.</string>
     <string name="auth_delete_account_warning_crews">Crews you own must be transferred to another member or left empty first.</string>
     <string name="auth_delete_account_warning_irreversible">Your account cannot be recovered.</string>
     <string name="auth_delete_account_phrase_label">Type DELETE %1$s to confirm</string>

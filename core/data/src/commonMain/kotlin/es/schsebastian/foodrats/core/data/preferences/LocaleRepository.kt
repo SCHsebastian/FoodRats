@@ -22,12 +22,9 @@ class LocaleRepository(
 
     override suspend fun set(locale: AppLocale): Result<Unit, LocalePreferenceError> =
         withContext(dispatchers.io) {
-            runCatching {
+            persistResult({ LocalePreferenceError.Persist.Unavailable }) {
                 if (locale == AppLocale.System) prefs.clear(Keys.LocaleTag)
                 else prefs.set(Keys.LocaleTag, locale.tag)
-            }.fold(
-                onSuccess = { Result.success(Unit) },
-                onFailure = { Result.failure(LocalePreferenceError.Persist.Unavailable) },
-            )
+            }
         }
 }

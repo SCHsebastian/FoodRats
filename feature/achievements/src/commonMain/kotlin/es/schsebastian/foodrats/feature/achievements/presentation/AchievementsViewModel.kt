@@ -39,7 +39,7 @@ class AchievementsViewModel(
                 when (result) {
                     is Result.Ok -> {
                         update { it.copy(statuses = result.value.statuses, error = null, isLoading = false) }
-                        persistAndCelebrate(result.value.accountId, result.value.statuses)
+                        persistAndCelebrate(result.value.accountId, result.value.statuses, result.value.newlyUnlocked)
                     }
                     is Result.Err -> update { it.copy(error = result.error, isLoading = false) }
                 }
@@ -48,8 +48,13 @@ class AchievementsViewModel(
     }
 
     /** Persist newly-met unlocks ONCE; celebrate + track only on `Ok`. */
-    private suspend fun persistAndCelebrate(accountId: AccountId, statuses: List<AchievementStatus>) {
-        val newlyMet = statuses.filter { it.progress.isMet && it.unlockedAtEpochMs == null }
+    private suspend fun persistAndCelebrate(
+        accountId: AccountId,
+        statuses: List<AchievementStatus>,
+        newlyUnlocked: Map<String, Long>,
+    ) {
+        if (newlyUnlocked.isEmpty()) return
+        val newlyMet = statuses.filter { it.achievement.id.value in newlyUnlocked.keys }
         if (newlyMet.isEmpty()) return
         val now = clock.now().toEpochMilliseconds()
         val write = progress.recordUnlocks(accountId, newlyMet.associate { it.achievement.id.value to now })

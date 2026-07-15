@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -33,28 +34,30 @@ fun FrScrim(
     modifier: Modifier = Modifier,
     style: FrScrimStyle = FrScrimStyle.Standard,
 ) {
-    val brush: Brush = when (style) {
-        FrScrimStyle.Standard -> Brush.verticalGradient(
-            colorStops = arrayOf(
-                0.0f to Color(0x8C080907),
-                0.16f to Color(0x00080907),
-                0.74f to Color(0x00080907),
-                1.0f to Color(0xC7080907),
-            ),
-        )
-        FrScrimStyle.Even -> Brush.verticalGradient(
-            listOf(Color(0x570A0B08), Color(0x800A0B08)),
-        )
-        FrScrimStyle.Photo -> Brush.verticalGradient(
-            colorStops = arrayOf(
-                0.0f to Color(0x57070805),
-                0.54f to Color(0x1F070805),
-                1.0f to Color(0xE6070805),
-            ),
-        )
-        FrScrimStyle.PhotoEven -> Brush.verticalGradient(
-            listOf(Color(0x59070805), Color(0xB2070805)),
-        )
+    val brush: Brush = remember(style) {
+        when (style) {
+            FrScrimStyle.Standard -> Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.0f to Color(0x8C080907),
+                    0.16f to Color(0x00080907),
+                    0.74f to Color(0x00080907),
+                    1.0f to Color(0xC7080907),
+                ),
+            )
+            FrScrimStyle.Even -> Brush.verticalGradient(
+                listOf(Color(0x570A0B08), Color(0x800A0B08)),
+            )
+            FrScrimStyle.Photo -> Brush.verticalGradient(
+                colorStops = arrayOf(
+                    0.0f to Color(0x57070805),
+                    0.54f to Color(0x1F070805),
+                    1.0f to Color(0xE6070805),
+                ),
+            )
+            FrScrimStyle.PhotoEven -> Brush.verticalGradient(
+                listOf(Color(0x59070805), Color(0xB2070805)),
+            )
+        }
     }
     Box(modifier.fillMaxSize().background(brush))
 }

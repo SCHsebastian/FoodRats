@@ -4,6 +4,7 @@ import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.result.getOrNull
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
@@ -43,27 +44,15 @@ fun CrewDto.toDomain(): Result<Crew, CrewError> {
     }
     // tagline is optional: absent/blank → null; too-long silently truncated on read (shouldn't
     // happen for well-formed data, but tolerant deserialization is the pre-launch policy).
-    val tagline = tagline?.let { raw ->
-        when (val t = CrewTagline.of(raw)) {
-            is Result.Ok  -> t.value
-            is Result.Err -> null   // silently ignore malformed tagline on read
-        }
-    }
+    // silently ignore malformed tagline on read
+    val tagline = tagline?.let { CrewTagline.of(it).getOrNull() }
     // welcomeMessage is optional: absent/blank → null; too-long silently ignored on read.
-    val welcomeMessage = welcomeMessage?.let { raw ->
-        when (val m = WelcomeMessage.of(raw)) {
-            is Result.Ok  -> m.value
-            is Result.Err -> null   // silently ignore malformed message on read
-        }
-    }
+    // silently ignore malformed message on read
+    val welcomeMessage = welcomeMessage?.let { WelcomeMessage.of(it).getOrNull() }
     // weeklyChallenge is optional: absent/blank → null; too-long silently ignored on read.
     // weeklyChallengeSetAt is optional: absent → null (tolerated if challenge is also null).
-    val weeklyChallenge = weeklyChallenge?.let { raw ->
-        when (val c = WeeklyChallenge.of(raw)) {
-            is Result.Ok  -> c.value
-            is Result.Err -> null   // silently ignore malformed challenge on read
-        }
-    }
+    // silently ignore malformed challenge on read
+    val weeklyChallenge = weeklyChallenge?.let { WeeklyChallenge.of(it).getOrNull() }
     val weeklyChallengeSetAt = weeklyChallengeSetAtMillis?.let { ms ->
         Instant.fromEpochMilliseconds(ms)
     }

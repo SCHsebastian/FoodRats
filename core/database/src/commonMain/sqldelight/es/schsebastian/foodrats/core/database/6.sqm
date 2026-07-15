@@ -1,0 +1,13 @@
+-- Migration v6 -> v7 (comment @-mentions). Adds the nullable `mentions` column to `outbox` so
+-- offline-queued PostComment/EditComment commands can carry their JSON-encoded List<String> of
+-- mentioned account uids (mirrors PendingCommand.PostComment.mentions/EditComment.mentions). An
+-- EXISTING (v6) install gets the column added as NULL — every row queued before mentions existed
+-- reads back as an empty mentions list (see OutboxLocalStore.toDomain); a fresh install runs
+-- Schema.create() at v7 and gets it from Outbox.sq directly. Keep byte-consistent with Outbox.sq's
+-- outbox CREATE TABLE.
+--
+-- (verifyMigrations is off pre-launch — see core/database/build.gradle.kts — so there is no
+-- committed schema dump to cross-check; this file exists so an upgraded dev/CI install isn't left
+-- querying a column that doesn't exist, mirroring the 1.sqm / 2.sqm / 4.sqm / 5.sqm rationale.)
+
+ALTER TABLE outbox ADD COLUMN mentions TEXT;

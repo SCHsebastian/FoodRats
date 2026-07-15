@@ -1,5 +1,12 @@
 package es.schsebastian.foodrats.feature.stats.presentation.components
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
+import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Instant
@@ -19,3 +26,36 @@ internal fun formatCollectionDate(instant: Instant): String {
     val day = date.dayOfMonth.toString().padStart(2, '0')
     return "$day/$month"
 }
+
+/**
+ * Two-line caption slot height (micro line-height × 2), shared by the pokédex and passport grid cells
+ * so every cell in the collection grid stays aligned regardless of caught/locked caption length.
+ * Memoized against the current density instead of recomputed on every recomposition.
+ */
+@Composable
+internal fun rememberCaptionSlotHeight(): Dp {
+    val density = LocalDensity.current
+    val microFontSize = StructuralType.micro.fontSize
+    return remember(density, microFontSize) { with(density) { (microFontSize * 1.3f * 2).toDp() } }
+}
+
+/**
+ * Two-line name slot height (body line-height × 2), shared by the collection grid cells so 1-line and
+ * 2-line names never change tile height. Memoized against the current density instead of recomputed on
+ * every recomposition.
+ */
+@Composable
+internal fun rememberNameSlotHeight(): Dp {
+    val density = LocalDensity.current
+    val bodyFontSize = StructuralType.body.fontSize
+    return remember(density, bodyFontSize) { with(density) { (bodyFontSize * 1.5f * 2).toDp() } }
+}
+
+/**
+ * Caption-text color shared by the pokédex and passport grid cells — a foreground tint dimmed a touch
+ * more in light theme so the caption reads as secondary against the warm-white floor without going
+ * invisible.
+ */
+@Composable
+internal fun captionTextColor(): Color =
+    StructuralColors.foreground.copy(alpha = if (StructuralColors.isLight) 0.65f else 0.5f)

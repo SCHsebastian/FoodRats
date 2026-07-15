@@ -2,7 +2,6 @@ package es.schsebastian.foodrats.core.designsystem.molecules
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -60,7 +59,7 @@ fun FrSettingsSection(
             )
         }
         val shape = RoundedCornerShape(Radius.md)
-        val surface = Surface(
+        Surface(
             shape = shape,
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             modifier = Modifier
@@ -91,6 +90,3 @@ fun FrSettingsDivider() {
         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
     )
 }
-
-@Suppress("UnusedReceiverParameter")
-internal val FrSettingsSectionInternalPadding: PaddingValues = PaddingValues(0.dp)

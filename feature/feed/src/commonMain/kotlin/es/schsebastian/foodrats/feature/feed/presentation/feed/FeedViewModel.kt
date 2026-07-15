@@ -41,6 +41,10 @@ import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import es.schsebastian.foodrats.feature.feed.domain.model.FeedDay
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcBlockedAccountsPort
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcCrewWelcomePort
+import es.schsebastian.foodrats.feature.feed.presentation.NoopUgcReportPort
+import es.schsebastian.foodrats.feature.feed.presentation.toReason
 import es.schsebastian.foodrats.feature.feed.domain.usecase.ObserveFeedUseCase
 import es.schsebastian.foodrats.feature.feed.domain.usecase.RateMealUseCase
 import es.schsebastian.foodrats.feature.feed.presentation.components.toFeedUi
@@ -83,11 +87,11 @@ class FeedViewModel(
     private val optimistic: OptimisticMealWritePort,
     // UGC compliance §4/§5 — report/block from the feed overflow. Defaults are no-ops so existing
     // tests compile without injecting these ports; Koin always passes the real implementations.
-    private val reportPort: ReportPort = NoopFeedReportPort,
-    private val blockedAccounts: BlockedAccountsPort = NoopFeedBlockedAccountsPort,
+    private val reportPort: ReportPort = NoopUgcReportPort,
+    private val blockedAccounts: BlockedAccountsPort = NoopUgcBlockedAccountsPort,
     private val analytics: AnalyticsPort = NoopAnalyticsTracker,
     // C6 — pinned welcome banner. Default is a no-op so existing tests keep compiling.
-    private val welcomePort: CrewWelcomePort = NoopCrewWelcomePort,
+    private val welcomePort: CrewWelcomePort = NoopUgcCrewWelcomePort,
 ) : MviViewModel<FeedState, FeedIntent, FeedEffect>(
     FeedState(
         day = FeedDay.today(clock.now().toLocalDateTime(zone).date, zone),
@@ -316,9 +320,8 @@ class FeedViewModel(
             .map { snapshot ->
                 if (snapshot == null) null
                 else {
-                    val sevenDaysMs = 7L * 24 * 60 * 60 * 1_000
                     val ageMs = clock.now().toEpochMilliseconds() - snapshot.setAtMillis
-                    if (ageMs >= sevenDaysMs) null else snapshot.text
+                    if (ageMs >= WEEKLY_CHALLENGE_EXPIRY_MS) null else snapshot.text
                 }
             }
             .distinctUntilChanged()
@@ -393,6 +396,9 @@ class FeedViewModel(
     private companion object {
         /** Hard ceiling on the pull-to-refresh spinner (offline re-pull never lands a fresh stamp). */
         const val REFRESH_SPINNER_TIMEOUT_MS = 8_000L
+
+        /** Client-side expiry window for the pinned weekly challenge banner (C5). */
+        const val WEEKLY_CHALLENGE_EXPIRY_MS = 7L * 24 * 60 * 60 * 1_000
     }
 
     /**
@@ -494,17 +500,6 @@ class FeedViewModel(
     }
 
     // ── Feed overflow UGC actions ────────────────────────────────────────────────────────────────
-
-    /** Maps the presentation reason option to the domain [ReportReason]. */
-    private fun FrReportReasonOption.toReason(): ReportReason = when (this) {
-        FrReportReasonOption.CHILD_SAFETY -> ReportReason.ChildSafety
-        FrReportReasonOption.SPAM       -> ReportReason.Spam
-        FrReportReasonOption.HARASSMENT -> ReportReason.Harassment
-        FrReportReasonOption.HATE       -> ReportReason.Hate
-        FrReportReasonOption.SEXUAL     -> ReportReason.Sexual
-        FrReportReasonOption.VIOLENCE   -> ReportReason.Violence
-        FrReportReasonOption.OTHER      -> ReportReason.Other
-    }
 
     /** Submits the feed report against the pending [FeedState.feedReportTarget] (UGC compliance §4). */
     private suspend fun submitFeedReport(reasonOption: FrReportReasonOption) {
@@ -675,41 +670,4 @@ class FeedViewModel(
             canGoPrev = FeedDay.isWithinWindow(candidate.previous().day.date, today),
         ) }
     }
-}
-
-/**
- * No-op [ReportPort] used as the constructor default so the existing test surface keeps compiling.
- * The Koin binding always passes the real Firestore-backed port; production never sees this.
- */
-private object NoopFeedReportPort : ReportPort {
-    override suspend fun report(
-        reporter: AccountId,
-        target: ReportTarget,
-        reason: ReportReason,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.moderation.ReportError> = Result.success(Unit)
-}
-
-/** No-op [BlockedAccountsPort] default for [FeedViewModel] (see [NoopFeedReportPort]). */
-private object NoopFeedBlockedAccountsPort : BlockedAccountsPort {
-    override fun observeBlocked(owner: AccountId): Flow<Set<AccountId>> = flowOf(emptySet())
-    override suspend fun block(
-        owner: AccountId,
-        target: AccountId,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
-    override suspend fun unblock(
-        owner: AccountId,
-        target: AccountId,
-    ): Result<Unit, es.schsebastian.foodrats.core.domain.account.BlockError> = Result.success(Unit)
-}
-
-/** No-op [CrewWelcomePort] default for [FeedViewModel] — see [NoopFeedReportPort] for rationale. */
-private object NoopCrewWelcomePort : CrewWelcomePort {
-    override fun observeWelcomeMessage(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String?> = flowOf(null)
-    override fun isWelcomeDismissed(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<Boolean> = flowOf(false)
-    override suspend fun dismissWelcome(crewId: es.schsebastian.foodrats.core.domain.model.CrewId) = Unit
-    override fun observeWeeklyChallenge(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot?> = flowOf(null)
-    override fun observeScoreStyle(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<CrewScoreStyle> = flowOf(CrewScoreStyle.Stars)
-    override fun observeBannerImageUrl(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String?> = flowOf(null)
-    override fun observeBannerCacheKey(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<String> = flowOf("")
-    override fun observeBannerFocalY(crewId: es.schsebastian.foodrats.core.domain.model.CrewId): Flow<Float> = flowOf(0.5f)
 }

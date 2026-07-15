@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.compose.rememberAsyncImagePainter
+import es.schsebastian.foodrats.core.designsystem.atoms.FrIcon
 import es.schsebastian.foodrats.core.designsystem.atoms.FrIcons
 import es.schsebastian.foodrats.core.designsystem.atoms.FrShimmerBox
 import es.schsebastian.foodrats.core.designsystem.atoms.FrText
@@ -62,16 +64,19 @@ import es.schsebastian.foodrats.core.designsystem.structural.FrTileTone
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.ShareCardStringKey
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.core.i18n.resolvePlural
+import es.schsebastian.foodrats.feature.stats.domain.error.StatsError
 import es.schsebastian.foodrats.feature.stats.domain.model.HeroStats
 import es.schsebastian.foodrats.feature.stats.domain.model.MealAward
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberAverage
 import es.schsebastian.foodrats.feature.stats.domain.model.MemberCount
+import es.schsebastian.foodrats.feature.stats.domain.model.StatsSnapshot
 import es.schsebastian.foodrats.feature.stats.domain.model.Tab
 import es.schsebastian.foodrats.feature.stats.domain.model.WindowStats
 import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
@@ -125,7 +130,12 @@ fun StatsScreen(
                     onRetry = { vm.onIntent(StatsIntent.Refresh) },
                 )
                 else -> StatsContent(
-                    state = state,
+                    snapshot = state.snapshot!!,
+                    selectedTab = state.selectedTab,
+                    historicError = state.historicError,
+                    historicLoading = state.historicLoading,
+                    scoreStyle = state.scoreStyle,
+                    sharePreparing = state.isPreparingShare,
                     onSelectTab = { vm.onIntent(StatsIntent.SelectTab(it)) },
                     onOpenRecap = onOpenRecap,
                     onShareStreak = { vm.onIntent(StatsIntent.ShareStreakTapped) },
@@ -158,15 +168,20 @@ fun StatsScreen(
 
 @Composable
 private fun StatsContent(
-    state: StatsState,
+    snapshot: StatsSnapshot,
+    selectedTab: Tab,
+    historicError: StatsError?,
+    historicLoading: Boolean,
+    scoreStyle: FrScoreStyle,
+    sharePreparing: Boolean,
     onSelectTab: (Tab) -> Unit,
     onOpenRecap: () -> Unit,
     onShareStreak: () -> Unit,
     onShareAward: (String) -> Unit,
 ) {
-    val snap = state.snapshot!!
+    val snap = snapshot
     // Selected window.
-    val window: WindowStats? = when (state.selectedTab) {
+    val window: WindowStats? = when (selectedTab) {
         Tab.Week -> snap.week
         Tab.Month -> snap.month
         Tab.Historic -> snap.historic
@@ -219,14 +234,13 @@ private fun StatsContent(
         item(key = "streak-hero") { StreakHero(hero = snap.hero) }
 
         // Structural tab strip.
-        item(key = "tab-strip") { StatTabStrip(selected = state.selectedTab, onSelect = onSelectTab) }
+        item(key = "tab-strip") { StatTabStrip(selected = selectedTab, onSelect = onSelectTab) }
 
-        val historicError = state.historicError
-        if (state.selectedTab == Tab.Historic && historicError != null) {
+        if (selectedTab == Tab.Historic && historicError != null) {
             item(key = "window-error") {
-                FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = androidx.compose.material3.MaterialTheme.colorScheme.error)
+                FrText(text = resolve(historicError.toStringKey()), style = StructuralType.body, color = LocalFrSemanticColors.current.danger)
             }
-        } else if (window == null || state.historicLoading) {
+        } else if (window == null || historicLoading) {
             // `historicLoading` is the VM's explicit "Historic is being pulled/recomputed" flag —
             // without it, a tab switch would keep rendering the previous tab's stale numbers with
             // no indication (reading as wrong data). Shimmer skeletons stand in for the tab body.
@@ -234,8 +248,8 @@ private fun StatsContent(
         } else {
             tabBody(
                 window = window,
-                scoreStyle = state.scoreStyle,
-                sharePreparing = state.isPreparingShare,
+                scoreStyle = scoreStyle,
+                sharePreparing = sharePreparing,
                 onShareAward = onShareAward,
             )
         }
@@ -450,35 +464,37 @@ private fun LazyListScope.tabBody(
                 FrEyebrow(text = resolve(StatsStringKey.TopIngredientByMemberTitle).uppercase())
                 FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth()) {
                     window.topByMember.forEach { member ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-                        ) {
-                            FrGlassAvatar(
-                                initials = member.displayName,
-                                image = member.avatarUrl?.let { rememberAsyncImagePainter(it) },
-                                ring = FrAvatarRing.None,
-                                size = 36.dp,
-                            )
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
-                                FrText(
-                                    text = member.displayName,
-                                    style = StructuralType.titleMd,
-                                    color = StructuralColors.foreground,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
+                        key(member.accountId.value) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
+                            ) {
+                                FrGlassAvatar(
+                                    initials = member.displayName,
+                                    image = member.avatarUrl?.let { rememberAsyncImagePainter(it) },
+                                    ring = FrAvatarRing.None,
+                                    size = 36.dp,
                                 )
-                                FrText(
-                                    text = resolvePlural(
-                                        StatsPluralKey.MemberTopIngredientMetric,
-                                        member.mealCount,
-                                        member.ingredientName,
-                                        member.mealCount,
-                                    ),
-                                    style = StructuralType.micro,
-                                    color = StructuralColors.foreground.copy(alpha = 0.85f),
-                                )
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
+                                    FrText(
+                                        text = member.displayName,
+                                        style = StructuralType.titleMd,
+                                        color = StructuralColors.foreground,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    FrText(
+                                        text = resolvePlural(
+                                            StatsPluralKey.MemberTopIngredientMetric,
+                                            member.mealCount,
+                                            member.ingredientName,
+                                            member.mealCount,
+                                        ),
+                                        style = StructuralType.micro,
+                                        color = StructuralColors.foreground.copy(alpha = 0.85f),
+                                    )
+                                }
                             }
                         }
                     }
@@ -491,9 +507,9 @@ private fun LazyListScope.tabBody(
 @Composable
 private fun MetricTile(value: String, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
     FrGlassTile(depth = FrTileDepth.Default, modifier = modifier.height(124.dp)) {
-        es.schsebastian.foodrats.core.designsystem.atoms.FrIcon(
+        FrIcon(
             image = icon,
-            tint = androidx.compose.material3.MaterialTheme.colorScheme.primary,
+            tint = StructuralColors.foreground,
             modifier = Modifier.size(22.dp),
         )
         Spacer(Modifier.weight(1f))
@@ -570,6 +586,8 @@ private fun CookTile(title: String, name: String, avatarUrl: String?, metric: St
 // Score helpers (replicate the matte cards' data→string mapping)
 // ----------------------------------------------------------------------------------------------
 
+private fun emojiForScore(score: Double): String = scoreToEmoji(round(score).toInt().coerceIn(1, 5))
+
 /** The award's headline number, style-aware (Stars/Numeric → one-decimal; Emoji → glyph). */
 @Composable
 private fun scoreHeadline(score: Double, style: FrScoreStyle): String {
@@ -577,7 +595,7 @@ private fun scoreHeadline(score: Double, style: FrScoreStyle): String {
     return when (style) {
         FrScoreStyle.Stars -> s
         FrScoreStyle.Numeric -> s
-        FrScoreStyle.Emoji -> scoreToEmoji(round(score).toInt().coerceIn(1, 5))
+        FrScoreStyle.Emoji -> emojiForScore(score)
     }
 }
 
@@ -587,7 +605,7 @@ private fun cookMetric(cook: MemberAverage, style: FrScoreStyle, starsKey: Stats
     return when (style) {
         FrScoreStyle.Stars -> resolve(starsKey, s, cook.postCount)
         FrScoreStyle.Numeric -> resolve(glyphFreeKey, s, cook.postCount)
-        FrScoreStyle.Emoji -> resolve(glyphFreeKey, scoreToEmoji(round(cook.averageScore).toInt().coerceIn(1, 5)), cook.postCount)
+        FrScoreStyle.Emoji -> resolve(glyphFreeKey, emojiForScore(cook.averageScore), cook.postCount)
     }
 }
 
@@ -597,7 +615,7 @@ private fun roastMetric(roast: MemberAverage, style: FrScoreStyle): String {
     return when (style) {
         FrScoreStyle.Stars -> resolve(StatsStringKey.MostCriticizedMetricFormat, s)
         FrScoreStyle.Numeric -> resolve(StatsStringKey.MostCriticizedMetricFormatGlyphFree, s)
-        FrScoreStyle.Emoji -> resolve(StatsStringKey.MostCriticizedMetricFormatGlyphFree, scoreToEmoji(round(roast.averageScore).toInt().coerceIn(1, 5)))
+        FrScoreStyle.Emoji -> resolve(StatsStringKey.MostCriticizedMetricFormatGlyphFree, emojiForScore(roast.averageScore))
     }
 }
 

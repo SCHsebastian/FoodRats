@@ -32,14 +32,17 @@ import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Result of one evaluation pass: the [accountId] (so the ViewModel can persist against the right
- * member) and the reconciled [statuses] (persisted unlock dates already overlaid). A status that is
- * `progress.isMet && unlockedAtEpochMs == null` is newly-met → the ViewModel persists it once and
- * celebrates (spec §8.2). Keeping persistence in the ViewModel (not here) preserves the rule that a
- * use case is pure orchestration with no side effects.
+ * member), the reconciled [statuses] (persisted unlock dates already overlaid), and [newlyUnlocked]
+ * — the canonical met-this-frame-but-not-yet-persisted ids from [AchievementReconciler.reconcile] —
+ * so the ViewModel derives its work list from the reconciler's own predicate instead of re-deriving
+ * it. The ViewModel persists [newlyUnlocked] once and celebrates (spec §8.2). Keeping persistence in
+ * the ViewModel (not here) preserves the rule that a use case is pure orchestration with no side
+ * effects.
  */
 data class AchievementsSnapshot(
     val accountId: AccountId,
     val statuses: List<AchievementStatus>,
+    val newlyUnlocked: Map<String, Long> = emptyMap(),
 )
 
 /**
@@ -89,7 +92,11 @@ class ObserveAchievementsUseCase(
                                             now = clock.now().toEpochMilliseconds(),
                                         )
                                         Result.success(
-                                            AchievementsSnapshot(sess.accountId, reconciled.statuses),
+                                            AchievementsSnapshot(
+                                                sess.accountId,
+                                                reconciled.statuses,
+                                                reconciled.newlyUnlocked,
+                                            ),
                                         )
                                     }
                                 }

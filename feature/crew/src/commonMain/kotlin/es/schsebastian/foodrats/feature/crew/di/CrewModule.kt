@@ -6,6 +6,7 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewRosterPort
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot
@@ -20,6 +21,7 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.CrewCodeGenerator
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewDataSource
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewErrorMapper
 import es.schsebastian.foodrats.feature.crew.data.firebase.CrewFirestoreDataSource
+import es.schsebastian.foodrats.feature.crew.data.firebase.CrewRosterAdapter
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.outbox.CrewOutboxCommandHandler
@@ -99,6 +101,10 @@ val crewModule = module {
                 }
         }
     }
+    // A2 (comment @-mentions) — mention-autocomplete candidate list for :feature:feed, without a
+    // :feature:crew dep. Mirrors CrewOwnerPort: reads the same CrewDataSource.observeCrew listener,
+    // no parallel Firestore subscription.
+    single<CrewRosterPort> { CrewRosterAdapter(dataSource = get<CrewDataSource>()) }
     single<CrewRepository> {
         // (dataSource, dispatchers, errorMapper, clock, local, bannerStorage)
         FirebaseCrewRepository(get(), get(), get(), get(), get(), get())

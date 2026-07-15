@@ -6,6 +6,9 @@ export const KEY_WEEKLY_DIGEST = "weekly_digest";
 // but you haven't." Sent server-side to non-posters with a live token. The client i18n
 // task (`w1-streak-nudges-i18n`) adds the matching PushPayloadMapper branch + NotificationStringKey.
 export const KEY_SOCIAL_NUDGE = "social_nudge";
+// Comment @-mention push (roadmap: comment @-mentions). Sent to mentioned crew members on
+// comment CREATE only (never on edit — see PLAN.md). Client PushPayloadMapper matches this key.
+export const KEY_COMMENT_MENTION = "comment_mention";
 
 /**
  * Per-language notification text. THE source of truth for the OS-rendered `notification` block —
@@ -23,6 +26,8 @@ interface NotificationStrings {
   weeklyDigestBody: string;
   socialNudgeTitle: string;
   socialNudgeBody: (posted: number, size: number) => string;
+  commentMentionTitle: (mentioner: string, dish: string) => string;
+  commentMentionBody: string;
 }
 
 const EN: NotificationStrings = {
@@ -35,6 +40,8 @@ const EN: NotificationStrings = {
   socialNudgeTitle: "Your crew is eating 👀",
   socialNudgeBody: (posted, size) =>
     `${posted} of ${size} crewmates already posted today — your turn`,
+  commentMentionTitle: (mentioner, dish) => `${mentioner} mentioned you on ${dish}`,
+  commentMentionBody: "Tap to read",
 };
 
 const ES: NotificationStrings = {
@@ -47,6 +54,8 @@ const ES: NotificationStrings = {
   socialNudgeTitle: "Tu crew está comiendo 👀",
   socialNudgeBody: (posted, size) =>
     `${posted} de ${size} compañeros ya han publicado hoy — te toca`,
+  commentMentionTitle: (mentioner, dish) => `${mentioner} te mencionó en ${dish}`,
+  commentMentionBody: "Pulsa para leer",
 };
 
 const TABLES: Record<"en" | "es", NotificationStrings> = { en: EN, es: ES };
@@ -87,6 +96,11 @@ export function localizeNotification(
       const size = Number(data.crewSize ?? "0");
       return { title: s.socialNudgeTitle, body: s.socialNudgeBody(posted, size) };
     }
+    case KEY_COMMENT_MENTION:
+      return {
+        title: s.commentMentionTitle(data.commenterName ?? "", data.dishName ?? ""),
+        body: s.commentMentionBody,
+      };
     default:
       return null;
   }
@@ -104,4 +118,6 @@ export const FALLBACK = {
   weeklyDigestBody: (parts: string[]) => parts.join(" · "),
   socialNudgeTitle: EN.socialNudgeTitle,
   socialNudgeBody: EN.socialNudgeBody,
+  commentMentionTitle: EN.commentMentionTitle,
+  commentMentionBody: EN.commentMentionBody,
 } as const;

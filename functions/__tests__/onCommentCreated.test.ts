@@ -111,3 +111,125 @@ describe("onCommentCreated — comment push to the meal author", () => {
     expect(payload.data).not.toHaveProperty("link");
   });
 });
+
+describe("onCommentCreated — @-mention fan-out", () => {
+  const CREW_DOC = `crews/${CREW}`;
+
+  it("pushes a CommentMention to a mentioned crew member (not the meal author)", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set(CREW_DOC, { memberIds: ["alice", "bob", "carol"] });
+    await onCommentCreated.run(
+      commentEvent({ authorId: "bob", authorName: "Bob", mentions: ["carol"] }),
+    );
+
+    expect(h.sendToUid).toHaveBeenCalledTimes(2); // owner push + mention push
+    const [uid, payload] = h.sendToUid.mock.calls[1] as [string, PushPayload];
+    expect(uid).toBe("carol");
+    expect(payload.kind).toBe("CommentMention");
+    expect(payload.key).toBe("comment_mention");
+    expect(payload.notificationTitle).toBe("Bob mentioned you on paella");
+    expect(payload.notificationBody).toBe("Tap to read");
+    expect(payload.data).toEqual({
+      crewId: CREW,
+      mealId: MEAL,
+      commentId: COMMENT,
+      commenterName: "Bob",
+      dishName: "paella",
+      dayKey: "2026-06-14",
+      link: mealDeepLink(MEAL, "2026-06-14"),
+    });
+  });
+
+  it("meal owner mentioned gets only the NewComment push, never a second mention push", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set(CREW_DOC, { memberIds: ["alice", "bob"] });
+    await onCommentCreated.run(
+      commentEvent({ authorId: "bob", authorName: "Bob", mentions: ["alice"] }),
+    );
+
+    expect(h.sendToUid).toHaveBeenCalledTimes(1);
+    const [uid, payload] = h.sendToUid.mock.calls[0] as [string, PushPayload];
+    expect(uid).toBe("alice");
+    expect(payload.kind).toBe("NewComment");
+  });
+
+  it("comment author mentioning themself gets no push at all for the self-mention", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set(CREW_DOC, { memberIds: ["alice", "bob"] });
+    await onCommentCreated.run(
+      commentEvent({ authorId: "bob", authorName: "Bob", mentions: ["bob"] }),
+    );
+
+    // Only the owner (alice) push fires; bob (author) is excluded from mention fan-out.
+    expect(h.sendToUid).toHaveBeenCalledTimes(1);
+    const [uid] = h.sendToUid.mock.calls[0] as [string, PushPayload];
+    expect(uid).toBe("alice");
+  });
+
+  it("filters out a mentioned uid that is not in crew.memberIds (anti-spam)", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set(CREW_DOC, { memberIds: ["alice", "bob"] });
+    await onCommentCreated.run(
+      commentEvent({ authorId: "bob", authorName: "Bob", mentions: ["outsider"] }),
+    );
+
+    expect(h.sendToUid).toHaveBeenCalledTimes(1); // owner push only
+    const [uid] = h.sendToUid.mock.calls[0] as [string, PushPayload];
+    expect(uid).toBe("alice");
+  });
+
+  it("no mentions field: existing behavior untouched (owner push only)", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set(CREW_DOC, { memberIds: ["alice", "bob"] });
+    await onCommentCreated.run(commentEvent({ authorId: "bob", authorName: "Bob" }));
+
+    expect(h.sendToUid).toHaveBeenCalledTimes(1);
+  });
+
+  it("empty mentions array: no mention pushes, no crew read needed", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    // Deliberately no crew doc set — proves the empty-mentions short-circuit skips the read.
+    await onCommentCreated.run(
+      commentEvent({ authorId: "bob", authorName: "Bob", mentions: [] }),
+    );
+
+    expect(h.sendToUid).toHaveBeenCalledTimes(1);
+  });
+
+  it("owner comments on their own meal, mentioning a member: member gets the mention push, owner gets nothing", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set(CREW_DOC, { memberIds: ["alice", "bob", "carol"] });
+    await onCommentCreated.run(
+      commentEvent({ authorId: "alice", authorName: "Alice", mentions: ["carol"] }),
+    );
+
+    expect(h.sendToUid).toHaveBeenCalledTimes(1); // mention push only, no self owner push
+    const [uid, payload] = h.sendToUid.mock.calls[0] as [string, PushPayload];
+    expect(uid).toBe("carol");
+    expect(payload.kind).toBe("CommentMention");
+  });
+
+  it("caps mention recipients at 10 and dedupes repeated uids", async () => {
+    const members = ["alice", ...Array.from({ length: 12 }, (_, i) => `m${i}`)];
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set(CREW_DOC, { memberIds: members });
+    const mentions = [...members.filter((m) => m !== "alice"), "m0"]; // m0 duplicated
+    await onCommentCreated.run(
+      commentEvent({ authorId: "bob", authorName: "Bob", mentions }),
+    );
+
+    // 1 owner push + at most 10 mention pushes.
+    expect(h.sendToUid.mock.calls.length).toBeLessThanOrEqual(11);
+    expect(h.sendToUid.mock.calls.length).toBe(11);
+  });
+
+  it("crew doc missing: mention fan-out is skipped without throwing (owner push still sent)", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    // No crew doc set.
+    await onCommentCreated.run(
+      commentEvent({ authorId: "bob", authorName: "Bob", mentions: ["carol"] }),
+    );
+
+    expect(h.sendToUid).toHaveBeenCalledTimes(1); // owner push only
+  });
+});

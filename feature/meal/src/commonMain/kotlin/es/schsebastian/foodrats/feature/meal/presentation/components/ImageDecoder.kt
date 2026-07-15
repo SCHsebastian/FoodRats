@@ -1,6 +1,12 @@
 package es.schsebastian.foodrats.feature.meal.presentation.components
 
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.ImageBitmap
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * Decodes an in-memory JPEG/PNG byte array into a Compose [ImageBitmap].
@@ -20,3 +26,18 @@ import androidx.compose.ui.graphics.ImageBitmap
  * format, OOM).
  */
 internal expect fun decodeImageBitmap(bytes: ByteArray, maxDimension: Int = Int.MAX_VALUE): ImageBitmap?
+
+/**
+ * Decodes [bytes] to an [ImageBitmap] off the main thread, keyed on the byte content hash so
+ * recomposition-supplied equal-but-distinct arrays don't trigger a redundant decode. `null`
+ * bytes (no photo yet) decode to `null`. Shared by the hero preview and the photo-strip
+ * thumbnails, which previously duplicated this `produceState` + `withContext` pattern.
+ */
+@Composable
+internal fun rememberDecodedBitmap(bytes: ByteArray?, maxDimension: Int): ImageBitmap? {
+    val contentHash = remember(bytes) { bytes?.contentHashCode() }
+    val bitmap by produceState<ImageBitmap?>(initialValue = null, contentHash) {
+        value = bytes?.let { withContext(Dispatchers.Default) { decodeImageBitmap(it, maxDimension) } }
+    }
+    return bitmap
+}

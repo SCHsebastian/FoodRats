@@ -63,6 +63,7 @@ import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
 import es.schsebastian.foodrats.feature.auth.i18n.AuthStringKey
+import es.schsebastian.foodrats.feature.auth.presentation.components.StructuralDangerBanner
 import es.schsebastian.foodrats.feature.auth.presentation.toStringKey
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -174,7 +175,7 @@ fun SignInScreen(
 
             state.error?.let { err ->
                 Spacer(Modifier.height(Spacing.md))
-                DangerBanner(text = resolve(err.toStringKey()))
+                StructuralDangerBanner(text = resolve(err.toStringKey()))
             }
 
             Spacer(Modifier.height(Spacing.lg))
@@ -191,32 +192,6 @@ fun SignInScreen(
 
             Spacer(Modifier.navigationBarsPadding().height(Spacing.xl))
         }
-    }
-}
-
-/** A crimson structural banner reusing the inline danger-tile pattern from Profile / CrewSettings. */
-@Composable
-private fun DangerBanner(text: String) {
-    val semantic = LocalFrSemanticColors.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(Radius.md))
-            .background(semantic.danger.copy(alpha = 0.16f))
-            .padding(Spacing.md),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
-    ) {
-        FrIcon(
-            image = FrIcons.Warning,
-            tint = semantic.danger,
-            modifier = Modifier.size(Sizes.iconMd),
-        )
-        FrText(
-            text = text,
-            style = StructuralType.body,
-            color = StructuralColors.foreground,
-        )
     }
 }
 

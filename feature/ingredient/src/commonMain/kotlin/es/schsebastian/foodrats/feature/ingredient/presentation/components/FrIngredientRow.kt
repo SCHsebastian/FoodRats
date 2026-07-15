@@ -13,10 +13,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -47,7 +47,7 @@ fun FrIngredientRow(
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val fill by animateColorAsState(
+    val fill = animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
     )
     Row(
@@ -57,7 +57,7 @@ fun FrIngredientRow(
             .heightIn(min = Sizes.touchTarget)
             .padding(horizontal = Spacing.sm, vertical = Spacing.xxs)
             .clip(RoundedCornerShape(Radius.sm))
-            .background(fill)
+            .drawBehind { drawRect(fill.value) }
             // One labelled checkbox node: the row owns the toggle (role + merged name) and a 48dp
             // target; the inner Checkbox is decorative (onCheckedChange = null) so TalkBack announces
             // "<name>, checkbox, checked" rather than a bare, unlabelled control (WCAG 4.1.2 / 2.5.5).

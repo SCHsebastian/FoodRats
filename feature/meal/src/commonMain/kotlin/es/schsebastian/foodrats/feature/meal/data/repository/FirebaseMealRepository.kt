@@ -210,6 +210,17 @@ internal class FirebaseMealRepository(
     }
 
     /**
+     * Best-effort deletes every plate blob in [indices] for [crewId]/[mealId], logging (never
+     * throwing) on failure. Called inside the single `publish()` IO boundary, never its own.
+     */
+    private suspend fun cleanupOrphanedPlates(crewId: CrewId, mealId: String, indices: IntRange, reason: String) {
+        indices.forEach { index ->
+            runCatching { storage.delete(crewId, mealId, index) }
+                .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed$reason (index $index): ${it.message}" } }
+        }
+    }
+
+    /**
      * Fans a single composed plate out to every crew in [MealDraft.audienceCrewIds] —
      * one meal document plus one image copy per crew. Per-crew copies are mandatory, not
      * a convenience: a crew-member can only mint a signed read URL for a plate stored
@@ -270,7 +281,6 @@ internal class FirebaseMealRepository(
                         crewId = crewId.value,
                         dayKey = dayKey,
                         slot = slotKey,
-                        platePath = "crews/${crewId.value}/meals/${mealId.value}.jpg",
                         dishName = draft.dish?.value,
                         description = draft.description.value,
                         latitude = draft.coordinates?.latitude,
@@ -311,10 +321,7 @@ internal class FirebaseMealRepository(
                         uploaded
                     } catch (t: Throwable) {
                         FrLog.w("MealRepo", t) { "upload failed for crew ${crewId.value} at plate ${uploaded.size}: ${t.message}" }
-                        uploaded.indices.forEach { index ->
-                            runCatching { storage.delete(crewId, mealId.value, index) }
-                                .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed after upload failure (index $index): ${it.message}" } }
-                        }
+                        cleanupOrphanedPlates(crewId, mealId.value, uploaded.indices, reason = " after upload failure")
                         throw t
                     }
                     val dtoWithPaths = dto.copy(
@@ -346,10 +353,7 @@ internal class FirebaseMealRepository(
                             FrLog.w("MealRepo", t) { "fan-out write failed for crew ${crewId.value}: ${t.message}" }
                             // Best-effort per-object: delete EVERY photo uploaded in this attempt,
                             // not just the primary — a partial cleanup would leave extras orphaned.
-                            uploadedPaths.indices.forEach { index ->
-                                runCatching { storage.delete(crewId, mealId.value, index) }
-                                    .onFailure { FrLog.w("MealRepo", it) { "orphan plate cleanup failed (index $index): ${it.message}" } }
-                            }
+                            cleanupOrphanedPlates(crewId, mealId.value, uploadedPaths.indices, reason = "")
                         }
                     }
                 }

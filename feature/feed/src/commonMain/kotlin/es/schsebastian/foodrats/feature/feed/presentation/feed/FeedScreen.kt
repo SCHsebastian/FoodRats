@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -91,6 +90,7 @@ import es.schsebastian.foodrats.feature.feed.presentation.components.FeedMealUi
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrSyncStatusBar
 import es.schsebastian.foodrats.feature.feed.presentation.components.FrUploadQueueBar
 import es.schsebastian.foodrats.feature.feed.presentation.components.MealSlotUi
+import es.schsebastian.foodrats.feature.feed.presentation.components.dishBrushFor
 import es.schsebastian.foodrats.feature.feed.presentation.components.stablePlateRequest
 import es.schsebastian.foodrats.feature.feed.presentation.toStringKey
 import kotlin.math.round
@@ -124,6 +124,7 @@ fun FeedScreen(
     vm: FeedViewModel = koinViewModel(),
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val semantic = LocalFrSemanticColors.current
     val meals = state.meals
     // C9 — signed banner URL to open in the full-screen viewer (null = closed).
     var bannerToView by remember { mutableStateOf<String?>(null) }
@@ -268,19 +269,19 @@ fun FeedScreen(
                                 FrText(
                                     text = resolve(err.toStringKey()),
                                     style = StructuralType.body,
-                                    color = MaterialTheme.colorScheme.error,
+                                    color = semantic.danger,
                                 )
                             }
                         }
                     }
                     state.rateError?.let { err ->
                         item(key = "rate-error") {
-                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = semantic.danger)
                         }
                     }
                     state.reactError?.let { err ->
                         item(key = "react-error") {
-                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = MaterialTheme.colorScheme.error)
+                            FrText(resolve(err.toStringKey()), style = StructuralType.body, color = semantic.danger)
                         }
                     }
 
@@ -895,15 +896,4 @@ private fun CrewBannerViewer(url: String, cacheKey: String, onDismiss: () -> Uni
 // ----------------------------------------------------------------------------------------------
 // helpers
 // ----------------------------------------------------------------------------------------------
-
-/** Appetizing brush shown behind a tile while its photo loads (or when it has none). */
-private fun dishBrushFor(slot: MealSlotUi?): Brush = when (slot) {
-    MealSlotUi.Breakfast -> StructuralColors.dishSalad
-    MealSlotUi.Brunch -> StructuralColors.dishTacos
-    MealSlotUi.Lunch -> StructuralColors.dishMackerel
-    MealSlotUi.Snack -> StructuralColors.dishTacos
-    MealSlotUi.Merienda -> StructuralColors.dishSalad
-    MealSlotUi.Dinner -> StructuralColors.dishRamen
-    null -> StructuralColors.dishMackerel
-}
 

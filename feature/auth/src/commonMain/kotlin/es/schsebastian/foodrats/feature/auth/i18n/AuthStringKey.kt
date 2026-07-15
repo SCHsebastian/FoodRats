@@ -97,6 +97,7 @@ import foodrats.feature.auth.generated.resources.auth_profile_delete_account_sub
 import foodrats.feature.auth.generated.resources.auth_profile_display_name_blank
 import foodrats.feature.auth.generated.resources.auth_profile_display_name_label
 import foodrats.feature.auth.generated.resources.auth_profile_display_name_too_long
+import foodrats.feature.auth.generated.resources.auth_profile_identity_loading
 import foodrats.feature.auth.generated.resources.auth_profile_identity_section
 import foodrats.feature.auth.generated.resources.auth_profile_language_option_en
 import foodrats.feature.auth.generated.resources.auth_profile_language_option_es
@@ -195,6 +196,7 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileTitle(Res.string.auth_profile_title),
     ProfileBackCta(Res.string.auth_profile_back_cta),
     ProfileIdentitySection(Res.string.auth_profile_identity_section),
+    ProfileIdentityLoading(Res.string.auth_profile_identity_loading),
     ProfilePreferencesSection(Res.string.auth_profile_preferences_section),
     ProfileDangerZoneSection(Res.string.auth_profile_danger_zone_section),
     ProfileDangerZoneSubtitle(Res.string.auth_profile_danger_zone_subtitle),

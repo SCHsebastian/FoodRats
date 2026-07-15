@@ -433,19 +433,44 @@ service cloud.firestore {
                         && request.resource.data.text.size() <= 500
                         && request.resource.data.createdAtEpochMs is int
                         && request.resource.data.createdAtEpochMs <= request.time.toMillis() + 60000
-                        && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000;
+                        && request.resource.data.createdAtEpochMs >= request.time.toMillis() - 60000
+                        // @-mentions (roadmap comment-mentions feature): GitLive's `.set(dto)`
+                        // sends every CommentDto field with encodeDefaults=true, so `mentions`
+                        // and `authorName` arrive as explicit `null` on comments that don't use
+                        // them — tolerate that, same null-tolerant style as `plates`/`ratingSum`
+                        // on the meal rule above. Membership of each mentioned uid is NOT
+                        // re-checked here (rules can't loop over a list against another list);
+                        // the onCommentCreated trigger re-filters mentions against
+                        // crew.memberIds server-side before sending any push.
+                        && (!('mentions' in request.resource.data) || request.resource.data.mentions == null
+                            || (request.resource.data.mentions is list && request.resource.data.mentions.size() <= 10))
+                        && (!('authorName' in request.resource.data) || request.resource.data.authorName == null
+                            || (request.resource.data.authorName is string && request.resource.data.authorName.size() <= 120))
+                        // Whitelist: GitLive sends every CommentDto field on `.set(dto)`, so
+                        // hasOnly is safe (nothing is ever legitimately absent from the wire
+                        // payload at create) and closes off arbitrary extra fields.
+                        && request.resource.data.keys().hasOnly([
+                          'id', 'authorId', 'text', 'createdAtEpochMs', 'editedAtEpochMs',
+                          'mentions', 'authorName'
+                        ]);
 
           // The author may edit their OWN comment's text (1–500 chars). `authorId` is immutable
           // so an edit can never re-attribute a comment, and only the author (never the crew
           // owner) may rewrite the words. createdAtEpochMs is intentionally NOT pinned: the
           // offline outbox's idempotent post-replay re-stamps it via a full `.set()`, and the
           // prior rule tolerated that too. Real edits use a partial update that never touches it.
+          // `mentions` is validated the same null-tolerant way as create: the partial edit
+          // `.update()` always sends a (possibly empty) list, while an outbox post-replay
+          // arriving here as an "update" (doc already exists) sends a full CommentDto whose
+          // `mentions` may be null.
           allow update: if request.auth != null
                         && request.auth.uid == resource.data.authorId
                         && request.resource.data.authorId == resource.data.authorId
                         && request.resource.data.text is string
                         && request.resource.data.text.size() >= 1
-                        && request.resource.data.text.size() <= 500;
+                        && request.resource.data.text.size() <= 500
+                        && (!('mentions' in request.resource.data) || request.resource.data.mentions == null
+                            || (request.resource.data.mentions is list && request.resource.data.mentions.size() <= 10));
 
           // Delete: the comment's author OR the crew owner may delete it (self-service
           // + moderation), mirroring the meal delete rule above.

@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.presentation.detail
 
 import es.schsebastian.foodrats.core.designsystem.molecules.FrReportReasonOption
 import es.schsebastian.foodrats.core.designsystem.molecules.FrScoreStyle
+import es.schsebastian.foodrats.core.domain.account.BlockError
 import es.schsebastian.foodrats.core.domain.meal.CommentError
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
 import es.schsebastian.foodrats.core.domain.meal.MealDeleteError
@@ -75,7 +76,7 @@ data class MealDetailState(
     /** Transient success toast shown after a report is accepted. */
     val reportSuccess: Boolean = false,
     val reportError: ReportError? = null,
-    val blockError: es.schsebastian.foodrats.core.domain.account.BlockError? = null,
+    val blockError: BlockError? = null,
     /** Transient success toast shown after a block succeeds. */
     val blockSuccess: Boolean = false,
     /**
@@ -83,7 +84,22 @@ data class MealDetailState(
      * pre-C8 crews. Drives the voting picker so it matches the feed meal-card badge.
      */
     val scoreStyle: FrScoreStyle = FrScoreStyle.Stars,
+    /**
+     * Up to [es.schsebastian.foodrats.feature.feed.domain.mention.MENTION_SUGGESTIONS_LIMIT] crew-
+     * roster candidates matching the trailing `@fragment` of whichever comment input is currently
+     * active (the new-comment composer, or the inline edit field when [editingCommentId] is set).
+     * Empty whenever there's no in-progress `@token` — derived reactively, never written outside the
+     * ViewModel's own combine collector (MVI single source of truth).
+     */
+    val mentionSuggestions: List<MentionSuggestionUi> = emptyList(),
 ) : MviState
+
+/** A single @-mention suggestion row (crew-roster candidate matching the typed fragment). */
+data class MentionSuggestionUi(
+    val accountId: String,
+    val handle: String,
+    val displayName: String,
+)
 
 /**
  * What the open report sheet targets (UGC compliance §4). Carries only the identifiers the ViewModel
@@ -115,6 +131,12 @@ sealed interface MealDetailIntent : MviIntent {
     data object DismissError : MealDetailIntent
     data class CommentInputChanged(val value: String) : MealDetailIntent
     data object PostComment : MealDetailIntent
+
+    /**
+     * Viewer tapped a row in [MealDetailState.mentionSuggestions] — rewrites the active input's
+     * trailing `@fragment` to `@handle ` (see [es.schsebastian.foodrats.feature.feed.domain.mention.MentionParser.applySuggestion]).
+     */
+    data class MentionSuggestionPicked(val handle: String) : MealDetailIntent
 
     /** FIREST-2: raise the comment listener bound by one page to reveal older comments. */
     data object LoadOlderComments : MealDetailIntent

@@ -5,9 +5,6 @@ import es.schsebastian.foodrats.core.data.datastore.Keys
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.meal.CommentText
 import es.schsebastian.foodrats.core.domain.meal.MealCommentId
-import es.schsebastian.foodrats.core.domain.meal.MealId
-import es.schsebastian.foodrats.core.domain.model.AccountId
-import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntry
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxEntryStatus
@@ -181,8 +178,4 @@ class OutboxJsonMigration(
         }
         else -> null
     }
-
-    private fun String?.toCrewId(): CrewId? = this?.let { CrewId.of(it).getOrNull() }
-    private fun String?.toMealId(): MealId? = this?.let { MealId.of(it).getOrNull() }
-    private fun String?.toAccountId(): AccountId? = this?.let { AccountId.of(it).getOrNull() }
 }
