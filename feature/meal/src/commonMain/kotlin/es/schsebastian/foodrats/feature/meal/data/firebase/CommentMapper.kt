@@ -25,6 +25,8 @@ fun CommentDto.toDomain(crewId: CrewId, mealId: MealId): Result<MealComment, Com
             text = text,
             createdAt = Instant.fromEpochMilliseconds(createdAtEpochMs ?: 0L),
             editedAt = editedAtEpochMs?.let { Instant.fromEpochMilliseconds(it) },
+            // null/absent = no mentions; blank/invalid uids are dropped (same tolerance as authorId).
+            mentions = mentions.orEmpty().mapNotNull { raw -> (AccountId.of(raw) as? Result.Ok)?.value },
         )
     )
 }

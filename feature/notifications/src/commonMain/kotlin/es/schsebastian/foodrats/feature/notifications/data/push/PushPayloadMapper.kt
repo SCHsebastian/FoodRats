@@ -37,6 +37,20 @@ class PushPayloadMapper(private val clock: Clock) {
             override val kind get() = ReminderKind.NewComment
         }
 
+        /**
+         * Fires only when a comment @-mentions the recipient (see PLAN.md — "No double
+         * notification"). Reuses [ReminderPayload.Comment] so the tap deep-links identically to
+         * [NewComment].
+         */
+        data class CommentMention(
+            override val id: String,
+            val commenterName: String,
+            val dishName: String,
+            override val payload: ReminderPayload.Comment,
+        ) : PushContent {
+            override val kind get() = ReminderKind.CommentMention
+        }
+
         data class NewMealPost(
             override val id: String,
             val authorName: String,
@@ -77,6 +91,7 @@ class PushPayloadMapper(private val clock: Clock) {
         val key = data["key"] ?: return null
         return when (key) {
             KEY_NEW_COMMENT -> newComment(data)
+            KEY_COMMENT_MENTION -> commentMention(data)
             KEY_NEW_MEAL_POST -> newMealPost(data)
             KEY_WEEKLY_DIGEST -> weeklyDigest(data)
             KEY_SOCIAL_NUDGE -> socialNudge(data)
@@ -101,6 +116,18 @@ class PushPayloadMapper(private val clock: Clock) {
                     content.dishName,
                 ),
                 body = getString(NotificationStringKey.NewCommentBody.resourceId),
+                payload = content.payload,
+            )
+            is PushContent.CommentMention -> Reminder(
+                id = content.id,
+                kind = content.kind,
+                deliverAt = clock.now(),
+                title = getString(
+                    NotificationStringKey.CommentMentionTitle.resourceId,
+                    content.commenterName,
+                    content.dishName,
+                ),
+                body = getString(NotificationStringKey.CommentMentionBody.resourceId),
                 payload = content.payload,
             )
             is PushContent.NewMealPost -> Reminder(
@@ -146,6 +173,18 @@ class PushPayloadMapper(private val clock: Clock) {
         )
     }
 
+    private fun commentMention(d: Map<String, String>): PushContent? {
+        val crewId = d["crewId"] ?: return null
+        val mealId = d["mealId"] ?: return null
+        val commentId = d["commentId"] ?: return null
+        return PushContent.CommentMention(
+            id = commentId,
+            commenterName = d["commenterName"].orEmpty(),
+            dishName = d["dishName"].orEmpty(),
+            payload = ReminderPayload.Comment(crewId, mealId, commentId),
+        )
+    }
+
     private fun newMealPost(d: Map<String, String>): PushContent? {
         val crewId = d["crewId"] ?: return null
         val mealId = d["mealId"] ?: return null
@@ -184,6 +223,9 @@ class PushPayloadMapper(private val clock: Clock) {
 
     private companion object {
         const val KEY_NEW_COMMENT = "new_comment"
+
+        /** Discriminator for the comment @-mention push (server const `KEY_COMMENT_MENTION`). */
+        const val KEY_COMMENT_MENTION = "comment_mention"
         const val KEY_NEW_MEAL_POST = "new_meal_post"
         const val KEY_WEEKLY_DIGEST = "weekly_digest"
 

@@ -30,10 +30,19 @@ internal interface CommentFirestore {
     suspend fun create(crewId: CrewId, mealId: MealId, dto: CommentDto)
 
     /**
-     * Updates only the `text` + `editedAtEpochMs` fields of an existing comment doc (author edit).
-     * A partial update — `authorId`/`createdAtEpochMs` are left untouched (the Firestore rule pins them).
+     * Updates the `text` + `editedAtEpochMs` + `mentions` fields of an existing comment doc (author
+     * edit). A partial update — `authorId`/`createdAtEpochMs`/`authorName` are left untouched (the
+     * Firestore rule pins them). [mentions] refreshes the stored `@mention` set but the edit path
+     * never re-triggers a push (see `onCommentCreated` — create-only).
      */
-    suspend fun update(crewId: CrewId, mealId: MealId, commentId: String, text: String, editedAtEpochMs: Long)
+    suspend fun update(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: String,
+        text: String,
+        editedAtEpochMs: Long,
+        mentions: List<String> = emptyList(),
+    )
 
     /** Deletes the comment doc with the given ID. */
     suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String)

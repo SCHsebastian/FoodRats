@@ -40,11 +40,12 @@ internal class CommentFirestoreDataSource(
         commentId: String,
         text: String,
         editedAtEpochMs: Long,
+        mentions: List<String>,
     ) {
         firestore.collection("crews").document(crewId.value)
             .collection("meals").document(mealId.value)
             .collection("comments").document(commentId)
-            .update("text" to text, "editedAtEpochMs" to editedAtEpochMs)
+            .update("text" to text, "editedAtEpochMs" to editedAtEpochMs, "mentions" to mentions)
     }
 
     override suspend fun delete(crewId: CrewId, mealId: MealId, commentId: String) {

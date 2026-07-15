@@ -1,5 +1,6 @@
 package es.schsebastian.foodrats.core.domain.meal
 
+import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.result.Result
 import kotlinx.coroutines.flow.Flow
@@ -45,7 +46,29 @@ interface MealCommentPort {
      * in older comments. Chronological (ascending) display order is unchanged regardless of [limit].
      */
     fun observe(crewId: CrewId, mealId: MealId, limit: Int): Flow<Result<List<MealComment>, CommentError.Read>>
-    suspend fun post(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Write>
-    suspend fun edit(crewId: CrewId, mealId: MealId, commentId: MealCommentId, text: CommentText): Result<Unit, CommentError.Edit>
+
+    /**
+     * [mentions] are the account uids of crew members `@mentioned` in [text] — advisory only
+     * (never validated here; capped at 10 and deduped upstream by the caller before enqueue).
+     * Never blocks the write; a mention that doesn't resolve to a real crew member is simply
+     * dropped by the push fan-out downstream.
+     */
+    suspend fun post(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: MealCommentId,
+        text: CommentText,
+        mentions: List<AccountId> = emptyList(),
+    ): Result<Unit, CommentError.Write>
+
+    /** See [post] — [mentions] here refreshes the stored set on edit but never re-triggers a push. */
+    suspend fun edit(
+        crewId: CrewId,
+        mealId: MealId,
+        commentId: MealCommentId,
+        text: CommentText,
+        mentions: List<AccountId> = emptyList(),
+    ): Result<Unit, CommentError.Edit>
+
     suspend fun delete(crewId: CrewId, mealId: MealId, commentId: MealCommentId): Result<Unit, CommentError.Delete>
 }

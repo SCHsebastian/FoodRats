@@ -74,6 +74,8 @@
     <string name="feed_load_older_comments">Cargar comentarios anteriores</string>
     <string name="feed_comments_input_placeholder">Escribe un comentario…</string>
     <string name="feed_comments_send_cta">Enviar</string>
+    <!-- Mensajes con @: etiqueta de sugerencia del compositor — %1$s = usuario (sin @), %2$s = nombre. -->
+    <string name="feed_mention_suggestion_label">@%1$s · %2$s</string>
     <string name="feed_comments_error_blank">El comentario está vacío</string>
     <string name="feed_comments_error_too_long">Máximo 500 caracteres</string>
     <string name="feed_comments_error_unavailable">No se pudo publicar. Intenta de nuevo.</string>

@@ -84,6 +84,8 @@ val feedModule = module {
             editComment = get(),
             crewOwner = get(),
             storyShareController = get(),
+            // @-mentions — passed EXPLICITLY (:feature:crew-backed adapter; the noop default is test-only).
+            crewRoster = get(),
             // UGC compliance §3/§4/§5 — passed EXPLICITLY (the VM ctor defaults are test-only no-ops).
             textModeration = get(),
             languageTag = get<Flow<String>>(ModerationLanguageTag),

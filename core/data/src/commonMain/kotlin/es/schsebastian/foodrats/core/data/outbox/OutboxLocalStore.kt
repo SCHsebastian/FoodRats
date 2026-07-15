@@ -21,6 +21,9 @@ import es.schsebastian.foodrats.core.domain.result.getOrNull
 import kotlin.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
 
 /**
  * Durable, multi-entry local store for the write outbox (offline-first P3b §2.5 / P3b-T6).
@@ -98,6 +101,7 @@ class OutboxLocalStore(
                     focalY = payload.focalY,
                     setAtMillis = payload.setAtMillis,
                     styleKey = payload.styleKey,
+                    mentions = payload.mentions,
                     idempotencyKey = idem,
                 )
             } else {
@@ -126,6 +130,7 @@ class OutboxLocalStore(
                     focalY = payload.focalY,
                     setAtMillis = payload.setAtMillis,
                     styleKey = payload.styleKey,
+                    mentions = payload.mentions,
                 )
             }
         }
@@ -233,6 +238,7 @@ class OutboxLocalStore(
         val focalY: Double? = null,
         val setAtMillis: Long? = null,
         val styleKey: String? = null,
+        val mentions: String? = null,
     )
 
     private class StatusColumns(val kind: String, val errorKey: String?, val retryable: Long)
@@ -262,6 +268,7 @@ class OutboxLocalStore(
             commentId = commentId.value,
             text = text.value,
             accountId = authorId.value,
+            mentions = mentions.toMentionsJson(),
         )
         is PendingCommand.EditComment -> CommandPayload(
             type = CommandType.EDIT_COMMENT,
@@ -269,6 +276,7 @@ class OutboxLocalStore(
             mealId = mealId.value,
             commentId = commentId.value,
             text = text.value,
+            mentions = mentions.toMentionsJson(),
         )
         is PendingCommand.DeleteComment -> CommandPayload(
             type = CommandType.DELETE_COMMENT,
@@ -400,13 +408,19 @@ class OutboxLocalStore(
             val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
             val body = text?.let { CommentText.of(it).getOrNull() } ?: return null
             val author = accountId.toAccountId() ?: return null
-            PendingCommand.PostComment(crewId = crew, mealId = meal, commentId = cId, text = body, authorId = author)
+            PendingCommand.PostComment(
+                crewId = crew, mealId = meal, commentId = cId, text = body, authorId = author,
+                mentions = mentions.toMentionsList(),
+            )
         }
         CommandType.EDIT_COMMENT -> {
             val (crew, meal) = crewAndMeal() ?: return null
             val cId = commentId?.takeIf { it.isNotBlank() }?.let { MealCommentId(it) } ?: return null
             val body = text?.let { CommentText.of(it).getOrNull() } ?: return null
-            PendingCommand.EditComment(crewId = crew, mealId = meal, commentId = cId, text = body)
+            PendingCommand.EditComment(
+                crewId = crew, mealId = meal, commentId = cId, text = body,
+                mentions = mentions.toMentionsList(),
+            )
         }
         CommandType.DELETE_COMMENT -> {
             val (crew, meal) = crewAndMeal() ?: return null
@@ -495,3 +509,21 @@ class OutboxLocalStore(
 internal fun String?.toCrewId(): CrewId? = this?.let { CrewId.of(it).getOrNull() }
 internal fun String?.toMealId(): MealId? = this?.let { MealId.of(it).getOrNull() }
 internal fun String?.toAccountId(): AccountId? = this?.let { AccountId.of(it).getOrNull() }
+
+/**
+ * Comment `@mentions` are flattened as a JSON-encoded `List<String>` of account uids into a single
+ * nullable TEXT column (mirrors [es.schsebastian.foodrats.feature.meal.data.local.LocalMeal]'s
+ * `platesJson` pattern). Empty list encodes to `null` (no mentions is the overwhelmingly common
+ * case — matches every other "absent" leaf in this store).
+ */
+private val mentionsJsonFormat = Json
+
+private fun List<AccountId>.toMentionsJson(): String? =
+    if (isEmpty()) null else mentionsJsonFormat.encodeToString(serializer<List<String>>(), map { it.value })
+
+/** Null-tolerant: a malformed/legacy row (pre-mentions, or an undecodable value) reads back empty. */
+private fun String?.toMentionsList(): List<AccountId> =
+    if (this == null) emptyList()
+    else runCatching { mentionsJsonFormat.decodeFromString(serializer<List<String>>(), this) }
+        .getOrElse { emptyList() }
+        .mapNotNull { it.toAccountId() }

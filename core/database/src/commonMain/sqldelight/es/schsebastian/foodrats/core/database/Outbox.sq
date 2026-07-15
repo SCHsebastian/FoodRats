@@ -39,7 +39,11 @@ CREATE TABLE outbox (
     -- (v2 -> v3). Only the relevant leaf populates them; all other rows leave them NULL.
     focalY               REAL,
     setAtMillis          INTEGER,
-    styleKey             TEXT
+    styleKey             TEXT,
+    -- Comment @-mentions (advisory, capped at 10 upstream): JSON-encoded List<String> of account
+    -- uids, mirroring PostComment.mentions/EditComment.mentions. NULL = no mentions (round-trips
+    -- to emptyList — see OutboxLocalStore.toDomain). Added in migration 6.sqm (v6 -> v7).
+    mentions              TEXT
 );
 
 -- Enforces enqueue coalescing: two commands sharing an idempotency key collapse to one row.
@@ -68,13 +72,13 @@ INSERT OR REPLACE INTO outbox(
     createdAtEpochMs, lastAttemptAtEpochMs,
     crewId, mealId, accountId, commentId, text, score, reactionKindKey,
     desiredPresent, enabled, targetAccountId, newName,
-    focalY, setAtMillis, styleKey
+    focalY, setAtMillis, styleKey, mentions
 ) VALUES (
     :id, :type, :idempotencyKey, :statusKind, :errorKey, :retryable, :attemptCount,
     :createdAtEpochMs, :lastAttemptAtEpochMs,
     :crewId, :mealId, :accountId, :commentId, :text, :score, :reactionKindKey,
     :desiredPresent, :enabled, :targetAccountId, :newName,
-    :focalY, :setAtMillis, :styleKey
+    :focalY, :setAtMillis, :styleKey, :mentions
 );
 
 -- Update the lifecycle + attempt bookkeeping for one entry (no-op if the id is absent).
@@ -158,7 +162,8 @@ SET type                 = :type,
     newName              = :newName,
     focalY               = :focalY,
     setAtMillis          = :setAtMillis,
-    styleKey             = :styleKey
+    styleKey             = :styleKey,
+    mentions             = :mentions
 WHERE idempotencyKey = :idempotencyKey;
 
 -- Full wipe of the durable write outbox (sign-out: the previous user's queued mutations must not

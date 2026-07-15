@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.feed.presentation
 
 import es.schsebastian.foodrats.core.domain.account.BlockError
 import es.schsebastian.foodrats.core.domain.account.BlockedAccountsPort
+import es.schsebastian.foodrats.core.domain.crew.CrewRosterPort
 import es.schsebastian.foodrats.core.domain.crew.CrewScoreStyle
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.crew.WeeklyChallengeSnapshot
@@ -50,4 +51,12 @@ internal object NoopUgcCrewWelcomePort : CrewWelcomePort {
     override fun observeBannerImageUrl(crewId: CrewId): Flow<String?> = flowOf(null)
     override fun observeBannerCacheKey(crewId: CrewId): Flow<String> = flowOf("")
     override fun observeBannerFocalY(crewId: CrewId): Flow<Float> = flowOf(0.5f)
+}
+
+/**
+ * No-op [CrewRosterPort] default (see [NoopUgcReportPort] for rationale). No @-mention candidates —
+ * the Koin binding always passes the real :feature:crew-backed adapter.
+ */
+internal object NoopUgcCrewRosterPort : CrewRosterPort {
+    override fun observeMembers(crewId: CrewId): Flow<List<AccountId>> = flowOf(emptyList())
 }

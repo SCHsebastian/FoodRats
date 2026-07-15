@@ -55,6 +55,7 @@ class OutboxTableTest {
         focalY = null,
         setAtMillis = null,
         styleKey = null,
+        mentions = null,
     )
 
     @Test fun select_all_orders_by_created_at_ascending() {

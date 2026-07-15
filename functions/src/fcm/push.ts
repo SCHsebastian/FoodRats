@@ -5,7 +5,7 @@ import { readTokens, pruneToken, DeviceToken } from "./tokens";
 import { localizeNotification, normalizeLang } from "../i18n/keys";
 
 export interface PushPayload {
-  kind: "NewComment" | "NewMealPost" | "WeeklyDigest" | "SocialNudge";
+  kind: "NewComment" | "NewMealPost" | "WeeklyDigest" | "SocialNudge" | "CommentMention";
   key: string;
   notificationTitle: string;
   notificationBody: string;

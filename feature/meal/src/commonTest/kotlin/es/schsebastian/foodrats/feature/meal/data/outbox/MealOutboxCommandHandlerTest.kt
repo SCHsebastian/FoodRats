@@ -53,6 +53,8 @@ class MealOutboxCommandHandlerTest {
         val postCalls = mutableListOf<Triple<CrewId, MealId, MealCommentId>>()
         val editCalls = mutableListOf<Triple<CrewId, MealId, MealCommentId>>()
         val deleteCalls = mutableListOf<Pair<CrewId, MealCommentId>>()
+        val postMentionsCalls = mutableListOf<List<AccountId>>()
+        val editMentionsCalls = mutableListOf<List<AccountId>>()
         var nextPostResult: Result<Unit, CommentError.Write> = Result.success(Unit)
         var nextEditResult: Result<Unit, CommentError.Edit> = Result.success(Unit)
         var nextDeleteResult: Result<Unit, CommentError.Delete> = Result.success(Unit)
@@ -65,8 +67,10 @@ class MealOutboxCommandHandlerTest {
             mealId: MealId,
             commentId: MealCommentId,
             text: CommentText,
+            mentions: List<AccountId>,
         ): Result<Unit, CommentError.Write> {
             postCalls += Triple(crewId, mealId, commentId)
+            postMentionsCalls += mentions
             return nextPostResult
         }
 
@@ -75,8 +79,10 @@ class MealOutboxCommandHandlerTest {
             mealId: MealId,
             commentId: MealCommentId,
             text: CommentText,
+            mentions: List<AccountId>,
         ): Result<Unit, CommentError.Edit> {
             editCalls += Triple(crewId, mealId, commentId)
+            editMentionsCalls += mentions
             return nextEditResult
         }
 
@@ -241,6 +247,14 @@ class MealOutboxCommandHandlerTest {
         assertEquals(listOf(Triple(crewId, mealId, commentId)), f.comments.postCalls)
     }
 
+    @Test fun post_comment_threads_mentions_into_the_port() = runTest {
+        val f = Fixture()
+        val mentioned = (AccountId.of("acc-mentioned") as Result.Ok).value
+        val cmd = postCmd.copy(mentions = listOf(mentioned))
+        assertEquals(OutboxExecuteResult.Success, f.handler.execute(cmd))
+        assertEquals(listOf(listOf(mentioned)), f.comments.postMentionsCalls)
+    }
+
     @Test fun post_comment_unavailable_is_retryable() = runTest {
         val f = Fixture()
         f.comments.nextPostResult = Result.failure(CommentError.Write.Unavailable)
@@ -277,6 +291,14 @@ class MealOutboxCommandHandlerTest {
         val f = Fixture()
         assertEquals(OutboxExecuteResult.Success, f.handler.execute(editCmd))
         assertEquals(listOf(Triple(crewId, mealId, commentId)), f.comments.editCalls)
+    }
+
+    @Test fun edit_comment_threads_mentions_into_the_port() = runTest {
+        val f = Fixture()
+        val mentioned = (AccountId.of("acc-mentioned") as Result.Ok).value
+        val cmd = editCmd.copy(mentions = listOf(mentioned))
+        assertEquals(OutboxExecuteResult.Success, f.handler.execute(cmd))
+        assertEquals(listOf(listOf(mentioned)), f.comments.editMentionsCalls)
     }
 
     @Test fun edit_comment_unavailable_is_retryable() = runTest {

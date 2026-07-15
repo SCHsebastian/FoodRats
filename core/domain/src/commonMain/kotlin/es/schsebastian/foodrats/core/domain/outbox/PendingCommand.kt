@@ -71,7 +71,9 @@ sealed interface PendingCommand {
 
     /**
      * Post a comment with a client-minted [commentId] (so a replayed `.set()`
-     * targets the same doc id rather than creating a duplicate).
+     * targets the same doc id rather than creating a duplicate). [mentions] are the
+     * advisory `@mentioned` account uids (capped at 10 upstream); idempotency/aggregate
+     * keys are unchanged by their presence.
      */
     data class PostComment(
         val crewId: CrewId,
@@ -79,6 +81,7 @@ sealed interface PendingCommand {
         val commentId: MealCommentId,
         val text: CommentText,
         val authorId: AccountId,
+        val mentions: List<AccountId> = emptyList(),
     ) : PendingCommand {
         override val idempotencyKey: String =
             "comment:${crewId.value}:${mealId.value}:${commentId.value}"
@@ -89,13 +92,15 @@ sealed interface PendingCommand {
     /**
      * Edit an already-posted comment's [text]. Idempotent (the server-side edit overwrites the
      * `text` field; a replay re-applies the same text). Shares the `comment:{id}` aggregate with
-     * [PostComment]/[DeleteComment] so a post-then-edit on the same comment drains FIFO.
+     * [PostComment]/[DeleteComment] so a post-then-edit on the same comment drains FIFO. [mentions]
+     * refreshes the stored set (advisory, capped at 10 upstream) but never re-triggers a push.
      */
     data class EditComment(
         val crewId: CrewId,
         val mealId: MealId,
         val commentId: MealCommentId,
         val text: CommentText,
+        val mentions: List<AccountId> = emptyList(),
     ) : PendingCommand {
         override val idempotencyKey: String =
             "comment.edit:${crewId.value}:${mealId.value}:${commentId.value}"

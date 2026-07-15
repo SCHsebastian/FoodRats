@@ -42,6 +42,7 @@ import foodrats.feature.feed.generated.resources.feed_comments_relative_hours
 import foodrats.feature.feed.generated.resources.feed_comments_relative_just_now
 import foodrats.feature.feed.generated.resources.feed_comments_relative_minutes
 import foodrats.feature.feed.generated.resources.feed_comments_send_cta
+import foodrats.feature.feed.generated.resources.feed_mention_suggestion_label
 import foodrats.feature.feed.generated.resources.feed_comments_title
 import foodrats.feature.feed.generated.resources.feed_load_older_comments
 import foodrats.feature.feed.generated.resources.feed_deleted_author
@@ -192,6 +193,8 @@ enum class FeedStringKey(override val resourceId: StringResource) : StringKey {
     LoadOlderComments(Res.string.feed_load_older_comments),
     CommentsInputPlaceholder(Res.string.feed_comments_input_placeholder),
     CommentsSendCta(Res.string.feed_comments_send_cta),
+    // @-mentions — composer suggestion-row label ("@handle · Display Name").
+    MentionSuggestionLabel(Res.string.feed_mention_suggestion_label),
     CommentsRelativeJustNow(Res.string.feed_comments_relative_just_now),
     CommentsRelativeMinutes(Res.string.feed_comments_relative_minutes),
     CommentsRelativeHours(Res.string.feed_comments_relative_hours),

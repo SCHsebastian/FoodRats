@@ -9,6 +9,7 @@ import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.crew.CrewBlindVotingPort
 import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.crew.CrewOwnerPort
+import es.schsebastian.foodrats.core.domain.crew.CrewRosterPort
 import es.schsebastian.foodrats.core.domain.crew.CrewWelcomePort
 import es.schsebastian.foodrats.core.domain.meal.FeedSyncStatusPort
 import es.schsebastian.foodrats.core.domain.meal.IngredientReadPort
@@ -76,6 +77,8 @@ class FeedModuleVerifyTest {
                 OutboxPort::class,
                 // C6 — welcome banner port bound by :feature:crew in the shared aggregator.
                 CrewWelcomePort::class,
+                // @-mentions — crew-roster port bound by :feature:crew in the shared aggregator.
+                CrewRosterPort::class,
             ),
         )
     }

@@ -47,6 +47,35 @@ class PushPayloadMapperTest {
     }
 
     @Test
+    fun comment_mention_payload_parses_to_CommentMention_content() {
+        val data = mapOf(
+            "kind" to "CommentMention",
+            "key" to "comment_mention",
+            "crewId" to "C1",
+            "mealId" to "M1",
+            "commentId" to "X1",
+            "commenterName" to "Alex",
+            "dishName" to "Tortilla",
+        )
+        val content = assertIs<PushPayloadMapper.PushContent.CommentMention>(mapper.parse(data))
+        assertEquals(ReminderKind.CommentMention, content.kind)
+        assertEquals("X1", content.id)
+        assertEquals("Alex", content.commenterName)
+        assertEquals("Tortilla", content.dishName)
+        val payload = assertIs<ReminderPayload.Comment>(content.payload)
+        assertEquals("C1", payload.crewId)
+        assertEquals("M1", payload.mealId)
+        assertEquals("X1", payload.commentId)
+    }
+
+    @Test
+    fun comment_mention_payload_missing_comment_id_returns_null() {
+        // key present but commentId missing → unparseable
+        val data = mapOf("key" to "comment_mention", "crewId" to "C1", "mealId" to "M1")
+        assertNull(mapper.parse(data))
+    }
+
+    @Test
     fun new_meal_post_payload_parses_to_NewMealPost_content() {
         val data = mapOf(
             "kind" to "NewMealPost",

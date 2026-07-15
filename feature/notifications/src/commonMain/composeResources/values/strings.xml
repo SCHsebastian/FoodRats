@@ -15,6 +15,8 @@
     <string name="notifications_error_payload_parse">Couldn't read this notification.</string>
     <string name="notifications_new_comment_title">%1$s commented on your %2$s</string>
     <string name="notifications_new_comment_body">Tap to read</string>
+    <string name="notifications_comment_mention_title">%1$s mentioned you on %2$s</string>
+    <string name="notifications_comment_mention_body">Tap to read</string>
     <string name="notifications_new_meal_post_title">%1$s posted a meal</string>
     <string name="notifications_new_meal_post_body">%1$s — tap to view</string>
     <string name="notifications_weekly_digest_title">Your week in food</string>

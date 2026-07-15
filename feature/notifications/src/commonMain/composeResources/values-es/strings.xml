@@ -15,6 +15,8 @@
     <string name="notifications_error_payload_parse">No pudimos leer esta notificación.</string>
     <string name="notifications_new_comment_title">%1$s comentó tu %2$s</string>
     <string name="notifications_new_comment_body">Pulsa para leer</string>
+    <string name="notifications_comment_mention_title">%1$s te mencionó en %2$s</string>
+    <string name="notifications_comment_mention_body">Pulsa para leer</string>
     <string name="notifications_new_meal_post_title">%1$s publicó una comida</string>
     <string name="notifications_new_meal_post_body">%1$s — pulsa para ver</string>
     <string name="notifications_weekly_digest_title">Tu semana en comida</string>

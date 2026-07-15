@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   FALLBACK,
+  KEY_COMMENT_MENTION,
   KEY_NEW_COMMENT,
   KEY_NEW_MEAL_POST,
   KEY_SOCIAL_NUDGE,
@@ -15,6 +16,7 @@ describe("payload key constants — client PushPayloadMapper contract", () => {
     expect(KEY_NEW_MEAL_POST).toBe("new_meal_post");
     expect(KEY_WEEKLY_DIGEST).toBe("weekly_digest");
     expect(KEY_SOCIAL_NUDGE).toBe("social_nudge");
+    expect(KEY_COMMENT_MENTION).toBe("comment_mention");
   });
 });
 
@@ -83,6 +85,18 @@ describe("localizeNotification — matches the client Compose-resource strings",
     });
   });
 
+  it("localizes comment_mention (en + es)", () => {
+    const data = { commenterName: "Ana", dishName: "paella" };
+    expect(localizeNotification("en", KEY_COMMENT_MENTION, data)).toEqual({
+      title: "Ana mentioned you on paella",
+      body: "Tap to read",
+    });
+    expect(localizeNotification("es", KEY_COMMENT_MENTION, data)).toEqual({
+      title: "Ana te mencionó en paella",
+      body: "Pulsa para leer",
+    });
+  });
+
   it("returns null for an unknown key (caller falls back to English default)", () => {
     expect(localizeNotification("es", "totally_unknown", {})).toBeNull();
     expect(localizeNotification("en", "", {})).toBeNull();
@@ -124,6 +138,13 @@ describe("FALLBACK — English baseline for the OS lock-screen text", () => {
     expect(FALLBACK.socialNudgeBody(3, 5)).toBe(
       localizeNotification("en", KEY_SOCIAL_NUDGE, { postedCount: "3", crewSize: "5" })!.body,
     );
+    expect(FALLBACK.commentMentionTitle("Ana", "paella")).toBe(
+      localizeNotification("en", KEY_COMMENT_MENTION, {
+        commenterName: "Ana",
+        dishName: "paella",
+      })!.title,
+    );
+    expect(FALLBACK.commentMentionBody).toBe("Tap to read");
   });
 
   it("joins weekly-digest award parts with the ' · ' separator", () => {

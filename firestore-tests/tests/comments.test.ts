@@ -84,6 +84,52 @@ describe("comments — create", () => {
     await assertFails(setDoc(doc(db, commentPath("cmt-1")), validComment("bob", { text: "" })));
     await assertFails(setDoc(doc(db, commentPath("cmt-1")), validComment("bob", { text: "x".repeat(501) })));
   });
+
+  it("ALLOWS explicit null mentions/authorName (GitLive encodeDefaults=true on create)", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      setDoc(doc(db, commentPath("cmt-1")), validComment("bob", { mentions: null, authorName: null })),
+    );
+  });
+
+  it("ALLOWS up to 10 mentions", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      setDoc(
+        doc(db, commentPath("cmt-1")),
+        validComment("bob", { mentions: Array.from({ length: 10 }, (_, i) => `uid${i}`) }),
+      ),
+    );
+  });
+
+  it("REJECTS more than 10 mentions", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      setDoc(
+        doc(db, commentPath("cmt-1")),
+        validComment("bob", { mentions: Array.from({ length: 11 }, (_, i) => `uid${i}`) }),
+      ),
+    );
+  });
+
+  it("REJECTS mentions that isn't a list", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(setDoc(doc(db, commentPath("cmt-1")), validComment("bob", { mentions: "uid1" })));
+  });
+
+  it("REJECTS authorName over 120 chars", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      setDoc(doc(db, commentPath("cmt-1")), validComment("bob", { authorName: "x".repeat(121) })),
+    );
+  });
+
+  it("ALLOWS an authorName within 120 chars", async () => {
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      setDoc(doc(db, commentPath("cmt-1")), validComment("bob", { authorName: "Bob Ross" })),
+    );
+  });
 });
 
 describe("comments — edit (update)", () => {
@@ -124,6 +170,38 @@ describe("comments — edit (update)", () => {
     const db = env.authenticatedContext("bob").firestore();
     await assertFails(updateDoc(doc(db, commentPath("cmt-1")), { text: "" }));
     await assertFails(updateDoc(doc(db, commentPath("cmt-1")), { text: "x".repeat(501) }));
+  });
+
+  it("the author can update mentions on edit (partial update always carries the field)", async () => {
+    await seedComment("bob");
+    const db = env.authenticatedContext("bob").firestore();
+    await assertSucceeds(
+      updateDoc(doc(db, commentPath("cmt-1")), {
+        text: "edited words",
+        editedAtEpochMs: Date.now(),
+        mentions: ["alice"],
+      }),
+    );
+    // An empty list (no mentions left after edit) is also valid — the partial
+    // update never sends `null`, only a (possibly empty) list.
+    await assertSucceeds(
+      updateDoc(doc(db, commentPath("cmt-1")), {
+        text: "edited again",
+        editedAtEpochMs: Date.now(),
+        mentions: [],
+      }),
+    );
+  });
+
+  it("REJECTS an edit with more than 10 mentions", async () => {
+    await seedComment("bob");
+    const db = env.authenticatedContext("bob").firestore();
+    await assertFails(
+      updateDoc(doc(db, commentPath("cmt-1")), {
+        text: "edited words",
+        mentions: Array.from({ length: 11 }, (_, i) => `uid${i}`),
+      }),
+    );
   });
 });
 
