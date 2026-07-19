@@ -295,6 +295,55 @@ class SignInViewModelTest {
         assertEquals(false, vm.state.value.showConfirmPassword)
     }
 
+    /**
+     * [AuthRepository] whose Google sign-in suspends until [gate] completes — lets a test hold the
+     * first sign-in in flight while firing a second intent at the in-flight guard.
+     */
+    private class GatedAuthRepository(
+        private val gate: CompletableDeferred<Result<Session, AuthError>>,
+    ) : AuthRepository {
+        var googleCalls = 0
+            private set
+        private val sessionFlow = MutableStateFlow<Session?>(null)
+        override val current: Flow<Session?> = sessionFlow
+        override suspend fun requireCurrent(): Result<Session, SessionError> =
+            sessionFlow.value?.let { Result.success(it) } ?: Result.failure(SessionError.NotSignedIn)
+        override suspend fun signInWithGoogle(): Result<Session, AuthError> {
+            googleCalls++
+            val r = gate.await()
+            if (r is Result.Ok) sessionFlow.value = r.value
+            return r
+        }
+        override suspend fun signInWithApple(): Result<Session, AuthError> =
+            Result.failure(AuthError.AppleSignIn.NotYetAvailable)
+        override suspend fun signInWithEmail(email: String, password: String): Result<Session, AuthError> =
+            Result.failure(AuthError.Firebase.Unavailable)
+        override suspend fun signUpWithEmail(email: String, password: String): Result<Session, AuthError> =
+            Result.failure(AuthError.Firebase.Unavailable)
+        override suspend fun signOut(): Result<Unit, AuthError> = Result.success(Unit)
+    }
+
+    // A double-tap on "Continue with Google" reaches the VM as two intents (the button's
+    // `enabled = !isLoading` only applies after recomposition). The in-flight guard must
+    // collapse them to ONE credential-picker flow and ONE SignedIn effect — without it the
+    // second flow's cancellation error overwrote the first flow's successful sign-in.
+    @Test fun double_tap_google_starts_a_single_sign_in() = runTest {
+        val gate = CompletableDeferred<Result<Session, AuthError>>()
+        val repo = GatedAuthRepository(gate)
+        val vm = SignInViewModel(repo, NoopTokenRegistrationPort)
+        vm.effects.test {
+            vm.onIntent(SignInIntent.ContinueWithGoogle) // suspends at the gate, isLoading = true
+            vm.onIntent(SignInIntent.ContinueWithGoogle) // guarded no-op
+            gate.complete(Result.success(sampleSession))
+            assertEquals(SignInEffect.SignedIn, awaitItem())
+            expectNoEvents() // exactly one SignedIn — the second tap produced nothing
+            cancelAndIgnoreRemainingEvents()
+        }
+        assertEquals(1, repo.googleCalls)
+        assertEquals(false, vm.state.value.isLoading)
+        assertNull(vm.state.value.error)
+    }
+
     @Test fun wrong_credentials_maps_to_passwordError() = runTest {
         val repo = FakeAuthRepository(
             signInResult = Result.failure(AuthError.GoogleSignIn.UnknownClientFailure),

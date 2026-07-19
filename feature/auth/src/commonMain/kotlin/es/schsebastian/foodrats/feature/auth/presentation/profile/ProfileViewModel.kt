@@ -423,6 +423,9 @@ class ProfileViewModel(
     }
 
     private suspend fun doSignOut() {
+        // In-flight guard: MviViewModel launches one coroutine per intent, so a double-tap would
+        // run two overlapping sign-out flows (token deregister + erase interleaved). First wins.
+        if (currentState.isSigningOut) return
         update { it.copy(isSigningOut = true, signOutError = null) }
         val r = signOut.signOut()
         update {
@@ -576,6 +579,10 @@ class ProfileViewModel(
     }
 
     private suspend fun doDeleteAccount(expected: String) {
+        // In-flight guard: a double-tapped confirm would invoke the deleteAccount cloud function
+        // twice concurrently — the second call races the server cascade and surfaces a spurious
+        // deleteError over an account that WAS successfully deleted. First tap wins.
+        if (currentState.isDeletingAccount) return
         update { it.copy(isDeletingAccount = true, deleteDialogOpen = false, deleteError = null) }
         when (val r = deleteMyAccount(currentState.deleteConfirmation, expected)) {
             is Result.Ok -> {

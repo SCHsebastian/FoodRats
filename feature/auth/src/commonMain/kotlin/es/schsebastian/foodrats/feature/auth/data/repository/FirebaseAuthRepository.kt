@@ -135,27 +135,45 @@ internal class FirebaseAuthRepository(
 
     override suspend fun signOut(): Result<Unit, AuthError> {
         FrLog.d(FrLog.Tags.SignOut) { "repo: signOut entry" }
-        return try {
+        // Only the Firebase sign-out decides Ok vs Err: if IT fails the user is still signed in
+        // and the caller must not tear anything down.
+        try {
             FrLog.d(FrLog.Tags.SignOut) { "repo: → firebase.signOut()" }
             firebase.signOut()
+        } catch (t: Throwable) {
+            FrLog.w(FrLog.Tags.SignOut, t) { "repo: firebase.signOut threw: ${t.message}" }
+            return Result.failure(errorMapper.mapFirebase(t))
+        }
+        // Past this point the Firebase session is ENDED (authStateChanged already emitted null and
+        // the root nav is routing to SignIn), so every remaining step is best-effort cleanup and
+        // must not flip the result to Err. Returning Err here would (a) show a "sign out failed"
+        // error to a user who IS signed out, and (b) make AuthSignOutPort skip LocalDataEraser —
+        // leaving the previous user's ActiveCrewId, SQLDelight caches, and queued outbox writes
+        // for the next account on this device (security #3). Android's
+        // CredentialManager.clearCredentialState is documented to throw on devices without a
+        // credential provider, which made this a real path, not a hypothetical.
+        runCatching {
             FrLog.d(FrLog.Tags.SignOut) { "repo: → googleClient.signOut()" }
             googleClient.signOut()
+        }.onFailure { FrLog.w(FrLog.Tags.SignOut, it) { "repo: googleClient.signOut best-effort failed: ${it.message}" } }
+        runCatching {
             FrLog.d(FrLog.Tags.SignOut) { "repo: → appleClient.signOut()" }
             appleClient.signOut()
-            // Clear both the session token AND the active crew so the next sign-in
-            // lands on CrewPicker instead of silently inheriting the previous user's
-            // crew (the active-crew flow re-derives from prefs at session-restore time).
-            // Also reset the post-signin notification-permission prompt flag so a
-            // different account on this device sees the gate again.
+        }.onFailure { FrLog.w(FrLog.Tags.SignOut, it) { "repo: appleClient.signOut best-effort failed: ${it.message}" } }
+        // Clear both the session token AND the active crew so the next sign-in
+        // lands on CrewPicker instead of silently inheriting the previous user's
+        // crew (the active-crew flow re-derives from prefs at session-restore time).
+        // Also reset the post-signin notification-permission prompt flag so a
+        // different account on this device sees the gate again. Best-effort too:
+        // LocalDataEraser.eraseLocalAccountData (run by AuthSignOutPort on Ok) clears
+        // these same keys again, so a transient DataStore failure here gets retried there.
+        runCatching {
             FrLog.d(FrLog.Tags.SignOut) { "repo: → prefs.clear(SessionToken, ActiveCrewId, NotificationsPermissionPrompted)" }
             prefs.clear(Keys.SessionToken)
             prefs.clear(Keys.ActiveCrewId)
             prefs.clear(Keys.NotificationsPermissionPrompted)
-            FrLog.d(FrLog.Tags.SignOut) { "repo: signOut complete (Ok)" }
-            Result.success(Unit)
-        } catch (t: Throwable) {
-            FrLog.w(FrLog.Tags.SignOut, t) { "repo: signOut threw: ${t.message}" }
-            Result.failure(errorMapper.mapFirebase(t))
-        }
+        }.onFailure { FrLog.w(FrLog.Tags.SignOut, it) { "repo: prefs clear best-effort failed: ${it.message}" } }
+        FrLog.d(FrLog.Tags.SignOut) { "repo: signOut complete (Ok)" }
+        return Result.success(Unit)
     }
 }
