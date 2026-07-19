@@ -37,6 +37,7 @@ private val rootNavModule = module {
             consent = get(),
             deepLinks = get(),
             eulaPort = get(),
+            crewMembership = get(),
         )
     }
     // App-wide offline banner (offline-first §P1-T2): projects ConnectivityPort.isOnline (bound per

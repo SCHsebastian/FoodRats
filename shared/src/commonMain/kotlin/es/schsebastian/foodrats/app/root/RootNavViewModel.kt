@@ -7,6 +7,8 @@ import es.schsebastian.foodrats.app.navigation.parseDeepLink
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.needsDecision
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.preferences.CURRENT_EULA_VERSION
 import es.schsebastian.foodrats.core.domain.preferences.EulaPort
 import es.schsebastian.foodrats.core.domain.preferences.NoopEulaAcceptance
@@ -14,8 +16,10 @@ import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferenceP
 import es.schsebastian.foodrats.core.domain.preferences.needsEulaAcceptance
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
+import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.presentation.mvi.MviViewModel
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -43,6 +47,8 @@ class RootNavViewModel(
     // UGC compliance §6 re-acceptance gate — defaults to noop so existing tests compile without
     // providing this port; the Koin module always passes the real EulaRepository.
     private val eulaPort: EulaPort = NoopEulaAcceptance,
+    // Membership check for crew-carrying deep links (see alignActiveCrewFor).
+    private val crewMembership: CrewMembershipPort,
 ) : MviViewModel<RootNavState, RootNavIntent, RootNavEffect>(RootNavState()) {
 
     private val navLock = Mutex()
@@ -135,10 +141,38 @@ class RootNavViewModel(
         if (pending != null) {
             update { it.copy(pendingDeepLink = null) }
             FrLog.d(FrLog.Tags.RootNav) { "ready: resuming deep link ${pending::class.simpleName}" }
+            alignActiveCrewFor(pending)
             emit(RootNavEffect.NavigateDeepLink(pending))
         } else {
             emit(RootNavEffect.NavigateTopLevel(Route.Main))
         }
+    }
+
+    /**
+     * Switches the active crew to the one a deep link targets, before landing on it. Meal push
+     * links carry the crew id precisely because [Route.MealDetail]'s reads (feed match, comments,
+     * rating, blind voting, owner) are all scoped to [ActiveCrewProvider.current] — landing on a
+     * meal of a non-active crew would dead-end on "not found". Switching (rather than threading
+     * the crew into the detail screen) keeps the whole app — including the feed behind the back
+     * button — consistent with the crew the user was notified about.
+     *
+     * Membership is validated first: a stale push for a crew the user has since left must NOT
+     * become the active crew (it would strand Feed on a permission error). In that case, and for
+     * legacy crewId-less links, the link proceeds unswitched and the detail screen shows its
+     * not-found state — the pre-fix behaviour.
+     */
+    private suspend fun alignActiveCrewFor(route: Route) {
+        val raw = (route as? Route.MealDetail)?.crewId ?: return
+        val target = (CrewId.of(raw) as? Result.Ok)?.value ?: return
+        if (activeCrew.current.first() == target) return
+        val accountId = session.current.first()?.accountId ?: return
+        val isMember = crewMembership.observeMyCrews(accountId).first().any { it.id == target }
+        if (!isMember) {
+            FrLog.d(FrLog.Tags.RootNav) { "deep link crew not in memberships — leaving active crew unchanged" }
+            return
+        }
+        FrLog.d(FrLog.Tags.RootNav) { "deep link → switching active crew" }
+        activeCrew.set(target)
     }
 
     private fun observeDeepLinks() {
@@ -159,6 +193,7 @@ class RootNavViewModel(
                     when {
                         stage == RootStage.Ready -> {
                             FrLog.d(FrLog.Tags.RootNav) { "deep link → navigate now: ${route::class.simpleName}" }
+                            alignActiveCrewFor(route)
                             emit(RootNavEffect.NavigateDeepLink(route))
                         }
                         route is Route.InvitePreview && stage == RootStage.NeedsCrew -> {

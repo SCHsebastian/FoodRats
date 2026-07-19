@@ -38,7 +38,7 @@ export const onMealCreated = onDocumentCreated(
           dishName,
           // Tapping opens the specific meal. Omit when we can't build a valid link (no dayKey) —
           // the app then just opens to Feed, which is the right "couldn't target" fallback.
-          ...(dayKey ? { dayKey, link: mealDeepLink(mealId, dayKey) } : {}),
+          ...(dayKey ? { dayKey, link: mealDeepLink(crewId, mealId, dayKey) } : {}),
         },
       }),
       awardBadgeIfMilestone(meal.authorId as string, crewId, mealId),

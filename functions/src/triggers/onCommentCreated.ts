@@ -35,7 +35,7 @@ export const onCommentCreated = onDocumentCreated(
       commentId,
       commenterName,
       dishName,
-      ...(dayKey ? { dayKey, link: mealDeepLink(mealId, dayKey) } : {}),
+      ...(dayKey ? { dayKey, link: mealDeepLink(crewId, mealId, dayKey) } : {}),
     };
 
     if (meal.authorId === comment.authorId) {

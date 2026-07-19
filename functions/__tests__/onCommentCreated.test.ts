@@ -87,9 +87,9 @@ describe("onCommentCreated — comment push to the meal author", () => {
       commenterName: "Bob",
       dishName: "paella",
       dayKey: "2026-06-14",
-      link: mealDeepLink(MEAL, "2026-06-14"),
+      link: mealDeepLink(CREW, MEAL, "2026-06-14"),
     });
-    expect(payload.data.link).toBe(`foodrats://app/meal/${MEAL}/2026-06-14`);
+    expect(payload.data.link).toBe(`foodrats://app/meal/${CREW}/${MEAL}/2026-06-14`);
   });
 
   it("falls back to 'Someone' / 'your meal' for missing names (malformed docs)", async () => {
@@ -136,7 +136,7 @@ describe("onCommentCreated — @-mention fan-out", () => {
       commenterName: "Bob",
       dishName: "paella",
       dayKey: "2026-06-14",
-      link: mealDeepLink(MEAL, "2026-06-14"),
+      link: mealDeepLink(CREW, MEAL, "2026-06-14"),
     });
   });
 

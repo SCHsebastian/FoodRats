@@ -96,14 +96,24 @@ const commentPayload: PushPayload = {
 // ---------------------------------------------------------------------------
 
 describe("mealDeepLink — client deep-link contract", () => {
-  it("builds foodrats://app/meal/{mealId}/{dayKey} exactly", () => {
-    expect(mealDeepLink("c1_alice_2026-06-14_lunch", "2026-06-14")).toBe(
-      "foodrats://app/meal/c1_alice_2026-06-14_lunch/2026-06-14",
+  it("builds foodrats://app/meal/{crewId}/{mealId}/{dayKey} exactly", () => {
+    expect(mealDeepLink("c1", "c1_alice_2026-06-14_lunch", "2026-06-14")).toBe(
+      "foodrats://app/meal/c1/c1_alice_2026-06-14_lunch/2026-06-14",
     );
   });
 
+  it("carries 4 path segments: meal/{crewId}/{mealId}/{dayKey}", () => {
+    const url = new URL(mealDeepLink("crew-9", "m1", "2026-06-14"));
+    expect(url.pathname.split("/").filter(Boolean)).toEqual([
+      "meal",
+      "crew-9",
+      "m1",
+      "2026-06-14",
+    ]);
+  });
+
   it("keeps 'meal' as the first path segment (the parser's discriminator)", () => {
-    const url = new URL(mealDeepLink("m1", "2026-06-14"));
+    const url = new URL(mealDeepLink("c1", "m1", "2026-06-14"));
     expect(url.protocol).toBe("foodrats:");
     expect(url.host).toBe("app");
     expect(url.pathname.split("/").filter(Boolean)[0]).toBe("meal");

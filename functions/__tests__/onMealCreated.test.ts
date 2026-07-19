@@ -101,9 +101,9 @@ describe("onMealCreated — new-meal push to the crew", () => {
       authorName: "Alice",
       dishName: "paella",
       dayKey: "2026-06-14",
-      link: mealDeepLink(MEAL, "2026-06-14"),
+      link: mealDeepLink(CREW, MEAL, "2026-06-14"),
     });
-    expect(payload.data.link).toBe(`foodrats://app/meal/${MEAL}/2026-06-14`);
+    expect(payload.data.link).toBe(`foodrats://app/meal/${CREW}/${MEAL}/2026-06-14`);
   });
 
   it("falls back to 'your crew' when the crew doc is missing (deleted crew)", async () => {

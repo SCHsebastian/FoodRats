@@ -9,15 +9,28 @@ class DeepLinkParserTest {
     @Test
     fun https_meal_link_maps_to_meal_detail() {
         assertEquals(
-            Route.MealDetail(mealId = "abc123", dayIso = "2026-05-26"),
-            parseDeepLink("https://foodrats-de4ec.web.app/meal/abc123/2026-05-26"),
+            Route.MealDetail(mealId = "abc123", dayIso = "2026-05-26", crewId = "crew-7"),
+            parseDeepLink("https://foodrats-de4ec.web.app/meal/crew-7/abc123/2026-05-26"),
         )
     }
 
     @Test
     fun custom_scheme_meal_link_maps_to_meal_detail() {
         assertEquals(
-            Route.MealDetail(mealId = "abc123", dayIso = "2026-05-26"),
+            Route.MealDetail(mealId = "abc123", dayIso = "2026-05-26", crewId = "crew-7"),
+            parseDeepLink("foodrats://app/meal/crew-7/abc123/2026-05-26"),
+        )
+    }
+
+    @Test
+    fun legacy_meal_link_without_crew_still_resolves_with_null_crew() {
+        // Pushes sent before the crew-segment contract change (2026-07-19) must keep working.
+        assertEquals(
+            Route.MealDetail(mealId = "abc123", dayIso = "2026-05-26", crewId = null),
+            parseDeepLink("https://foodrats-de4ec.web.app/meal/abc123/2026-05-26"),
+        )
+        assertEquals(
+            Route.MealDetail(mealId = "abc123", dayIso = "2026-05-26", crewId = null),
             parseDeepLink("foodrats://app/meal/abc123/2026-05-26"),
         )
     }
