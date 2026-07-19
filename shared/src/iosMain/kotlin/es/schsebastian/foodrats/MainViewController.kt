@@ -130,6 +130,9 @@ fun MainViewController(
                 )
             }
         }
+        // Koin is guaranteed started here — replay bridge events (e.g. the cold-start
+        // notification-tap deep link) that arrived before startKoin ran.
+        IosBridgeGate.open()
         // Silence the FrLog println path in release Kotlin/Native binaries (security #8) — mirrors
         // the Android BuildConfig.DEBUG gate so account UIDs / session state don't reach the device
         // console in production. Warnings/errors still reach the Crashlytics sink below.

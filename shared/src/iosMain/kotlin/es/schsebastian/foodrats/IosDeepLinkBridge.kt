@@ -10,10 +10,14 @@ import org.koin.mp.KoinPlatform
  * the shared [DeepLinkBus], which `RootNavViewModel` parses and routes.
  *
  * Mirrors [IosNotificationBridge]; called as `IosDeepLinkBridge.shared.receive(uri:)` from Swift.
+ * Routed through [IosBridgeGate]: a cold-start notification tap delivers the URI before Koin
+ * starts, so the link is stashed and replayed once [MainViewController] opens the gate.
  */
 @Suppress("unused")
 object IosDeepLinkBridge {
     fun receive(uri: String) {
-        KoinPlatform.getKoin().get<DeepLinkBus>().publish(uri)
+        IosBridgeGate.runWhenReady {
+            KoinPlatform.getKoin().get<DeepLinkBus>().publish(uri)
+        }
     }
 }
