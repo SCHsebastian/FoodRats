@@ -1,3 +1,35 @@
+// Supply-chain security (buildscript/plugin classpath): AGP 9.0.1 pins vulnerable
+// transitives on the ROOT buildscript classpath (bundletool → jose4j/bouncycastle,
+// jetifier → jdom2, commons-compress → commons-lang3). The `subprojects {}` force
+// block below only covers *project* configurations, so the plugin classpath needs
+// its own constraints here. Plugins-DSL artifacts resolve into this same
+// `classpath` configuration, so these constraints apply to them. Verified with
+// `./gradlew buildEnvironment`.
+buildscript {
+    dependencies {
+        constraints {
+            add("classpath", "org.bouncycastle:bcprov-jdk18on:1.84") {
+                because("GHSA critical GOST keystream reuse (<=1.80.1) + medium LDAP injection (<1.84); AGP 9.0.1 pins 1.79")
+            }
+            add("classpath", "org.bouncycastle:bcpkix-jdk18on:1.84") {
+                because("GHSA medium (<1.84); keep in lockstep with bcprov")
+            }
+            add("classpath", "org.bouncycastle:bcutil-jdk18on:1.84") {
+                because("keep the BouncyCastle family on one version")
+            }
+            add("classpath", "org.bitbucket.b_c:jose4j:0.9.6") {
+                because("GHSA high (<0.9.6); AGP 9.0.1 bundletool chain pins 0.9.5")
+            }
+            add("classpath", "org.jdom:jdom2:2.0.6.1") {
+                because("XXE, GHSA high (<2.0.6.1); AGP 9.0.1 jetifier chain pins 2.0.6")
+            }
+            add("classpath", "org.apache.commons:commons-lang3:3.18.0") {
+                because("GHSA medium (<3.18.0); AGP 9.0.1 commons-compress chain pins 3.16.0")
+            }
+        }
+    }
+}
+
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
@@ -82,6 +114,21 @@ subprojects {
             force(
                 "org.apache.commons:commons-lang3:3.18.0",
                 "org.apache.httpcomponents:httpclient:4.5.13",
+            )
+            // wire-runtime — GHSA high (<=6.2.0). Pulled only by
+            // androidx.benchmark:benchmark-macro 1.5.0-alpha06 in
+            // :baselineprofile (on-device macrobenchmark APK; never ships in
+            // the app). 6.3.0 is the patched line.
+            force(
+                "com.squareup.wire:wire-runtime:6.3.0",
+            )
+            // opentelemetry-api — GHSA medium (<=1.61.0). Appears only on
+            // `swiftExportClasspathResolvable` (Kotlin Gradle Plugin's
+            // swift-export-embeddable 2.3.21 worker classpath; build-time
+            // only, never ships). 1.62.0 pulls opentelemetry-context 1.62.0
+            // transitively.
+            force(
+                "io.opentelemetry:opentelemetry-api:1.62.0",
             )
         }
     }
