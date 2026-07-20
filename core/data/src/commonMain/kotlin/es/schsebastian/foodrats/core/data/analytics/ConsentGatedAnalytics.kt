@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.core.data.analytics
 
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsEvent
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
+import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.analytics.UserProperty
 import es.schsebastian.foodrats.core.domain.analytics.isAnalyticsGranted
@@ -33,11 +34,16 @@ class ConsentGatedAnalytics(
 
     init {
         consent.decision
-            .map { it.isAnalyticsGranted }
+            .map { decision -> decision.isAnalyticsGranted to (decision as? ConsentDecision.Granted)?.version }
             .distinctUntilChanged()
-            .onEach { isGranted ->
+            .onEach { (isGranted, grantedVersion) ->
                 granted = isGranted
                 delegate.applyConsent(isGranted)
+                if (isGranted && grantedVersion != null) {
+                    // Stamp the consent-schema version the user agreed to (spec §3/§7) so GA4
+                    // cohorts can be sliced by consent generation.
+                    delegate.setUserProperty(UserProperty.DATA_CONSENT_VERSION, grantedVersion.toString())
+                }
                 // On revoke/decline, wipe locally-cached analytics state so a fresh anonymous
                 // identity starts next time consent is granted.
                 if (!isGranted) delegate.resetData()

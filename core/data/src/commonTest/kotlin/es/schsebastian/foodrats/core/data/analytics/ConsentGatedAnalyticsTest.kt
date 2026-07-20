@@ -75,6 +75,41 @@ class ConsentGatedAnalyticsTest {
     }
 
     @Test
+    fun grant_stamps_data_consent_version_user_property() = runTest {
+        val recorder = RecordingAnalyticsTracker()
+        val consent = MutableStateFlow<ConsentDecision>(ConsentDecision.Unknown)
+        val gate = ConsentGatedAnalytics(recorder, FakeConsent(consent), backgroundScope)
+        runCurrent()
+        assertTrue(recorder.userProperties.isEmpty(), "no property before a decision")
+
+        consent.value = grantedNow()
+        runCurrent()
+
+        val stamped = recorder.userProperties
+            .lastOrNull { it.first == es.schsebastian.foodrats.core.domain.analytics.UserProperty.DATA_CONSENT_VERSION }
+        assertEquals(
+            AnalyticsConfig.CURRENT_CONSENT_VERSION.toString(),
+            stamped?.second,
+            "granting must stamp data_consent_version with the agreed schema version",
+        )
+        gate.track(AnalyticsEvent.MealComposerOpened)
+        assertEquals(listOf("meal_composer_opened"), recorder.eventNames())
+    }
+
+    @Test
+    fun deny_does_not_stamp_data_consent_version() = runTest {
+        val recorder = RecordingAnalyticsTracker()
+        val consent = MutableStateFlow<ConsentDecision>(ConsentDecision.Unknown)
+        ConsentGatedAnalytics(recorder, FakeConsent(consent), backgroundScope)
+        runCurrent()
+
+        consent.value = ConsentDecision.Denied(AnalyticsConfig.CURRENT_CONSENT_VERSION, EPOCH)
+        runCurrent()
+
+        assertTrue(recorder.userProperties.isEmpty(), "a denial must not stamp any user property")
+    }
+
+    @Test
     fun stale_version_grant_is_treated_as_not_granted() = runTest {
         val recorder = RecordingAnalyticsTracker()
         // A grant recorded at an OLDER consent version must force re-consent (no tracking).
