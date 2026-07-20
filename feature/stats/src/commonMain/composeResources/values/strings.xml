@@ -137,4 +137,35 @@
 
     <!-- Retry the stats load from the full-screen error state. -->
     <string name="stats_retry">Try again</string>
+
+    <!-- "My plates" monthly meal calendar -->
+    <string name="stats_calendar_title">My plates</string>
+    <string name="stats_calendar_back">Back</string>
+    <!-- Month header: localized month name + year. -->
+    <string name="stats_calendar_month_title_format">%1$s %2$d</string>
+    <string name="stats_calendar_prev_month">Previous month</string>
+    <string name="stats_calendar_next_month">Next month</string>
+    <string name="stats_calendar_empty_month">No plates this month yet.</string>
+    <!-- One-decimal average score on a calendar meal row. -->
+    <string name="stats_calendar_score_format">%1$s ★</string>
+    <string name="stats_calendar_month_january">January</string>
+    <string name="stats_calendar_month_february">February</string>
+    <string name="stats_calendar_month_march">March</string>
+    <string name="stats_calendar_month_april">April</string>
+    <string name="stats_calendar_month_may">May</string>
+    <string name="stats_calendar_month_june">June</string>
+    <string name="stats_calendar_month_july">July</string>
+    <string name="stats_calendar_month_august">August</string>
+    <string name="stats_calendar_month_september">September</string>
+    <string name="stats_calendar_month_october">October</string>
+    <string name="stats_calendar_month_november">November</string>
+    <string name="stats_calendar_month_december">December</string>
+    <!-- Weekday initials, Monday-first. -->
+    <string name="stats_calendar_weekday_monday">M</string>
+    <string name="stats_calendar_weekday_tuesday">T</string>
+    <string name="stats_calendar_weekday_wednesday">W</string>
+    <string name="stats_calendar_weekday_thursday">T</string>
+    <string name="stats_calendar_weekday_friday">F</string>
+    <string name="stats_calendar_weekday_saturday">S</string>
+    <string name="stats_calendar_weekday_sunday">S</string>
 </resources>

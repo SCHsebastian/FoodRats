@@ -59,6 +59,9 @@ sealed interface Route {
     @Serializable data object Profile : Protected
     @Serializable data object Achievements : Protected
 
+    /** "My plates" monthly meal calendar (own meals in the active crew), reached from Profile. */
+    @Serializable data object MealCalendar : Protected
+
     /** The signed-in user's block list (UGC compliance §5), reached from Profile. */
     @Serializable data object BlockedUsers : Protected
 
@@ -123,6 +126,7 @@ fun Route.requiresSession(): Boolean = when (this) {
     is Route.InvitePreview,
     Route.Profile,
     Route.Achievements,
+    Route.MealCalendar,
     Route.BlockedUsers,
     Route.Main,
     Route.CaptureMeal,
