@@ -83,6 +83,11 @@
         <item quantity="other">%1$s · %2$d meals</item>
     </plurals>
 
+    <!-- Award plate tile — onClickLabel + Role.Button, opens the meal in MealDetail. -->
+    <string name="stats_open_meal_cta">View meal</string>
+    <!-- Loading announcement carried by one representative shimmer tile on the stats screen. -->
+    <string name="stats_stats_loading">Loading stats</string>
+
     <!-- Threshold hint -->
 
     <!-- Collection tab (cuisine passport + ingredient pokédex) -->
@@ -168,4 +173,29 @@
     <string name="stats_calendar_weekday_friday">F</string>
     <string name="stats_calendar_weekday_saturday">S</string>
     <string name="stats_calendar_weekday_sunday">S</string>
+    <!-- Full weekday names — a11y-only, TalkBack reads these instead of the single-letter initial. -->
+    <string name="stats_calendar_weekday_monday_full">Monday</string>
+    <string name="stats_calendar_weekday_tuesday_full">Tuesday</string>
+    <string name="stats_calendar_weekday_wednesday_full">Wednesday</string>
+    <string name="stats_calendar_weekday_thursday_full">Thursday</string>
+    <string name="stats_calendar_weekday_friday_full">Friday</string>
+    <string name="stats_calendar_weekday_saturday_full">Saturday</string>
+    <string name="stats_calendar_weekday_sunday_full">Sunday</string>
+
+    <!-- Day-cell accessibility label pieces (merged into one TalkBack node). -->
+    <!-- Localized month name + day-of-month + year, e.g. "July 21, 2026". -->
+    <string name="stats_calendar_day_date_format">%1$s %2$d, %3$d</string>
+    <!-- Date text + meal-count text, e.g. "July 21, 2026, 2 plates". -->
+    <string name="stats_calendar_day_a11y_format">%1$s, %2$s</string>
+    <!-- Wraps the base description when the cell is today. -->
+    <string name="stats_calendar_day_today_format">%1$s, today</string>
+    <string name="stats_calendar_day_no_meals">No plates</string>
+    <plurals name="stats_calendar_day_meal_count">
+        <item quantity="one">%1$d plate</item>
+        <item quantity="other">%1$d plates</item>
+    </plurals>
+    <!-- Plain count for the visible multi-meal badge chip — no glyph, decorative under the merged cell description. -->
+    <string name="stats_calendar_day_meal_count_badge">%1$d</string>
+    <!-- Loading announcement carried by one representative shimmer cell while the month grid loads. -->
+    <string name="stats_calendar_grid_loading">Loading calendar</string>
 </resources>

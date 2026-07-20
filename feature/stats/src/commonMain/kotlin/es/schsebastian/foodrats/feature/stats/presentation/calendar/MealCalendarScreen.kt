@@ -1,5 +1,8 @@
 package es.schsebastian.foodrats.feature.stats.presentation.calendar
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -24,7 +28,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,15 +58,19 @@ import es.schsebastian.foodrats.core.designsystem.structural.FrTileDepth
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralBlur
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralColors
 import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
+import es.schsebastian.foodrats.core.designsystem.theme.LocalFrSemanticColors
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
+import es.schsebastian.foodrats.core.designsystem.tokens.Motion
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
 import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.i18n.resolve
+import es.schsebastian.foodrats.core.i18n.resolvePlural
 import es.schsebastian.foodrats.feature.stats.domain.compute.startOfIsoWeek
 import es.schsebastian.foodrats.feature.stats.domain.compute.startOfMonth
 import es.schsebastian.foodrats.feature.stats.domain.model.MealCalendarMonth
+import es.schsebastian.foodrats.feature.stats.i18n.StatsPluralKey
 import es.schsebastian.foodrats.feature.stats.i18n.StatsStringKey
 import es.schsebastian.foodrats.feature.stats.presentation.components.formatOneDecimal
 import es.schsebastian.foodrats.feature.stats.presentation.toStringKey
@@ -119,6 +135,7 @@ fun MealCalendarScreen(
                                 month = month,
                                 calendar = calendar,
                                 selectedDay = state.selectedDay,
+                                today = state.today,
                                 onDaySelected = { vm.onIntent(MealCalendarIntent.DaySelected(it)) },
                             )
                             if (calendar.mealsByDay.isEmpty()) {
@@ -186,6 +203,7 @@ private fun MonthHeader(
             text = resolve(StatsStringKey.CalendarMonthTitleFormat, resolve(month.month.toStringKey()), month.year),
             style = StructuralType.titleLg,
             color = StructuralColors.foreground,
+            modifier = Modifier.semantics { heading() },
         )
         FrGlassCircleButton(
             icon = FrIcons.ChevronRight,
@@ -199,22 +217,25 @@ private fun MonthHeader(
 
 @Composable
 private fun WeekdayHeader() {
-    val initials = listOf(
-        StatsStringKey.CalendarWeekdayMonday,
-        StatsStringKey.CalendarWeekdayTuesday,
-        StatsStringKey.CalendarWeekdayWednesday,
-        StatsStringKey.CalendarWeekdayThursday,
-        StatsStringKey.CalendarWeekdayFriday,
-        StatsStringKey.CalendarWeekdaySaturday,
-        StatsStringKey.CalendarWeekdaySunday,
+    val weekdays = listOf(
+        StatsStringKey.CalendarWeekdayMonday to StatsStringKey.CalendarWeekdayMondayFull,
+        StatsStringKey.CalendarWeekdayTuesday to StatsStringKey.CalendarWeekdayTuesdayFull,
+        StatsStringKey.CalendarWeekdayWednesday to StatsStringKey.CalendarWeekdayWednesdayFull,
+        StatsStringKey.CalendarWeekdayThursday to StatsStringKey.CalendarWeekdayThursdayFull,
+        StatsStringKey.CalendarWeekdayFriday to StatsStringKey.CalendarWeekdayFridayFull,
+        StatsStringKey.CalendarWeekdaySaturday to StatsStringKey.CalendarWeekdaySaturdayFull,
+        StatsStringKey.CalendarWeekdaySunday to StatsStringKey.CalendarWeekdaySundayFull,
     )
     Row(modifier = Modifier.fillMaxWidth()) {
-        initials.forEach { key ->
+        weekdays.forEach { (initialKey, fullKey) ->
+            val fullName = resolve(fullKey)
             FrText(
-                text = resolve(key),
+                text = resolve(initialKey),
                 style = StructuralType.micro.copy(textAlign = TextAlign.Center),
                 color = StructuralColors.foreground.copy(alpha = 0.6f),
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clearAndSetSemantics { contentDescription = fullName },
             )
         }
     }
@@ -238,6 +259,7 @@ private fun MonthGrid(
     month: LocalDate,
     calendar: MealCalendarMonth,
     selectedDay: LocalDate?,
+    today: LocalDate?,
     onDaySelected: (LocalDate) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
@@ -252,6 +274,7 @@ private fun MonthGrid(
                     } else {
                         DayCell(
                             day = day,
+                            today = today,
                             meals = calendar.mealsByDay[day].orEmpty(),
                             selected = day == selectedDay,
                             onClick = { onDaySelected(day) },
@@ -264,9 +287,16 @@ private fun MonthGrid(
     }
 }
 
+/**
+ * One grid cell — a single merged accessible node ([Role.Button], `selected`, and a resolved
+ * description carrying the full date + meal count + "today", per the calendar's a11y contract).
+ * The today marker (a small dot) and the multi-meal badge are purely visual; both are covered by
+ * the merged description above, so their own text/decoration stays out of the a11y tree.
+ */
 @Composable
 private fun DayCell(
     day: LocalDate,
+    today: LocalDate?,
     meals: List<MealWithRatings>,
     selected: Boolean,
     onClick: () -> Unit,
@@ -274,23 +304,50 @@ private fun DayCell(
 ) {
     val shape = RoundedCornerShape(Radius.sm)
     val hasMeals = meals.isNotEmpty()
+    val isToday = day == today
+    val semantic = LocalFrSemanticColors.current
+
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else Color.Transparent,
+        animationSpec = tween(Motion.quick),
+        label = "dayCellSelectionBorder",
+    )
+
+    val dateText = resolve(
+        StatsStringKey.CalendarDayDateFormat,
+        resolve(day.month.toStringKey()),
+        day.day,
+        day.year,
+    )
+    val mealsText = if (hasMeals) {
+        resolvePlural(StatsPluralKey.CalendarDayMealCount, meals.size)
+    } else {
+        resolve(StatsStringKey.CalendarDayNoMeals)
+    }
+    val baseDescription = resolve(StatsStringKey.CalendarDayA11yFormat, dateText, mealsText)
+    val accessibleDescription = if (isToday) {
+        resolve(StatsStringKey.CalendarDayTodayFormat, baseDescription)
+    } else {
+        baseDescription
+    }
+
     Box(
         modifier = modifier
             .aspectRatio(1f)
             .clip(shape)
-            .then(
-                if (selected) {
-                    Modifier.border(2.dp, MaterialTheme.colorScheme.primary, shape)
-                } else {
-                    Modifier
-                },
-            )
-            .clickable(onClick = onClick),
+            .border(2.dp, borderColor, shape)
+            .clickable(onClick = onClick)
+            .semantics(mergeDescendants = true) {
+                role = Role.Button
+                this.selected = selected
+                contentDescription = accessibleDescription
+            },
     ) {
         meals.firstOrNull()?.let { first ->
             AsyncImage(
                 model = first.meal.calendarImageUrl,
-                contentDescription = resolve(StatsStringKey.PlatePhotoFormat, first.meal.dish.value),
+                // Decorative — the cell's merged semantics already carry the full description.
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
             )
@@ -302,12 +359,42 @@ private fun DayCell(
             color = if (hasMeals) StructuralColors.onMedia else StructuralColors.foreground.copy(alpha = 0.8f),
             modifier = Modifier.align(Alignment.TopStart).padding(Spacing.xxs),
         )
+        // Today marker — a small dot, visually distinct from the (primary-colored) selection border.
+        if (isToday) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(Spacing.xxs)
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(semantic.info),
+            )
+        }
+        // Multi-meal count badge — a small scrim pill, bottom-end.
+        if (meals.size > 1) {
+            FrText(
+                text = resolve(StatsStringKey.CalendarDayMealCountBadge, meals.size),
+                style = StructuralType.micro,
+                color = semantic.onScrim,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(Spacing.xxs)
+                    .background(semantic.scrim, RoundedCornerShape(50))
+                    .padding(horizontal = Spacing.xxs),
+            )
+        }
     }
 }
 
-/** Loading skeleton mirroring [MonthGrid]'s silhouette — shimmering day cells, same week rows. */
+/**
+ * Loading skeleton mirroring [MonthGrid]'s silhouette — shimmering day cells, same week rows.
+ * Only the first cell carries the loading announcement ([FrShimmerBox]'s `LiveRegionMode.Polite`);
+ * repeating it on all ~30 cells would spam TalkBack.
+ */
 @Composable
 private fun MonthGridSkeleton(month: LocalDate) {
+    val loadingLabel = resolve(StatsStringKey.CalendarGridLoading)
+    var labelledOnce = false
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.xxs)) {
         monthCells(month).forEach { week ->
             Row(
@@ -321,7 +408,9 @@ private fun MonthGridSkeleton(month: LocalDate) {
                         FrShimmerBox(
                             modifier = Modifier.weight(1f).aspectRatio(1f),
                             shape = RoundedCornerShape(Radius.sm),
+                            contentDescription = if (!labelledOnce) loadingLabel else null,
                         )
+                        labelledOnce = true
                     }
                 }
             }
@@ -335,14 +424,22 @@ private fun MonthGridSkeleton(month: LocalDate) {
 
 @Composable
 private fun CalendarMealRow(meal: MealWithRatings, onClick: () -> Unit) {
-    FrGlassTile(depth = FrTileDepth.Default, onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+    FrGlassTile(
+        depth = FrTileDepth.Default,
+        onClick = onClick,
+        // Merges the click semantics with the dish name + score into one TalkBack node instead of
+        // three separate reads. Must live on this outer node (not a child Row) — mergeDescendants
+        // only pulls in descendants, so declaring it lower would exclude FrGlassTile's own click node.
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+    ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             AsyncImage(
                 model = meal.meal.calendarImageUrl,
-                contentDescription = resolve(StatsStringKey.PlatePhotoFormat, meal.meal.dish.value),
+                // Decorative — dish name is already read from the merged row description below.
+                contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(56.dp).clip(RoundedCornerShape(Radius.sm)),
             )

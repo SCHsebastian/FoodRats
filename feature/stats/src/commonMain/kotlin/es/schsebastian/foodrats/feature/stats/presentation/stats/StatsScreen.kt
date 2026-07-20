@@ -27,9 +27,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -100,6 +106,7 @@ private val DOCK_CLEARANCE = 104.dp
 fun StatsScreen(
     vm: StatsViewModel = koinViewModel(),
     onOpenRecap: () -> Unit = {},
+    onOpenMeal: (mealId: String, dayIso: String) -> Unit = { _, _ -> },
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
 
@@ -140,6 +147,7 @@ fun StatsScreen(
                     onOpenRecap = onOpenRecap,
                     onShareStreak = { vm.onIntent(StatsIntent.ShareStreakTapped) },
                     onShareAward = { mealId -> vm.onIntent(StatsIntent.ShareAwardTapped(mealId)) },
+                    onOpenMeal = onOpenMeal,
                 )
             }
 
@@ -178,6 +186,7 @@ private fun StatsContent(
     onOpenRecap: () -> Unit,
     onShareStreak: () -> Unit,
     onShareAward: (String) -> Unit,
+    onOpenMeal: (mealId: String, dayIso: String) -> Unit,
 ) {
     val snap = snapshot
     // Selected window.
@@ -251,6 +260,7 @@ private fun StatsContent(
                 scoreStyle = scoreStyle,
                 sharePreparing = sharePreparing,
                 onShareAward = onShareAward,
+                onOpenMeal = onOpenMeal,
             )
         }
 
@@ -261,7 +271,11 @@ private fun StatsContent(
 @Composable
 private fun StreakHero(hero: HeroStats) {
     val days = hero.personalStreak.days
-    FrGlassTile(depth = FrTileDepth.Near, tone = FrTileTone.Ember, modifier = Modifier.fillMaxWidth()) {
+    FrGlassTile(
+        depth = FrTileDepth.Near,
+        tone = FrTileTone.Ember,
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+    ) {
         FrEyebrow(text = resolve(StatsStringKey.YourStreakEyebrow).uppercase(), color = StructuralColors.foreground)
         Spacer(Modifier.height(Spacing.xs))
         if (days == 0) {
@@ -324,6 +338,7 @@ private fun LazyListScope.tabBody(
     scoreStyle: FrScoreStyle,
     sharePreparing: Boolean,
     onShareAward: (String) -> Unit,
+    onOpenMeal: (mealId: String, dayIso: String) -> Unit,
 ) {
     if (window.totalMeals == 0) {
         item(key = "tab-empty") {
@@ -361,12 +376,16 @@ private fun LazyListScope.tabBody(
     window.bestMeal?.let { award ->
         item(key = "award-best") {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                FrEyebrow(text = resolve(StatsStringKey.AwardsEyebrow).uppercase())
+                FrEyebrow(
+                    text = resolve(StatsStringKey.AwardsEyebrow).uppercase(),
+                    modifier = Modifier.semantics { heading() },
+                )
                 AwardPlateTile(
                     award = award,
                     titleLabel = resolve(StatsStringKey.BestPlateTitle),
                     metric = scoreHeadline(award.score, scoreStyle),
                     tone = FrChipTone.Ember,
+                    onOpenMeal = onOpenMeal,
                 )
                 FrGlassButton(
                     label = resolve(StatsStringKey.ShareAward),
@@ -386,6 +405,7 @@ private fun LazyListScope.tabBody(
                 metric = null,
                 caption = resolvePlural(StatsPluralKey.MostVotedPlateVoters, award.ratingCount),
                 tone = FrChipTone.Glass,
+                onOpenMeal = onOpenMeal,
             )
         }
     }
@@ -393,7 +413,10 @@ private fun LazyListScope.tabBody(
     // Cooks.
     if (window.bestCook != null || window.mostProlific != null || window.mostCriticized != null) {
         item(key = "cooks-eyebrow") {
-            FrEyebrow(text = resolve(StatsStringKey.CooksSectionTitle).uppercase())
+            FrEyebrow(
+                text = resolve(StatsStringKey.CooksSectionTitle).uppercase(),
+                modifier = Modifier.semantics { heading() },
+            )
         }
     }
     window.bestCook?.let { cook ->
@@ -421,7 +444,10 @@ private fun LazyListScope.tabBody(
     window.mostCriticized?.let { roast ->
         item(key = "cook-roast") {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                FrEyebrow(text = resolve(StatsStringKey.RoastSectionTitle).uppercase())
+                FrEyebrow(
+                    text = resolve(StatsStringKey.RoastSectionTitle).uppercase(),
+                    modifier = Modifier.semantics { heading() },
+                )
                 CookTile(
                     title = resolve(StatsStringKey.MostCriticizedTitle),
                     name = roast.displayName,
@@ -436,8 +462,16 @@ private fun LazyListScope.tabBody(
     // Ingredients — crew-wide most-used, hidden when absent (same guard as the matte cards).
     window.mostUsedIngredient?.let { usage ->
         item(key = "ingredient-most-used") {
-            FrGlassTile(depth = FrTileDepth.Default, tone = FrTileTone.Olive, modifier = Modifier.fillMaxWidth()) {
-                FrEyebrow(text = resolve(StatsStringKey.MostUsedIngredientTitle).uppercase(), color = StructuralColors.foreground)
+            FrGlassTile(
+                depth = FrTileDepth.Default,
+                tone = FrTileTone.Olive,
+                modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+            ) {
+                FrEyebrow(
+                    text = resolve(StatsStringKey.MostUsedIngredientTitle).uppercase(),
+                    color = StructuralColors.foreground,
+                    modifier = Modifier.semantics { heading() },
+                )
                 Spacer(Modifier.height(Spacing.xs))
                 FrText(
                     text = resolvePlural(
@@ -461,12 +495,18 @@ private fun LazyListScope.tabBody(
     if (window.topByMember.isNotEmpty()) {
         item(key = "member-ingredients") {
             Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
-                FrEyebrow(text = resolve(StatsStringKey.TopIngredientByMemberTitle).uppercase())
+                FrEyebrow(
+                    text = resolve(StatsStringKey.TopIngredientByMemberTitle).uppercase(),
+                    modifier = Modifier.semantics { heading() },
+                )
                 FrGlassTile(depth = FrTileDepth.Default, modifier = Modifier.fillMaxWidth()) {
                     window.topByMember.forEach { member ->
                         key(member.accountId.value) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = Spacing.xs),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = Spacing.xs)
+                                    .semantics(mergeDescendants = true) {},
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                             ) {
@@ -506,7 +546,7 @@ private fun LazyListScope.tabBody(
 
 @Composable
 private fun MetricTile(value: String, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
-    FrGlassTile(depth = FrTileDepth.Default, modifier = modifier.height(124.dp)) {
+    FrGlassTile(depth = FrTileDepth.Default, modifier = modifier.height(124.dp).semantics(mergeDescendants = true) {}) {
         FrIcon(
             image = icon,
             tint = StructuralColors.foreground,
@@ -525,17 +565,26 @@ private fun AwardPlateTile(
     metric: String?,
     tone: FrChipTone,
     caption: String? = null,
+    onOpenMeal: (mealId: String, dayIso: String) -> Unit,
 ) {
+    val openMealLabel = resolve(StatsStringKey.OpenMealCta)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(188.dp)
             .clip(RoundedCornerShape(Radius.lg))
+            .clickable(
+                onClickLabel = openMealLabel,
+                role = Role.Button,
+            ) { onOpenMeal(award.mealId.value, award.day.toKey()) }
+            .semantics(mergeDescendants = true) {}
             .background(StructuralColors.dishRamen),
     ) {
+        // Decorative under the merged tile — the dish name is already spoken via the FrText below;
+        // an image contentDescription here would repeat it (no double reading).
         AsyncImage(
             model = award.photoUrl,
-            contentDescription = resolve(StatsStringKey.PlatePhotoFormat, award.dish.value),
+            contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier.matchParentSize(),
         )
@@ -564,7 +613,11 @@ private fun AwardPlateTile(
 
 @Composable
 private fun CookTile(title: String, name: String, avatarUrl: String?, metric: String, tone: FrTileTone) {
-    FrGlassTile(depth = FrTileDepth.Default, tone = tone, modifier = Modifier.fillMaxWidth()) {
+    FrGlassTile(
+        depth = FrTileDepth.Default,
+        tone = tone,
+        modifier = Modifier.fillMaxWidth().semantics(mergeDescendants = true) {},
+    ) {
         FrEyebrow(text = title.uppercase(), color = StructuralColors.foreground)
         Spacer(Modifier.height(Spacing.sm))
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
@@ -647,7 +700,10 @@ private fun ErrorState(message: String, onRetry: () -> Unit) {
 private fun HistoricLoading() {
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.fillMaxWidth()) {
         Row(horizontalArrangement = Arrangement.spacedBy(Spacing.md), modifier = Modifier.fillMaxWidth()) {
-            ShimmerTile(modifier = Modifier.weight(1f).height(124.dp))
+            // Only one shimmer cell carries the loading announcement — the rest are decorative
+            // siblings, matching the calendar month-grid skeleton (avoids TalkBack repeating "Loading
+            // stats" once per cell).
+            ShimmerTile(modifier = Modifier.weight(1f).height(124.dp), contentDescription = resolve(StatsStringKey.StatsLoading))
             ShimmerTile(modifier = Modifier.weight(1f).height(124.dp))
         }
         ShimmerTile(modifier = Modifier.fillMaxWidth().height(188.dp))
@@ -656,9 +712,9 @@ private fun HistoricLoading() {
 
 /** A deep frosted tile whose body shimmers — the structural stand-in for a loading section. */
 @Composable
-private fun ShimmerTile(modifier: Modifier = Modifier) {
+private fun ShimmerTile(modifier: Modifier = Modifier, contentDescription: String? = null) {
     FrGlassTile(depth = FrTileDepth.Deep, modifier = modifier) {
-        FrShimmerBox(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(Radius.sm))
+        FrShimmerBox(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(Radius.sm), contentDescription = contentDescription)
     }
 }
 
@@ -669,7 +725,11 @@ private fun LoadingSkeleton() {
         verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Spacer(Modifier.height(Spacing.xl))
-        FrShimmerBox(modifier = Modifier.fillMaxWidth(0.5f).height(34.dp), shape = RoundedCornerShape(Radius.sm))
+        FrShimmerBox(
+            modifier = Modifier.fillMaxWidth(0.5f).height(34.dp),
+            shape = RoundedCornerShape(Radius.sm),
+            contentDescription = resolve(StatsStringKey.StatsLoading),
+        )
         FrGlassTile(depth = FrTileDepth.Deep, modifier = Modifier.fillMaxWidth().height(150.dp)) {}
         FrGlassTile(depth = FrTileDepth.Deep, modifier = Modifier.fillMaxWidth().height(188.dp)) {}
     }
@@ -683,7 +743,10 @@ private fun ShareOutcomeToast(message: String, onDismiss: () -> Unit, modifier: 
         onDismiss()
     }
     Box(modifier = modifier.fillMaxWidth().navigationBarsPadding().frSafeHorizontalPadding().padding(Spacing.lg), contentAlignment = Alignment.BottomCenter) {
-        FrGlassTile(depth = FrTileDepth.Near, modifier = Modifier.widthIn(max = 420.dp)) {
+        FrGlassTile(
+            depth = FrTileDepth.Near,
+            modifier = Modifier.widthIn(max = 420.dp).semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Polite },
+        ) {
             FrText(text = message, style = StructuralType.body, color = StructuralColors.foreground)
         }
     }

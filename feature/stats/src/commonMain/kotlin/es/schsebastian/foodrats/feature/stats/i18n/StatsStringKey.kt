@@ -22,6 +22,8 @@ import foodrats.feature.stats.generated.resources.stats_most_criticized_metric_f
 import foodrats.feature.stats.generated.resources.stats_most_criticized_title
 import foodrats.feature.stats.generated.resources.stats_most_prolific_title
 import foodrats.feature.stats.generated.resources.stats_most_used_ingredient_title
+import foodrats.feature.stats.generated.resources.stats_open_meal_cta
+import foodrats.feature.stats.generated.resources.stats_stats_loading
 import foodrats.feature.stats.generated.resources.stats_top_ingredient_by_member_title
 import foodrats.feature.stats.generated.resources.stats_most_voted_plate_title
 import foodrats.feature.stats.generated.resources.stats_bingo_category_beverage
@@ -50,7 +52,13 @@ import foodrats.feature.stats.generated.resources.stats_passport_progress_format
 import foodrats.feature.stats.generated.resources.stats_passport_title
 import foodrats.feature.stats.generated.resources.stats_plate_photo_format
 import foodrats.feature.stats.generated.resources.stats_calendar_back
+import foodrats.feature.stats.generated.resources.stats_calendar_day_a11y_format
+import foodrats.feature.stats.generated.resources.stats_calendar_day_date_format
+import foodrats.feature.stats.generated.resources.stats_calendar_day_meal_count_badge
+import foodrats.feature.stats.generated.resources.stats_calendar_day_no_meals
+import foodrats.feature.stats.generated.resources.stats_calendar_day_today_format
 import foodrats.feature.stats.generated.resources.stats_calendar_empty_month
+import foodrats.feature.stats.generated.resources.stats_calendar_grid_loading
 import foodrats.feature.stats.generated.resources.stats_calendar_month_april
 import foodrats.feature.stats.generated.resources.stats_calendar_month_august
 import foodrats.feature.stats.generated.resources.stats_calendar_month_december
@@ -69,12 +77,19 @@ import foodrats.feature.stats.generated.resources.stats_calendar_prev_month
 import foodrats.feature.stats.generated.resources.stats_calendar_score_format
 import foodrats.feature.stats.generated.resources.stats_calendar_title
 import foodrats.feature.stats.generated.resources.stats_calendar_weekday_friday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_friday_full
 import foodrats.feature.stats.generated.resources.stats_calendar_weekday_monday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_monday_full
 import foodrats.feature.stats.generated.resources.stats_calendar_weekday_saturday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_saturday_full
 import foodrats.feature.stats.generated.resources.stats_calendar_weekday_sunday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_sunday_full
 import foodrats.feature.stats.generated.resources.stats_calendar_weekday_thursday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_thursday_full
 import foodrats.feature.stats.generated.resources.stats_calendar_weekday_tuesday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_tuesday_full
 import foodrats.feature.stats.generated.resources.stats_calendar_weekday_wednesday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_wednesday_full
 import foodrats.feature.stats.generated.resources.stats_retry
 import foodrats.feature.stats.generated.resources.stats_roast_section_title
 import foodrats.feature.stats.generated.resources.stats_share_award
@@ -139,6 +154,11 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
 
     MostUsedIngredientTitle(Res.string.stats_most_used_ingredient_title),
     TopIngredientByMemberTitle(Res.string.stats_top_ingredient_by_member_title),
+
+    /** onClickLabel + Role.Button for an award plate tile — opens MealDetail for that meal. */
+    OpenMealCta(Res.string.stats_open_meal_cta),
+    /** Live-region announcement for the stats-screen loading skeletons (one representative shimmer). */
+    StatsLoading(Res.string.stats_stats_loading),
 
 
     CollectionTitle(Res.string.stats_collection_title),
@@ -206,6 +226,28 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     CalendarWeekdayFriday(Res.string.stats_calendar_weekday_friday),
     CalendarWeekdaySaturday(Res.string.stats_calendar_weekday_saturday),
     CalendarWeekdaySunday(Res.string.stats_calendar_weekday_sunday),
+
+    /** Full localized weekday names — a11y-only, read by TalkBack instead of the single-letter initial. */
+    CalendarWeekdayMondayFull(Res.string.stats_calendar_weekday_monday_full),
+    CalendarWeekdayTuesdayFull(Res.string.stats_calendar_weekday_tuesday_full),
+    CalendarWeekdayWednesdayFull(Res.string.stats_calendar_weekday_wednesday_full),
+    CalendarWeekdayThursdayFull(Res.string.stats_calendar_weekday_thursday_full),
+    CalendarWeekdayFridayFull(Res.string.stats_calendar_weekday_friday_full),
+    CalendarWeekdaySaturdayFull(Res.string.stats_calendar_weekday_saturday_full),
+    CalendarWeekdaySundayFull(Res.string.stats_calendar_weekday_sunday_full),
+
+    /** "%1$s %2$d, %3$d" — localized month name + day-of-month + year, for a day cell's a11y label. */
+    CalendarDayDateFormat(Res.string.stats_calendar_day_date_format),
+    /** "%1$s, %2$s" — date text + meal-count text, combined into a day cell's a11y label. */
+    CalendarDayA11yFormat(Res.string.stats_calendar_day_a11y_format),
+    /** "%1$s, today" — wraps [CalendarDayA11yFormat] when the cell is the current day. */
+    CalendarDayTodayFormat(Res.string.stats_calendar_day_today_format),
+    /** A day cell with no meals — a11y-only, spoken instead of the meal-count plural. */
+    CalendarDayNoMeals(Res.string.stats_calendar_day_no_meals),
+    /** "%1$d" — plain count shown on the multi-meal badge chip (no glyph). */
+    CalendarDayMealCountBadge(Res.string.stats_calendar_day_meal_count_badge),
+    /** Loading announcement carried by one representative shimmer cell in [MonthGridSkeleton]. */
+    CalendarGridLoading(Res.string.stats_calendar_grid_loading),
 
     Retry(Res.string.stats_retry),
 

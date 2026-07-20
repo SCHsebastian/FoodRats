@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.feature.stats.i18n
 
 import es.schsebastian.foodrats.core.i18n.PluralStringKey
 import foodrats.feature.stats.generated.resources.Res
+import foodrats.feature.stats.generated.resources.stats_calendar_day_meal_count
 import foodrats.feature.stats.generated.resources.stats_hero_crew_streak
 import foodrats.feature.stats.generated.resources.stats_hero_personal_streak
 import foodrats.feature.stats.generated.resources.stats_hero_plates_today
@@ -19,4 +20,6 @@ enum class StatsPluralKey(override val resourceId: PluralStringResource) : Plura
     MostProlificMetric(Res.plurals.stats_most_prolific_metric_format),
     MostUsedIngredientMetric(Res.plurals.stats_most_used_ingredient_metric_format),
     MemberTopIngredientMetric(Res.plurals.stats_member_top_ingredient_metric_format),
+    /** "%1$d plate(s)" — meal count folded into a calendar day cell's merged a11y description. */
+    CalendarDayMealCount(Res.plurals.stats_calendar_day_meal_count),
 }

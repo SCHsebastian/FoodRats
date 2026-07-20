@@ -131,17 +131,22 @@ class StatsViewModel(
         update { it.copy(isPreparingShare = false, shareOutcome = outcome.toUi()) }
     }
 
-    /** Shares the member's personal streak to Instagram Stories (spec §8.2). */
+    /**
+     * Shares the member's personal streak to Instagram Stories (spec §8.2). TRACK B: the card renders
+     * full-bleed over the week's best plate (falling back to the most-voted plate) when one exists —
+     * advisory only, `null` keeps the original solid-surface card.
+     */
     private suspend fun shareStreak() {
         if (currentState.isPreparingShare) return
-        val hero = currentState.snapshot?.hero ?: return
+        val snapshot = currentState.snapshot ?: return
         val todayEmote = DailyEmote.forDay(MealDay.today(clock, zone))
-        val model = hero.toStreakCard(todayEmote)
+        val plateUrl = snapshot.week.bestMeal?.photoUrl ?: snapshot.week.mostVotedMeal?.photoUrl
+        val model = snapshot.hero.toStreakCard(todayEmote, plateUrl)
         update { it.copy(isPreparingShare = true, shareOutcome = null) }
         val outcome = storyShareController.share(
-            plateUrl = null,
+            plateUrl = plateUrl,
             format = ShareCardFormat.Story,
-        ) { StreakShareCardContent(model) }
+        ) { plate -> StreakShareCardContent(model, plate) }
         if (outcome != StoryShareOutcome.Failed) {
             analytics.track(AnalyticsEvent.StreakShared(model.streakDays))
         }

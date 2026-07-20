@@ -55,21 +55,34 @@ fun RecapSceneView(scene: RecapScene, modifier: Modifier = Modifier) {
     when (scene) {
         is RecapScene.Cover -> CoverScene(scene, modifier)
         is RecapScene.TopMeal -> TopMealScene(scene, modifier)
-        is RecapScene.BestCook -> SceneFloor(modifier, brush = StructuralColors.dishMackerel) {
+        is RecapScene.BestCook -> SceneFloor(
+            modifier,
+            painter = scene.photoUrl?.let { rememberAsyncImagePainter(it) },
+            brush = StructuralColors.dishMackerel,
+        ) {
             FrEyebrow(text = resolve(SharedStringKey.RecapBestCookTitle).uppercase())
             Spacer(Modifier.height(Spacing.sm))
             MetricLine(value = scene.avgScore.toFixed(1), unit = resolve(SharedStringKey.RecapRatingUnit), tint = LocalFrSemanticColors.current.celebration)
             Spacer(Modifier.height(Spacing.sm))
             BodyLine(resolve(SharedStringKey.RecapBestCookSubtitle, scene.memberName, scene.avgScore.toFixed(1)))
         }
-        is RecapScene.MostProlific -> SceneFloor(modifier, brush = StructuralColors.dishSalad) {
+        is RecapScene.MostProlific -> SceneFloor(
+            modifier,
+            painter = scene.photoUrl?.let { rememberAsyncImagePainter(it) },
+            brush = StructuralColors.dishSalad,
+        ) {
             FrEyebrow(text = resolve(SharedStringKey.RecapMostProlificTitle).uppercase())
             Spacer(Modifier.height(Spacing.sm))
             MetricLine(value = scene.postCount.toString(), unit = null, tint = LocalFrSemanticColors.current.celebration)
             Spacer(Modifier.height(Spacing.sm))
             BodyLine(resolve(SharedStringKey.RecapMostProlificSubtitle, scene.memberName, scene.postCount))
         }
-        is RecapScene.Streak -> SceneFloor(modifier, brush = StructuralColors.dishRamen, blur = StructuralBlur.Heavy) {
+        is RecapScene.Streak -> SceneFloor(
+            modifier,
+            painter = scene.photoUrl?.let { rememberAsyncImagePainter(it) },
+            brush = StructuralColors.dishRamen,
+            blur = StructuralBlur.Heavy,
+        ) {
             FrEyebrow(text = resolve(SharedStringKey.RecapStreakTitle).uppercase())
             Spacer(Modifier.height(Spacing.sm))
             MetricLine(value = scene.streakDays.toString(), unit = null, tint = LocalFrSemanticColors.current.streakHot)
@@ -77,7 +90,11 @@ fun RecapSceneView(scene: RecapScene, modifier: Modifier = Modifier) {
             BodyLine(resolvePlural(SharedPluralKey.RecapStreakSubtitle, scene.streakDays))
         }
         is RecapScene.Badges -> BadgesScene(scene, modifier)
-        is RecapScene.Cuisines -> SceneFloor(modifier, brush = StructuralColors.oliveFloor) {
+        is RecapScene.Cuisines -> SceneFloor(
+            modifier,
+            painter = scene.photoUrl?.let { rememberAsyncImagePainter(it) },
+            brush = StructuralColors.oliveFloor,
+        ) {
             FrEyebrow(text = resolve(SharedStringKey.RecapCuisinesTitle).uppercase())
             Spacer(Modifier.height(Spacing.sm))
             MetricLine(
@@ -94,7 +111,12 @@ fun RecapSceneView(scene: RecapScene, modifier: Modifier = Modifier) {
 
 @Composable
 private fun CoverScene(scene: RecapScene.Cover, modifier: Modifier) {
-    SceneFloor(modifier, brush = StructuralColors.dishRamen, blur = StructuralBlur.Heavy) {
+    SceneFloor(
+        modifier,
+        painter = scene.photoUrl?.let { rememberAsyncImagePainter(it) },
+        brush = StructuralColors.dishRamen,
+        blur = StructuralBlur.Heavy,
+    ) {
         FrEyebrow(
             text = resolve(SharedStringKey.RecapCoverTitle).uppercase(),
             color = StructuralColors.foreground.copy(alpha = 0.85f),
@@ -135,7 +157,11 @@ private fun TopMealScene(scene: RecapScene.TopMeal, modifier: Modifier) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun BadgesScene(scene: RecapScene.Badges, modifier: Modifier) {
-    SceneFloor(modifier, brush = StructuralColors.dishMackerel) {
+    SceneFloor(
+        modifier,
+        painter = scene.photoUrl?.let { rememberAsyncImagePainter(it) },
+        brush = StructuralColors.dishMackerel,
+    ) {
         FrEyebrow(text = resolve(SharedStringKey.RecapBadgesTitle).uppercase())
         Spacer(Modifier.height(Spacing.md))
         FlowRow(
@@ -155,7 +181,11 @@ private fun BadgesScene(scene: RecapScene.Badges, modifier: Modifier) {
 
 @Composable
 private fun YourWeekScene(scene: RecapScene.YourWeek, modifier: Modifier) {
-    SceneFloor(modifier, brush = StructuralColors.fieldFloor) {
+    SceneFloor(
+        modifier,
+        painter = scene.photoUrl?.let { rememberAsyncImagePainter(it) },
+        brush = StructuralColors.fieldFloor,
+    ) {
         FrEyebrow(text = resolve(SharedStringKey.RecapYourWeekTitle).uppercase())
         Spacer(Modifier.height(Spacing.md))
         BodyLine(resolvePlural(SharedPluralKey.RecapYourWeekStreak, scene.streakDays))

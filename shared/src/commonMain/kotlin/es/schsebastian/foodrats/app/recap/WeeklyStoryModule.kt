@@ -17,12 +17,19 @@ import org.koin.dsl.module
  * `viewModelOf` would short-circuit graph resolution and bind the no-op (CHARTER rule 9).
  * [DigestStorySource] is a runtime parameter — the screen passes it via `parametersOf(...)` so the
  * open-analytics event records notification-tap vs. in-app entry.
+ *
+ * `activeCrew`/`session`/`mealRead` (TRACK B photo floors) resolve to whichever `ActiveCrewProvider` /
+ * `SessionProvider` / `MealReadPort` bindings the aggregated feature graph already provides (the same
+ * ones `ObserveStatsUseCase` consumes) — `shared` doesn't rebind them.
  */
 val weeklyStoryModule = module {
     single<WeeklyRecapStream> {
         statsAndAchievementsRecapStream(
             observeStats = get(),
             observeAchievements = get(),
+            activeCrew = get(),
+            session = get(),
+            mealRead = get(),
             clock = get(),
             zone = get(),
         )

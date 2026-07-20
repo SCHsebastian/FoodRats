@@ -57,6 +57,19 @@ class StatsShareMappersTest {
         assertEquals("🔥", model.dayEmote)
     }
 
+    @Test fun toStreakCard_carries_the_optional_photo_url() {
+        val hero = HeroStats(
+            personalStreak = Streak(3),
+            crewStreak = Streak(0),
+            platesToday = 1,
+            iPostedToday = true,
+        )
+        val withPhoto = hero.toStreakCard(todayEmote = "🔥", photoUrl = "https://p/best.jpg")
+        assertEquals("https://p/best.jpg", withPhoto.photoUrl)
+        val withoutPhoto = hero.toStreakCard(todayEmote = "🔥")
+        assertEquals(null, withoutPhoto.photoUrl)
+    }
+
     @Test fun toStreakCard_handles_zero_streak() {
         val hero = HeroStats(
             personalStreak = Streak(0),
