@@ -20,6 +20,7 @@ import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewTagline
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
+import es.schsebastian.foodrats.feature.crew.domain.test.FakeActiveCrewProvider
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
@@ -462,13 +463,13 @@ class CrewSettingsViewModelTest {
             crewId = crewId,
             observeCrew = ObserveCrewUseCase(repo),
             renameCrew = RenameCrewUseCase(repo, session, connectivity, outbox),
-            deleteCrew = DeleteCrewUseCase(repo, session),
+            deleteCrew = DeleteCrewUseCase(repo, session, FakeActiveCrewProvider()),
             setBlindVoting = SetBlindVotingUseCase(repo, session, connectivity, outbox),
             setCrewTagline = SetCrewTaglineUseCase(repo, session, connectivity, outbox),
             setCrewWelcomeMessage = SetCrewWelcomeMessageUseCase(repo, session, connectivity, outbox),
             setCrewWeeklyChallenge = SetCrewWeeklyChallengeUseCase(repo, session, FixedClock(Instant.fromEpochMilliseconds(1700000000000)), connectivity, outbox),
             setCrewScoreStyle = SetCrewScoreStyleUseCase(repo, session, connectivity, outbox),
-            leaveCrew = LeaveCrewUseCase(repo, connectivity, outbox),
+            leaveCrew = LeaveCrewUseCase(repo, connectivity, outbox, FakeActiveCrewProvider()),
             removeMember = RemoveMemberUseCase(repo, session, connectivity, outbox),
             observeJoinRequests = ObservePendingJoinRequestsUseCase(repo),
             approveJoinRequest = ApproveJoinRequestUseCase(repo, session),

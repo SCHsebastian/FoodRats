@@ -1,6 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.domain.usecase
 
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
+import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.outbox.OutboxPort
@@ -21,6 +22,7 @@ class LeaveCrewUseCase(
     private val repo: CrewRepository,
     private val connectivity: ConnectivityPort,
     private val outbox: OutboxPort,
+    private val activeCrew: ActiveCrewProvider,
 ) {
     /**
      * [successor] (optional) is the member the owner picked to inherit the crew when an OWNER leaves
@@ -34,16 +36,29 @@ class LeaveCrewUseCase(
         successor: AccountId? = null,
     ): Result<Unit, CrewError> {
         if (!connectivity.isOnline().first()) {
-            return enqueue(crewId, leaver)
+            return enqueue(crewId, leaver).alsoInvalidateActiveCrew(crewId)
         }
         return when (val r = repo.leave(crewId, leaver, successor)) {
-            is Result.Ok -> r
+            is Result.Ok -> r.alsoInvalidateActiveCrew(crewId)
             is Result.Err -> when (r.error) {
                 CrewError.Backend.Network, CrewError.Backend.Unavailable ->
-                    enqueue(crewId, leaver)
+                    enqueue(crewId, leaver).alsoInvalidateActiveCrew(crewId)
                 else -> r
             }
         }
+    }
+
+    /**
+     * Leaving the ACTIVE crew invalidates the active-crew selection (a stale id would cold-start
+     * the app into the feed of a crew the user is no longer in). Clearing routes the root nav to
+     * the crew picker — the same destination the leave flow lands on. Runs on the offline enqueue
+     * path too: the user's intent to leave is already durably recorded.
+     */
+    private suspend fun Result<Unit, CrewError>.alsoInvalidateActiveCrew(
+        crewId: CrewId,
+    ): Result<Unit, CrewError> {
+        if (this is Result.Ok && activeCrew.current.first() == crewId) activeCrew.clear()
+        return this
     }
 
     private suspend fun enqueue(crewId: CrewId, leaver: AccountId): Result<Unit, CrewError> {
