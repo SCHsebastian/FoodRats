@@ -49,6 +49,7 @@ import es.schsebastian.foodrats.core.designsystem.structural.StructuralType
 import es.schsebastian.foodrats.core.designsystem.tokens.Breakpoints
 import es.schsebastian.foodrats.core.designsystem.tokens.Radius
 import es.schsebastian.foodrats.core.designsystem.tokens.Spacing
+import es.schsebastian.foodrats.core.domain.meal.Meal
 import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.i18n.resolve
 import es.schsebastian.foodrats.feature.stats.domain.compute.startOfIsoWeek
@@ -288,7 +289,7 @@ private fun DayCell(
     ) {
         meals.firstOrNull()?.let { first ->
             AsyncImage(
-                model = first.meal.thumbnailUrl.ifBlank { first.meal.photoUrl },
+                model = first.meal.calendarImageUrl,
                 contentDescription = resolve(StatsStringKey.PlatePhotoFormat, first.meal.dish.value),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.matchParentSize(),
@@ -340,7 +341,7 @@ private fun CalendarMealRow(meal: MealWithRatings, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
         ) {
             AsyncImage(
-                model = meal.meal.thumbnailUrl.ifBlank { meal.meal.photoUrl },
+                model = meal.meal.calendarImageUrl,
                 contentDescription = resolve(StatsStringKey.PlatePhotoFormat, meal.meal.dish.value),
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(56.dp).clip(RoundedCornerShape(Radius.sm)),
@@ -364,6 +365,14 @@ private fun CalendarMealRow(meal: MealWithRatings, onClick: () -> Unit) {
         }
     }
 }
+
+/**
+ * Image for a calendar tile/row: thumbnail → full plate → first plate of a multi-photo meal.
+ * The last hop matters for docs whose top-level `thumbnailUrl`/`photoUrl` are blank but carry a
+ * populated `plates[]` (multi-photo shape) — the feed renders those via its plates pager.
+ */
+private val Meal.calendarImageUrl: String
+    get() = thumbnailUrl.ifBlank { photoUrl }.ifBlank { plates.firstOrNull()?.photoUrl.orEmpty() }
 
 @Composable
 private fun EmptyMonth() {
