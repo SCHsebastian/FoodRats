@@ -9,6 +9,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const h = vi.hoisted(() => ({
   /** doc path → document data (undefined ⇒ missing doc). */
   docs: new Map<string, Record<string, unknown>>(),
+  /** When true, any `accounts/…` doc read throws (simulates a failed displayName lookup). */
+  accountReadThrows: false,
   sendToUid: vi.fn(async () => undefined),
 }));
 
@@ -20,7 +22,10 @@ vi.mock("../src/fcm/push", async (importOriginal) => ({
 vi.mock("firebase-admin/firestore", () => ({
   getFirestore: () => ({
     doc: (path: string) => ({
-      get: async () => ({ data: () => h.docs.get(path) }),
+      get: async () => {
+        if (h.accountReadThrows && path.startsWith("accounts/")) throw new Error("firestore down");
+        return { data: () => h.docs.get(path) };
+      },
     }),
   }),
 }));
@@ -44,6 +49,7 @@ function commentEvent(comment: Record<string, unknown> | undefined): CommentEven
 
 beforeEach(() => {
   h.docs.clear();
+  h.accountReadThrows = false;
   h.sendToUid.mockClear();
 });
 
@@ -92,14 +98,45 @@ describe("onCommentCreated — comment push to the meal author", () => {
     expect(payload.data.link).toBe(`foodrats://app/meal/${CREW}/${MEAL}/2026-06-14`);
   });
 
-  it("falls back to 'Someone' / 'your meal' for missing names (malformed docs)", async () => {
-    h.docs.set(MEAL_DOC, { authorId: "alice", dayKey: "2026-06-14" }); // no dishName
-    await onCommentCreated.run(commentEvent({ authorId: "bob" })); // no authorName
+  it("resolves the commenter name from accounts/{authorId} when the comment doc lacks authorName (pre-mentions clients)", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set("accounts/bob", { displayName: "Bob R." });
+    await onCommentCreated.run(commentEvent({ authorId: "bob" })); // no authorName on the doc
 
     const { payload } = sentTo();
-    expect(payload.notificationTitle).toBe("Someone commented on your your meal");
-    expect(payload.data.commenterName).toBe("Someone");
-    expect(payload.data.dishName).toBe("your meal");
+    expect(payload.notificationTitle).toBe("Bob R. commented on your paella");
+    expect(payload.data.commenterName).toBe("Bob R.");
+  });
+
+  it("a blank authorName snapshot also falls through to the account lookup", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.docs.set("accounts/bob", { displayName: "Bob R." });
+    await onCommentCreated.run(commentEvent({ authorId: "bob", authorName: "  " }));
+
+    expect(sentTo().payload.data.commenterName).toBe("Bob R.");
+  });
+
+  it("keeps names EMPTY in data when unresolvable — localized fallback happens at send time, and the push still goes out", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dayKey: "2026-06-14" }); // no dishName
+    await onCommentCreated.run(commentEvent({ authorId: "bob" })); // no authorName, no account doc
+
+    const { payload } = sentTo();
+    // EN default applies EN fallback words; the ES group re-localizes from the EMPTY data params
+    // ("Alguien comentó tu comida") — the old code baked "Someone"/"your meal" into data, which
+    // leaked English into ES pushes (2026-07-15 bug 2) and rendered "…on your your meal".
+    expect(payload.notificationTitle).toBe("Someone commented on your meal");
+    expect(payload.data.commenterName).toBe("");
+    expect(payload.data.dishName).toBe("");
+  });
+
+  it("a FAILED account lookup degrades to the empty name — never drops the push", async () => {
+    h.docs.set(MEAL_DOC, { authorId: "alice", dishName: "paella", dayKey: "2026-06-14" });
+    h.accountReadThrows = true;
+    await onCommentCreated.run(commentEvent({ authorId: "bob" }));
+
+    const { payload } = sentTo();
+    expect(payload.notificationTitle).toBe("Someone commented on your paella");
+    expect(payload.data.commenterName).toBe("");
   });
 
   it("omits dayKey AND link when the meal has no dayKey (linkless push, app opens Feed)", async () => {

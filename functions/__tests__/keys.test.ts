@@ -102,18 +102,48 @@ describe("localizeNotification — matches the client Compose-resource strings",
     expect(localizeNotification("en", "", {})).toBeNull();
   });
 
-  it("tolerates missing data params on new_comment (empty-string fallback, no crash)", () => {
+  it("substitutes LOCALIZED fallbacks for missing data params on new_comment (no crash)", () => {
     expect(localizeNotification("en", KEY_NEW_COMMENT, {})).toEqual({
-      title: " commented on your ",
+      title: "Someone commented on your meal",
       body: "Tap to read",
+    });
+    // Regression (2026-07-15 bug 2): the fallback must be per-language — an ES recipient must
+    // never see the English "Someone" ("Someone comentó tu …").
+    expect(localizeNotification("es", KEY_NEW_COMMENT, {})).toEqual({
+      title: "Alguien comentó tu comida",
+      body: "Pulsa para leer",
+    });
+    expect(localizeNotification("es", KEY_NEW_COMMENT, { dishName: "paella" })!.title).toBe(
+      "Alguien comentó tu paella",
+    );
+  });
+
+  it("substitutes LOCALIZED fallbacks for missing data params on new_meal_post", () => {
+    expect(localizeNotification("en", KEY_NEW_MEAL_POST, {})).toEqual({
+      title: "A crewmate posted a meal",
+      body: "a meal — tap to view",
+    });
+    expect(localizeNotification("es", KEY_NEW_MEAL_POST, {})).toEqual({
+      title: "Un compañero publicó una comida",
+      body: "una comida — pulsa para ver",
     });
   });
 
-  it("tolerates missing data params on new_meal_post (empty-string fallback)", () => {
-    expect(localizeNotification("es", KEY_NEW_MEAL_POST, {})).toEqual({
-      title: " publicó una comida",
-      body: " — pulsa para ver",
+  it("substitutes LOCALIZED fallbacks for missing data params on comment_mention", () => {
+    expect(localizeNotification("en", KEY_COMMENT_MENTION, {})).toEqual({
+      title: "Someone mentioned you on a meal",
+      body: "Tap to read",
     });
+    expect(localizeNotification("es", KEY_COMMENT_MENTION, {})).toEqual({
+      title: "Alguien te mencionó en una comida",
+      body: "Pulsa para leer",
+    });
+  });
+
+  it("treats an empty-string param the same as a missing one (blank displayName)", () => {
+    expect(
+      localizeNotification("es", KEY_NEW_COMMENT, { commenterName: "", dishName: "paella" })!.title,
+    ).toBe("Alguien comentó tu paella");
   });
 
   it("tolerates missing count params on social_nudge (falls back to 0 of 0)", () => {

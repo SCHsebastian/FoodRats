@@ -28,6 +28,16 @@ interface NotificationStrings {
   socialNudgeBody: (posted: number, size: number) => string;
   commentMentionTitle: (mentioner: string, dish: string) => string;
   commentMentionBody: string;
+  /**
+   * Localized interpolant fallbacks for missing/unresolvable data params. Applied HERE (inside
+   * `localizeNotification`, i.e. per language group) — never in the triggers — so an English
+   * fallback word can't be baked into `data` before language grouping and leak into another
+   * language's OS-rendered text (the "Someone comentó tu …" bug, 2026-07-15).
+   */
+  fallbackPerson: string; // new_comment / comment_mention commenter
+  fallbackCrewmate: string; // new_meal_post author
+  fallbackYourDish: string; // completes "your ___" / "tu ___" (new_comment title)
+  fallbackADish: string; // stands alone: "a meal" / "una comida" (meal post, mention)
 }
 
 const EN: NotificationStrings = {
@@ -42,6 +52,10 @@ const EN: NotificationStrings = {
     `${posted} of ${size} crewmates already posted today — your turn`,
   commentMentionTitle: (mentioner, dish) => `${mentioner} mentioned you on ${dish}`,
   commentMentionBody: "Tap to read",
+  fallbackPerson: "Someone",
+  fallbackCrewmate: "A crewmate",
+  fallbackYourDish: "meal",
+  fallbackADish: "a meal",
 };
 
 const ES: NotificationStrings = {
@@ -56,6 +70,10 @@ const ES: NotificationStrings = {
     `${posted} de ${size} compañeros ya han publicado hoy — te toca`,
   commentMentionTitle: (mentioner, dish) => `${mentioner} te mencionó en ${dish}`,
   commentMentionBody: "Pulsa para leer",
+  fallbackPerson: "Alguien",
+  fallbackCrewmate: "Un compañero",
+  fallbackYourDish: "comida",
+  fallbackADish: "una comida",
 };
 
 const TABLES: Record<"en" | "es", NotificationStrings> = { en: EN, es: ES };
@@ -79,13 +97,16 @@ export function localizeNotification(
   switch (key) {
     case KEY_NEW_COMMENT:
       return {
-        title: s.newCommentTitle(data.commenterName ?? "", data.dishName ?? ""),
+        title: s.newCommentTitle(
+          data.commenterName || s.fallbackPerson,
+          data.dishName || s.fallbackYourDish,
+        ),
         body: s.newCommentBody,
       };
     case KEY_NEW_MEAL_POST:
       return {
-        title: s.newMealPostTitle(data.authorName ?? ""),
-        body: s.newMealPostBody(data.dishName ?? ""),
+        title: s.newMealPostTitle(data.authorName || s.fallbackCrewmate),
+        body: s.newMealPostBody(data.dishName || s.fallbackADish),
       };
     case KEY_WEEKLY_DIGEST:
       // The OS body localizes to the static client copy (the rich award parts stay English-only and
@@ -98,7 +119,10 @@ export function localizeNotification(
     }
     case KEY_COMMENT_MENTION:
       return {
-        title: s.commentMentionTitle(data.commenterName ?? "", data.dishName ?? ""),
+        title: s.commentMentionTitle(
+          data.commenterName || s.fallbackPerson,
+          data.dishName || s.fallbackADish,
+        ),
         body: s.commentMentionBody,
       };
     default:
