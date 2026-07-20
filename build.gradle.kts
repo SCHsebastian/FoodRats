@@ -52,9 +52,8 @@ plugins {
 // patched transitive versions here instead of bumping firebase-bom — the
 // Firebase modules are deliberately pinned at JVM 17 and a BOM major bump is
 // risky (see CLAUDE.md). Only coordinates actually present on a resolvable
-// classpath are forced; already-safe coordinates (guava 33.x,
-// play-services-basement 18.4.0) are intentionally NOT forced so we never
-// downgrade them. Versions verified published on Maven Central 2026-06-21.
+// classpath are forced. Versions verified published on Maven Central
+// 2026-06-21 (guava/basement re-verified 2026-07-20 — see below).
 subprojects {
     // Compose-compiler stability config + reports, applied build-wide WITHOUT any source
     // change (keeps the no-Compose-in-:core:domain rule intact). Configures every subproject
@@ -129,6 +128,36 @@ subprojects {
             // transitively.
             force(
                 "io.opentelemetry:opentelemetry-api:1.62.0",
+            )
+            // guava — GHSA moderate + low (<32.0.0-android), Dependabot #7/#8.
+            // A previous pass believed guava was already safe everywhere
+            // (33.x resolves on most configs via Firebase/gRPC/UTP
+            // transitives that request it explicitly), but two classpaths
+            // have NOTHING else requesting a newer version, so Gradle's
+            // "highest wins" keeps the vendored floor: `:feature:meal-ai`'s
+            // `androidCompileClasspath` / `androidHostTestCompileClasspath` /
+            // lint-checks classpaths vendor MediaPipe's guava:27.0.1-android
+            // directly; `:core:data`'s same four classpaths vendor
+            // guava:31.1-android via
+            // play-services-measurement-{api,impl} (Firebase Analytics);
+            // `:baselineprofile`'s on-device benchmark-apk configs
+            // (`*TestedApks`) resolve the same 31.1-android through the
+            // tested `:androidApp` variant. Force the patched `-android`
+            // line so it wins conflict resolution everywhere; already-safe
+            // configs already resolve at/above this so there's no downgrade
+            // risk.
+            force(
+                "com.google.guava:guava:33.4.8-android",
+            )
+            // play-services-basement — GHSA moderate (<18.0.2), Dependabot
+            // #3. Same gap: `:feature:achievements` / `:feature:ingredient` /
+            // `:feature:notifications`'s `androidCompileClasspath` /
+            // `androidHostTestCompileClasspath` vendor
+            // play-services-basement:18.0.0 via play-services-base:18.0.1
+            // (pulled by firebase-appcheck-interop -> firebase-firestore),
+            // with nothing else on those classpaths requesting newer.
+            force(
+                "com.google.android.gms:play-services-basement:18.4.0",
             )
         }
     }
