@@ -14,9 +14,16 @@ import kotlin.time.Instant
 /** Records [enqueue] calls so tests can assert the offline fallback parked the right command. */
 class RecordingOutboxPort : OutboxPort {
     val enqueued = mutableListOf<PendingCommand>()
+
+    /**
+     * When set, [enqueue] fails with this error (models a durable-write failure — DataStore IO).
+     * The command is NOT recorded in [enqueued]: nothing was parked, so no replay will happen.
+     */
+    var enqueueError: OutboxError? = null
     private var seq = 0
 
     override suspend fun enqueue(cmd: PendingCommand): Result<OutboxEntry, OutboxError> {
+        enqueueError?.let { return Result.failure(it) }
         enqueued += cmd
         return Result.success(
             OutboxEntry(

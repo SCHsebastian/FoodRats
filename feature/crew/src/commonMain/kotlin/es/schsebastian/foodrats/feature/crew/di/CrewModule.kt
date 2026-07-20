@@ -25,6 +25,7 @@ import es.schsebastian.foodrats.feature.crew.data.firebase.CrewRosterAdapter
 import es.schsebastian.foodrats.feature.crew.data.local.ActiveCrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.local.CrewLocalStore
 import es.schsebastian.foodrats.feature.crew.data.outbox.CrewOutboxCommandHandler
+import es.schsebastian.foodrats.feature.crew.data.sync.ActiveCrewMembershipReconciler
 import es.schsebastian.foodrats.feature.crew.data.sync.CrewSyncEngine
 import es.schsebastian.foodrats.feature.crew.data.repository.FirebaseCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.repository.CrewRepository
@@ -89,6 +90,17 @@ val crewModule = module {
             session = get(),
             dataSource = get<CrewDataSource>(),
             local = get(),
+            appScope = get(named("appScope")),
+        ).also { it.start() }
+    }
+    // Clears the active-crew selection when the signed-in member is removed from the active crew
+    // REMOTELY (owner kick) — self-leave/self-delete are handled in the use cases. Same eager
+    // app-lifetime lifecycle as the CrewSyncEngine above.
+    single(createdAtStart = true) {
+        ActiveCrewMembershipReconciler(
+            session = get(),
+            activeCrew = get(),
+            dataSource = get<CrewDataSource>(),
             appScope = get(named("appScope")),
         ).also { it.start() }
     }

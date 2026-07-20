@@ -34,6 +34,7 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.PlateEntryDto
 import es.schsebastian.foodrats.feature.meal.data.firebase.PlateStorage
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDiscriminator
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
+import es.schsebastian.foodrats.feature.meal.data.firebase.toWireAuthorName
 import es.schsebastian.foodrats.feature.meal.data.firebase.toMealWithRatings
 import es.schsebastian.foodrats.feature.meal.data.local.MealDraftLocalStore
 import es.schsebastian.foodrats.feature.meal.data.local.MealLocalStore
@@ -277,7 +278,9 @@ internal class FirebaseMealRepository(
                     val dto = MealDto(
                         id = mealId.value,
                         authorId = author.value,
-                        authorName = currentAuthor?.displayName.orEmpty(),
+                        // Truncated to the firestore.rules cap (120) — an over-long provider
+                        // displayName must degrade to a shorter snapshot, never reject the publish.
+                        authorName = currentAuthor?.displayName.orEmpty().toWireAuthorName(),
                         crewId = crewId.value,
                         dayKey = dayKey,
                         slot = slotKey,

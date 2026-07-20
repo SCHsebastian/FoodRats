@@ -49,11 +49,17 @@ class SignInViewModel(
     }
 
     private suspend fun doGoogle() {
+        // In-flight guard: MviViewModel launches one coroutine per intent, so a double-tap (the
+        // button's `enabled = !isLoading` only takes effect after recomposition) would otherwise
+        // start two concurrent credential-picker flows — the loser's cancellation error then
+        // overwrites the winner's successful sign-in. First tap wins; the rest are no-ops.
+        if (currentState.isLoading) return
         update { it.copy(isLoading = true, error = null, appleComingSoon = false) }
         emitFromResult(auth.signInWithGoogle(), AuthMethod.GOOGLE, isSignUp = false)
     }
 
     private suspend fun doApple() {
+        if (currentState.isLoading) return
         update { it.copy(isLoading = true, error = null, appleComingSoon = false) }
         val r = auth.signInWithApple()
         // The flow is wired but "being built": the platform client returns NotYetAvailable, which
@@ -67,6 +73,10 @@ class SignInViewModel(
     }
 
     private suspend fun doEmailSubmit() {
+        // Same in-flight guard as doGoogle: a double-tapped Submit in SignUp mode would call
+        // createUserWithEmail twice — the second attempt fails EmailAlreadyInUse and paints an
+        // error over the just-created account.
+        if (currentState.isLoading) return
         val s = currentState
         // Client-side validation first — cheaper than a network round-trip for obvious mistakes.
         val emailErr = if (!isEmailValid(s.email)) AuthError.EmailPassword.InvalidEmail else null

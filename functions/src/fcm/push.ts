@@ -15,12 +15,14 @@ export interface PushPayload {
 /**
  * Canonical custom-scheme deep link into a meal's detail screen. Mirrors the client URL contract
  * in `shared/.../app/navigation/DeepLink.kt` (`DeepLinks` + `parseDeepLink`): the first path
- * segment is the discriminator, so `foodrats://app/meal/{mealId}/{dayIso}` resolves to
- * `Route.MealDetail`. Carried in the FCM `data` under `link`; the apps forward it to the
- * DeepLinkBus on notification tap. Keep in sync with that contract.
+ * segment is the discriminator, so `foodrats://app/meal/{crewId}/{mealId}/{dayIso}` resolves to
+ * `Route.MealDetail` scoped to the notified crew. (The client keeps a legacy 3-segment
+ * `/meal/{mealId}/{dayIso}` fallback for pushes sent before crewId was added.) Carried in the FCM
+ * `data` under `link`; the apps forward it to the DeepLinkBus on notification tap. Keep in sync
+ * with that contract.
  */
-export function mealDeepLink(mealId: string, dayIso: string): string {
-  return `foodrats://app/meal/${mealId}/${dayIso}`;
+export function mealDeepLink(crewId: string, mealId: string, dayIso: string): string {
+  return `foodrats://app/meal/${crewId}/${mealId}/${dayIso}`;
 }
 
 /**

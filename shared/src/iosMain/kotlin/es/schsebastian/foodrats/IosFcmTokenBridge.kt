@@ -19,15 +19,17 @@ import org.koin.mp.KoinPlatform
  * here to close that gap.
  *
  * Safe to call before sign-in or before Koin starts: registration no-ops (Unavailable) when not
- * signed in, and a pre-Koin callback is swallowed — FCM re-delivers the token on the next launch.
+ * signed in, and a pre-Koin callback is deferred via [IosBridgeGate] and replayed once
+ * [MainViewController] starts Koin (previously it was swallowed until the next launch).
  */
 @Suppress("unused")
 object IosFcmTokenBridge {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun tokenRefreshed() {
-        val koin = runCatching { KoinPlatform.getKoin() }.getOrNull() ?: return
-        val port = koin.get<TokenRegistrationPort>()
-        scope.launch { port.registerCurrentDeviceToken() }
+        IosBridgeGate.runWhenReady {
+            val port = KoinPlatform.getKoin().get<TokenRegistrationPort>()
+            scope.launch { port.registerCurrentDeviceToken() }
+        }
     }
 }

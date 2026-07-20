@@ -1,5 +1,7 @@
 package es.schsebastian.foodrats.feature.crew.data.firebase
 
+import dev.gitlive.firebase.firestore.FieldPath
+import dev.gitlive.firebase.firestore.FieldValue
 import dev.gitlive.firebase.firestore.FirebaseFirestore
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
@@ -135,12 +137,15 @@ class CrewFirestoreDataSource(
             if (requester.value !in crew.memberIds) {
                 // Authoritative, atomic cap check — references CrewSize.MAX (single source of truth).
                 if (!CrewSize.canAdd(crew.memberIds.size)) throw FullException
-                set(
+                // DELTA update, not a full-document set(): re-serializing the whole decoded CrewDto
+                // rewrites every SURVIVING member's `members` entry (legacy entries carrying
+                // pre-roster-refactor fields — displayName/avatarUrl — or an empty `{}` get stripped
+                // /restated by encodeDefaults), which the deployed 2026-07-19 rules pin
+                // (`membersMapPinnedToMembershipDelta`) rejects. Touch only the delta keys.
+                update(
                     crewRef,
-                    crew.copy(
-                        memberIds = crew.memberIds + requester.value,
-                        members = crew.members + (requester.value to MemberDto(joinedAtEpochMs = nowMs)),
-                    ),
+                    FieldPath("memberIds") to crew.memberIds + requester.value,
+                    FieldPath("members", requester.value) to MemberDto(joinedAtEpochMs = nowMs),
                 )
             }
             delete(reqRef)
@@ -165,7 +170,6 @@ class CrewFirestoreDataSource(
             val crew = crewSnap.data<CrewDto>()
             if (leaver.value !in crew.memberIds) throw NotMemberException
             val remainingIds = crew.memberIds - leaver.value
-            val remainingMembers = crew.members - leaver.value
             when {
                 remainingIds.isEmpty() -> {
                     val codeRef = crew.code?.let { codesCol.document(it) }
@@ -175,12 +179,24 @@ class CrewFirestoreDataSource(
                 crew.ownerId == leaver.value -> {
                     // Owner leaving with members remaining → hand ownership off atomically, to the
                     // chosen successor (if still a member) or the longest-tenured remaining member.
+                    // DELTA update, not a full-document set() — see approveJoinRequest: restating
+                    // surviving members' entries trips the rules' members-map delta pin on any crew
+                    // whose entries don't round-trip byte-identically through MemberDto.
                     val newOwner = successor?.value?.takeIf { it in remainingIds }
                         ?: longestTenured(remainingIds, crew.members)
-                    set(crewRef, crew.copy(ownerId = newOwner, memberIds = remainingIds, members = remainingMembers))
+                    update(
+                        crewRef,
+                        FieldPath("ownerId") to newOwner,
+                        FieldPath("memberIds") to remainingIds,
+                        FieldPath("members", leaver.value) to FieldValue.delete,
+                    )
                 }
                 else ->
-                    set(crewRef, crew.copy(memberIds = remainingIds, members = remainingMembers))
+                    update(
+                        crewRef,
+                        FieldPath("memberIds") to remainingIds,
+                        FieldPath("members", leaver.value) to FieldValue.delete,
+                    )
             }
         }
     }
@@ -205,9 +221,12 @@ class CrewFirestoreDataSource(
                 if (target.value !in crew.memberIds) throw NotMemberException
                 // The owner can never remove themselves (enforced by the repository + rules), so the
                 // remaining set is always non-empty — no crew-deletion branch needed here, unlike `leave`.
-                val remainingIds = crew.memberIds - target.value
-                val remainingMembers = crew.members - target.value
-                set(crewRef, crew.copy(memberIds = remainingIds, members = remainingMembers))
+                // DELTA update, not a full-document set() — see approveJoinRequest.
+                update(
+                    crewRef,
+                    FieldPath("memberIds") to crew.memberIds - target.value,
+                    FieldPath("members", target.value) to FieldValue.delete,
+                )
             }
         }
 

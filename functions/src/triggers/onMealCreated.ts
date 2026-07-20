@@ -2,7 +2,7 @@ import { onDocumentCreated } from "firebase-functions/v2/firestore";
 import { getFirestore } from "firebase-admin/firestore";
 import { logger } from "firebase-functions/v2";
 import { sendToCrew, mealDeepLink } from "../fcm/push";
-import { KEY_NEW_MEAL_POST, FALLBACK } from "../i18n/keys";
+import { KEY_NEW_MEAL_POST, localizeNotification } from "../i18n/keys";
 import { processBadgeMilestone, type BadgeDeps } from "./badgeMilestones";
 
 export const onMealCreated = onDocumentCreated(
@@ -17,29 +17,36 @@ export const onMealCreated = onDocumentCreated(
     const { crewId, mealId } = event.params;
 
     const crewName = await readCrewName(crewId);
-    const authorName: string = (meal.authorName as string) ?? "A crewmate";
-    const dishName: string = (meal.dishName as string) ?? "a meal";
+    // Empty when the doc is malformed: `localizeNotification` substitutes the PER-LANGUAGE
+    // fallback ("A crewmate"/"Un compañero", "a meal"/"una comida") at send time — an English
+    // fallback baked into `data` here would leak into the ES-localized OS text.
+    const authorName: string = (meal.authorName as string) ?? "";
+    const dishName: string = (meal.dishName as string) ?? "";
     // The meal's day key (ISO date) is the second path segment of the meal deep link. Present on
     // every meal written by the app; guard anyway so a malformed doc still sends a (linkless) push.
     const dayKey = (meal.dayKey as string | undefined) ?? "";
+    const data = {
+      crewId,
+      crewName,
+      mealId,
+      authorName,
+      dishName,
+      // Tapping opens the specific meal. Omit when we can't build a valid link (no dayKey) —
+      // the app then just opens to Feed, which is the right "couldn't target" fallback.
+      ...(dayKey ? { dayKey, link: mealDeepLink(crewId, mealId, dayKey) } : {}),
+    };
+    // English default (only used for tokens without a localizer match); built through the same
+    // localizer as the per-language groups so its missing-name fallbacks stay consistent.
+    const en = localizeNotification("en", KEY_NEW_MEAL_POST, data);
 
     // Run FCM push and badge milestone in parallel; a badge failure must not drop the push.
     await Promise.all([
       sendToCrew(crewId, meal.authorId as string, {
         kind: "NewMealPost",
         key: KEY_NEW_MEAL_POST,
-        notificationTitle: FALLBACK.newMealPostTitle(authorName),
-        notificationBody: FALLBACK.newMealPostBody(dishName),
-        data: {
-          crewId,
-          crewName,
-          mealId,
-          authorName,
-          dishName,
-          // Tapping opens the specific meal. Omit when we can't build a valid link (no dayKey) —
-          // the app then just opens to Feed, which is the right "couldn't target" fallback.
-          ...(dayKey ? { dayKey, link: mealDeepLink(mealId, dayKey) } : {}),
-        },
+        notificationTitle: en?.title ?? "",
+        notificationBody: en?.body ?? "",
+        data,
       }),
       awardBadgeIfMilestone(meal.authorId as string, crewId, mealId),
     ]);

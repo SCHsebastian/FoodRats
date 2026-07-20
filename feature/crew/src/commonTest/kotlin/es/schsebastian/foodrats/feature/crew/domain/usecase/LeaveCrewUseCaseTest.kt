@@ -3,6 +3,7 @@ package es.schsebastian.foodrats.feature.crew.domain.usecase
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
+import es.schsebastian.foodrats.feature.crew.domain.test.FakeActiveCrewProvider
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeConnectivityPort
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.RecordingOutboxPort
@@ -12,6 +13,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class LeaveCrewUseCaseTest {
@@ -20,7 +22,8 @@ class LeaveCrewUseCaseTest {
         repo: FakeCrewRepository,
         connectivity: FakeConnectivityPort = FakeConnectivityPort(online = true),
         outbox: RecordingOutboxPort = RecordingOutboxPort(),
-    ) = LeaveCrewUseCase(repo, connectivity, outbox)
+        activeCrew: FakeActiveCrewProvider = FakeActiveCrewProvider(),
+    ) = LeaveCrewUseCase(repo, connectivity, outbox, activeCrew)
 
     @Test fun delegates_to_repo_when_online() = runTest {
         val repo = FakeCrewRepository().apply { nextLeave = Result.success(Unit) }
@@ -62,5 +65,37 @@ class LeaveCrewUseCaseTest {
             listOf<PendingCommand>(PendingCommand.LeaveCrew(cid("c-1"), aid("uid"))),
             outbox.enqueued,
         )
+    }
+
+    @Test fun leaving_the_active_crew_clears_the_active_selection() = runTest {
+        val repo = FakeCrewRepository().apply { nextLeave = Result.success(Unit) }
+        val activeCrew = FakeActiveCrewProvider(initial = cid("c-1"))
+        val r = useCase(repo, activeCrew = activeCrew).invoke(cid("c-1"), aid("uid"))
+        assertIs<Result.Ok<Unit>>(r)
+        assertNull(activeCrew.state.value)
+    }
+
+    @Test fun leaving_a_non_active_crew_keeps_the_active_selection() = runTest {
+        val repo = FakeCrewRepository().apply { nextLeave = Result.success(Unit) }
+        val activeCrew = FakeActiveCrewProvider(initial = cid("c-other"))
+        val r = useCase(repo, activeCrew = activeCrew).invoke(cid("c-1"), aid("uid"))
+        assertIs<Result.Ok<Unit>>(r)
+        assertEquals(cid("c-other"), activeCrew.state.value)
+    }
+
+    @Test fun failed_leave_keeps_the_active_selection() = runTest {
+        val repo = FakeCrewRepository().apply { nextLeave = Result.failure(CrewError.Membership.NotMember) }
+        val activeCrew = FakeActiveCrewProvider(initial = cid("c-1"))
+        useCase(repo, activeCrew = activeCrew).invoke(cid("c-1"), aid("uid"))
+        assertEquals(cid("c-1"), activeCrew.state.value)
+    }
+
+    @Test fun offline_enqueued_leave_of_the_active_crew_clears_the_active_selection() = runTest {
+        val repo = FakeCrewRepository()
+        val activeCrew = FakeActiveCrewProvider(initial = cid("c-1"))
+        val r = useCase(repo, connectivity = FakeConnectivityPort(online = false), activeCrew = activeCrew)
+            .invoke(cid("c-1"), aid("uid"))
+        assertIs<Result.Ok<Unit>>(r)
+        assertNull(activeCrew.state.value)
     }
 }

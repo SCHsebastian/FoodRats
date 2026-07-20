@@ -748,7 +748,15 @@ class MealDetailViewModel(
         authorId: AccountId,
         mentions: List<AccountId>,
     ) {
-        outbox.enqueue(PendingCommand.PostComment(crewId, mealId, commentId, text, authorId, mentions))
-        update { it.copy(isPostingComment = false, commentInput = "") }
+        // A failed durable write means the comment never entered the outbox — no replay will ever
+        // happen. Clearing the input on that path would silently drop the comment (the same
+        // silent-drop class RateMealUseCase and the upload coordinator already guard), so surface
+        // the write error and keep the typed text for a retry.
+        when (outbox.enqueue(PendingCommand.PostComment(crewId, mealId, commentId, text, authorId, mentions))) {
+            is Result.Ok -> update { it.copy(isPostingComment = false, commentInput = "") }
+            is Result.Err -> update {
+                it.copy(isPostingComment = false, commentWriteError = CommentError.Write.Unavailable)
+            }
+        }
     }
 }

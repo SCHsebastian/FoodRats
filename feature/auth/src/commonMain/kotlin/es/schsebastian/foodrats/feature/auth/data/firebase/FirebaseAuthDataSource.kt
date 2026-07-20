@@ -6,6 +6,7 @@ import dev.gitlive.firebase.auth.OAuthProvider
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.result.getOrNull
+import es.schsebastian.foodrats.core.domain.session.LocalDataEraser
 import es.schsebastian.foodrats.core.domain.session.Session
 import es.schsebastian.foodrats.core.domain.telemetry.FrLog
 import es.schsebastian.foodrats.core.domain.time.Clock
@@ -21,11 +22,19 @@ class FirebaseAuthDataSource(
     private val store: AccountDocStore,
     private val clock: Clock,
     private val dispatchers: DispatcherProvider,
+    private val localDataEraser: LocalDataEraser,
 ) {
     private val healer = AccountDocSelfHealer(
         store = store,
         clock = clock,
         googleName = { auth.currentUser?.displayName.orEmpty() },
+    )
+
+    // Revoked-session sign-outs bypass AuthSignOutPort (the voluntary funnel that wipes
+    // account-scoped local data), so they must scrub the device themselves — see the class KDoc.
+    private val revokedCleanup = RevokedSessionCleanup(
+        signOut = { auth.signOut() },
+        localDataEraser = localDataEraser,
     )
 
     suspend fun signInWithGoogle(token: GoogleIdToken): String = withContext(dispatchers.io) {
@@ -83,10 +92,12 @@ class FirebaseAuthDataSource(
                     if (t.indicatesRevokedSession()) {
                         // Account deleted/disabled or token revoked → the persisted user is stale. Sign
                         // it out so the next authStateChanged emits null and the root nav routes to
-                        // SignIn. (The sibling accounts/{uid} snapshot path is guarded the same way; this
-                        // authoritative session path was the one that wasn't.)
-                        FrLog.w(FrLog.Tags.Session, t) { "data: session revoked server-side → signOut + null" }
-                        runCatching { auth.signOut() }
+                        // SignIn, and wipe the account-scoped local data this bypassed-funnel sign-out
+                        // would otherwise leave behind (see RevokedSessionCleanup). (The sibling
+                        // accounts/{uid} snapshot path is guarded the same way; this authoritative
+                        // session path was the one that wasn't.)
+                        FrLog.w(FrLog.Tags.Session, t) { "data: session revoked server-side → signOut + wipe + null" }
+                        revokedCleanup.endRevokedSession()
                         null
                     } else {
                         // Transient (network/unavailable/timeout): Firebase restored the user from local
@@ -124,8 +135,8 @@ class FirebaseAuthDataSource(
             FrLog.d(FrLog.Tags.Session) { "data: revalidate ok (${user.uid})" }
         } catch (t: Throwable) {
             if (t.indicatesRevokedSession()) {
-                FrLog.w(FrLog.Tags.Session, t) { "data: revalidate → session revoked → signOut" }
-                runCatching { auth.signOut() }
+                FrLog.w(FrLog.Tags.Session, t) { "data: revalidate → session revoked → signOut + wipe" }
+                revokedCleanup.endRevokedSession()
             } else {
                 FrLog.d(FrLog.Tags.Session) { "data: revalidate transient, keeping session: ${t.message}" }
             }

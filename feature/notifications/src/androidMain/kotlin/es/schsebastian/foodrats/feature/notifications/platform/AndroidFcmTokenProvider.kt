@@ -13,7 +13,8 @@ class AndroidFcmTokenProvider(
 ) : FcmTokenProvider {
     override val token: Flow<DeviceToken?> = flow {
         // GitLive exposes Firebase.messaging.getToken() (suspend) and token-refresh callbacks.
-        // For MVP we emit the current token once; rotations will re-trigger via the receiver service.
+        // One-shot by design: each RegisterDeviceTokenUseCase invocation re-reads the CURRENT token.
+        // Rotations re-trigger registration via FoodRatsFirebaseMessagingService.onNewToken.
         val current = try {
             Firebase.messaging.getToken()
         } catch (t: Throwable) {

@@ -102,6 +102,22 @@ class EditCommentUseCaseTest {
         )
     }
 
+    /**
+     * Silent-drop guard: a failed durable enqueue means the edit never entered the outbox, so
+     * reporting Ok would lose it forever. Must surface Unavailable instead.
+     */
+    @Test fun offline_enqueue_failure_is_surfaced_not_swallowed() = runTest {
+        val outbox = RecordingOutboxPort().apply {
+            enqueueError = es.schsebastian.foodrats.core.domain.outbox.OutboxError.PersistenceUnavailable
+        }
+        val r = useCase(
+            connectivity = FakeConnectivityPort(online = false),
+            outbox = outbox,
+        )(crew, mealId, commentId, text)
+        assertEquals(Result.failure(CommentError.Edit.Unavailable), r)
+        assertTrue(outbox.enqueued.isEmpty())
+    }
+
     @Test fun non_connectivity_error_is_surfaced() = runTest {
         val port = EditRecordingCommentPort().apply {
             nextEdit = Result.failure(CommentError.Edit.NotAuthor)

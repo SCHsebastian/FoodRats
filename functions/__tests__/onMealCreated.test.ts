@@ -101,9 +101,9 @@ describe("onMealCreated — new-meal push to the crew", () => {
       authorName: "Alice",
       dishName: "paella",
       dayKey: "2026-06-14",
-      link: mealDeepLink(MEAL, "2026-06-14"),
+      link: mealDeepLink(CREW, MEAL, "2026-06-14"),
     });
-    expect(payload.data.link).toBe(`foodrats://app/meal/${MEAL}/2026-06-14`);
+    expect(payload.data.link).toBe(`foodrats://app/meal/${CREW}/${MEAL}/2026-06-14`);
   });
 
   it("falls back to 'your crew' when the crew doc is missing (deleted crew)", async () => {
@@ -117,11 +117,15 @@ describe("onMealCreated — new-meal push to the crew", () => {
     expect(sentPayload().payload.data.crewName).toBe("your crew");
   });
 
-  it("falls back to 'A crewmate' / 'a meal' for missing author/dish names", async () => {
+  it("falls back to 'A crewmate' / 'a meal' for missing author/dish names — but keeps data params EMPTY", async () => {
     await onMealCreated.run(mealEvent({ authorId: "alice", dayKey: "2026-06-14" }));
     const { payload } = sentPayload();
     expect(payload.notificationTitle).toBe("A crewmate posted a meal");
     expect(payload.notificationBody).toBe("a meal — tap to view");
+    // The fallback words must NOT be baked into data: the per-language groups re-localize from
+    // these params, and an English word here would leak into ES pushes (2026-07-15 bug 2).
+    expect(payload.data.authorName).toBe("");
+    expect(payload.data.dishName).toBe("");
   });
 
   it("omits dayKey AND link when the meal doc has no dayKey (linkless push)", async () => {

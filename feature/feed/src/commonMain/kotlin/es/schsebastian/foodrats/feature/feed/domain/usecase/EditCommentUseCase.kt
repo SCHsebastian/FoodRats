@@ -54,8 +54,12 @@ class EditCommentUseCase(
         commentId: MealCommentId,
         text: CommentText,
         mentions: List<AccountId>,
-    ): Result<Unit, CommentError.Edit> {
-        outbox.enqueue(PendingCommand.EditComment(crewId, mealId, commentId, text, mentions))
-        return Result.success(Unit)
-    }
+    ): Result<Unit, CommentError.Edit> =
+        // A failed durable write means the edit never entered the outbox — no replay will
+        // ever happen. Reporting success here would silently drop the edit (the same
+        // silent-drop class RateMealUseCase and the upload coordinator already guard).
+        when (outbox.enqueue(PendingCommand.EditComment(crewId, mealId, commentId, text, mentions))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CommentError.Edit.Unavailable)
+        }
 }

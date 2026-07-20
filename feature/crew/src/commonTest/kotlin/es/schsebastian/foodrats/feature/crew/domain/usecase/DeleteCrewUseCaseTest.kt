@@ -10,6 +10,7 @@ import es.schsebastian.foodrats.feature.crew.domain.error.CrewError
 import es.schsebastian.foodrats.feature.crew.domain.model.Crew
 import es.schsebastian.foodrats.feature.crew.domain.model.CrewCode
 import es.schsebastian.foodrats.feature.crew.domain.model.Member
+import es.schsebastian.foodrats.feature.crew.domain.test.FakeActiveCrewProvider
 import es.schsebastian.foodrats.feature.crew.domain.test.FakeCrewRepository
 import es.schsebastian.foodrats.feature.crew.domain.test.aid
 import es.schsebastian.foodrats.feature.crew.domain.test.cid
@@ -48,7 +49,7 @@ class DeleteCrewUseCaseTest {
         val nonOwner = aid("uid-other")
         val session = Session(accountId = nonOwner, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val useCase = DeleteCrewUseCase(repo, FakeSessionForDelete(session))
+        val useCase = DeleteCrewUseCase(repo, FakeSessionForDelete(session), FakeActiveCrewProvider())
         val r = useCase(crewId)
         assertEquals(Result.failure(CrewError.Authorization.NotOwner), r)
     }
@@ -56,10 +57,29 @@ class DeleteCrewUseCaseTest {
     @Test fun deletes_when_owner() = runTest {
         val session = Session(accountId = ownerId, activeCrewId = crewId)
         val repo = FakeCrewRepository(listOf(sampleCrew))
-        val useCase = DeleteCrewUseCase(repo, FakeSessionForDelete(session))
+        val useCase = DeleteCrewUseCase(repo, FakeSessionForDelete(session), FakeActiveCrewProvider())
         val r = useCase(crewId)
         assertIs<Result.Ok<Unit>>(r)
         assertEquals(crewId, repo.lastDelete)
         assertNull(repo.crews.value.firstOrNull { it.id == crewId })
+    }
+
+    @Test fun deleting_the_active_crew_clears_the_active_selection() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val activeCrew = FakeActiveCrewProvider(initial = crewId)
+        val r = DeleteCrewUseCase(repo, FakeSessionForDelete(session), activeCrew).invoke(crewId)
+        assertIs<Result.Ok<Unit>>(r)
+        assertNull(activeCrew.state.value)
+    }
+
+    @Test fun deleting_a_non_active_crew_keeps_the_active_selection() = runTest {
+        val session = Session(accountId = ownerId, activeCrewId = crewId)
+        val repo = FakeCrewRepository(listOf(sampleCrew))
+        val other = cid("c-other")
+        val activeCrew = FakeActiveCrewProvider(initial = other)
+        val r = DeleteCrewUseCase(repo, FakeSessionForDelete(session), activeCrew).invoke(crewId)
+        assertIs<Result.Ok<Unit>>(r)
+        assertEquals(other, activeCrew.state.value)
     }
 }

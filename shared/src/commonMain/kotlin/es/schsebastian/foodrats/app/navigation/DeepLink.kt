@@ -23,7 +23,8 @@ object DeepLinks {
     const val APP_SCHEME = "foodrats"
     const val APP_HOST = "app"
 
-    const val SEGMENT_MEAL = "meal"     // /meal/{mealId}/{dayIso}  → Route.MealDetail
+    const val SEGMENT_MEAL = "meal"     // /meal/{crewId}/{mealId}/{dayIso} → Route.MealDetail
+                                        //   (legacy /meal/{mealId}/{dayIso} still resolves, crewId=null)
     const val SEGMENT_CREW = "crew"     // /crew/{crewId}           → Route.CrewSettings
     const val SEGMENT_DIGEST = "digest" // /digest/{weekStart}      → Route.WeeklyStory
     const val SEGMENT_INVITE = "invite" // /invite/{code}           → Route.InvitePreview
@@ -53,7 +54,15 @@ object DeepLinks {
 fun parseDeepLink(uriString: String): Route? {
     val segments = pathSegmentsOf(uriString)
     return when {
-        segments.size >= 3 && segments[0] == DeepLinks.SEGMENT_MEAL ->
+        segments.size >= 4 && segments[0] == DeepLinks.SEGMENT_MEAL ->
+            // Server contract since 2026-07-19 (functions/src/fcm/push.ts#mealDeepLink): the crew
+            // segment lets the root navigator switch the active crew before landing — MealDetail
+            // reads are active-crew-scoped, so a crewId-less link to a non-active crew dead-ends.
+            Route.MealDetail(mealId = segments[2], dayIso = segments[3], crewId = segments[1])
+
+        segments.size == 3 && segments[0] == DeepLinks.SEGMENT_MEAL ->
+            // Legacy pre-crewId pushes (sent before the contract change): resolve against the
+            // active crew — correct for single-crew users, "not found" for cross-crew taps.
             Route.MealDetail(mealId = segments[1], dayIso = segments[2])
 
         segments.size >= 2 && segments[0] == DeepLinks.SEGMENT_CREW ->

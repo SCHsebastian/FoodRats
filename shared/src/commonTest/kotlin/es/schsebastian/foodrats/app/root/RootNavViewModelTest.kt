@@ -7,6 +7,8 @@ import es.schsebastian.foodrats.core.domain.analytics.AnalyticsConfig
 import es.schsebastian.foodrats.core.domain.analytics.ConsentDecision
 import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
+import es.schsebastian.foodrats.core.domain.crew.CrewSummary
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
 import es.schsebastian.foodrats.core.domain.preferences.CURRENT_EULA_VERSION
@@ -83,10 +85,18 @@ class RootNavViewModelTest {
         }
     }
 
+    // Memberships for the deep-link crew-alignment check; tests that exercise cross-crew links
+    // seed this with the target crew (or omit it to model a stale push for a left crew).
+    private val myCrewsFlow = MutableStateFlow<List<CrewSummary>>(emptyList())
+    private val crewMembership = object : CrewMembershipPort {
+        override fun observeMyCrews(accountId: AccountId) = myCrewsFlow
+    }
+
     @BeforeTest fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @AfterTest fun tearDown() { Dispatchers.resetMain() }
 
-    private fun buildVm() = RootNavViewModel(session, activeCrew, notifications, consent, bus, eula)
+    private fun buildVm() =
+        RootNavViewModel(session, activeCrew, notifications, consent, bus, eula, crewMembership)
 
     /** Bring all gates to satisfied so the stage resolves to Ready. */
     private fun makeReady() {
@@ -219,7 +229,7 @@ class RootNavViewModelTest {
         crewFlow.value = crewId("c1")
         promptedFlow.value = true
 
-        val vm = RootNavViewModel(resolvingSession, activeCrew, notifications, consent, bus, eula)
+        val vm = RootNavViewModel(resolvingSession, activeCrew, notifications, consent, bus, eula, crewMembership)
         vm.effects.test {
             // Auth not resolved yet → no navigation at all (app stays on Splash).
             expectNoEvents()
@@ -227,6 +237,74 @@ class RootNavViewModelTest {
             // Firebase reports the persisted user → straight to Main, no SignIn detour.
             sessionEmissions.emit(Session(accountId("u1"), crewId("c1")))
             assertEquals(RootNavEffect.NavigateTopLevel(Route.Main), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun cross_crew_meal_link_switches_active_crew_before_navigating() = runTest {
+        // User is Ready with crew c1 active and is a member of c2; a push for a meal in c2 arrives.
+        // The active crew must switch to c2 BEFORE the navigate effect, so MealDetail's
+        // active-crew-scoped reads resolve against the notified crew instead of dead-ending.
+        makeReady()
+        myCrewsFlow.value = listOf(CrewSummary(crewId("c1"), "One"), CrewSummary(crewId("c2"), "Two"))
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.Main), awaitItem())
+
+            bus.publish("foodrats://app/meal/c2/m1/2026-07-19")
+            assertEquals(
+                RootNavEffect.NavigateDeepLink(Route.MealDetail("m1", "2026-07-19", crewId = "c2")),
+                awaitItem(),
+            )
+            assertEquals(crewId("c2"), crewFlow.value)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun meal_link_for_a_crew_the_user_left_does_not_switch_the_active_crew() = runTest {
+        // Stale push: the link's crew is no longer in the user's memberships. Switching would strand
+        // Feed on a crew the user can't read — leave the active crew alone and still navigate
+        // (MealDetail then shows its not-found state).
+        makeReady()
+        myCrewsFlow.value = listOf(CrewSummary(crewId("c1"), "One"))
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.Main), awaitItem())
+
+            bus.publish("foodrats://app/meal/c9/m1/2026-07-19")
+            assertEquals(
+                RootNavEffect.NavigateDeepLink(Route.MealDetail("m1", "2026-07-19", crewId = "c9")),
+                awaitItem(),
+            )
+            assertEquals(crewId("c1"), crewFlow.value)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun stashed_cross_crew_meal_link_switches_active_crew_on_resume_at_ready() = runTest {
+        // Cold-start tap while signed out: the crew-carrying link is stashed, and the alignment must
+        // also run on the emitReady resume path, not just the navigate-now path.
+        myCrewsFlow.value = listOf(CrewSummary(crewId("c1"), "One"), CrewSummary(crewId("c2"), "Two"))
+
+        val vm = buildVm()
+        vm.effects.test {
+            assertEquals(RootNavEffect.NavigateTopLevel(Route.SignIn), awaitItem())
+
+            bus.publish("foodrats://app/meal/c2/m1/2026-07-19")
+            makeReady() // signs in with c1 active
+
+            var eff = awaitItem()
+            while (eff is RootNavEffect.NavigateTopLevel) eff = awaitItem()
+            assertEquals(
+                RootNavEffect.NavigateDeepLink(Route.MealDetail("m1", "2026-07-19", crewId = "c2")),
+                eff,
+            )
+            assertEquals(crewId("c2"), crewFlow.value)
             cancelAndIgnoreRemainingEvents()
         }
     }

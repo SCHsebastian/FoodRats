@@ -68,7 +68,16 @@ sealed interface Route {
     @Serializable data object ComposePlate : Protected
     @Serializable data object SelectIngredients : Protected
 
-    @Serializable data class MealDetail(val mealId: String, val dayIso: String) : Protected
+    /**
+     * [crewId] is the crew the meal belongs to, carried by push deep links so RootNavViewModel can
+     * switch the active crew before landing here (MealDetail reads are active-crew-scoped). Null for
+     * in-app navigation from the feed (already the active crew) and legacy pre-crewId push links.
+     */
+    @Serializable data class MealDetail(
+        val mealId: String,
+        val dayIso: String,
+        val crewId: String? = null,
+    ) : Protected
 
     /**
      * The weekly-recap story player (roadmap §2.4). [weekStart] is the ISO Monday of the recapped

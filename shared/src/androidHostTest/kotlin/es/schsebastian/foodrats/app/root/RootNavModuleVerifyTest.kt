@@ -8,6 +8,7 @@ import es.schsebastian.foodrats.core.domain.analytics.ConsentPort
 import es.schsebastian.foodrats.core.domain.connectivity.ConnectivityPort
 import es.schsebastian.foodrats.core.domain.coroutines.DispatcherProvider
 import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.crew.CrewMembershipPort
 import es.schsebastian.foodrats.core.domain.preferences.EulaPort
 import es.schsebastian.foodrats.core.domain.preferences.NotificationsPreferencePort
 import es.schsebastian.foodrats.core.domain.session.SessionProvider
@@ -43,6 +44,7 @@ class RootNavModuleVerifyTest {
                 NotificationsPreferencePort::class,
                 ConsentPort::class,
                 EulaPort::class,
+                CrewMembershipPort::class,
                 // ConnectivityViewModel dep
                 ConnectivityPort::class,
                 // ConsentViewModel dep (analytics is explicit in the module binding)

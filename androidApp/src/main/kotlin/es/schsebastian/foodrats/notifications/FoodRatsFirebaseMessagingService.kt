@@ -2,6 +2,7 @@ package es.schsebastian.foodrats.notifications
 
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
+import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
 import es.schsebastian.foodrats.feature.notifications.data.push.PushPayloadMapper
 import es.schsebastian.foodrats.feature.notifications.domain.bus.NotificationBus
 import es.schsebastian.foodrats.feature.notifications.domain.model.Reminder
@@ -19,11 +20,18 @@ class FoodRatsFirebaseMessagingService : FirebaseMessagingService() {
 
     private val bus: NotificationBus by inject()
     private val mapper: PushPayloadMapper by inject()
+    private val tokenRegistration: TokenRegistrationPort by inject()
     // SupervisorJob isolates one publish failure from the others; cancelled in onDestroy.
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onNewToken(token: String) {
-        // Token registration is observed reactively via AndroidFcmTokenProvider; no-op here.
+        // FCM rotated (or first minted) this device's token mid-session. Re-run the idempotent
+        // registration so `accounts/{uid}/devices/{token}` points at the NEW token — otherwise the
+        // server keeps sending to the stale one until the next process start (when
+        // DeviceTokenLanguageSync re-upserts) and this device silently misses pushes. Mirrors the
+        // iOS path (MessagingDelegate → IosFcmTokenBridge.tokenRefreshed). Registration reads the
+        // current token itself and no-ops (Unavailable) when not signed in, so this is safe pre-auth.
+        scope.launch { tokenRegistration.registerCurrentDeviceToken() }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
