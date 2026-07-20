@@ -56,7 +56,7 @@ import org.koin.dsl.module
 val authModule = module {
     singleOf(::AuthErrorMapper)
     single<AccountDocStore> { FirestoreAccountDocStore(firestore = get(), dispatchers = get()) }
-    single { FirebaseAuthDataSource(auth = get(), store = get(), clock = get<Clock>(), dispatchers = get()) }
+    single { FirebaseAuthDataSource(auth = get(), store = get(), clock = get<Clock>(), dispatchers = get(), localDataEraser = get()) }
     // appleClient (2nd arg) is bound per-platform alongside GoogleAuthClient:
     // androidAuthModule() in FoodRatsApplication, authIosModule(...) on iOS.
     single<AuthRepository> { FirebaseAuthRepository(get(), get(), get(), get(), get(), get()) }

@@ -9,10 +9,15 @@ import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationError
 import es.schsebastian.foodrats.core.domain.notifications.TokenRegistrationPort
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
+import es.schsebastian.foodrats.core.domain.session.SessionError
 import es.schsebastian.foodrats.feature.auth.domain.error.AuthError
+import es.schsebastian.foodrats.feature.auth.domain.repository.AuthRepository
 import es.schsebastian.foodrats.feature.auth.domain.test.FakeAuthRepository
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
