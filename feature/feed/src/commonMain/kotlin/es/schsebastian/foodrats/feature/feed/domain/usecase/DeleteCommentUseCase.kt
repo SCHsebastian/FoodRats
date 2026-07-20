@@ -48,8 +48,12 @@ class DeleteCommentUseCase(
         crewId: CrewId,
         mealId: MealId,
         commentId: MealCommentId,
-    ): Result<Unit, CommentError.Delete> {
-        outbox.enqueue(PendingCommand.DeleteComment(crewId, mealId, commentId))
-        return Result.success(Unit)
-    }
+    ): Result<Unit, CommentError.Delete> =
+        // A failed durable write means the delete never entered the outbox — no replay will
+        // ever happen. Reporting success here would silently drop the delete (the same
+        // silent-drop class RateMealUseCase and the upload coordinator already guard).
+        when (outbox.enqueue(PendingCommand.DeleteComment(crewId, mealId, commentId))) {
+            is Result.Ok -> Result.success(Unit)
+            is Result.Err -> Result.failure(CommentError.Delete.Unavailable)
+        }
 }

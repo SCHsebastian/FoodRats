@@ -181,6 +181,27 @@ class FirebaseMealRepositoryTest {
         assertEquals(PlateSource.Gallery, result.value.plateSource)
     }
 
+    /**
+     * firestore.rules (2026-07-19 sweep) rejects meal creates whose `authorName` exceeds 120
+     * chars. The provider-supplied displayName is unbounded (Apple Sign-In names are free
+     * text), so the publish path must truncate at the wire seam — otherwise one long name
+     * permanently rejects every publish for that user.
+     */
+    @Test fun publish_truncates_over_long_author_name_to_server_cap() = runTest {
+        val f = Fixture()
+        f.identity.author = MealAuthorIdentity.Author(
+            uid = "acc-1",
+            displayName = "n".repeat(300),
+            avatarUrl = null,
+        )
+        val repo = repository(f)
+
+        val result = repo.publish(draft())
+
+        assertTrue(result is Result.Ok)
+        assertEquals("n".repeat(120), f.firestore.writes.single().dto.authorName)
+    }
+
     /** A camera plate (the default) stamps "camera" — never null — on fresh publishes. */
     @Test fun publish_stamps_camera_plate_source_by_default() = runTest {
         val f = Fixture()

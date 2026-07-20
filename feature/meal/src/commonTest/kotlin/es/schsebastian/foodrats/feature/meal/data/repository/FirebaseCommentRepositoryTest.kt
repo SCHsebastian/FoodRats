@@ -182,6 +182,23 @@ class FirebaseCommentRepositoryTest {
         assertEquals("Sebas", created.authorName)
     }
 
+    /**
+     * firestore.rules (2026-07-19 sweep) rejects comment writes whose `authorName` exceeds 120
+     * chars. The provider-supplied displayName is unbounded, so the repository must truncate at
+     * the wire seam — otherwise one long name permanently rejects every comment for that user.
+     */
+    @Test fun post_truncates_over_long_display_name_to_server_cap() = runTest {
+        val fake = FakeCommentFirestore()
+        val longName = "n".repeat(300)
+        val repo = repository(fake, FakeAuthorIdentity("uid-author", displayName = longName))
+
+        val r = repo.post(crewId, mealId, commentId, text)
+        assertTrue(r is Result.Ok)
+        val created = fake.docs.value.single()
+        assertEquals(120, created.authorName?.length)
+        assertEquals("n".repeat(120), created.authorName)
+    }
+
     @Test fun post_with_no_display_name_stamps_null_author_name() = runTest {
         val fake = FakeCommentFirestore()
         val repo = repository(fake, FakeAuthorIdentity("uid-author", displayName = null))

@@ -17,6 +17,7 @@ import es.schsebastian.foodrats.feature.meal.data.firebase.FirebaseFault
 import es.schsebastian.foodrats.feature.meal.data.firebase.MealAuthorIdentity
 import es.schsebastian.foodrats.feature.meal.data.firebase.toDomain
 import es.schsebastian.foodrats.feature.meal.data.firebase.toFirebaseFault
+import es.schsebastian.foodrats.feature.meal.data.firebase.toWireAuthorName
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flowOn
@@ -75,7 +76,9 @@ internal class FirebaseCommentRepository(
                     text = text.value,
                     createdAtEpochMs = clock.now().toEpochMilliseconds(),
                     mentions = mentions.map { it.value },
-                    authorName = author.displayName,
+                    // Truncated to the firestore.rules cap (120) — an over-long provider
+                    // displayName must degrade to a shorter snapshot, never reject the comment.
+                    authorName = author.displayName?.toWireAuthorName(),
                 ),
             )
             Result.success(Unit) as Result<Unit, CommentError.Write>

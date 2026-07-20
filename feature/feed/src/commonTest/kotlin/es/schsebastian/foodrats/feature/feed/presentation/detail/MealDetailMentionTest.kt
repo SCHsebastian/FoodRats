@@ -11,6 +11,7 @@ import es.schsebastian.foodrats.core.domain.meal.MealCommentPort
 import es.schsebastian.foodrats.core.domain.meal.MealId
 import es.schsebastian.foodrats.core.domain.model.AccountId
 import es.schsebastian.foodrats.core.domain.model.CrewId
+import es.schsebastian.foodrats.core.domain.outbox.OutboxError
 import es.schsebastian.foodrats.core.domain.outbox.PendingCommand
 import es.schsebastian.foodrats.core.domain.result.Result
 import es.schsebastian.foodrats.core.domain.session.Session
@@ -219,6 +220,28 @@ class MealDetailMentionTest {
         assertTrue(ports.commentPort.postCalls.isEmpty())
         val enqueued = ports.outbox.enqueued.single() as PendingCommand.PostComment
         assertEquals(listOf(liaId), enqueued.mentions)
+    }
+
+    /**
+     * Silent-drop guard: an offline post whose durable enqueue fails must surface the write error
+     * and keep the typed text for a retry — clearing the input would silently lose the comment
+     * (nothing was parked, so no replay will ever happen).
+     */
+    @Test fun offline_post_enqueue_failure_surfaces_error_and_keeps_input() = runTest {
+        val (vm, ports) = newSut(online = false)
+        ports.outbox.enqueueError = OutboxError.PersistenceUnavailable
+        vm.onIntent(MealDetailIntent.CommentInputChanged("hola crew"))
+        vm.onIntent(MealDetailIntent.PostComment)
+        runCurrent()
+
+        assertTrue(ports.commentPort.postCalls.isEmpty())
+        assertTrue(ports.outbox.enqueued.isEmpty())
+        vm.state.test {
+            val s = expectMostRecentItem()
+            assertEquals(CommentError.Write.Unavailable, s.commentWriteError)
+            assertEquals("hola crew", s.commentInput)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test fun submit_edit_comment_reparses_mentions_from_the_edited_text() = runTest {
