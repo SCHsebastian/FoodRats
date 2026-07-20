@@ -366,6 +366,15 @@ class StatsViewModelTest {
         assertEquals(0, analytics.events.filterIsInstance<AnalyticsEvent.StreakShared>().size)
     }
 
+    @Test fun sharing_streak_passes_the_weeks_best_plate_url_when_available() = runTest {
+        // TRACK B: when the week has a rated best plate, the streak card renders full-bleed over it.
+        val share = RecordingStoryShareController(outcome = StoryShareOutcome.OpenedInstagram)
+        val vm = makeVm(meals = listOf(makeRatedMeal(id = "rated")), shareController = share)
+        vm.onIntent(StatsIntent.ShareStreakTapped)
+        assertEquals(1, share.callCount)
+        assertEquals("photo-url-rated", share.lastCall!!.plateUrl)
+    }
+
     @Test fun sharing_award_decodes_plate_url_and_fires_award_event() = runTest {
         val share = RecordingStoryShareController(outcome = StoryShareOutcome.OpenedFallbackSheet)
         val analytics = RecordingAnalyticsTracker()

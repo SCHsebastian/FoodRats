@@ -73,6 +73,11 @@
         <item quantity="other">%1$s · %2$d comidas</item>
     </plurals>
 
+    <!-- Pastilla de plato premiado — onClickLabel + Role.Button, abre la comida en MealDetail. -->
+    <string name="stats_open_meal_cta">Ver comida</string>
+    <!-- Aviso de carga en una pastilla shimmer representativa de la pantalla de estadísticas. -->
+    <string name="stats_stats_loading">Cargando estadísticas</string>
+
 
     <string name="stats_collection_title">Colección</string>
 
@@ -150,4 +155,29 @@
     <string name="stats_calendar_weekday_friday">V</string>
     <string name="stats_calendar_weekday_saturday">S</string>
     <string name="stats_calendar_weekday_sunday">D</string>
+    <!-- Nombres completos de los días — solo accesibilidad, TalkBack los lee en vez de la inicial. -->
+    <string name="stats_calendar_weekday_monday_full">Lunes</string>
+    <string name="stats_calendar_weekday_tuesday_full">Martes</string>
+    <string name="stats_calendar_weekday_wednesday_full">Miércoles</string>
+    <string name="stats_calendar_weekday_thursday_full">Jueves</string>
+    <string name="stats_calendar_weekday_friday_full">Viernes</string>
+    <string name="stats_calendar_weekday_saturday_full">Sábado</string>
+    <string name="stats_calendar_weekday_sunday_full">Domingo</string>
+
+    <!-- Partes de la etiqueta de accesibilidad de una celda de día (fusionadas en un solo nodo TalkBack). -->
+    <!-- Nombre del mes localizado + día + año, p. ej. "21 de julio de 2026". -->
+    <string name="stats_calendar_day_date_format">%2$d de %1$s de %3$d</string>
+    <!-- Texto de fecha + texto de número de platos, p. ej. "21 de julio de 2026, 2 platos". -->
+    <string name="stats_calendar_day_a11y_format">%1$s, %2$s</string>
+    <!-- Envuelve la descripción base cuando la celda es hoy. -->
+    <string name="stats_calendar_day_today_format">%1$s, hoy</string>
+    <string name="stats_calendar_day_no_meals">Sin platos</string>
+    <plurals name="stats_calendar_day_meal_count">
+        <item quantity="one">%1$d plato</item>
+        <item quantity="other">%1$d platos</item>
+    </plurals>
+    <!-- Número plano para la pastilla visible de varios platos — sin glifo, decorativo bajo la descripción fusionada. -->
+    <string name="stats_calendar_day_meal_count_badge">%1$d</string>
+    <!-- Aviso de carga en una celda shimmer representativa mientras carga el mes. -->
+    <string name="stats_calendar_grid_loading">Cargando calendario</string>
 </resources>

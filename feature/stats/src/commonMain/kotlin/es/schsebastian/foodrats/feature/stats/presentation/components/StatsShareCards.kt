@@ -33,21 +33,26 @@ fun MealAward.toAwardCard(): AwardShareCardModel = AwardShareCardModel(
 )
 
 /**
- * Render-ready props for `FrStreakShareCard`, mapped from [HeroStats] (spec §8.1). No photo — the
- * streak count is the hero. [dayEmote] uses the today motif so the card is consistent with the rest
- * of the brand. The headline/subline chrome is resolved in the share-content composable.
+ * Render-ready props for `FrStreakShareCard`, mapped from [HeroStats] (spec §8.1, TRACK B). The
+ * streak count is always the hero; [photoUrl] is an advisory plate photo (the week's best/most-voted
+ * meal) the ViewModel decodes off-screen — `null` renders the original solid-surface design.
+ * [dayEmote] uses the today motif so the card is consistent with the rest of the brand. The
+ * headline/subline chrome is resolved in the share-content composable.
  */
 data class StreakShareCardModel(
     val streakDays: Int,
     val dayEmote: String,
+    val photoUrl: String? = null,
 )
 
 /**
  * Maps the member's personal streak → streak share-card props. [todayEmote] is the day motif
- * resolved by the caller (`DailyEmote.forDay(today)`). A `Streak(0)` still maps to a valid (if
- * unexciting) model.
+ * resolved by the caller (`DailyEmote.forDay(today)`). [photoUrl] is the plate photo to render the
+ * card full-bleed over (advisory — `null` keeps the solid-surface design). A `Streak(0)` still maps
+ * to a valid (if unexciting) model.
  */
-fun HeroStats.toStreakCard(todayEmote: String): StreakShareCardModel = StreakShareCardModel(
+fun HeroStats.toStreakCard(todayEmote: String, photoUrl: String? = null): StreakShareCardModel = StreakShareCardModel(
     streakDays = personalStreak.days,
     dayEmote = todayEmote,
+    photoUrl = photoUrl,
 )

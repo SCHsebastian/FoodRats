@@ -186,6 +186,16 @@ aprobación** (environment `production`); apruébalos desde la pestaña Actions 
 se publica con rollout escalonado (Play 20%, App Store phased). Sube el rollout
 al 100% desde las consolas cuando estés conforme.
 
+> **Bloqueo previo en Play (cuentas personales nuevas):** hasta que Google
+> conceda el *production access*, la API rechaza CUALQUIER release (incluso
+> `draft`) en los tracks `production` y `beta` (open testing) con
+> `Precondition check failed` — `internal` y `alpha` sí funcionan (verificado
+> por sondas API el 2026-07-20). Requisito: closed test con ≥12 testers
+> opted-in durante 14 días seguidos → botón **Apply for production access** en
+> el Dashboard de Play Console (revisión de hasta ~7 días). Cuando lo
+> concedan, relanza solo el job Android fallido:
+> `gh run rerun <run-id> --failed`.
+
 ### Probar lanes en local (sin CI)
 ```bash
 bundle install

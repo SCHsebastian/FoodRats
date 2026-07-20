@@ -139,14 +139,20 @@ fun FrAwardShareCard(
 /**
  * A branded share card for a streak milestone (spec §4.1).
  *
- * No plate photo — the streak count is the hero, painted in the `streakHot` semantic color on a
- * solid branded surface. [headline] / [subline] are pre-resolved
+ * [plate] is `null` by default → the original solid-surface design: the streak count is the hero,
+ * painted in the `streakHot` semantic color on a solid branded surface, exactly as before this param
+ * was added. When [plate] is non-null (a decoded plate photo, e.g. the week's best/most-recent meal),
+ * the card instead renders full-bleed over that photo — [PlateBackdrop] + a scrim, giant numeral and
+ * headline/subline/footer restyled for on-scrim (white) legibility — mirroring [FrPlateShareCard]'s
+ * photo treatment. [headline] / [subline] are pre-resolved
  * (`ShareCardStringKey.StreakHeadline(streakDays)` / `StreakSubline`); [streakDays] is kept for the
  * giant numeral the headline references.
  *
  * @param streakDays the streak length, shown as the giant numeral.
  * @param headline the pre-resolved streak headline ("14-day streak 🔥").
  * @param subline the pre-resolved supporting line ("Keep it cooking").
+ * @param plate an already-decoded plate photo for the full-bleed variant; `null` → the solid-surface
+ *   design.
  */
 @Composable
 fun FrStreakShareCard(
@@ -157,53 +163,76 @@ fun FrStreakShareCard(
     footerBrand: String,
     format: ShareCardFormat,
     modifier: Modifier = Modifier,
+    plate: ImageBitmap? = null,
 ) {
     val semantic = LocalFrSemanticColors.current
-    ShareCardSurface(
-        format = format,
-        background = MaterialTheme.colorScheme.surface,
-        modifier = modifier,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(Spacing.xl),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
+    if (plate == null) {
+        ShareCardSurface(
+            format = format,
+            background = MaterialTheme.colorScheme.surface,
+            modifier = modifier,
         ) {
-            Text(
-                text = dayEmote,
-                style = MaterialTheme.typography.displaySmall,
-                textAlign = TextAlign.Center,
-            )
-            Spacer(Modifier.size(Spacing.md))
-            Text(
-                text = streakDays.toString(),
-                style = MaterialTheme.typography.displayLarge,
-                fontWeight = FontWeight.Bold,
-                color = semantic.streakHot,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-            )
-            Spacer(Modifier.size(Spacing.sm))
-            Text(
-                text = headline,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.size(Spacing.xs))
-            Text(
-                text = subline,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.size(Spacing.xl))
-            BrandFooter(footerBrand, onScrim = false)
+            Column(
+                modifier = Modifier.fillMaxSize().padding(Spacing.xl),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = dayEmote,
+                    style = MaterialTheme.typography.displaySmall,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.size(Spacing.md))
+                Text(
+                    text = streakDays.toString(),
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = semantic.streakHot,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.size(Spacing.sm))
+                Text(
+                    text = headline,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.size(Spacing.xs))
+                Text(
+                    text = subline,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.size(Spacing.xl))
+                BrandFooter(footerBrand, onScrim = false)
+            }
+        }
+    } else {
+        ShareCardSurface(format = format, modifier = modifier) {
+            PlateBackdrop(plate = plate, dayEmote = dayEmote)
+            ScrimColumn {
+                DayEmote(dayEmote)
+                Spacer(Modifier.size(Spacing.sm))
+                Text(
+                    text = streakDays.toString(),
+                    style = MaterialTheme.typography.displayLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = semantic.streakHot,
+                    maxLines = 1,
+                )
+                Spacer(Modifier.size(Spacing.sm))
+                CardHeadline(headline)
+                CardSubline(subline)
+                Spacer(Modifier.size(Spacing.lg))
+                BrandFooter(footerBrand)
+            }
         }
     }
 }

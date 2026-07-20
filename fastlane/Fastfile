@@ -46,15 +46,26 @@ platform :android do
 
   desc "Upload the signed AAB to 'production' with a staged 20% rollout"
   lane :release do
-    # First-ever production release bootstrap: a never-published (draft) Play
-    # app rejects staged rollouts too — "Invalid request - Precondition check
-    # failed." on `Updating track 'production'` (the v1.11.0 prod fail; there
-    # are no existing users to stage across). For the bootstrap release set
-    # PLAY_RELEASE_STATUS=draft in the runner's signing.env: the AAB lands on
-    # the production track as a DRAFT that the Play Console then publishes
-    # (Google's first-publish review is console-only anyway). Remove the
-    # override once the app is published so tagged releases resume the 20%
-    # staged rollout.
+    # ── Production-access gate (the v1.11.0 AND v1.12.1 prod fail) ──────────
+    # "Invalid request - Precondition check failed." on `Updating track
+    # 'production'` is NOT about release_status: API probes (2026-07-20)
+    # showed the production AND beta (open-testing) tracks reject EVERY
+    # release status — draft included, even for an already-live bundle —
+    # while internal and alpha accept the same payload. New personal Play
+    # accounts (registered after 2023-11-13) have production + open testing
+    # LOCKED until Google grants production access: run a closed test with
+    # ≥12 opted-in testers for 14 continuous days, then "Apply for
+    # production access" on the Play Console Dashboard (review ≤~7 days).
+    # Nothing in this lane can bypass that; fix it in the console, then
+    # re-run the failed Android job.
+    #
+    # First-ever production release bootstrap (applies AFTER access is
+    # granted): a never-published app has no users to stage a rollout
+    # across, so set PLAY_RELEASE_STATUS=draft in the runner's signing.env —
+    # the AAB lands on production as a DRAFT that the Play Console then
+    # publishes (Google's first-publish review is console-only anyway).
+    # Remove the override once the app is published so tagged releases
+    # resume the 20% staged rollout.
     status = ENV.fetch("PLAY_RELEASE_STATUS", "inProgress")
     args = {
       track: "production",

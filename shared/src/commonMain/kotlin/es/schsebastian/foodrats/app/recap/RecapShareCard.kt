@@ -43,13 +43,16 @@ sealed interface RecapShareCard {
         val dayEmote: String,
     ) : RecapShareCard
 
-    /** A streak milestone / the closing "your week" summary. No photo — the count is the hero. */
+    /**
+     * A streak milestone / the closing "your week" summary. The count is always the hero;
+     * [plateUrl] (TRACK B) is the scene's advisory plate photo — `null` renders the original
+     * solid-surface card, matching [RecapScene.Streak.photoUrl]/[RecapScene.YourWeek.photoUrl].
+     */
     data class Streak(
         val streakDays: Int,
         val dayEmote: String,
-    ) : RecapShareCard {
-        override val plateUrl: String? get() = null
-    }
+        override val plateUrl: String? = null,
+    ) : RecapShareCard
 }
 
 /**
@@ -65,8 +68,8 @@ fun RecapScene.toShareCard(todayEmote: String): RecapShareCard? = when (this) {
         ratingCount = ratingCount,
         dayEmote = todayEmote,
     )
-    is RecapScene.Streak -> RecapShareCard.Streak(streakDays = streakDays, dayEmote = todayEmote)
-    is RecapScene.YourWeek -> RecapShareCard.Streak(streakDays = streakDays, dayEmote = todayEmote)
+    is RecapScene.Streak -> RecapShareCard.Streak(streakDays = streakDays, dayEmote = todayEmote, plateUrl = photoUrl)
+    is RecapScene.YourWeek -> RecapShareCard.Streak(streakDays = streakDays, dayEmote = todayEmote, plateUrl = photoUrl)
     is RecapScene.Cover,
     is RecapScene.BestCook,
     is RecapScene.MostProlific,
@@ -112,6 +115,7 @@ fun RecapShareCardContent(card: RecapShareCard, plate: ImageBitmap?) {
                 dayEmote = card.dayEmote,
                 footerBrand = resolve(ShareCardStringKey.BrandFooter),
                 format = ShareCardFormat.Story,
+                plate = plate,
             )
         }
     }

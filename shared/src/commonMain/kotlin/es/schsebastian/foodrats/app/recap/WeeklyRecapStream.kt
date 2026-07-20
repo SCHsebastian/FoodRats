@@ -1,14 +1,23 @@
 package es.schsebastian.foodrats.app.recap
 
+import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.MealDay
+import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.core.domain.meal.MealWithRatings
 import es.schsebastian.foodrats.core.domain.result.Result
+import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.achievements.domain.usecase.AchievementsSnapshot
 import es.schsebastian.foodrats.feature.achievements.domain.usecase.ObserveAchievementsUseCase
 import es.schsebastian.foodrats.feature.stats.domain.model.StatsSnapshot
 import es.schsebastian.foodrats.feature.stats.domain.usecase.ObserveStatsUseCase
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.datetime.DatePeriod
 import kotlinx.datetime.DayOfWeek
 import kotlinx.datetime.LocalDate
@@ -41,10 +50,19 @@ sealed interface WeeklyRecapResult {
  * The production [WeeklyRecapStream]: combines the stats + achievements observers and folds them into
  * a [WeeklyRecap] via the pure assembler. The week label is the ISO-week-start date string (a richer
  * locale-formatted label is a later polish; the date is unambiguous and PII-free meanwhile).
+ *
+ * [activeCrew]/[session]/[mealRead] feed the recap's photo floors (TRACK B) with the same recap-week
+ * meals, purely ADVISORY: no active crew, a not-signed-in session, or a read failure all degrade to an
+ * empty meal list (via [catch]) rather than failing the whole recap — the story must never block on
+ * this extra read the way [statsResult] blocks on the stats read.
  */
+@OptIn(ExperimentalCoroutinesApi::class)
 fun statsAndAchievementsRecapStream(
     observeStats: ObserveStatsUseCase,
     observeAchievements: ObserveAchievementsUseCase,
+    activeCrew: ActiveCrewProvider,
+    session: SessionProvider,
+    mealRead: MealReadPort,
     clock: Clock,
     zone: TimeZone,
 ): WeeklyRecapStream = WeeklyRecapStream {
@@ -54,10 +72,23 @@ fun statsAndAchievementsRecapStream(
     val weekEndEpochMs = weekStart.plus(DatePeriod(days = 7)).atStartOfDayEpochMs(zone)
     val weekLabel = weekStart.toString()
 
+    val weekMeals: Flow<List<MealWithRatings>> = activeCrew.current
+        .flatMapLatest { crewId ->
+            if (crewId == null) {
+                flowOf(emptyList())
+            } else {
+                mealRead.observeRange(crewId, MealDay(weekStart, zone), MealDay(today, zone))
+                    .map { r -> (r as? Result.Ok)?.value.orEmpty() }
+            }
+        }
+        .catch { emit(emptyList()) }
+
     combine(
         observeStats(historicEnabled = flowOf(false), epoch = flowOf(0)),
         observeAchievements(),
-    ) { statsResult, achievementsResult ->
+        weekMeals,
+        session.current,
+    ) { statsResult, achievementsResult, meals, sess ->
         when (statsResult) {
             is Result.Err -> WeeklyRecapResult.Failed
             is Result.Ok -> {
@@ -70,6 +101,8 @@ fun statsAndAchievementsRecapStream(
                         weekLabel = weekLabel,
                         weekWindowStartEpochMs = weekStartEpochMs,
                         weekWindowEndEpochMs = weekEndEpochMs,
+                        weekMeals = meals,
+                        myAccountId = sess?.accountId,
                     ),
                 )
             }

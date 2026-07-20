@@ -30,8 +30,11 @@ data class WeeklyRecap(
 sealed interface RecapScene {
     val kind: RecapSceneKind
 
-    /** Opening card — brand motif + the recap's week label. Always present. */
-    data class Cover(val weekLabel: String) : RecapScene {
+    /**
+     * Opening card — brand motif + the recap's week label. Always present. [photoUrl] is the week's
+     * best (or newest) plate photo, advisory only — `null` keeps the existing brand-motif brush.
+     */
+    data class Cover(val weekLabel: String, val photoUrl: String? = null) : RecapScene {
         override val kind = RecapSceneKind.Cover
     }
 
@@ -46,25 +49,31 @@ sealed interface RecapScene {
         override val kind = RecapSceneKind.TopMeal
     }
 
-    /** Highest average-rated cook of the week. */
+    /** Highest average-rated cook of the week. [photoUrl] is that cook's best plate this week. */
     data class BestCook(
         val memberName: String,
         val avgScore: Double,
+        val photoUrl: String? = null,
     ) : RecapScene {
         override val kind = RecapSceneKind.BestCook
     }
 
-    /** Member who posted the most plates this week. */
+    /** Member who posted the most plates this week. [photoUrl] is that member's newest plate. */
     data class MostProlific(
         val memberName: String,
         val postCount: Int,
+        val photoUrl: String? = null,
     ) : RecapScene {
         override val kind = RecapSceneKind.MostProlific
     }
 
-    /** The signed-in member's personal posting streak. */
+    /**
+     * The signed-in member's personal posting streak. [photoUrl] is the member's own newest plate
+     * this week, falling back to the crew's newest plate.
+     */
     data class Streak(
         val streakDays: Int,
+        val photoUrl: String? = null,
     ) : RecapScene {
         override val kind = RecapSceneKind.Streak
     }
@@ -76,6 +85,7 @@ sealed interface RecapScene {
      */
     data class Badges(
         val titleKeys: List<AchievementStringKey>,
+        val photoUrl: String? = null,
     ) : RecapScene {
         override val kind = RecapSceneKind.Badges
     }
@@ -84,6 +94,7 @@ sealed interface RecapScene {
     data class Cuisines(
         val collectedCount: Int,
         val totalCount: Int,
+        val photoUrl: String? = null,
     ) : RecapScene {
         override val kind = RecapSceneKind.Cuisines
     }
@@ -97,6 +108,7 @@ sealed interface RecapScene {
         val streakDays: Int,
         val cuisinesCollected: Int,
         val ingredientsCollected: Int,
+        val photoUrl: String? = null,
     ) : RecapScene {
         override val kind = RecapSceneKind.YourWeek
     }

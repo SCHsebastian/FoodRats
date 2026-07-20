@@ -517,6 +517,9 @@ private fun MainScaffold(rootController: NavHostController) {
                             Route.WeeklyStory(weekStart = "", fromNotification = false),
                         ) { launchSingleTop = true }
                     },
+                    onOpenMeal = { mealId, dayIso ->
+                        rootController.navigate(Route.MealDetail(mealId, dayIso)) { launchSingleTop = true }
+                    },
                 )
                 MainTab.Passport -> PassportScreen()
                 MainTab.Feed -> FeedScreen(

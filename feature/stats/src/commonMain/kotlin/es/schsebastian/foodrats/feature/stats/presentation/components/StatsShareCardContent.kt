@@ -40,12 +40,14 @@ fun AwardShareCardContent(model: AwardShareCardModel, plate: ImageBitmap?) {
 }
 
 /**
- * Off-screen content the platform renderer rasterizes for a STREAK share (spec §8.2). No photo — the
- * streak count is the hero. Headline ([ShareCardStringKey.StreakHeadline], arg = days) / subline are
- * resolved here.
+ * Off-screen content the platform renderer rasterizes for a STREAK share (spec §8.2, TRACK B). The
+ * streak count is always the hero; [plate] is the decoded plate photo the controller passes in
+ * (`null` → the original solid-surface design, matching [model]'s advisory [StreakShareCardModel.photoUrl]
+ * — `null` when there was no plate to decode). Headline ([ShareCardStringKey.StreakHeadline], arg =
+ * days) / subline are resolved here.
  */
 @Composable
-fun StreakShareCardContent(model: StreakShareCardModel) {
+fun StreakShareCardContent(model: StreakShareCardModel, plate: ImageBitmap? = null) {
     FoodRatsTheme {
         FrStreakShareCard(
             streakDays = model.streakDays,
@@ -54,6 +56,7 @@ fun StreakShareCardContent(model: StreakShareCardModel) {
             dayEmote = model.dayEmote,
             footerBrand = resolve(ShareCardStringKey.BrandFooter),
             format = ShareCardFormat.Story,
+            plate = plate,
         )
     }
 }

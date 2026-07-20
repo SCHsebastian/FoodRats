@@ -1,6 +1,6 @@
 # :core:presentation
 
-The shared MVI plumbing: `MviViewModel<State, Intent>` base (~80 LOC). Every feature's ViewModel extends `MviViewModel`; every feature's `<Feature>Error.toStringKey()` extension function maps its error tree to a `StringKey`.
+The shared MVI plumbing: `MviViewModel<State, Intent, Effect>` base (~80 LOC). Every feature's ViewModel extends `MviViewModel`; every feature's `<Feature>Error.toStringKey()` extension function maps its error tree to a `StringKey`.
 
 ## Authoritative references
 

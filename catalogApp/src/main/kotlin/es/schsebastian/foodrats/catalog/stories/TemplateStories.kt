@@ -252,7 +252,7 @@ private fun AwardShareCardStory() {
 
 @Composable
 private fun StreakShareCardStory() {
-    CatalogSceneSplit(label = "Streak · 9:16 · 14 days") {
+    CatalogSceneSplit(label = "Streak · 9:16 · 14 days · solid surface (no photo)") {
         FrStreakShareCard(
             streakDays = 14,
             headline = "14-day streak 🔥",
@@ -263,7 +263,7 @@ private fun StreakShareCardStory() {
             modifier = Modifier.width(180.dp),
         )
     }
-    CatalogScene(label = "Square · 1 day (fresh streak)") {
+    CatalogScene(label = "Square · 1 day (fresh streak) · solid surface") {
         FrStreakShareCard(
             streakDays = 1,
             headline = "1-day streak 🔥",
@@ -272,6 +272,18 @@ private fun StreakShareCardStory() {
             footerBrand = "FoodRats",
             format = ShareCardFormat.Square,
             modifier = Modifier.width(260.dp),
+        )
+    }
+    CatalogScene(label = "Story · 9:16 · full-bleed plate photo") {
+        FrStreakShareCard(
+            streakDays = 14,
+            headline = "14-day streak 🔥",
+            subline = "Keep it cooking",
+            dayEmote = "🔥",
+            footerBrand = "FoodRats",
+            format = ShareCardFormat.Story,
+            plate = samplePlate(),
+            modifier = Modifier.width(180.dp),
         )
     }
 }

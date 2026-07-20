@@ -3,6 +3,9 @@ package es.schsebastian.foodrats.app.recap
 import es.schsebastian.foodrats.core.data.share.StoryShareController
 import es.schsebastian.foodrats.core.domain.analytics.AnalyticsPort
 import es.schsebastian.foodrats.core.domain.analytics.DigestStorySource
+import es.schsebastian.foodrats.core.domain.crew.ActiveCrewProvider
+import es.schsebastian.foodrats.core.domain.meal.MealReadPort
+import es.schsebastian.foodrats.core.domain.session.SessionProvider
 import es.schsebastian.foodrats.core.domain.time.Clock
 import es.schsebastian.foodrats.feature.achievements.domain.usecase.ObserveAchievementsUseCase
 import es.schsebastian.foodrats.feature.stats.domain.usecase.ObserveStatsUseCase
@@ -30,6 +33,9 @@ class WeeklyStoryModuleVerifyTest {
             extraTypes = listOf(
                 ObserveStatsUseCase::class,
                 ObserveAchievementsUseCase::class,
+                ActiveCrewProvider::class,
+                SessionProvider::class,
+                MealReadPort::class,
                 Clock::class,
                 TimeZone::class,
                 StoryShareController::class,
