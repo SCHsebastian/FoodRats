@@ -89,6 +89,7 @@ import org.koin.compose.viewmodel.koinViewModel
 fun ProfileScreen(
     onBack: () -> Unit,
     onOpenAchievements: () -> Unit = {},
+    onOpenMealCalendar: () -> Unit = {},
     onOpenEula: () -> Unit = {},
     onOpenGuidelines: () -> Unit = {},
     onOpenBlockedUsers: () -> Unit = {},
@@ -193,7 +194,7 @@ fun ProfileScreen(
                 onAnalyticsConsentToggled = { vm.onIntent(ProfileIntent.AnalyticsConsentToggled(it)) },
                 onAccentPickerOpen = { vm.onIntent(ProfileIntent.AccentPickerOpen) },
             )
-            AchievementsSection(onOpenAchievements)
+            AchievementsSection(onOpenAchievements, onOpenMealCalendar)
             SafetySection(onOpenBlockedUsers)
             LegalSection(onOpenEula = onOpenEula, onOpenGuidelines = onOpenGuidelines)
             DataExportSection(
@@ -643,7 +644,7 @@ private fun PreferencesSection(
 }
 
 @Composable
-private fun AchievementsSection(onOpenAchievements: () -> Unit) {
+private fun AchievementsSection(onOpenAchievements: () -> Unit, onOpenMealCalendar: () -> Unit) {
     StructuralSection(eyebrow = resolve(AuthStringKey.ProfileAchievementsSection)) {
         SettingsRow(
             title = resolve(AuthStringKey.ProfileAchievementsRow),
@@ -651,6 +652,13 @@ private fun AchievementsSection(onOpenAchievements: () -> Unit) {
             icon = FrIcons.Trophy,
             topHairline = false,
             onClick = onOpenAchievements,
+        )
+        SettingsRow(
+            title = resolve(AuthStringKey.ProfileMealCalendarRow),
+            subtitle = resolve(AuthStringKey.ProfileMealCalendarSubtitle),
+            icon = FrIcons.Restaurant,
+            topHairline = true,
+            onClick = onOpenMealCalendar,
         )
     }
 }

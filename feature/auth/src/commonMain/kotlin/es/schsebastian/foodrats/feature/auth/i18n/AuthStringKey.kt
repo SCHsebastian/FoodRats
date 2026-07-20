@@ -49,6 +49,8 @@ import foodrats.feature.auth.generated.resources.auth_mode_signup_cta
 import foodrats.feature.auth.generated.resources.auth_or_divider
 import foodrats.feature.auth.generated.resources.auth_profile_account_section
 import foodrats.feature.auth.generated.resources.auth_profile_achievements_row
+import foodrats.feature.auth.generated.resources.auth_profile_meal_calendar_row
+import foodrats.feature.auth.generated.resources.auth_profile_meal_calendar_subtitle
 import foodrats.feature.auth.generated.resources.auth_profile_badge_first
 import foodrats.feature.auth.generated.resources.auth_profile_badge_ten
 import foodrats.feature.auth.generated.resources.auth_profile_badge_fifty
@@ -221,6 +223,8 @@ enum class AuthStringKey(override val resourceId: StringResource) : StringKey {
     ProfileAchievementsSection(Res.string.auth_profile_achievements_section),
     ProfileAchievementsRow(Res.string.auth_profile_achievements_row),
     ProfileAchievementsSubtitle(Res.string.auth_profile_achievements_subtitle),
+    ProfileMealCalendarRow(Res.string.auth_profile_meal_calendar_row),
+    ProfileMealCalendarSubtitle(Res.string.auth_profile_meal_calendar_subtitle),
 
     // Badge labels — one per tier; rendered next to the display name when earned.
     ProfileBadgeFirst(Res.string.auth_profile_badge_first),

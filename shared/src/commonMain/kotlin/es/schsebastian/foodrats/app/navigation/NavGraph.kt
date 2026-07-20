@@ -70,6 +70,7 @@ import es.schsebastian.foodrats.feature.auth.presentation.profile.ProfileScreen
 import es.schsebastian.foodrats.feature.auth.presentation.signin.SignInScreen
 import es.schsebastian.foodrats.feature.auth.presentation.topbar.TopBarAvatarViewModel
 import es.schsebastian.foodrats.feature.achievements.presentation.AchievementsScreen
+import es.schsebastian.foodrats.feature.stats.presentation.calendar.MealCalendarScreen
 import es.schsebastian.foodrats.feature.crew.presentation.invite.AcceptInviteScreen
 import es.schsebastian.foodrats.feature.crew.presentation.picker.CrewPickerScreen
 import es.schsebastian.foodrats.feature.crew.presentation.settings.CrewSettingsScreen
@@ -201,6 +202,7 @@ fun NavGraph(navController: NavController = rememberNavController()) {
             ProfileScreen(
                 onBack = { controller.popBackStack() },
                 onOpenAchievements = { controller.navigate(Route.Achievements) { launchSingleTop = true } },
+                onOpenMealCalendar = { controller.navigate(Route.MealCalendar) { launchSingleTop = true } },
                 onOpenEula = { controller.navigate(Route.Eula) { launchSingleTop = true } },
                 onOpenGuidelines = {
                     controller.navigate(Route.CommunityGuidelines) { launchSingleTop = true }
@@ -213,6 +215,18 @@ fun NavGraph(navController: NavController = rememberNavController()) {
 
         composable<Route.Achievements> {
             AchievementsScreen(onBack = { controller.popBackStack() })
+        }
+
+        // "My plates" monthly meal calendar (own meals in the active crew), reached from Profile.
+        composable<Route.MealCalendar> {
+            MealCalendarScreen(
+                onBack = { controller.popBackStack() },
+                onMealClick = { mealId, dayIso ->
+                    controller.navigate(Route.MealDetail(mealId = mealId, dayIso = dayIso)) {
+                        launchSingleTop = true
+                    }
+                },
+            )
         }
 
         // Blocked-users list (UGC compliance §5), reached from Profile.

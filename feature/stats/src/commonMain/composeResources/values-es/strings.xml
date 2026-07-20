@@ -119,4 +119,35 @@
 
     <!-- Reintentar la carga de stats desde el estado de error a pantalla completa. -->
     <string name="stats_retry">Inténtalo otra vez</string>
+
+    <!-- Calendario mensual "Mis platos" -->
+    <string name="stats_calendar_title">Mis platos</string>
+    <string name="stats_calendar_back">Atrás</string>
+    <!-- Cabecera del mes: nombre del mes localizado + año. -->
+    <string name="stats_calendar_month_title_format">%1$s %2$d</string>
+    <string name="stats_calendar_prev_month">Mes anterior</string>
+    <string name="stats_calendar_next_month">Mes siguiente</string>
+    <string name="stats_calendar_empty_month">Aún no hay platos este mes.</string>
+    <!-- Puntuación media con un decimal en una fila de plato del calendario. -->
+    <string name="stats_calendar_score_format">%1$s ★</string>
+    <string name="stats_calendar_month_january">Enero</string>
+    <string name="stats_calendar_month_february">Febrero</string>
+    <string name="stats_calendar_month_march">Marzo</string>
+    <string name="stats_calendar_month_april">Abril</string>
+    <string name="stats_calendar_month_may">Mayo</string>
+    <string name="stats_calendar_month_june">Junio</string>
+    <string name="stats_calendar_month_july">Julio</string>
+    <string name="stats_calendar_month_august">Agosto</string>
+    <string name="stats_calendar_month_september">Septiembre</string>
+    <string name="stats_calendar_month_october">Octubre</string>
+    <string name="stats_calendar_month_november">Noviembre</string>
+    <string name="stats_calendar_month_december">Diciembre</string>
+    <!-- Iniciales de los días, empezando en lunes. -->
+    <string name="stats_calendar_weekday_monday">L</string>
+    <string name="stats_calendar_weekday_tuesday">M</string>
+    <string name="stats_calendar_weekday_wednesday">X</string>
+    <string name="stats_calendar_weekday_thursday">J</string>
+    <string name="stats_calendar_weekday_friday">V</string>
+    <string name="stats_calendar_weekday_saturday">S</string>
+    <string name="stats_calendar_weekday_sunday">D</string>
 </resources>

@@ -209,7 +209,8 @@ private sealed interface HistoricResult {
     data class Err(val error: StatsError) : HistoricResult
 }
 
-private fun MealReadError.toStatsError() = when (this) {
+/** Shared by [ObserveStatsUseCase] and [ObserveMyMealCalendarUseCase] — the one read-error mapping. */
+internal fun MealReadError.toStatsError() = when (this) {
     MealReadError.Unauthorized -> StatsError.Read.Unauthorized
     MealReadError.CrewNotFound -> StatsError.Read.CrewNotFound
     MealReadError.Unavailable  -> StatsError.Read.Unavailable

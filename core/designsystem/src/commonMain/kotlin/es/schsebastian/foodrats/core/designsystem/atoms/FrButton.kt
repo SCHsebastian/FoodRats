@@ -34,14 +34,15 @@ fun FrButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val scaled = modifier.pressScale(interactionSource)
+    val throttledClick = rememberThrottledClick(onClick)
     when (variant) {
-        FrButtonVariant.Primary   -> Button(onClick = onClick, modifier = scaled, enabled = enabled, interactionSource = interactionSource) { Text(label) }
-        FrButtonVariant.Secondary -> OutlinedButton(onClick = onClick, modifier = scaled, enabled = enabled, interactionSource = interactionSource) { Text(label) }
-        FrButtonVariant.Ghost     -> TextButton(onClick = onClick, modifier = scaled, enabled = enabled, interactionSource = interactionSource) { Text(label) }
+        FrButtonVariant.Primary   -> Button(onClick = throttledClick, modifier = scaled, enabled = enabled, interactionSource = interactionSource) { Text(label) }
+        FrButtonVariant.Secondary -> OutlinedButton(onClick = throttledClick, modifier = scaled, enabled = enabled, interactionSource = interactionSource) { Text(label) }
+        FrButtonVariant.Ghost     -> TextButton(onClick = throttledClick, modifier = scaled, enabled = enabled, interactionSource = interactionSource) { Text(label) }
         FrButtonVariant.Danger    -> {
             val semantic = LocalFrSemanticColors.current
             Button(
-                onClick = onClick,
+                onClick = throttledClick,
                 modifier = scaled,
                 enabled = enabled,
                 interactionSource = interactionSource,

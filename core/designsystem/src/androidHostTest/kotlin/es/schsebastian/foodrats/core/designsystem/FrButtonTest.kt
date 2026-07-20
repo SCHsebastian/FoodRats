@@ -43,6 +43,19 @@ class FrButtonTest {
     }
 
     @Test
+    fun button_firesOnce_onDoubleTap() {
+        var clickCount = 0
+        composeTestRule.setContent {
+            FoodRatsTheme {
+                FrButton(label = "Publish", onClick = { clickCount++ })
+            }
+        }
+        composeTestRule.onNodeWithText("Publish").performClick()
+        composeTestRule.onNodeWithText("Publish").performClick()
+        assertEquals(1, clickCount, "a double-tap within the throttle window should fire onClick once")
+    }
+
+    @Test
     fun button_doesNotFireOnClick_whenDisabled() {
         var clickCount = 0
         composeTestRule.setContent {

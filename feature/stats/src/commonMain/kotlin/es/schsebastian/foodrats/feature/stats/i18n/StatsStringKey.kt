@@ -49,6 +49,32 @@ import foodrats.feature.stats.generated.resources.stats_passport_locked_label
 import foodrats.feature.stats.generated.resources.stats_passport_progress_format
 import foodrats.feature.stats.generated.resources.stats_passport_title
 import foodrats.feature.stats.generated.resources.stats_plate_photo_format
+import foodrats.feature.stats.generated.resources.stats_calendar_back
+import foodrats.feature.stats.generated.resources.stats_calendar_empty_month
+import foodrats.feature.stats.generated.resources.stats_calendar_month_april
+import foodrats.feature.stats.generated.resources.stats_calendar_month_august
+import foodrats.feature.stats.generated.resources.stats_calendar_month_december
+import foodrats.feature.stats.generated.resources.stats_calendar_month_february
+import foodrats.feature.stats.generated.resources.stats_calendar_month_january
+import foodrats.feature.stats.generated.resources.stats_calendar_month_july
+import foodrats.feature.stats.generated.resources.stats_calendar_month_june
+import foodrats.feature.stats.generated.resources.stats_calendar_month_march
+import foodrats.feature.stats.generated.resources.stats_calendar_month_may
+import foodrats.feature.stats.generated.resources.stats_calendar_month_november
+import foodrats.feature.stats.generated.resources.stats_calendar_month_october
+import foodrats.feature.stats.generated.resources.stats_calendar_month_september
+import foodrats.feature.stats.generated.resources.stats_calendar_month_title_format
+import foodrats.feature.stats.generated.resources.stats_calendar_next_month
+import foodrats.feature.stats.generated.resources.stats_calendar_prev_month
+import foodrats.feature.stats.generated.resources.stats_calendar_score_format
+import foodrats.feature.stats.generated.resources.stats_calendar_title
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_friday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_monday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_saturday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_sunday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_thursday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_tuesday
+import foodrats.feature.stats.generated.resources.stats_calendar_weekday_wednesday
 import foodrats.feature.stats.generated.resources.stats_retry
 import foodrats.feature.stats.generated.resources.stats_roast_section_title
 import foodrats.feature.stats.generated.resources.stats_share_award
@@ -149,6 +175,37 @@ enum class StatsStringKey(override val resourceId: StringResource) : StringKey {
     WeeklyRecapCta(Res.string.stats_weekly_recap_cta),
     ShareAward(Res.string.stats_share_award),
     ShareScoreFormat(Res.string.stats_share_score_format),
+
+    CalendarTitle(Res.string.stats_calendar_title),
+    CalendarBackCta(Res.string.stats_calendar_back),
+    /** "%1$s %2$d" — localized month name + year. */
+    CalendarMonthTitleFormat(Res.string.stats_calendar_month_title_format),
+    CalendarPrevMonthCta(Res.string.stats_calendar_prev_month),
+    CalendarNextMonthCta(Res.string.stats_calendar_next_month),
+    CalendarEmptyMonth(Res.string.stats_calendar_empty_month),
+    /** "%1$s ★" — one-decimal average score on a calendar meal row. */
+    CalendarScoreFormat(Res.string.stats_calendar_score_format),
+
+    CalendarMonthJanuary(Res.string.stats_calendar_month_january),
+    CalendarMonthFebruary(Res.string.stats_calendar_month_february),
+    CalendarMonthMarch(Res.string.stats_calendar_month_march),
+    CalendarMonthApril(Res.string.stats_calendar_month_april),
+    CalendarMonthMay(Res.string.stats_calendar_month_may),
+    CalendarMonthJune(Res.string.stats_calendar_month_june),
+    CalendarMonthJuly(Res.string.stats_calendar_month_july),
+    CalendarMonthAugust(Res.string.stats_calendar_month_august),
+    CalendarMonthSeptember(Res.string.stats_calendar_month_september),
+    CalendarMonthOctober(Res.string.stats_calendar_month_october),
+    CalendarMonthNovember(Res.string.stats_calendar_month_november),
+    CalendarMonthDecember(Res.string.stats_calendar_month_december),
+
+    CalendarWeekdayMonday(Res.string.stats_calendar_weekday_monday),
+    CalendarWeekdayTuesday(Res.string.stats_calendar_weekday_tuesday),
+    CalendarWeekdayWednesday(Res.string.stats_calendar_weekday_wednesday),
+    CalendarWeekdayThursday(Res.string.stats_calendar_weekday_thursday),
+    CalendarWeekdayFriday(Res.string.stats_calendar_weekday_friday),
+    CalendarWeekdaySaturday(Res.string.stats_calendar_weekday_saturday),
+    CalendarWeekdaySunday(Res.string.stats_calendar_weekday_sunday),
 
     Retry(Res.string.stats_retry),
 
