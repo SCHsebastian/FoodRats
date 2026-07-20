@@ -29,7 +29,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         // Cold start from an App Link / custom-scheme URL. RootNavViewModel parses + routes it.
-        publishDeepLink(intent)
+        // Only on a FRESH launch (savedInstanceState == null): a recreation (rotation, dark-mode
+        // flip, locale change, process-death restore from recents) re-runs onCreate with the SAME
+        // intent — republishing would yank the user back to the linked screen on every config
+        // change after a notification tap. A genuinely new tap on a live activity arrives via
+        // onNewIntent below, so nothing is lost by skipping recreations.
+        if (savedInstanceState == null) publishDeepLink(intent)
 
         // Register both permission launchers BEFORE the lifecycle hits STARTED.
         // Each runtime permission gets its own launcher so unrelated permissions never share state.

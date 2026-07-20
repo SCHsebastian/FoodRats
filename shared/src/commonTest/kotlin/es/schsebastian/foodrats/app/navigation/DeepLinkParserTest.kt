@@ -129,4 +129,16 @@ class DeepLinkParserTest {
     fun garbage_returns_null() {
         assertNull(parseDeepLink("not even a uri"))
     }
+
+    @Test
+    fun empty_uri_returns_null() {
+        assertNull(parseDeepLink(""))
+    }
+
+    @Test
+    fun host_only_uri_with_no_path_returns_null() {
+        // A bare scheme://host tap (e.g. the launcher fallback) must be a no-op, not a crash.
+        assertNull(parseDeepLink("foodrats://app"))
+        assertNull(parseDeepLink("https://foodrats-de4ec.web.app"))
+    }
 }
